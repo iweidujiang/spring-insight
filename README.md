@@ -41,3 +41,11 @@
 
 <img width="958" height="529" alt="技术架构图" src="https://github.com/user-attachments/assets/7a32c348-4948-4e49-8df4-00f31bbd61a5" />
 
+## 📅 开发路线图（画饼向）
+
+- **Phase 1 (MVP):** 基础数据采集、拓扑发现与静态报告（~2026.Q2）
+
+- **Phase 2:** 集成OpenTelemetry，增强数据采集能力（~2026.Q3）
+
+- **Phase 3:** 引入智能分析规则与预测（~2026.Q4）
+
