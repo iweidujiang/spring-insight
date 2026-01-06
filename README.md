@@ -36,3 +36,8 @@
 - 架构健康报告：标识单点故障、高频慢接口、循环依赖风险。
 
 - HTTP接口分析：统计端点QPS、平均耗时、错误率，并关联至具体代码变更。
+
+## 📊 技术架构
+
+<img width="958" height="529" alt="技术架构图" src="https://github.com/user-attachments/assets/7a32c348-4948-4e49-8df4-00f31bbd61a5" />
+
