@@ -1,10 +1,10 @@
-package io.github.iweidujiang.insight.agent;
+package io.github.iweidujiang.springinsight.storage;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class InsightAgentApplicationTests {
+class InsightStorageApplicationTests {
 
     @Test
     void contextLoads() {

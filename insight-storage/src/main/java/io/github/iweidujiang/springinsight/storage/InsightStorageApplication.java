@@ -1,13 +1,13 @@
-package io.github.iweidujiang.insight.agent;
+package io.github.iweidujiang.springinsight.storage;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class InsightAgentApplication {
+public class InsightStorageApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(InsightAgentApplication.class, args);
+        SpringApplication.run(InsightStorageApplication.class, args);
     }
 
 }

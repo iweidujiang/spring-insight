@@ -16,6 +16,7 @@
     <modules>
         <module>insight-agent</module>
         <module>insight-storage</module>
+        <module>insight-collector</module>
     </modules>
 
     <properties>
