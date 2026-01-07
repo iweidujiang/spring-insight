@@ -17,7 +17,7 @@
 ### 1. 添加依赖
 ```xml
 <dependency>
-    <groupId>io.github.yourname</groupId>
+    <groupId>io.github.iweidujiang</groupId>
     <artifactId>spring-insight-core-spring-boot-starter</artifactId>
     <version>0.1.0-SNAPSHOT</version>
 </dependency>
