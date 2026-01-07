@@ -10,7 +10,7 @@
     <version>0.1.0-SNAPSHOT</version>
 
     <packaging>pom</packaging>
-    <name>Spring Insight 父项目</name>
+    <name>Spring Insight</name>
     <description>一个轻量级、面向 Spring Boot 应用的诊断与架构洞察工具</description>
 
     <modules>

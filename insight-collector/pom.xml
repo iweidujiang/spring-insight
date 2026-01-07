@@ -54,9 +54,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>io.github.springinsight.collector.CollectorApplication</mainClass>
-                </configuration>
             </plugin>
         </plugins>
     </build>
