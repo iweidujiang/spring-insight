@@ -1,0 +1,39 @@
+package io.github.iweidujiang.springinsight.agent.model;
+
+import lombok.Data;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 批量数据传输对象
+ *
+ * @author <a href="https://github.com/iweidujiang">...</a>
+ * @since 2026/1/7
+ */
+@Data
+public class SpanBatch {
+    /** 上报数据的服务名称 */
+    private String serviceName;
+    /** 上报数据的服务实例 */
+    private String serviceInstance;
+    /** 上报时间 */
+    private Instant reportTime = Instant.now();
+    /** Span列表 */
+    private List<Span> spans = new ArrayList<>();
+
+    /**
+     * 添加一个Span到批量中
+     */
+    public void addSpan(Span span) {
+        this.spans.add(span);
+    }
+
+    /**
+     * 批量添加Span
+     */
+    public void addAllSpans(List<Span> spans) {
+        this.spans.addAll(spans);
+    }
+}
