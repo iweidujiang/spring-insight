@@ -1,7 +1,10 @@
 package io.github.iweidujiang.springinsight.agent.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,6 +14,7 @@ import java.util.Map;
  * @author <a href="https://github.com/iweidujiang">...</a>
  * @since 2026/1/7
  */
+@Slf4j
 @Data
 public class TraceSpan {
     // ========== 追踪标识 ==========
@@ -65,6 +69,77 @@ public class TraceSpan {
 
     // ========== 标签 (用于详细分类和筛选) ==========
     private Map<String, String> tags = new HashMap<>();
+
+    // ========== 内部状态（不序列化） ==========
+    /** 标记是否已结束 */
+    @JsonIgnore
+    private volatile boolean finished = false;
+
+    /** 创建时间（用于内部管理） */
+    @JsonIgnore
+    private final Instant createTime = Instant.now();
+
+    /**
+     * 创建一个新的 TraceSpan（根Span）
+     */
+    public TraceSpan() {
+        this.traceId = generateId();
+        this.spanId = generateId();
+        this.startTime = System.currentTimeMillis();
+        log.debug("创建一个新的 TraceSpan: traceId={}, spanId={}", traceId, spanId);
+    }
+
+    /**
+     * 创建一个子 Span
+     */
+    public TraceSpan(String traceId, String parentSpanId) {
+        if (traceId == null || traceId.trim().isEmpty()) {
+            throw new IllegalArgumentException("TraceId 不能为空");
+        }
+
+        this.traceId = traceId;
+        this.parentSpanId = parentSpanId;
+        this.spanId = generateId();
+        this.startTime = System.currentTimeMillis();
+
+        log.debug("创建子 span: traceId={}, parentSpanId={}, spanId={}",
+                traceId, parentSpanId, spanId);
+    }
+
+    // ========== 业务方法 ==========
+
+    /**
+     * 结束当前 Span
+     */
+    public void finish() {
+        finish(null, null);
+    }
+
+    /**
+     * 结束当前 Span 并记录错误信息
+     */
+    public void finish(String errorCode, String errorMessage) {
+        if (finished) {
+            log.warn("当前链路已经结束: traceId={}, spanId={}", traceId, spanId);
+            return;
+        }
+
+        this.endTime = System.currentTimeMillis();
+        this.durationMs = endTime - startTime;
+
+        if (errorCode != null || errorMessage != null) {
+            this.statusCode = "ERROR";
+            this.errorCode = errorCode;
+            this.errorMessage = errorMessage;
+        } else if ("UNKNOWN".equals(this.statusCode)) {
+            this.statusCode = "OK";
+        }
+
+        this.finished = true;
+
+        log.debug("结束当前链路追踪: traceId={}, spanId={}, duration={}ms, status={}",
+                traceId, spanId, durationMs, statusCode);
+    }
 
     /**
      * 创建一个HTTP类型的Span
