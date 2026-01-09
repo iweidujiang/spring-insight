@@ -1,0 +1,71 @@
+spring:
+  application:
+    name: spring-insight-collector
+
+  # Jackson配置
+  jackson:
+    date-format: yyyy-MM-dd'T'HH:mm:ss.SSS
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+
+  # 数据源配置（使用storage模块的配置，这里不需要单独配置）
+  # 如果collector需要独立的数据源，可以在这里配置
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  tomcat:
+    max-connections: 10000
+    accept-count: 100
+    max-swallow-size: 50MB
+
+
+# 管理端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /manage
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+
+# 日志配置
+logging:
+  level:
+    io.github.iweidujiang.springinsight: INFO
+    org.springframework.web: INFO
+    org.springframework.boot.autoconfigure: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/spring-insight-collector.log
+
+# Collector自定义配置
+spring-insight:
+  collector:
+    # 数据验证开关
+    validation-enabled: true
+
+    # 批量处理配置
+    batch:
+      max-size: 10000
+      timeout-ms: 5000
+
+    # 统计配置
+    stats:
+      reset-on-startup: false
+      log-interval-minutes: 60
+
+    # 安全配置（未来扩展）
+    security:
+      enabled: false
+      api-key-header: X-API-Key

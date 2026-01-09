@@ -28,6 +28,12 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- 数据校验 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
         <!-- 依赖 Storage 模块进行数据持久化 -->
         <dependency>
             <groupId>io.github.iweidujiang</groupId>
