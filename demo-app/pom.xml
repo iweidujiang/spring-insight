@@ -22,6 +22,11 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Spring Insight Agent 依赖 -->
         <dependency>
             <groupId>io.github.iweidujiang</groupId>
@@ -48,9 +53,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>io.github.springinsight.demo.DemoApplication</mainClass>
-                </configuration>
             </plugin>
         </plugins>
     </build>

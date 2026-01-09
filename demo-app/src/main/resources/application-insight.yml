@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: demo-service
+
+  # Spring Insight 配置（关键！）
+  insight:
+    enabled: true
+    service-name: demo-service-test
+    service-instance: localhost:8081
+    collector:
+      url: http://localhost:8080  # Collector地址
+    http-tracing-enabled: true
+
+server:
+  port: 8081
+
+# 开启 Actuator 端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,env,beans,configprops
+  endpoint:
+    env:
+      enabled: true
+    configprops:
+      enabled: true
+
+# 日志配置（查看追踪效果）
+logging:
+  level:
+    io.github.iweidujiang: TRACE
