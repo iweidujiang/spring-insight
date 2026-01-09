@@ -12,7 +12,7 @@ import java.util.Map;
  * @since 2026/1/7
  */
 @Data
-public class Span {
+public class TraceSpan {
     // ========== 追踪标识 ==========
     /** 全局唯一的追踪ID，一个请求链路上的所有Span共享此ID */
     private String traceId;
@@ -27,15 +27,16 @@ public class Span {
     /** 服务实例标识，通常是主机名或IP+端口 */
     private String serviceInstance;
     /** 发生Span的服务器IP */
-    private String host;
+    private String hostIp;
     /** 发生Span的服务器端口 */
-    private Integer port;
+    private Integer hostPort;
 
     // ========== 操作信息 ==========
     /** 操作名称，如 `GET /api/users` */
     private String operationName;
     /** Span类型: HTTP, DB, REDIS, RPC, INTERNAL */
-    private String spanType;
+    private String spanKind;
+    private String component;
     /** 具体的端点或方法，如 `com.example.UserController.getUser` */
     private String endpoint;
 
@@ -48,6 +49,7 @@ public class Span {
     private Long durationMs;
 
     // ========== 状态信息 ==========
+    private String statusCode;
     /** 是否成功 */
     private Boolean success;
     /** 错误码 */
@@ -57,9 +59,9 @@ public class Span {
 
     // ========== 依赖/目标信息 (用于拓扑分析) ==========
     /** 调用的目标服务（跨服务调用时填写） */
-    private String targetService;
+    private String remoteService;
     /** 调用的目标端点 */
-    private String targetEndpoint;
+    private String remoteEndpoint;
 
     // ========== 标签 (用于详细分类和筛选) ==========
     private Map<String, String> tags = new HashMap<>();
@@ -67,20 +69,20 @@ public class Span {
     /**
      * 创建一个HTTP类型的Span
      */
-    public static Span createHttpSpan(String traceId, String serviceName,
-                                      String operationName, Long startTime,
-                                      Long durationMs, Boolean success) {
-        Span span = new Span();
-        span.setTraceId(traceId);
-        span.setSpanId(generateId());
-        span.setServiceName(serviceName);
-        span.setOperationName(operationName);
-        span.setSpanType("HTTP");
-        span.setStartTime(startTime);
-        span.setEndTime(startTime + durationMs);
-        span.setDurationMs(durationMs);
-        span.setSuccess(success);
-        return span;
+    public static TraceSpan createHttpSpan(String traceId, String serviceName,
+                                           String operationName, Long startTime,
+                                           Long durationMs, Boolean success) {
+        TraceSpan traceSpan = new TraceSpan();
+        traceSpan.setTraceId(traceId);
+        traceSpan.setSpanId(generateId());
+        traceSpan.setServiceName(serviceName);
+        traceSpan.setOperationName(operationName);
+        traceSpan.setSpanKind("HTTP");
+        traceSpan.setStartTime(startTime);
+        traceSpan.setEndTime(startTime + durationMs);
+        traceSpan.setDurationMs(durationMs);
+        traceSpan.setSuccess(success);
+        return traceSpan;
     }
 
     /**
@@ -94,7 +96,7 @@ public class Span {
     /**
      * 添加标签
      */
-    public Span addTag(String key, String value) {
+    public TraceSpan addTag(String key, String value) {
         this.tags.put(key, value);
         return this;
     }

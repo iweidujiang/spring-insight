@@ -1,0 +1,79 @@
+# Spring Insight Storage 配置
+spring:
+  application:
+    name: spring-insight-storage
+
+  # 数据源配置 (MySQL)
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/spring-insight?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 111111
+
+    # HikariCP 连接池配置
+    hikari:
+      pool-name: SpringInsightHikariCP
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000  # 5分钟
+      connection-timeout: 30000  # 30秒
+      max-lifetime: 1800000  # 30分钟
+      connection-test-query: SELECT 1
+      auto-commit: true
+
+# MyBatis Plus 配置
+mybatis-plus:
+  # 实体扫描包
+  type-aliases-package: io.github.iweidujiang.springinsight.storage.entity
+  # mapper.xml 文件位置
+  mapper-locations: classpath*:/mapper/**/*.xml
+
+  configuration:
+    # 自动驼峰命名规则映射
+    map-underscore-to-camel-case: true
+    # 开启缓存
+    cache-enabled: true
+    # 配置日志实现 (开发环境开启，生产环境关闭)
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+  global-config:
+    db-config:
+      # 主键类型 AUTO-数据库自增，INPUT-手动输入
+      id-type: AUTO
+      # 逻辑删除字段名
+      # logic-delete-field: is_deleted
+      # 逻辑删除值
+      # logic-delete-value: 1
+      # 逻辑未删除值
+      # logic-not-delete-value: 0
+
+# 日志配置
+logging:
+  level:
+    # 项目包日志级别
+    io.github.iweidujiang.springinsight: DEBUG
+    # MyBatis SQL日志级别
+    io.github.iweidujiang.springinsight.storage.mapper: DEBUG
+    # 数据源日志
+    com.zaxxer.hikari: INFO
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+  file:
+    name: logs/spring-insight-storage.log
+
+# 服务配置
+server:
+  port: 8082  # storage模块的端口，collector会调用它
+
+# 自定义配置
+spring-insight:
+  storage:
+    # 批量保存大小
+    batch-size: 1000
+    # 清理旧数据策略 (单位: 天，0表示不清理)
+    data-retention-days: 30
+    # 是否启用自动清理任务
+    enable-cleanup-task: true

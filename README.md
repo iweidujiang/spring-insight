@@ -49,4 +49,24 @@
 
 - **Phase 3:** 引入智能分析规则与预测（~2026.Q4）
 
+## 数据库支持策略
+Spring Insight 采用 “MySQL优先，多数据库渐进式支持” 的策略：
+
+1. **第一阶段 (MVP)**：深度优化 MySQL 8.0+ 兼容性，所有表结构和索引均按 MySQL 最佳实践设计。
+
+2. **第二阶段 (扩展)**：项目稳定运行后，通过 Database Dialect 抽象层 或 多数据源配置 逐步支持：
+   - **PostgreSQL**：利用其优秀的 JSONB 和全文搜索特性。
+3. **第三阶段**：考虑为 H2 (嵌入式测试) 和 Oracle 提供官方支持脚本。
+
+
+
+### 当前版本 (V1.0) 的兼容性设计
+- 字符集：使用 utf8mb4 支持完整的 Unicode 字符（包括表情符号）。
+
+- JSON 字段：MySQL 的 JSON 类型提供良好的查询性能与灵活性，未来切换到 PostgreSQL 时可平滑迁移为 JSONB。
+
+- 时间字段：使用 DATETIME(3) 存储带毫秒精度的时间，同时兼容性与可读性俱佳。
+
+- 自增ID：使用 BIGINT UNSIGNED AUTO_INCREMENT，未来切换其他数据库时，此部分需要适配（如 PostgreSQL 的 BIGSERIAL）。
+
 ## 未完待续...
