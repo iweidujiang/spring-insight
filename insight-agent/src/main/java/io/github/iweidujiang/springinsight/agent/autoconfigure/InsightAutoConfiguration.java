@@ -1,16 +1,11 @@
 package io.github.iweidujiang.springinsight.agent.autoconfigure;
 
-import io.github.iweidujiang.springinsight.agent.collector.AsyncSpanReporter;
 import io.github.iweidujiang.springinsight.agent.instrumentation.HttpRequestInterceptor;
-import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.DependsOn;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
