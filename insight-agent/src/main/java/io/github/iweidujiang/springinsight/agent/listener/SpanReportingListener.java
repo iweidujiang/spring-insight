@@ -48,10 +48,12 @@ public class SpanReportingListener {
      * 这是供外部调用的主要接口
      */
     public void reportSpan(TraceSpan span) {
+        log.info("[调试] Span准备上报: {}", span);
         if (span == null) {
             log.warn("[Span监听器] 尝试上报空的Span，已忽略");
             return;
         }
+        log.info("[调试] Span准备上报: spanId={}, operation={}", span.getSpanId(), span.getOperationName());
 
         if (!span.isFinished()) {
             log.warn("[Span监听器] 尝试上报未完成的Span: spanId={}，将强制结束", span.getSpanId());

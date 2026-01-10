@@ -1,11 +1,14 @@
 package io.github.iweidujiang.springinsight.agent.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
+import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.servlet.HandlerInterceptor;
+
+import java.util.Optional;
 
 /**
  * ┌───────────────────────────────────────────────
@@ -24,11 +27,18 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
     private static final String TRACE_START_TIME_ATTR = "X-Trace-Start-Time";
     private static final String TRACE_SPAN_ATTR = "X-Trace-Span";
 
+    private final SpanReportingListener spanReportingListener;
+
+    public HttpRequestInterceptor(SpanReportingListener spanReportingListener) {
+        this.spanReportingListener = spanReportingListener;
+    }
+
     /**
      * 请求处理前执行
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        log.info("[调试] HTTP拦截器触发: {} {}", request.getMethod(), request.getRequestURI());
         long startTime = System.currentTimeMillis();
 
         // 构建操作名称：方法 + 路径
@@ -91,7 +101,13 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
                 .addTag("http.response_size", String.valueOf(response.getBufferSize()));
 
         // 结束Span
-        TraceContext.endSpan(errorCode, errorMessage);
+        Optional<TraceSpan> endedSpan = TraceContext.endSpan(errorCode, errorMessage);
+
+        // 将结束的Span报告给监听器
+        endedSpan.ifPresent(s -> {
+            log.debug("[HTTP拦截器] 准备上报已结束的Span: {}", s.getSpanId());
+            reportSpanToListener(s);
+        });
 
         // 记录请求完成日志
         log.debug("[HTTP拦截器] 请求完成: traceId={}, spanId={}, uri={}, status={}, duration={}ms",
@@ -100,6 +116,16 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
 
         // 清理当前线程的追踪上下文（防止内存泄漏）
         TraceContext.clear();
+    }
+
+    // 新增私有方法
+    private void reportSpanToListener(TraceSpan span) {
+        if (spanReportingListener != null) {
+            spanReportingListener.reportSpan(span);
+            log.debug("[HTTP拦截器] Span已提交给上报监听器: spanId={}", span.getSpanId());
+        } else {
+            log.warn("[HTTP拦截器] 无法上报Span，上报监听器未初始化");
+        }
     }
 
     /**

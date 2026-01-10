@@ -207,7 +207,7 @@ public class AsyncSpanReporter {
             HttpEntity<SpanBatchRequest> entity = new HttpEntity<>(request, headers);
 
             // 发送请求
-            String url = collectorUrl + "/api/spans/batch";
+            String url = collectorUrl + "/api/v1/spans/batch";
             log.debug("[异步上报器] 开始批量上报: size={}, url={}", batchSize, url);
 
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
