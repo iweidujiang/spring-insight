@@ -5,12 +5,11 @@ spring:
   # Spring Insight 配置（关键！）
   insight:
     enabled: true
-    service-name: demo-service
+    service-name: demo-service-test
     service-instance: localhost:8081
     collector:
       url: http://localhost:8080  # Collector地址
     http-tracing-enabled: true
-    exclude-patterns: /actuator/health,/actuator/info
 
 server:
   port: 8081
@@ -30,6 +29,5 @@ management:
 # 日志配置（查看追踪效果）
 logging:
   level:
-    io.github.iweidujiang: TRACE
-    org.springframework.boot.autoconfigure: DEBUG
-    org.springframework.context.annotation: DEBUG
+    io.github.iweidujiang: debug
+    org.springframework.boot.autoconfigure: WARN

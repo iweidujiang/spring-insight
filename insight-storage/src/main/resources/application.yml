@@ -5,11 +5,10 @@ spring:
 
   # 数据源配置 (MySQL)
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/spring-insight?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 111111
-
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:file:./data/spring-insight-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
     # HikariCP 连接池配置
     hikari:
       pool-name: SpringInsightHikariCP
