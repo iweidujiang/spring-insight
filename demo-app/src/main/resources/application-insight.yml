@@ -29,4 +29,4 @@ management:
 # 日志配置（查看追踪效果）
 logging:
   level:
-    io.github.iweidujiang: TRACE
+    io.github.iweidujiang: debug
