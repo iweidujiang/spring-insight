@@ -40,30 +40,5 @@ management:
 # 日志配置
 logging:
   level:
-    io.github.iweidujiang.springinsight: INFO
-    org.springframework.web: INFO
-    org.springframework.boot.autoconfigure: WARN
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
-
-# Collector自定义配置
-spring-insight:
-  collector:
-    # 数据验证开关
-    validation-enabled: true
-
-    # 批量处理配置
-    batch:
-      max-size: 10000
-      timeout-ms: 5000
-
-    # 统计配置
-    stats:
-      reset-on-startup: false
-      log-interval-minutes: 60
-
-    # 安全配置（未来扩展）
-    security:
-      enabled: false
-      api-key-header: X-API-Key
+    io.github.iweidujiang.springinsight.collector: INFO
+    io.github.iweidujiang.springinsight.collector.exception: WARN

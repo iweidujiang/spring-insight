@@ -3,10 +3,10 @@ spring:
   application:
     name: spring-insight-storage
 
-  # 数据源配置 (MySQL)
+  # 数据源配置
   datasource:
     driver-class-name: org.h2.Driver
-    url: jdbc:h2:file:./data/spring-insight-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL;DATABASE_TO_LOWER=TRUE
+    url: jdbc:h2:file:${user.home}/.spring-insight/data/spring-insight-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
     username: sa
     password:
     # HikariCP 连接池配置
@@ -19,6 +19,10 @@ spring:
       max-lifetime: 1800000  # 30分钟
       connection-test-query: SELECT 1
       auto-commit: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
 
 # MyBatis Plus 配置
 mybatis-plus:
@@ -50,29 +54,12 @@ mybatis-plus:
 logging:
   level:
     # 项目包日志级别
-    io.github.iweidujiang.springinsight: DEBUG
+    io.github.iweidujiang.springinsight.storage: DEBUG
     # MyBatis SQL日志级别
     io.github.iweidujiang.springinsight.storage.mapper: DEBUG
     # 数据源日志
-    com.zaxxer.hikari: INFO
-
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
-
-  file:
-    name: logs/spring-insight-storage.log
+    com.zaxxer.hikari: WARN
 
 # 服务配置
 server:
   port: 8082  # storage模块的端口，collector会调用它
-
-# 自定义配置
-spring-insight:
-  storage:
-    # 批量保存大小
-    batch-size: 1000
-    # 清理旧数据策略 (单位: 天，0表示不清理)
-    data-retention-days: 30
-    # 是否启用自动清理任务
-    enable-cleanup-task: true

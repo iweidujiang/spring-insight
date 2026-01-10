@@ -29,5 +29,6 @@ management:
 # 日志配置（查看追踪效果）
 logging:
   level:
-    io.github.iweidujiang: debug
-    org.springframework.boot.autoconfigure: WARN
+    # 用户可在此控制 Spring Insight Agent的日志细节
+    io.github.springinsight.agent: DEBUG # 设置为 DEBUG 可查看详细追踪流程，INFO 只显示关键信息
+    io.github.springinsight.agent.collector.AsyncSpanReporter: DEBUG # 配置这个，可以查看上报队列详情
