@@ -12,7 +12,10 @@ spring:
 
   # 数据源配置（使用storage模块的配置，这里不需要单独配置）
   # 如果collector需要独立的数据源，可以在这里配置
-
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
 # 服务器配置
 server:
   port: 8080
