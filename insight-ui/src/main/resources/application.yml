@@ -27,7 +27,11 @@ spring:
     resources:
       static-locations: classpath:/static/,classpath:/META-INF/resources/webjars/
 
-
+# 日志配置
+logging:
+  level:
+    io.github.iweidujiang.springinsight.collector: DEBUG
+    io.github.iweidujiang.springinsight.storage: DEBUG
 # Actuator监控端点
 management:
   endpoints:

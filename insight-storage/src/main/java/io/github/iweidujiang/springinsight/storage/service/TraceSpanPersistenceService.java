@@ -120,7 +120,7 @@ public class TraceSpanPersistenceService extends ServiceImpl<TraceSpanMapper, Tr
                     .map(TraceSpanDO::toModel)
                     .collect(Collectors.toList());
 
-            log.debug("为traceId：{}找到{}条链路追踪", result.size(), traceId);
+            log.debug("为traceId：{}找到{}条链路追踪", traceId, result.size());
             return result;
 
         } catch (Exception e) {

@@ -37,7 +37,7 @@ public class TraceQueryController {
 
     @GetMapping("/{traceId}")
     @Operation(summary = "根据TraceID查询完整链路", description = "通过全局唯一的TraceID查询一次请求的完整调用链")
-    public ResponseEntity<?> getTraceByTraceId(@PathVariable String traceId) {
+    public ResponseEntity<?> getTraceByTraceId(@PathVariable("traceId") String traceId) {
         log.debug("根据TraceID查询完整链路: {}", traceId);
         List<?> trace = traceSpanPersistenceService.getTraceById(traceId);
         if (trace.isEmpty()) {
