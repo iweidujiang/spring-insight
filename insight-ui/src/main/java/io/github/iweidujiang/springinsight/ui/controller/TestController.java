@@ -1,13 +1,13 @@
-package io.github.iweidujiang.springinsight.api.controller;
+package io.github.iweidujiang.springinsight.ui.controller;
 
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 /**
  * ┌───────────────────────────────────────────────
- * │ 📦 服务与拓扑查询控制器
+ * │ 📦 简单的测试控制器
  * │
  * │ 👤 作者：苏渡苇
  * │ 🔗 公众号：苏渡苇
@@ -16,9 +16,13 @@ import org.springframework.web.bind.annotation.RestController;
  * | 📅 @since：2026/1/11
  * └───────────────────────────────────────────────
  */
-@Slf4j
-@RestController
-@RequestMapping("/api/v1/services")
-@Tag(name = "服务与拓扑", description = "服务发现与依赖拓扑查询接口")
-public class ServiceTopologyController {
+@Controller
+@RequestMapping("/ui")
+public class TestController {
+
+    @GetMapping("/test")
+    public String testPage(Model model) {
+        model.addAttribute("pageTitle", "测试页面");
+        return "test"; // 这需要创建test.html
+    }
 }

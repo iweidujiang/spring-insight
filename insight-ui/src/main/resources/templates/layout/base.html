@@ -1,0 +1,690 @@
+<!-- insight-ui/src/main/resources/templates/layout/base.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title layout:title-pattern="$CONTENT_TITLE - Spring Insight">
+        Spring Insight
+    </title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.0/css/bootstrap.min.css}">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" th:href="@{/webjars/font-awesome/6.4.2/css/all.min.css}">
+
+    <!-- 自定义全局样式 -->
+    <style>
+        :root {
+            --primary-color: #4e73df;
+            --success-color: #1cc88a;
+            --info-color: #36b9cc;
+            --warning-color: #f6c23e;
+            --danger-color: #e74a3b;
+            --light-color: #f8f9fc;
+            --dark-color: #5a5c69;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fc;
+            min-height: 100vh;
+        }
+
+        /* 导航栏样式 */
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .navbar-brand i {
+            margin-right: 8px;
+        }
+
+        /* 侧边栏样式 */
+        #sidebar {
+            position: fixed;
+            top: 56px; /* 导航栏高度 */
+            left: 0;
+            bottom: 0;
+            width: 220px;
+            background: white;
+            border-right: 1px solid #e3e6f0;
+            transition: all 0.3s;
+            z-index: 100;
+        }
+
+        #sidebar.collapsed {
+            margin-left: -220px;
+        }
+
+        .sidebar-sticky {
+            position: relative;
+            top: 0;
+            height: calc(100vh - 56px);
+            padding-top: 1rem;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .sidebar-nav {
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .sidebar-nav-item {
+            position: relative;
+            margin: 0 0.5rem;
+        }
+
+        .sidebar-nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            color: #6e707e;
+            text-decoration: none;
+            border-radius: 0.35rem;
+            transition: all 0.15s;
+        }
+
+        .sidebar-nav-link:hover {
+            color: var(--primary-color);
+            background-color: #eaecf4;
+        }
+
+        .sidebar-nav-link.active {
+            color: var(--primary-color);
+            background-color: #eaecf4;
+            font-weight: 600;
+        }
+
+        .sidebar-nav-link i {
+            width: 20px;
+            margin-right: 10px;
+            text-align: center;
+        }
+
+        .sidebar-nav-link .badge {
+            margin-left: auto;
+        }
+
+        /* 主要内容区域 */
+        #content-wrapper {
+            margin-left: 220px;
+            padding-top: 56px;
+            min-height: 100vh;
+            transition: margin-left 0.3s;
+        }
+
+        #content-wrapper.expanded {
+            margin-left: 0;
+        }
+
+        /* 页面内容区域 */
+        .content {
+            padding: 1.5rem;
+        }
+
+        /* 统计卡片 */
+        .stat-card {
+            border: none;
+            border-radius: 0.35rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card .card-body {
+            padding: 1.25rem;
+        }
+
+        .stat-card-primary {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .stat-card-success {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .stat-card-info {
+            border-left: 4px solid var(--info-color);
+        }
+
+        .stat-card-warning {
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .stat-card-danger {
+            border-left: 4px solid var(--danger-color);
+        }
+
+        /* 图表容器 */
+        .chart-container {
+            background: white;
+            border-radius: 0.35rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-container h6 {
+            margin-bottom: 1rem;
+            color: var(--dark-color);
+            font-weight: 600;
+        }
+
+        /* 数据表格 */
+        .data-table {
+            background: white;
+            border-radius: 0.35rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+
+        .data-table .table {
+            margin-bottom: 0;
+        }
+
+        .data-table .table th {
+            border-top: none;
+            font-weight: 600;
+            color: var(--dark-color);
+            background-color: #f8f9fc;
+        }
+
+        /* 工具类 */
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            #sidebar {
+                margin-left: -220px;
+            }
+
+            #sidebar.collapsed {
+                margin-left: 0;
+            }
+
+            #content-wrapper {
+                margin-left: 0;
+            }
+
+            #content-wrapper.expanded {
+                margin-left: 220px;
+            }
+        }
+
+        /* 加载动画 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .spinner-lg {
+            width: 3rem;
+            height: 3rem;
+        }
+
+        /* 时间过滤器 */
+        .time-filter {
+            background: white;
+            border-radius: 0.35rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
+
+        .time-filter label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--dark-color);
+        }
+    </style>
+
+    <!-- 全局JavaScript函数 -->
+    <script>
+        // 全局工具函数
+        const SpringInsight = {
+            // 格式化时间
+            formatDateTime: (date) => {
+                return date.toISOString().slice(0, 16);
+            },
+
+            // 获取时间范围
+            getTimeRange: (hours) => {
+                const end = new Date();
+                const start = new Date(end.getTime() - hours * 60 * 60 * 1000);
+                return {
+                    start: SpringInsight.formatDateTime(start),
+                    end: SpringInsight.formatDateTime(end)
+                };
+            },
+
+            // 显示加载中
+            showLoading: () => {
+                let overlay = document.getElementById('loading-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'loading-overlay';
+                    overlay.className = 'loading-overlay';
+                    overlay.innerHTML = `
+                        <div class="spinner-border text-primary spinner-lg" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                    `;
+                    document.body.appendChild(overlay);
+                }
+                overlay.style.display = 'flex';
+            },
+
+            // 隐藏加载中
+            hideLoading: () => {
+                const overlay = document.getElementById('loading-overlay');
+                if (overlay) {
+                    overlay.style.display = 'none';
+                }
+            },
+
+            // 显示Toast消息
+            showToast: (message, type = 'info') => {
+                const toastContainer = document.getElementById('toast-container');
+                if (!toastContainer) return;
+
+                const toastId = 'toast-' + Date.now();
+                const toastHtml = `
+                    <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                ${message}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                        </div>
+                    </div>
+                `;
+
+                toastContainer.innerHTML += toastHtml;
+                const toastElement = document.getElementById(toastId);
+                const toast = new bootstrap.Toast(toastElement);
+                toast.show();
+
+                // 自动移除
+                toastElement.addEventListener('hidden.bs.toast', () => {
+                    toastElement.remove();
+                });
+            },
+
+            // 获取查询参数
+            getQueryParam: (name) => {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(name);
+            },
+
+            // 设置查询参数
+            setQueryParam: (name, value) => {
+                const urlParams = new URLSearchParams(window.location.search);
+                urlParams.set(name, value);
+                const newUrl = window.location.pathname + '?' + urlParams.toString();
+                window.history.replaceState({}, '', newUrl);
+            },
+
+            // 获取Cookie
+            getCookie: (name) => {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+            },
+
+            // 设置Cookie
+            setCookie: (name, value, days = 7) => {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                document.cookie = `${name}=${value};expires=${date.toUTCString()};path=/`;
+            },
+
+            // API请求封装
+            api: {
+                baseUrl: '',
+
+                request: async (url, options = {}) => {
+                    SpringInsight.showLoading();
+
+                    try {
+                        const response = await fetch(url, {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                ...options.headers
+                            },
+                            ...options
+                        });
+
+                        SpringInsight.hideLoading();
+
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`API请求失败 (${response.status}): ${errorText}`);
+                        }
+
+                        const data = await response.json();
+                        return data;
+                    } catch (error) {
+                        SpringInsight.hideLoading();
+                        console.error('API请求错误:', error);
+                        SpringInsight.showToast(`请求失败: ${error.message}`, 'danger');
+                        throw error;
+                    }
+                },
+
+                get: (endpoint, params = {}) => {
+                    const queryString = new URLSearchParams(params).toString();
+                    const url = queryString ? `${endpoint}?${queryString}` : endpoint;
+                    return SpringInsight.api.request(url, { method: 'GET' });
+                },
+
+                post: (endpoint, data = {}) => {
+                    return SpringInsight.api.request(endpoint, {
+                        method: 'POST',
+                        body: JSON.stringify(data)
+                    });
+                },
+
+                put: (endpoint, data = {}) => {
+                    return SpringInsight.api.request(endpoint, {
+                        method: 'PUT',
+                        body: JSON.stringify(data)
+                    });
+                },
+
+                delete: (endpoint) => {
+                    return SpringInsight.api.request(endpoint, { method: 'DELETE' });
+                }
+            }
+        };
+
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 侧边栏切换
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('sidebar');
+            const contentWrapper = document.getElementById('content-wrapper');
+
+            if (sidebarToggle && sidebar && contentWrapper) {
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('collapsed');
+                    contentWrapper.classList.toggle('expanded');
+                });
+            }
+
+            // 自动刷新控制
+            const autoRefreshCheck = document.getElementById('autoRefresh');
+            if (autoRefreshCheck) {
+                // 从Cookie读取设置
+                const autoRefreshEnabled = SpringInsight.getCookie('autoRefresh') === 'true';
+                autoRefreshCheck.checked = autoRefreshEnabled;
+
+                autoRefreshCheck.addEventListener('change', function() {
+                    SpringInsight.setCookie('autoRefresh', this.checked);
+                    SpringInsight.showToast(`自动刷新已${this.checked ? '启用' : '禁用'}`);
+                });
+            }
+
+            // 设置当前活跃的导航项
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.sidebar-nav-link');
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+<!-- Toast容器 -->
+<div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999">
+    <!-- Toasts will be inserted here -->
+</div>
+
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+        <!-- 侧边栏切换按钮 -->
+        <button class="btn btn-link btn-sm order-1 order-lg-0 me-2 text-white" id="sidebarToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <!-- Logo和品牌 -->
+        <a class="navbar-brand" th:href="@{/ui/dashboard}">
+            <i class="fas fa-chart-line"></i>
+            Spring Insight
+        </a>
+
+        <!-- 右侧工具栏 -->
+        <div class="navbar-nav ms-auto">
+            <!-- 时间显示 -->
+            <div class="nav-item">
+                    <span class="nav-link text-light" id="currentTime">
+                        <i class="fas fa-clock me-1"></i>
+                        <span id="timeDisplay"></span>
+                    </span>
+            </div>
+
+            <!-- 自动刷新开关 -->
+            <div class="nav-item">
+                <div class="nav-link">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="autoRefresh">
+                        <label class="form-check-label text-light" for="autoRefresh">
+                            自动刷新
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户菜单 -->
+            <div class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle text-light" href="#" id="userDropdown"
+                   role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-user-circle"></i>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                    <li><h6 class="dropdown-header">系统</h6></li>
+                    <li>
+                        <a class="dropdown-item" href="/swagger-ui.html" target="_blank">
+                            <i class="fas fa-code me-2"></i>API文档
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="/actuator/health" target="_blank">
+                            <i class="fas fa-heartbeat me-2"></i>健康检查
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item" href="#" onclick="SpringInsight.showToast('功能开发中', 'info')">
+                            <i class="fas fa-cog me-2"></i>系统设置
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="#" onclick="SpringInsight.showToast('功能开发中', 'info')">
+                            <i class="fas fa-sign-out-alt me-2"></i>退出登录
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- 侧边栏 -->
+<div id="sidebar">
+    <div class="sidebar-sticky">
+        <!-- 导航菜单 -->
+        <ul class="sidebar-nav">
+            <li class="sidebar-nav-item">
+                <a class="sidebar-nav-link" th:href="@{/ui/dashboard}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    仪表板
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a class="sidebar-nav-link" th:href="@{/ui/services}">
+                    <i class="fas fa-server"></i>
+                    服务管理
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a class="sidebar-nav-link" th:href="@{/ui/topology}">
+                    <i class="fas fa-project-diagram"></i>
+                    拓扑图
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a class="sidebar-nav-link" th:href="@{/ui/traces}">
+                    <i class="fas fa-stream"></i>
+                    调用链
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a class="sidebar-nav-link" th:href="@{/ui/search}">
+                    <i class="fas fa-search"></i>
+                    高级搜索
+                </a>
+            </li>
+            <li class="sidebar-nav-item mt-3">
+                <hr class="sidebar-divider">
+            </li>
+            <li class="sidebar-nav-item">
+                <h6 class="sidebar-heading px-3 mt-3 mb-1 text-muted">
+                    系统监控
+                </h6>
+            </li>
+            <li class="sidebar-nav-item">
+                <a class="sidebar-nav-link" href="/actuator/metrics" target="_blank">
+                    <i class="fas fa-chart-bar"></i>
+                    性能指标
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a class="sidebar-nav-link" href="/actuator/loggers" target="_blank">
+                    <i class="fas fa-file-alt"></i>
+                    日志管理
+                </a>
+            </li>
+            <li class="sidebar-nav-item">
+                <a class="sidebar-nav-link" href="/h2-console" target="_blank">
+                    <i class="fas fa-database"></i>
+                    数据库控制台
+                    <span class="badge bg-info ms-auto">H2</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- 系统信息 -->
+        <div class="px-3 mt-4">
+            <small class="text-muted">数据时间</small>
+            <div class="mt-2">
+                <div class="input-group input-group-sm">
+                        <span class="input-group-text">
+                            <i class="fas fa-history"></i>
+                        </span>
+                    <select class="form-select" id="dataRangeSelect" onchange="updateDataRange(this.value)">
+                        <option value="1">最近1小时</option>
+                        <option value="6" selected>最近6小时</option>
+                        <option value="24">最近24小时</option>
+                        <option value="168">最近7天</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 版本信息 -->
+        <div class="px-3 mt-5">
+            <small class="text-muted">版本 1.0.0</small><br>
+            <small class="text-muted">© 2024 Spring Insight</small>
+        </div>
+    </div>
+</div>
+
+<!-- 主要内容区域 -->
+<div id="content-wrapper">
+    <!-- 页面具体内容 -->
+    <div layout:fragment="content">
+        <div class="content">
+            <!-- 子页面内容将在这里填充 -->
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap Bundle with Popper -->
+<script th:src="@{/webjars/bootstrap/5.3.0/js/bootstrap.bundle.min.js}"></script>
+
+<!-- 全局JavaScript -->
+<script>
+    // 更新时间显示
+    function updateTime() {
+        const now = new Date();
+        const timeDisplay = document.getElementById('timeDisplay');
+        if (timeDisplay) {
+            timeDisplay.textContent = now.toLocaleTimeString('zh-CN');
+        }
+    }
+
+    // 更新数据时间范围
+    function updateDataRange(hours) {
+        SpringInsight.setCookie('dataRange', hours);
+        SpringInsight.showToast(`已设置为最近${hours}小时数据`, 'info');
+
+        // 触发数据刷新事件
+        window.dispatchEvent(new CustomEvent('dataRangeChanged', {
+            detail: { hours: parseInt(hours) }
+        }));
+    }
+
+    // 初始化时间显示
+    updateTime();
+    setInterval(updateTime, 1000);
+
+    // 从Cookie读取数据范围设置
+    const savedDataRange = SpringInsight.getCookie('dataRange');
+    if (savedDataRange) {
+        const select = document.getElementById('dataRangeSelect');
+        if (select) {
+            select.value = savedDataRange;
+        }
+    }
+
+    // 全局错误处理
+    window.addEventListener('error', (event) => {
+        console.error('全局错误:', event.error);
+        SpringInsight.showToast(`发生错误: ${event.message}`, 'danger');
+    });
+
+    // 未捕获的Promise异常
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('未处理的Promise异常:', event.reason);
+        SpringInsight.showToast(`请求异常: ${event.reason.message}`, 'danger');
+    });
+</script>
+
+<!-- 子页面特定的JavaScript -->
+<div layout:fragment="scripts"></div>
+</body>
+</html>

@@ -8,14 +8,19 @@
         <artifactId>spring-insight-parent</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
-    <artifactId>insight-api</artifactId>
-    <name>Spring Insight WebAPI</name>
-    <description>Spring Insight 数据查询与展示API服务</description>
+
+    <artifactId>insight-ui</artifactId>
+    <name>Spring Insight UI</name>
+    <description>Spring Insight UI</description>
     <dependencies>
         <!-- Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
         <!-- 参数校验 -->
         <dependency>
@@ -38,6 +43,31 @@
             <groupId>io.github.iweidujiang</groupId>
             <artifactId>insight-storage</artifactId>
         </dependency>
+        <!-- 前端依赖 -->
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>webjars-locator-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>bootstrap</artifactId>
+            <version>5.3.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>jquery</artifactId>
+            <version>3.7.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>echarts</artifactId>
+            <version>5.4.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>font-awesome</artifactId>
+            <version>6.4.2</version>
+        </dependency>
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -56,6 +86,18 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
+                </configuration>
             </plugin>
         </plugins>
     </build>

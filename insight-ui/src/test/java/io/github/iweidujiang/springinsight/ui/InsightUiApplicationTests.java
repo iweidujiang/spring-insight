@@ -1,10 +1,10 @@
-package io.github.iweidujiang.springinsight.api;
+package io.github.iweidujiang.springinsight.ui;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class InsightApiApplicationTests {
+class InsightUiApplicationTests {
 
     @Test
     void contextLoads() {

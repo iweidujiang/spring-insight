@@ -1,0 +1,51 @@
+server:
+  port: 8083
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+
+spring:
+  application:
+    name: insight-ui
+
+  # Thymeleaf配置
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    servlet:
+      content-type: text/html
+
+  # MVC配置
+  mvc:
+    static-path-pattern: /static/**
+
+  # Web配置
+  web:
+    resources:
+      static-locations: classpath:/static/,classpath:/META-INF/resources/webjars/
+
+
+# Actuator监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+# Spring Insight配置
+insight:
+  ui:
+    title: Spring Insight
+    description: 分布式链路追踪监控系统
+    version: 1.0.0
+    auto-refresh-interval: 30000

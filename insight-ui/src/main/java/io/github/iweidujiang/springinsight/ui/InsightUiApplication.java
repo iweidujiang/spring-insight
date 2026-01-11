@@ -1,4 +1,4 @@
-package io.github.iweidujiang.springinsight.api;
+package io.github.iweidujiang.springinsight.ui;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
@@ -11,7 +11,7 @@ import java.net.UnknownHostException;
 
 /**
  * ┌───────────────────────────────────────────────
- * │ 📦 Spring Insight API 主启动类
+ * │ 📦 Spring Insight UI 主启动类
  * │
  * │ 👤 作者：苏渡苇
  * │ 🔗 公众号：苏渡苇
@@ -21,13 +21,16 @@ import java.net.UnknownHostException;
  * └───────────────────────────────────────────────
  */
 @Slf4j
-@SpringBootApplication
-public class InsightApiApplication {
+@SpringBootApplication(scanBasePackages = {
+        "io.github.iweidujiang.springinsight.storage",
+        "io.github.iweidujiang.springinsight.ui"
+})
+public class InsightUiApplication {
 
     public static void main(String[] args) throws UnknownHostException {
-        ConfigurableApplicationContext context = SpringApplication.run(InsightApiApplication.class, args);
+        ConfigurableApplicationContext context = SpringApplication.run(InsightUiApplication.class, args);
         Environment env = context.getEnvironment();
-        String appName = env.getProperty("spring.application.name", "spring-insight-webapi");
+        String appName = env.getProperty("spring.application.name", "spring-insight-api");
         String port = env.getProperty("server.port", "8083");
         String hostAddress = InetAddress.getLocalHost().getHostAddress();
         String contextPath = env.getProperty("server.servlet.context-path", "");
