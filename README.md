@@ -5,7 +5,6 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.9-green)
 ](https://spring.io/projects/spring-boot#learn)
 
-
 **Spring Insight** 是一个面向Spring Boot应用的轻量级诊断与架构洞察工具。它无需复杂配置，即可自动分析你的微服务依赖、识别潜在瓶颈，并生成可视化的健康报告，帮助开发者像架构师一样思考。
 
 > ✨ **核心价值**：让每一个Spring Boot开发者，都能在5分钟内看清自己应用的架构脉络与运行健康度。
