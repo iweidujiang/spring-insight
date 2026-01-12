@@ -1,30 +1,134 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.w3.org/1999/xhtml"
-      layout:decorate="~{layout/base}"
-      th:with="title='Spring Insight - 仪表盘'">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spring Insight - 仪表盘</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f8f9fc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-top: 70px;
+        }
+
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .stat-card {
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 2rem 0 rgba(58, 59, 69, 0.2);
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .trace-item {
+            border-left: 4px solid #4e73df;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .badge-success {
+            background-color: #1cc88a;
+        }
+
+        .badge-error {
+            background-color: #e74a3b;
+        }
+    </style>
 </head>
 <body>
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/insight-ui">
+            <i class="fas fa-chart-network me-2"></i>Spring Insight
+        </a>
 
-<div layout:fragment="content">
-    <!-- 页面标题和操作 -->
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/insight-ui">
+                        <i class="fas fa-tachometer-alt me-1"></i>仪表盘
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/topology">
+                        <i class="fas fa-project-diagram me-1"></i>拓扑图
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/traces">
+                        <i class="fas fa-stream me-1"></i>链路追踪
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/errors">
+                        <i class="fas fa-exclamation-triangle me-1"></i>错误分析
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/about">
+                        <i class="fas fa-info-circle me-1"></i>关于
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- 主内容区域 -->
+<div class="container-fluid mt-4">
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- 页面标题 -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-1"><i class="fas fa-tachometer-alt me-2 text-primary"></i>监控仪表盘</h2>
             <p class="text-muted mb-0">实时监控您的 Spring Boot 应用架构</p>
         </div>
         <div>
-            <span class="badge bg-info me-2">
-                <i class="fas fa-clock me-1"></i>
-                <span th:text="${#dates.format(#dates.createNow(), 'yyyy-MM-dd HH:mm')}"></span>
-            </span>
+                <span class="badge bg-info">
+                    <i class="fas fa-clock me-1"></i>
+                    <span id="current-time">22:42:00</span>
+                </span>
         </div>
     </div>
 
     <!-- 统计卡片 -->
     <div class="row mb-4">
-        <div class="col-md-3 col-sm-6 mb-3">
+        <div class="col-md-3 col-sm-6">
             <div class="card stat-card border-left-primary">
                 <div class="card-body">
                     <div class="row align-items-center">
@@ -33,18 +137,18 @@
                                 监控服务
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <span th:text="${services.size()}">0</span> 个
+                                <span th:text="${services != null ? services.size() : 0}">0</span> 个
                             </div>
                         </div>
                         <div class="col-4 text-end">
-                            <i class="fas fa-server fa-2x text-primary card-icon"></i>
+                            <i class="fas fa-server fa-2x text-primary"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-3 col-sm-6 mb-3">
+        <div class="col-md-3 col-sm-6">
             <div class="card stat-card border-left-success">
                 <div class="card-body">
                     <div class="row align-items-center">
@@ -53,19 +157,20 @@
                                 链路总数
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <span th:if="${spanCounts}"
-                                      th:text="${#lists.size(spanCounts) > 0 ? spanCounts[0].get('span_count') : 0}">0</span> 条
+                                    <span th:if="${spanCounts != null and not spanCounts.empty}"
+                                          th:text="${spanCounts[0].span_count}">0</span>
+                                <span th:if="${spanCounts == null or spanCounts.empty}">0</span> 条
                             </div>
                         </div>
                         <div class="col-4 text-end">
-                            <i class="fas fa-stream fa-2x text-success card-icon"></i>
+                            <i class="fas fa-stream fa-2x text-success"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-3 col-sm-6 mb-3">
+        <div class="col-md-3 col-sm-6">
             <div class="card stat-card border-left-info">
                 <div class="card-body">
                     <div class="row align-items-center">
@@ -74,18 +179,18 @@
                                 依赖关系
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <span th:text="${dependencies.size()}">0</span> 条
+                                <span th:text="${dependencies != null ? dependencies.size() : 0}">0</span> 条
                             </div>
                         </div>
                         <div class="col-4 text-end">
-                            <i class="fas fa-project-diagram fa-2x text-info card-icon"></i>
+                            <i class="fas fa-project-diagram fa-2x text-info"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-3 col-sm-6 mb-3">
+        <div class="col-md-3 col-sm-6">
             <div class="card stat-card border-left-warning">
                 <div class="card-body">
                     <div class="row align-items-center">
@@ -94,11 +199,40 @@
                                 异常服务
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <span th:text="${errorServices.size()}">0</span> 个
+                                <span th:text="${errorServices != null ? errorServices.size() : 0}">0</span> 个
                             </div>
                         </div>
                         <div class="col-4 text-end">
-                            <i class="fas fa-exclamation-triangle fa-2x text-warning card-icon"></i>
+                            <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collector 状态 -->
+    <div class="row mb-4" th:if="${collectorStats != null}">
+        <div class="col-12">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-database me-2"></i>Collector 状态</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <small class="text-muted">接收请求数</small>
+                            <div class="h4" th:text="${collectorStats.totalReceivedRequests != null ? collectorStats.totalReceivedRequests : 0}">0</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">总Span数</small>
+                            <div class="h4" th:text="${collectorStats.totalReceivedSpans != null ? collectorStats.totalReceivedSpans : 0}">0</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">成功率</small>
+                            <div class="h4 text-success" th:text="${collectorStats.successRate != null ? collectorStats.successRate : 100} + '%'">100%</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">运行时长</small>
+                            <div class="h4" th:text="${collectorStats.runningHours != null ? collectorStats.runningHours : 0} + '小时'">0小时</div>
                         </div>
                     </div>
                 </div>
@@ -108,24 +242,14 @@
 
     <!-- 图表区域 -->
     <div class="row">
-        <!-- 服务依赖图 -->
-        <div class="col-lg-8 mb-4">
+        <div class="col-lg-8">
             <div class="chart-container">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5><i class="fas fa-project-diagram me-2 text-primary"></i>服务依赖拓扑</h5>
-                    <select class="form-select form-select-sm w-auto" id="topology-time-range" onchange="updateTopologyChart()">
-                        <option value="1">近1小时</option>
-                        <option value="6">近6小时</option>
-                        <option value="24" selected>近24小时</option>
-                        <option value="72">近3天</option>
-                    </select>
-                </div>
+                <h5 class="mb-3"><i class="fas fa-project-diagram me-2 text-primary"></i>服务依赖拓扑</h5>
                 <div id="topology-chart" style="height: 400px;"></div>
             </div>
         </div>
 
-        <!-- 服务排名 -->
-        <div class="col-lg-4 mb-4">
+        <div class="col-lg-4">
             <div class="chart-container">
                 <h5 class="mb-3"><i class="fas fa-chart-bar me-2 text-success"></i>服务请求排名</h5>
                 <div id="service-rank-chart" style="height: 400px;"></div>
@@ -134,8 +258,8 @@
     </div>
 
     <!-- 错误服务列表 -->
-    <div class="row" th:if="${not #lists.isEmpty(errorServices)}">
-        <div class="col-12 mb-4">
+    <div class="row" th:if="${errorServices != null and not errorServices.empty}">
+        <div class="col-12">
             <div class="chart-container">
                 <h5 class="mb-3"><i class="fas fa-exclamation-triangle me-2 text-danger"></i>异常服务告警</h5>
                 <div class="table-responsive">
@@ -147,30 +271,23 @@
                             <th>错误调用数</th>
                             <th>错误率</th>
                             <th>状态</th>
-                            <th>操作</th>
                         </tr>
                         </thead>
                         <tbody>
                         <tr th:each="service : ${errorServices}">
-                            <td th:text="${service.get('service_name')}">service</td>
-                            <td th:text="${service.get('total_calls')}">0</td>
-                            <td th:text="${service.get('error_calls')}">0</td>
+                            <td th:text="${service.service_name}">service</td>
+                            <td th:text="${service.total_calls}">0</td>
+                            <td th:text="${service.error_calls}">0</td>
                             <td>
-                                    <span class="badge" th:classappend="${service.get('error_rate') > 10} ? 'bg-danger' : 'bg-warning'">
-                                        <span th:text="${#strings.substring(service.get('error_rate'), 0, 5)}">0</span>%
-                                    </span>
+                                        <span class="badge" th:classappend="${service.error_rate > 10} ? 'bg-danger' : 'bg-warning'">
+                                            <span th:text="${service.error_rate}">0</span>%
+                                        </span>
                             </td>
                             <td>
-                                <span th:if="${service.get('error_rate') > 20}" class="badge bg-danger">严重</span>
-                                <span th:if="${service.get('error_rate') <= 20 and service.get('error_rate') > 5}"
+                                <span th:if="${service.error_rate > 10}" class="badge bg-danger">严重</span>
+                                <span th:if="${service.error_rate <= 10 and service.error_rate > 5}"
                                       class="badge bg-warning">警告</span>
-                                <span th:if="${service.get('error_rate') <= 5}" class="badge bg-info">注意</span>
-                            </td>
-                            <td>
-                                <a th:href="@{'/service?name=' + ${service.get('service_name')}}"
-                                   class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-search"></i> 详情
-                                </a>
+                                <span th:if="${service.error_rate <= 5}" class="badge bg-info">注意</span>
                             </td>
                         </tr>
                         </tbody>
@@ -179,309 +296,127 @@
             </div>
         </div>
     </div>
-
-    <!-- 最近链路追踪 -->
-    <div class="row">
-        <div class="col-12">
-            <div class="chart-container">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5><i class="fas fa-stream me-2 text-info"></i>最近链路追踪</h5>
-                    <a th:href="@{/traces}" class="btn btn-sm btn-outline-primary">
-                        查看更多 <i class="fas fa-arrow-right ms-1"></i>
-                    </a>
-                </div>
-
-                <div id="recent-traces">
-                    <!-- 通过 JavaScript 动态加载 -->
-                    <div class="text-center py-4">
-                        <div class="loading-spinner" style="width: 2rem; height: 2rem;"></div>
-                        <div class="text-muted mt-2">加载最近链路...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
-<script layout:fragment="scripts">
-    // 初始化拓扑图
-    let topologyChart = echarts.init(document.getElementById('topology-chart'));
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-    // 初始化服务排名图
-    let rankChart = echarts.init(document.getElementById('service-rank-chart'));
+<script>
+    // 更新当前时间
+    function updateCurrentTime() {
+        const now = new Date();
+        const timeStr = now.toTimeString().split(' ')[0];
+        document.getElementById('current-time').textContent = timeStr;
+    }
 
-    function updateTopologyChart() {
-        const hours = document.getElementById('topology-time-range').value;
+    // 初始化图表
+    function initCharts() {
+        // 服务依赖拓扑图
+        const topologyChart = echarts.init(document.getElementById('topology-chart'));
 
-        fetch(`/insight-ui/api/dependencies?hours=${hours}`)
-            .then(response => response.json())
-            .then(dependencies => {
-                // 处理拓扑图数据
-                const nodes = new Set();
-                const links = [];
+        // 模拟数据
+        const services = ['user-service', 'order-service', 'product-service', 'payment-service', 'inventory-service'];
+        const nodes = services.map(service => ({
+            name: service,
+            symbolSize: 30 + Math.random() * 30,
+            category: 0
+        }));
 
-                dependencies.forEach(dep => {
-                    const source = dep.source_service;
-                    const target = dep.target_service;
-                    const callCount = dep.call_count || 1;
-                    const avgDuration = dep.avg_duration || 0;
-
-                    nodes.add(source);
-                    nodes.add(target);
-
+        const links = [];
+        for (let i = 0; i < services.length; i++) {
+            for (let j = 0; j < services.length; j++) {
+                if (i !== j && Math.random() > 0.5) {
                     links.push({
-                        source: source,
-                        target: target,
-                        value: callCount,
-                        lineStyle: {
-                            width: Math.min(5, callCount / 10),
-                            curveness: 0.2
-                        },
-                        label: {
-                            show: true,
-                            formatter: `${callCount}次\n${avgDuration.toFixed(0)}ms`
-                        }
+                        source: services[i],
+                        target: services[j],
+                        value: Math.floor(Math.random() * 100) + 10
                     });
-                });
-
-                const nodeArray = Array.from(nodes).map(node => ({
-                    name: node,
-                    symbolSize: 30 + Math.sqrt(dependencies.filter(d =>
-                        d.source_service === node || d.target_service === node
-                    ).length) * 10,
-                    itemStyle: {
-                        color: getServiceColor(node)
-                    }
-                }));
-
-                const option = {
-                    tooltip: {
-                        formatter: '{b}'
-                    },
-                    series: [{
-                        type: 'graph',
-                        layout: 'force',
-                        data: nodeArray,
-                        links: links,
-                        roam: true,
-                        label: {
-                            show: true,
-                            position: 'right',
-                            formatter: '{b}'
-                        },
-                        lineStyle: {
-                            color: 'source',
-                            curveness: 0.3
-                        },
-                        emphasis: {
-                            focus: 'adjacency',
-                            lineStyle: {
-                                width: 10
-                            }
-                        },
-                        force: {
-                            repulsion: 1000,
-                            edgeLength: 200
-                        }
-                    }]
-                };
-
-                topologyChart.setOption(option);
-            })
-            .catch(error => {
-                console.error('加载拓扑图数据失败:', error);
-                topologyChart.setOption({
-                    title: {
-                        text: '加载失败',
-                        subtext: '请检查网络连接或稍后重试',
-                        left: 'center',
-                        top: 'center'
-                    }
-                });
-            });
-    }
-
-    function updateServiceRankChart() {
-        fetch('/insight-ui/api/service-stats')
-            .then(response => response.json())
-            .then(stats => {
-                // 按数量排序，取前10
-                const sortedStats = stats.sort((a, b) =>
-                    (b.span_count || 0) - (a.span_count || 0)
-                ).slice(0, 10);
-
-                const serviceNames = sortedStats.map(s => s.service_name);
-                const spanCounts = sortedStats.map(s => s.span_count || 0);
-
-                const option = {
-                    tooltip: {
-                        trigger: 'axis',
-                        axisPointer: {
-                            type: 'shadow'
-                        }
-                    },
-                    grid: {
-                        left: '3%',
-                        right: '4%',
-                        bottom: '3%',
-                        top: '5%',
-                        containLabel: true
-                    },
-                    xAxis: {
-                        type: 'value',
-                        boundaryGap: [0, 0.01]
-                    },
-                    yAxis: {
-                        type: 'category',
-                        data: serviceNames,
-                        axisLabel: {
-                            interval: 0,
-                            width: 80,
-                            overflow: 'break'
-                        }
-                    },
-                    series: [
-                        {
-                            name: '请求数量',
-                            type: 'bar',
-                            data: spanCounts,
-                            itemStyle: {
-                                color: function(params) {
-                                    const colorList = [
-                                        '#5470c6', '#91cc75', '#fac858',
-                                        '#ee6666', '#73c0de', '#3ba272',
-                                        '#fc8452', '#9a60b4', '#ea7ccc'
-                                    ];
-                                    return colorList[params.dataIndex % colorList.length];
-                                }
-                            },
-                            label: {
-                                show: true,
-                                position: 'right',
-                                formatter: '{c}'
-                            }
-                        }
-                    ]
-                };
-
-                rankChart.setOption(option);
-            })
-            .catch(error => {
-                console.error('加载服务排名数据失败:', error);
-            });
-    }
-
-    function loadRecentTraces() {
-        fetch('/insight-ui/api/traces?limit=10')
-            .then(response => response.json())
-            .then(data => {
-                const container = document.getElementById('recent-traces');
-
-                if (data.traces.length === 0) {
-                    container.innerHTML = `
-                        <div class="text-center py-4 text-muted">
-                            <i class="fas fa-inbox fa-2x mb-3"></i>
-                            <div>暂无链路数据</div>
-                        </div>
-                    `;
-                    return;
                 }
-
-                let html = '';
-                data.traces.forEach(trace => {
-                    const isError = trace.statusCode === 'ERROR';
-                    const duration = trace.durationMs || 0;
-                    const timeStr = new Date(trace.startTime).toLocaleTimeString();
-
-                    html += `
-                        <div class="trace-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="badge ${isError ? 'error-badge' : 'success-badge'} me-2">
-                                        ${isError ? 'ERROR' : 'OK'}
-                                    </span>
-                                    <strong>${trace.operationName || 'Unknown'}</strong>
-                                </div>
-                                <div class="text-end">
-                                    <small class="text-muted me-3">${duration}ms</small>
-                                    <a href="/insight-ui/trace?id=${trace.traceId}"
-                                       class="btn btn-sm btn-outline-primary">
-                                        查看详情
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="mt-2 text-muted small">
-                                <span class="me-3">
-                                    <i class="fas fa-server me-1"></i>
-                                    ${trace.serviceName || 'Unknown'}
-                                </span>
-                                <span class="me-3">
-                                    <i class="fas fa-clock me-1"></i>
-                                    ${timeStr}
-                                </span>
-                                <span>
-                                    <i class="fas fa-fingerprint me-1"></i>
-                                    ${trace.traceId ? trace.traceId.substring(0, 8) + '...' : 'N/A'}
-                                </span>
-                            </div>
-                        </div>
-                    `;
-                });
-
-                container.innerHTML = html;
-            })
-            .catch(error => {
-                console.error('加载最近链路失败:', error);
-                document.getElementById('recent-traces').innerHTML = `
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        加载失败: ${error.message}
-                    </div>
-                `;
-            });
-    }
-
-    // 获取服务颜色
-    function getServiceColor(serviceName) {
-        const colors = [
-            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e',
-            '#e74a3b', '#6f42c1', '#fd7e14', '#20c9a6',
-            '#5a5c69', '#858796'
-        ];
-
-        let hash = 0;
-        for (let i = 0; i < serviceName.length; i++) {
-            hash = serviceName.charCodeAt(i) + ((hash << 5) - hash);
+            }
         }
 
-        return colors[Math.abs(hash) % colors.length];
-    }
+        const topologyOption = {
+            tooltip: {},
+            animationDurationUpdate: 1500,
+            animationEasingUpdate: 'quinticInOut',
+            series: [{
+                type: 'graph',
+                layout: 'force',
+                data: nodes,
+                links: links,
+                roam: true,
+                label: {
+                    show: true,
+                    position: 'right'
+                },
+                lineStyle: {
+                    color: 'source',
+                    curveness: 0.3
+                },
+                emphasis: {
+                    focus: 'adjacency',
+                    lineStyle: {
+                        width: 10
+                    }
+                },
+                force: {
+                    repulsion: 1000,
+                    edgeLength: 150
+                }
+            }]
+        };
 
-    // 全局刷新函数
-    window.refreshDashboard = function() {
-        updateTopologyChart();
-        updateServiceRankChart();
-        loadRecentTraces();
-        loadSystemStatus();
-    };
+        topologyChart.setOption(topologyOption);
 
-    // 页面加载完成后初始化
-    document.addEventListener('DOMContentLoaded', function() {
-        // 初始化图表
-        updateTopologyChart();
-        updateServiceRankChart();
-        loadRecentTraces();
+        // 服务排名图
+        const rankChart = echarts.init(document.getElementById('service-rank-chart'));
 
-        // 监听窗口大小变化，重绘图表
+        const rankOption = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                top: '5%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value',
+                boundaryGap: [0, 0.01]
+            },
+            yAxis: {
+                type: 'category',
+                data: services.slice(0, 5)
+            },
+            series: [{
+                name: '请求数量',
+                type: 'bar',
+                data: [1200, 950, 850, 720, 600]
+            }]
+        };
+
+        rankChart.setOption(rankOption);
+
+        // 监听窗口大小变化
         window.addEventListener('resize', function() {
             topologyChart.resize();
             rankChart.resize();
         });
+    }
 
-        // 每30秒刷新数据
-        setInterval(window.refreshDashboard, 30000);
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
+
+        // 初始化图表
+        setTimeout(initCharts, 100);
     });
 </script>
-
 </body>
 </html>

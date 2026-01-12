@@ -1,9 +1,7 @@
-# Spring Insight UI ??
 spring:
   application:
     name: spring-insight-ui
   
-  # Thymeleaf ??
   thymeleaf:
     cache: false
     mode: HTML
@@ -11,14 +9,12 @@ spring:
     prefix: classpath:/templates/
     suffix: .html
   
-  # ??????
   mvc:
     static-path-pattern: /static/**
   web:
     resources:
       static-locations: classpath:/static/
   
-  # ???????? storage ??????
   datasource:
     driver-class-name: org.h2.Driver
     url: jdbc:h2:file:${user.home}/.spring-insight/data/spring-insight-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
@@ -31,20 +27,17 @@ spring:
       idle-timeout: 300000
       connection-timeout: 30000
   
-  # H2 ???
   h2:
     console:
       enabled: true
       path: /h2-console
   
-  # Jackson ??
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
     serialization:
       indent-output: false
 
-# ?????
 server:
   port: 8088
   servlet:
@@ -54,7 +47,6 @@ server:
     mime-types: text/html,text/css,application/javascript,application/json
     min-response-size: 1024
 
-# ????
 logging:
   level:
     io.github.iweidujiang.springinsight.ui: DEBUG
@@ -64,7 +56,6 @@ logging:
   pattern:
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
-# ????
 management:
   endpoints:
     web:
@@ -75,11 +66,10 @@ management:
     health:
       show-details: always
 
-# ?????
 spring-insight:
   ui:
     title: Spring Insight Dashboard
     description: Spring Boot ??????
-    refresh-interval: 10000  # ??????????
-    default-hours: 24        # ????????????
-    max-trace-limit: 1000    # ????????
+    refresh-interval: 10000
+    default-hours: 24
+    max-trace-limit: 1000
