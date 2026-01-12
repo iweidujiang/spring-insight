@@ -9,6 +9,13 @@
 
 > ✨ **核心价值**：让每一个Spring Boot开发者，都能在5分钟内看清自己应用的架构脉络与运行健康度。
 
+## 阶段性成果
+
+> 截图中的数据是mock数据
+
+<img width="1258" height="791" alt="局部截取_20260112_231913(1)" src="https://github.com/user-attachments/assets/7dc10284-da64-4cce-87d6-c98555bc3fd9" />
+
+
 ## 🎯 项目愿景
 在云原生时代，可观测性至关重要，但现有方案对中小团队或传统Spring项目往往过于沉重。Spring Insight旨在填补这一空白：
 1.  **零学习成本**：完全基于Spring生态，以Starter方式提供。
