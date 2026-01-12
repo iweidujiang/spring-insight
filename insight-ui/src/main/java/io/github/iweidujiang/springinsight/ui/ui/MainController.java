@@ -1,6 +1,8 @@
 package io.github.iweidujiang.springinsight.ui.ui;
 
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
+import io.github.iweidujiang.springinsight.ui.service.ApiService;
+import io.github.iweidujiang.springinsight.ui.service.MockDataService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,9 +28,13 @@ import java.util.Map;
 public class MainController {
 
     private final TraceSpanPersistenceService traceSpanPersistenceService;
+    private final ApiService apiService;
+    private final MockDataService mockDataService;
 
-    public MainController(TraceSpanPersistenceService traceSpanPersistenceService) {
+    public MainController(TraceSpanPersistenceService traceSpanPersistenceService, ApiService apiService, MockDataService mockDataService) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
+        this.apiService = apiService;
+        this.mockDataService = mockDataService;
     }
 
     /**
@@ -38,27 +44,31 @@ public class MainController {
     public String dashboard(Model model) {
         try {
             // 获取服务列表
-            List<String> services = traceSpanPersistenceService.getAllServiceNames();
+            List<String> services = mockDataService.generateServiceNames();
             model.addAttribute("services", services);
 
             // 获取服务依赖关系（最近24小时）
-            List<Map<String, Object>> dependencies = traceSpanPersistenceService.getServiceDependencies(24);
+            List<Map<String, Object>> dependencies = mockDataService.generateDependencies(24);
             model.addAttribute("dependencies", dependencies);
 
             // 获取各服务Span数量统计
-            List<Map<String, Object>> spanCounts = traceSpanPersistenceService.getSpanCountByService();
+            List<Map<String, Object>> spanCounts = mockDataService.generateServiceStats();
             model.addAttribute("spanCounts", spanCounts);
 
             // 获取高错误率服务
-            List<Map<String, Object>> errorServices = traceSpanPersistenceService.findHighErrorServices(24);
+            List<Map<String, Object>> errorServices = mockDataService.generateErrorAnalysis(24);
             model.addAttribute("errorServices", errorServices);
+
+            // 获取实时统计
+            var stats = apiService.getRealtimeStats();
+            model.addAttribute("collectorStats", stats);
 
             log.debug("仪表盘数据加载完成，服务数: {}", services.size());
             return "dashboard";
         } catch (Exception e) {
             log.error("加载仪表盘数据失败", e);
             model.addAttribute("error", "加载数据失败: " + e.getMessage());
-            return "error";
+            return "dashboard";
         }
     }
 
@@ -68,19 +78,16 @@ public class MainController {
     @GetMapping("/topology")
     public String topology(Model model) {
         try {
-            List<Map<String, Object>> dependencies = traceSpanPersistenceService.getServiceDependencies(24);
+            List<Map<String, Object>> dependencies = mockDataService.generateDependencies(24);
             model.addAttribute("dependencies", dependencies);
             return "topology";
         } catch (Exception e) {
             log.error("加载拓扑图数据失败", e);
             model.addAttribute("error", "加载拓扑图数据失败: " + e.getMessage());
-            return "error";
+            return "topology";
         }
     }
 
-    /**
-     * 链路追踪列表页面
-     */
     @GetMapping("/traces")
     public String traces(
             @RequestParam(value = "service", required = false) String serviceName,
@@ -89,26 +96,21 @@ public class MainController {
             Model model) {
 
         try {
-            List<String> services = traceSpanPersistenceService.getAllServiceNames();
+            List<String> services = mockDataService.generateServiceNames();
             model.addAttribute("services", services);
             model.addAttribute("selectedService", serviceName);
             model.addAttribute("selectedHours", hours);
             model.addAttribute("selectedLimit", limit);
 
-            // 获取链路追踪数据
-            if (serviceName != null && !serviceName.isEmpty()) {
-                var traces = traceSpanPersistenceService.getRecentSpansByService(serviceName, limit);
-                model.addAttribute("traces", traces);
-            } else {
-                var traces = traceSpanPersistenceService.getRecentSpans(hours, limit);
-                model.addAttribute("traces", traces);
-            }
+            // 获取模拟的链路追踪数据
+            var traces = mockDataService.generateTraces(50);
+            model.addAttribute("traces", traces);
 
             return "traces";
         } catch (Exception e) {
             log.error("加载链路追踪数据失败", e);
             model.addAttribute("error", "加载链路追踪数据失败: " + e.getMessage());
-            return "error";
+            return "traces";
         }
     }
 
@@ -147,40 +149,35 @@ public class MainController {
         }
     }
 
-    /**
-     * 链路详情页面
-     */
     @GetMapping("/trace")
     public String traceDetail(
             @RequestParam("id") String traceId,
             Model model) {
 
         try {
-            var traceSpans = traceSpanPersistenceService.getTraceById(traceId);
+            // 生成模拟的跟踪数据
+            var traceSpans = mockDataService.generateTraces(5);
             model.addAttribute("traceId", traceId);
             model.addAttribute("traceSpans", traceSpans);
 
             if (!traceSpans.isEmpty()) {
                 // 计算总体统计信息
                 long totalDuration = traceSpans.stream()
-                        .filter(span -> span.getDurationMs() != null)
-                        .mapToLong(span -> span.getDurationMs())
+                        .filter(span -> span.get("durationMs") != null)
+                        .mapToLong(span -> Long.parseLong(span.get("durationMs").toString()))
                         .sum();
                 model.addAttribute("totalDuration", totalDuration);
                 model.addAttribute("spanCount", traceSpans.size());
 
-                // 查找根Span
-                var rootSpan = traceSpans.stream()
-                        .filter(span -> span.getParentSpanId() == null || span.getParentSpanId().isEmpty())
-                        .findFirst();
-                rootSpan.ifPresent(span -> model.addAttribute("rootOperation", span.getOperationName()));
+                // 设置根操作
+                model.addAttribute("rootOperation", traceSpans.get(0).get("operationName"));
             }
 
             return "trace-detail";
         } catch (Exception e) {
             log.error("加载链路详情失败", e);
             model.addAttribute("error", "加载链路详情失败: " + e.getMessage());
-            return "error";
+            return "trace-detail";
         }
     }
 
@@ -193,7 +190,7 @@ public class MainController {
             Model model) {
 
         try {
-            var errorServices = traceSpanPersistenceService.findHighErrorServices(hours);
+            var errorServices = mockDataService.generateErrorAnalysis(hours);
             model.addAttribute("errorServices", errorServices);
             model.addAttribute("hours", hours);
 
@@ -201,7 +198,7 @@ public class MainController {
         } catch (Exception e) {
             log.error("加载错误分析数据失败", e);
             model.addAttribute("error", "加载错误分析数据失败: " + e.getMessage());
-            return "error";
+            return "errors";
         }
     }
 
