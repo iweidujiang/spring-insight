@@ -60,11 +60,12 @@
 			<artifactId>echarts</artifactId>
 			<version>5.4.3</version>
 		</dependency>
-		<!--<dependency>
+		<dependency>
 			<groupId>org.webjars.npm</groupId>
 			<artifactId>font-awesome</artifactId>
-			<version>6.5.1</version>
-		</dependency>-->
+			<version>4.7.0</version>
+			<scope>compile</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.webjars</groupId>
 			<artifactId>momentjs</artifactId>
