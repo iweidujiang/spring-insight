@@ -36,7 +36,7 @@
 在启动类或配置类上添加注解：`@EnableSpringInsight`
 
 ### 3. 查看报告
-启动应用，访问：`http://localhost:8080/insight-ui`
+启动应用，访问：`http://localhost:8088/insight-ui`
 
 ## 🏗️ 核心功能（第一期规划）
 
