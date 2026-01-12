@@ -17,6 +17,54 @@ import java.util.Map;
  */
 @Mapper
 public interface TraceSpanMapper extends BaseMapper<TraceSpanDO> {
+
+    /**
+     * 【新增】分页查询 Trace 摘要（每个 Trace 取根 Span）。
+     * 使用子查询先找到每个 trace_id 的最小 start_time（即根 Span 的开始时间），
+     * 再关联原表获取完整根 Span 信息。
+     */
+    @Select({
+            "<script>",
+            "SELECT ts.* FROM trace_span ts",
+            "INNER JOIN (",
+            "SELECT trace_id, MIN(start_time) as min_start_time",
+            "FROM trace_span",
+            "WHERE 1=1",
+            "<if test='serviceName != null and serviceName != \"\"'>",
+            "AND service_name = #{serviceName}",
+            "</if>",
+            "<if test='operationName != null and operationName != \"\"'>",
+            "AND operation_name LIKE CONCAT('%', #{operationName}, '%')",
+            "</if>",
+            "<if test='minDurationMs != null'>",
+            "AND duration_ms >= #{minDurationMs}",
+            "</if>",
+            "<if test='maxDurationMs != null'>",
+            "AND duration_ms <= #{maxDurationMs}",
+            "</if>",
+            "<if test='startTime != null'>",
+            "AND start_time >= #{startTime}",
+            "</if>",
+            "<if test='endTime != null'>",
+            "AND start_time <= #{endTime}",
+            "</if>",
+            "GROUP BY trace_id",
+            ") root_spans ON ts.trace_id = root_spans.trace_id AND ts.start_time = root_spans.min_start_time",
+            "ORDER BY ts.start_time DESC",
+            "LIMIT #{limit} OFFSET #{offset}",
+            "</script>"
+    })
+    List<TraceSpanDO> selectTraceSummaries(
+            @Param("serviceName") String serviceName,
+            @Param("operationName") String operationName,
+            @Param("minDurationMs") Long minDurationMs,
+            @Param("maxDurationMs") Long maxDurationMs,
+            @Param("startTime") Long startTime,
+            @Param("endTime") Long endTime,
+            @Param("offset") int offset,
+            @Param("limit") int limit
+    );
+
     /**
      * 根据 TraceID 查找完整的调用链
      */

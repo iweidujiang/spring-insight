@@ -1,0 +1,85 @@
+# Spring Insight UI ??
+spring:
+  application:
+    name: spring-insight-ui
+  
+  # Thymeleaf ??
+  thymeleaf:
+    cache: false
+    mode: HTML
+    encoding: UTF-8
+    prefix: classpath:/templates/
+    suffix: .html
+  
+  # ??????
+  mvc:
+    static-path-pattern: /static/**
+  web:
+    resources:
+      static-locations: classpath:/static/
+  
+  # ???????? storage ??????
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:file:${user.home}/.spring-insight/data/spring-insight-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    username: sa
+    password:
+    hikari:
+      pool-name: SpringInsightUIHikariCP
+      minimum-idle: 5
+      maximum-pool-size: 10
+      idle-timeout: 300000
+      connection-timeout: 30000
+  
+  # H2 ???
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  # Jackson ??
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      indent-output: false
+
+# ?????
+server:
+  port: 8088
+  servlet:
+    context-path: /insight-ui
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,application/javascript,application/json
+    min-response-size: 1024
+
+# ????
+logging:
+  level:
+    io.github.iweidujiang.springinsight.ui: DEBUG
+    io.github.iweidujiang.springinsight.storage: INFO
+  file:
+    name: ${user.home}/.spring-insight/logs/spring-insight-ui.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# ????
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /manage
+  endpoint:
+    health:
+      show-details: always
+
+# ?????
+spring-insight:
+  ui:
+    title: Spring Insight Dashboard
+    description: Spring Boot ??????
+    refresh-interval: 10000  # ??????????
+    default-hours: 24        # ????????????
+    max-trace-limit: 1000    # ????????

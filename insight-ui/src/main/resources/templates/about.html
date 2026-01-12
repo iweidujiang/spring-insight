@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.w3.org/1999/xhtml"
+      layout:decorate="~{layout/base}"
+      th:with="title='Spring Insight - 关于'">
+<head>
+    <title>Spring Insight - 关于</title>
+</head>
+<body>
+
+<div layout:fragment="content">
+    <!-- 页面标题 -->
+    <div class="row mb-5">
+        <div class="col-12 text-center">
+            <h1 class="display-4 mb-4">
+                <i class="fas fa-chart-network text-primary"></i>
+                Spring Insight
+            </h1>
+            <p class="lead text-muted">面向Spring Boot应用的轻量级诊断与架构洞察工具</p>
+        </div>
+    </div>
+
+    <!-- 功能介绍 -->
+    <div class="row mb-5">
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm hover-shadow">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-primary text-white mb-4">
+                        <i class="fas fa-project-diagram fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">服务拓扑发现</h5>
+                    <p class="card-text text-muted">
+                        自动发现微服务之间的调用关系，可视化展示架构依赖
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm hover-shadow">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-success text-white mb-4">
+                        <i class="fas fa-stream fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">链路追踪</h5>
+                    <p class="card-text text-muted">
+                        完整的分布式链路追踪，快速定位性能瓶颈和调用异常
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm hover-shadow">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-info text-white mb-4">
+                        <i class="fas fa-heartbeat fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">健康诊断</h5>
+                    <p class="card-text text-muted">
+                        智能分析架构健康度，识别单点故障和高风险依赖
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm hover-shadow">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-warning text-white mb-4">
+                        <i class="fas fa-bolt fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">开箱即用</h5>
+                    <p class="card-text text-muted">
+                        无需复杂配置，引入依赖即可获得完整的监控能力
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm hover-shadow">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-danger text-white mb-4">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">异常告警</h5>
+                    <p class="card-text text-muted">
+                        实时监控异常请求，智能识别错误模式和高风险操作
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm hover-shadow">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-dark text-white mb-4">
+                        <i class="fas fa-chart-line fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">性能分析</h5>
+                    <p class="card-text text-muted">
+                        深度性能分析，提供QPS、响应时间、错误率等关键指标
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 技术架构 -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title mb-4">
+                        <i class="fas fa-cogs me-2 text-primary"></i>
+                        技术架构
+                    </h3>
+                    <div class="row align-items-center">
+                        <div class="col-lg-6">
+                            <img th:src="@{/static/images/architecture.png}"
+                                 alt="架构图" class="img-fluid rounded">
+                        </div>
+                        <div class="col-lg-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-3">
+                                    <strong>数据采集层：</strong>
+                                    基于Spring AOP和Servlet Filter，无侵入式采集链路数据
+                                </li>
+                                <li class="mb-3">
+                                    <strong>数据传输层：</strong>
+                                    异步上报机制，支持批量处理和断点续传
+                                </li>
+                                <li class="mb-3">
+                                    <strong>数据处理层：</strong>
+                                    实时数据清洗、聚合和分析，支持多种存储后端
+                                </li>
+                                <li class="mb-3">
+                                    <strong>数据展示层：</strong>
+                                    基于ECharts的可视化界面，支持实时刷新和交互式查询
+                                </li>
+                                <li class="mb-3">
+                                    <strong>存储层：</strong>
+                                    支持H2（嵌入式）、MySQL、PostgreSQL等多种数据库
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 开始使用 -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card bg-light border-0">
+                <div class="card-body p-5 text-center">
+                    <h2 class="mb-4">快速开始</h2>
+                    <p class="lead mb-4">只需三步，即可开始监控您的Spring Boot应用</p>
+
+                    <div class="row text-start">
+                        <div class="col-md-4 mb-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <span class="badge bg-primary rounded-circle p-2 me-3">1</span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5>添加依赖</h5>
+                                    <pre class="bg-dark text-light p-3 rounded"><code>&lt;dependency&gt;
+    &lt;groupId&gt;io.github.iweidujiang&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-insight-core-spring-boot-starter&lt;/artifactId&gt;
+    &lt;version&gt;0.1.0-SNAPSHOT&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 mb-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <span class="badge bg-success rounded-circle p-2 me-3">2</span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5>启用注解</h5>
+                                    <pre class="bg-dark text-light p-3 rounded"><code>@SpringBootApplication
+@EnableSpringInsight
+public class MyApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(MyApplication.class, args);
+    }
+}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 mb-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <span class="badge bg-info rounded-circle p-2 me-3">3</span>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5>访问监控</h5>
+                                    <p>启动应用，访问：</p>
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-link me-2"></i>
+                                        <a href="http://localhost:8081/insight-ui" class="alert-link">
+                                            http://localhost:8081/insight-ui
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 版本信息 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4><i class="fas fa-info-circle me-2 text-primary"></i>版本信息</h4>
+                            <table class="table">
+                                <tr>
+                                    <th width="120">当前版本</th>
+                                    <td>0.1.0-SNAPSHOT</td>
+                                </tr>
+                                <tr>
+                                    <th>发布日期</th>
+                                    <td>2026-01-15</td>
+                                </tr>
+                                <tr>
+                                    <th>Java版本</th>
+                                    <td>21+</td>
+                                </tr>
+                                <tr>
+                                    <th>Spring Boot</th>
+                                    <td>3.5.9+</td>
+                                </tr>
+                                <tr>
+                                    <th>许可证</th>
+                                    <td>Apache License 2.0</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h4><i class="fas fa-link me-2 text-primary"></i>相关链接</h4>
+                            <div class="list-group">
+                                <a href="https://github.com/iweidujiang/spring-insight"
+                                   target="_blank" class="list-group-item list-group-item-action">
+                                    <i class="fab fa-github me-2"></i>
+                                    GitHub 仓库
+                                </a>
+                                <a href="https://github.com/iweidujiang/spring-insight/issues"
+                                   target="_blank" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-bug me-2"></i>
+                                    问题反馈
+                                </a>
+                                <a href="https://github.com/iweidujiang/spring-insight/wiki"
+                                   target="_blank" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-book me-2"></i>
+                                    使用文档
+                                </a>
+                                <a href="#" class="list-group-item list-group-item-action">
+                                    <i class="fas fa-question-circle me-2"></i>
+                                    在线帮助
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .icon-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+    }
+
+    .hover-shadow {
+        transition: all 0.3s ease;
+    }
+
+    .hover-shadow:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+    }
+</style>
+
+<script layout:fragment="scripts">
+    // 页面特定脚本
+    document.addEventListener('DOMContentLoaded', function() {
+        // 可以在这里添加页面特定的逻辑
+    });
+</script>
+
+</body>
+</html>

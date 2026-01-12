@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title} ?: 'Spring Insight'">Spring Insight</title>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/css/bootstrap.min.css}">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" th:href="@{/webjars/font-awesome/css/all.min.css}">
+
+    <!-- ECharts -->
+    <script th:src="@{/webjars/echarts/dist/echarts.min.js}"></script>
+
+    <!-- jQuery -->
+    <script th:src="@{/webjars/jquery/jquery.min.js}"></script>
+
+    <!-- Moment.js -->
+    <script th:src="@{/webjars/momentjs/min/moment.min.js}"></script>
+
+    <!-- 自定义样式 -->
+    <style>
+        :root {
+            --primary-color: #4e73df;
+            --success-color: #1cc88a;
+            --info-color: #36b9cc;
+            --warning-color: #f6c23e;
+            --danger-color: #e74a3b;
+            --dark-color: #5a5c69;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fc;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            padding: 48px 0 0;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+            background-color: #fff;
+        }
+
+        .main-content {
+            padding-top: 20px;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .stat-card {
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 2rem 0 rgba(58, 59, 69, 0.2);
+        }
+
+        .stat-card .card-icon {
+            font-size: 2rem;
+            opacity: 0.8;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .trace-item {
+            border-left: 4px solid var(--primary-color);
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            transition: all 0.2s;
+        }
+
+        .trace-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .success-badge {
+            background-color: var(--success-color);
+        }
+
+        .error-badge {
+            background-color: var(--danger-color);
+        }
+
+        .topology-node {
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            min-width: 120px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            border: 0.2em solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" th:href="@{/}">
+            <i class="fas fa-chart-network me-2"></i>Spring Insight
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarNav" aria-controls="navbarNav"
+                aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" th:href="@{/}" th:classappend="${#httpServletRequest.requestURI.endsWith('/')} ? 'active'">
+                        <i class="fas fa-tachometer-alt me-1"></i>仪表盘
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:href="@{/topology}"
+                       th:classappend="${#httpServletRequest.requestURI.contains('topology')} ? 'active'">
+                        <i class="fas fa-project-diagram me-1"></i>拓扑图
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:href="@{/traces}"
+                       th:classappend="${#httpServletRequest.requestURI.contains('traces')} ? 'active'">
+                        <i class="fas fa-stream me-1"></i>链路追踪
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:href="@{/errors}"
+                       th:classappend="${#httpServletRequest.requestURI.contains('errors')} ? 'active'">
+                        <i class="fas fa-exclamation-triangle me-1"></i>错误分析
+                    </a>
+                </li>
+            </ul>
+
+            <div class="d-flex">
+                    <span class="navbar-text text-light me-3" id="current-time">
+                        <i class="fas fa-clock me-1"></i>
+                        <span id="time-display">00:00:00</span>
+                    </span>
+
+                <div class="dropdown">
+                    <button class="btn btn-outline-light dropdown-toggle" type="button"
+                            id="refreshDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-sync-alt"></i>
+                        <span class="ms-1">刷新</span>
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="refreshDropdown">
+                        <li><a class="dropdown-item" href="#" onclick="setRefreshInterval(5000)">5秒</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setRefreshInterval(10000)">10秒</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setRefreshInterval(30000)">30秒</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="disableAutoRefresh()">关闭</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- 侧边栏 -->
+<div class="sidebar d-flex flex-column flex-shrink-0 p-3" style="width: 280px;">
+    <div class="mb-4">
+        <h5>监控服务</h5>
+        <div class="list-group list-group-flush" id="service-list">
+            <!-- 服务列表通过 JavaScript 动态加载 -->
+            <div class="text-center py-4">
+                <div class="loading-spinner"></div>
+                <div class="text-muted mt-2">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-auto">
+        <div class="card stat-card mb-3">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">系统状态</h6>
+                <div id="system-status">
+                    <span class="badge bg-success">运行中</span>
+                    <small class="text-muted d-block mt-1" id="service-count">0 个服务</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <a th:href="@{/about}" class="text-decoration-none">
+                <small class="text-muted">Spring Insight v0.1.0</small>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 主内容区域 -->
+<main class="main-content" style="margin-left: 280px; padding: 80px 20px 20px;">
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- 页面具体内容 -->
+    <div layout:fragment="content">
+        <div class="text-center py-5">
+            <div class="loading-spinner" style="width: 3rem; height: 3rem;"></div>
+            <h4 class="mt-3">加载中...</h4>
+        </div>
+    </div>
+</main>
+
+<!-- Bootstrap JS -->
+<script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+
+<!-- 自定义脚本 -->
+<script>
+    // 全局变量
+    let refreshIntervalId = null;
+    const defaultRefreshInterval = 10000; // 10秒
+
+    // 更新当前时间
+    function updateCurrentTime() {
+        const now = new Date();
+        const timeStr = now.toTimeString().split(' ')[0];
+        document.getElementById('time-display').textContent = timeStr;
+    }
+
+    // 设置自动刷新
+    function setRefreshInterval(interval) {
+        if (refreshIntervalId) {
+            clearInterval(refreshIntervalId);
+        }
+
+        if (interval > 0) {
+            refreshIntervalId = setInterval(() => {
+                if (window.refreshDashboard) {
+                    window.refreshDashboard();
+                } else {
+                    location.reload();
+                }
+            }, interval);
+
+            showToast(`已设置自动刷新: ${interval / 1000}秒`);
+        }
+    }
+
+    // 关闭自动刷新
+    function disableAutoRefresh() {
+        if (refreshIntervalId) {
+            clearInterval(refreshIntervalId);
+            refreshIntervalId = null;
+            showToast('已关闭自动刷新');
+        }
+    }
+
+    // 显示提示消息
+    function showToast(message, type = 'info') {
+        const toastHtml = `
+                <div class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+
+        const container = document.getElementById('toast-container') || createToastContainer();
+        container.innerHTML = toastHtml;
+
+        const toastEl = container.querySelector('.toast');
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+    }
+
+    // 创建提示消息容器
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'position-fixed bottom-0 end-0 p-3';
+        container.style.zIndex = '1050';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    // 加载服务列表
+    function loadServiceList() {
+        fetch('/insight-ui/api/services')
+            .then(response => response.json())
+            .then(services => {
+                const container = document.getElementById('service-list');
+                container.innerHTML = '';
+
+                if (services.length === 0) {
+                    container.innerHTML = `
+                            <div class="text-center py-3 text-muted">
+                                <i class="fas fa-exclamation-circle mb-2"></i>
+                                <div>暂无监控服务</div>
+                            </div>
+                        `;
+                    return;
+                }
+
+                services.forEach(service => {
+                    const item = document.createElement('a');
+                    item.href = `/insight-ui/service?name=${encodeURIComponent(service)}`;
+                    item.className = `list-group-item list-group-item-action ${window.location.href.includes(service) ? 'active' : ''}`;
+                    item.innerHTML = `
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="fas fa-server me-2"></i>
+                                    ${service}
+                                </span>
+                                <span class="badge bg-primary rounded-pill">...</span>
+                            </div>
+                        `;
+                    container.appendChild(item);
+                });
+
+                // 更新服务计数
+                document.getElementById('service-count').textContent = `${services.length} 个服务`;
+            })
+            .catch(error => {
+                console.error('加载服务列表失败:', error);
+            });
+    }
+
+    // 加载系统状态
+    function loadSystemStatus() {
+        fetch('/insight-ui/api/stats/realtime')
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('system-status');
+                statusDiv.innerHTML = `
+                        <span class="badge bg-success">运行中</span>
+                        <div class="mt-2">
+                            <small class="text-muted">活跃服务: ${data.activeServices || 0}</small><br>
+                            <small class="text-muted">近1小时请求: ${data.totalSpansLastHour || 0}</small><br>
+                            <small class="text-muted">错误率: ${data.errorRate || '0%'}</small><br>
+                            <small class="text-muted">平均响应: ${data.avgResponseTime || '0ms'}</small>
+                        </div>
+                    `;
+            })
+            .catch(error => {
+                console.error('加载系统状态失败:', error);
+            });
+    }
+
+    // 页面初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        // 更新时间
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
+
+        // 加载侧边栏数据
+        loadServiceList();
+        loadSystemStatus();
+
+        // 设置默认刷新间隔
+        setTimeout(() => {
+            setRefreshInterval(defaultRefreshInterval);
+        }, 2000);
+
+        // 监听页面可见性变化
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                if (refreshIntervalId) {
+                    clearInterval(refreshIntervalId);
+                    refreshIntervalId = null;
+                }
+            } else {
+                setRefreshInterval(defaultRefreshInterval);
+            }
+        });
+    });
+</script>
+
+<!-- 页面特定脚本 -->
+<script layout:fragment="scripts"></script>
+</body>
+</html>
