@@ -60,10 +60,10 @@ public class MainController {
             model.addAttribute("errorServices", errorServices);
 
             // 获取实时统计
-            var stats = apiService.getRealtimeStats();
+            Map<String, Object> stats = apiService.getRealtimeStats();
             model.addAttribute("collectorStats", stats);
 
-            log.debug("仪表盘数据加载完成，服务数: {}", services.size());
+            log.info("仪表盘数据加载完成，服务数: {}", services.size());
             return "dashboard";
         } catch (Exception e) {
             log.error("加载仪表盘数据失败", e);

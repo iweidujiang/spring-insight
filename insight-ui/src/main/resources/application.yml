@@ -67,9 +67,5 @@ management:
       show-details: always
 
 spring-insight:
-  ui:
-    title: Spring Insight Dashboard
-    description: Spring Boot ??????
-    refresh-interval: 10000
-    default-hours: 24
-    max-trace-limit: 1000
+  collector:
+    url: http://localhost:8080
