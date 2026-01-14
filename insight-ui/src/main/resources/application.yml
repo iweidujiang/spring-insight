@@ -8,13 +8,19 @@ spring:
     encoding: UTF-8
     prefix: classpath:/templates/
     suffix: .html
-  
+
   mvc:
     static-path-pattern: /static/**
   web:
     resources:
       static-locations: classpath:/static/
-  
+
+  cache:
+    type: simple
+    cache-names: collector-stats,service-names,recent-spans
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=30s
+
   datasource:
     driver-class-name: org.h2.Driver
     url: jdbc:h2:file:${user.home}/.spring-insight/data/spring-insight-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
@@ -69,3 +75,9 @@ management:
 spring-insight:
   collector:
     url: http://localhost:8080
+  ui:
+    refresh-interval: 30000
+    cache-ttl: 30000
+    websocket:
+      enabled: true
+      reconnect-delay: 5000

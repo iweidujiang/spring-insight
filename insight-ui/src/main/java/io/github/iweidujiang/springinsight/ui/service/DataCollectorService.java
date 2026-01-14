@@ -1,7 +1,11 @@
 package io.github.iweidujiang.springinsight.ui.service;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
+import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,6 +47,8 @@ public class DataCollectorService {
     public DataCollectorService() {
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
+        this.objectMapper.registerModule(new JavaTimeModule());
+        this.objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
         // 配置RestTemplate
         restTemplate.setErrorHandler(new RestTemplateErrorHandler());
@@ -376,7 +382,7 @@ public class DataCollectorService {
 
     // ========== 模型类 ==========
 
-    @lombok.Data
+    @Data
     public static class CollectorStats {
         private long totalReceivedRequests;
         private long totalReceivedSpans;
@@ -387,7 +393,7 @@ public class DataCollectorService {
         private Instant currentTime;
     }
 
-    @lombok.Data
+    @Data
     public static class ServiceDependency {
         private String sourceService;
         private String targetService;
@@ -398,7 +404,7 @@ public class DataCollectorService {
         private double errorRate;
     }
 
-    @lombok.Data
+    @Data
     public static class ServiceStats {
         private String serviceName;
         private int totalSpans;
@@ -408,7 +414,7 @@ public class DataCollectorService {
         private double errorRate;
     }
 
-    @lombok.Data
+    @Data
     public static class ErrorAnalysis {
         private String serviceName;
         private int totalCalls;
@@ -416,7 +422,7 @@ public class DataCollectorService {
         private double errorRate;
     }
 
-    @lombok.Data
+    @Data
     private static class CacheEntry<T> {
         private final T data;
         private final long timestamp;
