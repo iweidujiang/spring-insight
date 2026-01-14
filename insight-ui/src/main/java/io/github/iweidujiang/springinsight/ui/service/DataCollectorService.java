@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.ui.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,7 @@ public class DataCollectorService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
+    @Getter
     @Value("${spring-insight.collector.url:http://localhost:8080}")
     private String collectorUrl;
 

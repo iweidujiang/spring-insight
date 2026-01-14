@@ -1,13 +1,13 @@
 package io.github.iweidujiang.springinsight.ui.controller;
 
-import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
+import io.github.iweidujiang.springinsight.ui.service.DataCollectorService;
+import io.github.iweidujiang.springinsight.ui.service.WebSocketService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -25,198 +25,132 @@ import java.util.Map;
 @RequestMapping("/api")
 public class ApiController {
 
-    private final TraceSpanPersistenceService traceSpanPersistenceService;
+    private final DataCollectorService dataCollectorService;
+    private final WebSocketService webSocketService;
 
-    public ApiController(TraceSpanPersistenceService traceSpanPersistenceService) {
-        this.traceSpanPersistenceService = traceSpanPersistenceService;
+    public ApiController(DataCollectorService dataCollectorService, WebSocketService webSocketService) {
+        this.dataCollectorService = dataCollectorService;
+        this.webSocketService = webSocketService;
+    }
+
+    /**
+     * 获取实时统计
+     */
+    @GetMapping("/realtime-stats")
+    public ResponseEntity<Map<String, Object>> getRealtimeStats() {
+        try {
+            Map<String, Object> stats = new HashMap<>();
+
+            stats.put("collectorStats", dataCollectorService.getCollectorStats());
+            stats.put("serviceStats", dataCollectorService.getServiceStats());
+            stats.put("errorAnalysis", dataCollectorService.getErrorAnalysis(1));
+            stats.put("timestamp", Instant.now().toString());
+            stats.put("cacheSize", dataCollectorService.getCacheSize());
+
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            log.error("获取实时统计失败", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 刷新数据缓存
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<Map<String, Object>> refreshData() {
+        try {
+            dataCollectorService.clearCache();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "数据缓存已刷新");
+            response.put("timestamp", Instant.now().toString());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("刷新数据失败", e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     /**
      * 获取系统状态
      */
     @GetMapping("/status")
-    public ResponseEntity<Map<String, Object>> getStatus() {
-        Map<String, Object> result = new HashMap<>();
-        result.put("status", "UP");
-        result.put("timestamp", Instant.now());
-        result.put("service", "spring-insight-ui");
-        result.put("version", "0.1.0");
-
+    public ResponseEntity<Map<String, Object>> getSystemStatus() {
         try {
-            List<String> services = traceSpanPersistenceService.getAllServiceNames();
-            result.put("monitoredServices", services.size());
-            result.put("serviceNames", services);
-        } catch (Exception e) {
-            log.error("获取服务列表失败", e);
-            result.put("monitoredServices", 0);
-        }
+            Map<String, Object> status = new HashMap<>();
 
-        return ResponseEntity.ok(result);
-    }
+            status.put("status", "UP");
+            status.put("service", "spring-insight-ui");
+            status.put("version", "0.1.0");
+            status.put("timestamp", Instant.now().toString());
+            status.put("cacheSize", dataCollectorService.getCacheSize());
+            status.put("websocketConnections", webSocketService.getConnectionCount());
+            status.put("collectorUrl", dataCollectorService.getCollectorUrl());
 
-    /**
-     * 获取服务列表
-     */
-    @GetMapping("/services")
-    public ResponseEntity<List<String>> getServices() {
-        try {
-            List<String> services = traceSpanPersistenceService.getAllServiceNames();
-            return ResponseEntity.ok(services);
+            return ResponseEntity.ok(status);
         } catch (Exception e) {
-            log.error("获取服务列表失败", e);
+            log.error("获取系统状态失败", e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
     /**
-     * 获取服务依赖关系
+     * 发送测试告警
      */
-    @GetMapping("/dependencies")
-    public ResponseEntity<List<Map<String, Object>>> getDependencies(
-            @RequestParam(value = "hours", defaultValue = "24") int hours) {
+    @PostMapping("/test-alert")
+    public ResponseEntity<Map<String, Object>> sendTestAlert(
+            @RequestParam(defaultValue = "测试服务") String serviceName,
+            @RequestParam(defaultValue = "这是一个测试告警") String message,
+            @RequestParam(defaultValue = "warning") String level) {
 
         try {
-            List<Map<String, Object>> dependencies = traceSpanPersistenceService.getServiceDependencies(hours);
-            return ResponseEntity.ok(dependencies);
+            webSocketService.broadcastErrorAlert(serviceName, message, level);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "测试告警已发送");
+            response.put("timestamp", Instant.now().toString());
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("获取服务依赖关系失败", e);
+            log.error("发送测试告警失败", e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
     /**
-     * 获取服务统计信息
+     * 获取监控指标
      */
-    @GetMapping("/service-stats")
-    public ResponseEntity<List<Map<String, Object>>> getServiceStats() {
+    @GetMapping("/metrics")
+    public ResponseEntity<Map<String, Object>> getMetrics() {
         try {
-            List<Map<String, Object>> stats = traceSpanPersistenceService.getSpanCountByService();
-            return ResponseEntity.ok(stats);
+            Map<String, Object> metrics = new HashMap<>();
+
+            // 系统指标
+            Runtime runtime = Runtime.getRuntime();
+            metrics.put("jvmMemoryUsed", runtime.totalMemory() - runtime.freeMemory());
+            metrics.put("jvmMemoryMax", runtime.maxMemory());
+            metrics.put("jvmMemoryTotal", runtime.totalMemory());
+            metrics.put("availableProcessors", runtime.availableProcessors());
+
+            // 应用指标
+            metrics.put("cacheSize", dataCollectorService.getCacheSize());
+            metrics.put("websocketConnections", webSocketService.getConnectionCount());
+
+            // collector指标
+            var collectorStats = dataCollectorService.getCollectorStats();
+            metrics.put("collectorRequests", collectorStats.getTotalReceivedRequests());
+            metrics.put("collectorSpans", collectorStats.getTotalReceivedSpans());
+            metrics.put("collectorSuccessRate", collectorStats.getSuccessRate());
+
+            metrics.put("timestamp", Instant.now().toString());
+
+            return ResponseEntity.ok(metrics);
         } catch (Exception e) {
-            log.error("获取服务统计信息失败", e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * 获取链路追踪列表
-     */
-    @GetMapping("/traces")
-    public ResponseEntity<Map<String, Object>> getTraces(
-            @RequestParam(value = "service", required = false) String serviceName,
-            @RequestParam(value = "hours", defaultValue = "24") int hours,
-            @RequestParam(value = "limit", defaultValue = "100") int limit) {
-
-        try {
-            Map<String, Object> result = new HashMap<>();
-
-            List<?> traces;
-            if (serviceName != null && !serviceName.isEmpty()) {
-                traces = traceSpanPersistenceService.getRecentSpansByService(serviceName, limit);
-            } else {
-                traces = traceSpanPersistenceService.getRecentSpans(hours, limit);
-            }
-
-            result.put("traces", traces);
-            result.put("count", traces.size());
-            result.put("timestamp", Instant.now());
-
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            log.error("获取链路追踪列表失败", e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * 获取单个链路详情
-     */
-    @GetMapping("/traces/{traceId}")
-    public ResponseEntity<Map<String, Object>> getTraceDetail(@PathVariable String traceId) {
-        try {
-            var traceSpans = traceSpanPersistenceService.getTraceById(traceId);
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("traceId", traceId);
-            result.put("spans", traceSpans);
-            result.put("spanCount", traceSpans.size());
-
-            if (!traceSpans.isEmpty()) {
-                // 计算统计信息
-                long totalDuration = traceSpans.stream()
-                        .filter(span -> span.getDurationMs() != null)
-                        .mapToLong(span -> span.getDurationMs())
-                        .sum();
-                result.put("totalDuration", totalDuration);
-
-                // 查找耗时最长的Span
-                var slowestSpan = traceSpans.stream()
-                        .filter(span -> span.getDurationMs() != null)
-                        .max((a, b) -> Long.compare(a.getDurationMs(), b.getDurationMs()));
-                slowestSpan.ifPresent(span -> {
-                    result.put("slowestSpanId", span.getSpanId());
-                    result.put("slowestOperation", span.getOperationName());
-                    result.put("slowestDuration", span.getDurationMs());
-                });
-            }
-
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            log.error("获取链路详情失败: {}", traceId, e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * 获取错误分析数据
-     */
-    @GetMapping("/errors")
-    public ResponseEntity<List<Map<String, Object>>> getErrorAnalysis(
-            @RequestParam(value = "hours", defaultValue = "24") int hours) {
-
-        try {
-            var errorServices = traceSpanPersistenceService.findHighErrorServices(hours);
-            return ResponseEntity.ok(errorServices);
-        } catch (Exception e) {
-            log.error("获取错误分析数据失败", e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * 实时统计信息
-     */
-    @GetMapping("/stats/realtime")
-    public ResponseEntity<Map<String, Object>> getRealtimeStats() {
-        try {
-            Map<String, Object> result = new HashMap<>();
-
-            // 获取最近1小时的数据
-            var recentSpans = traceSpanPersistenceService.getRecentSpans(1, 1000);
-            var services = traceSpanPersistenceService.getAllServiceNames();
-
-            result.put("totalSpansLastHour", recentSpans.size());
-            result.put("activeServices", services.size());
-            result.put("timestamp", Instant.now());
-
-            // 计算错误率
-            long errorCount = recentSpans.stream()
-                    .filter(span -> "ERROR".equals(span.getStatusCode()))
-                    .count();
-            double errorRate = recentSpans.isEmpty() ? 0 : (double) errorCount / recentSpans.size() * 100;
-            result.put("errorRate", String.format("%.2f%%", errorRate));
-
-            // 平均响应时间
-            double avgDuration = recentSpans.stream()
-                    .filter(span -> span.getDurationMs() != null)
-                    .mapToLong(span -> span.getDurationMs())
-                    .average()
-                    .orElse(0.0);
-            result.put("avgResponseTime", String.format("%.2fms", avgDuration));
-
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            log.error("获取实时统计信息失败", e);
+            log.error("获取监控指标失败", e);
             return ResponseEntity.internalServerError().build();
         }
     }
