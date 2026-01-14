@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spring Insight - 错误分析</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f8f9fc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-top: 70px;
+        }
+
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .card-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+            margin-bottom: 20px;
+            height: 400px;
+        }
+
+        .error-item {
+            border-left: 4px solid #e74a3b;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .error-level-critical {
+            border-left-color: #e74a3b;
+        }
+
+        .error-level-warning {
+            border-left-color: #f6c23e;
+        }
+
+        .error-level-info {
+            border-left-color: #36b9cc;
+        }
+    </style>
+</head>
+<body>
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/insight-ui">
+            <i class="fas fa-chart-network me-2"></i>Spring Insight
+        </a>
+
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui">
+                        <i class="fas fa-tachometer-alt me-1"></i>仪表盘
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/topology">
+                        <i class="fas fa-project-diagram me-1"></i>拓扑图
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/traces">
+                        <i class="fas fa-stream me-1"></i>链路追踪
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/insight-ui/errors">
+                        <i class="fas fa-exclamation-triangle me-1"></i>错误分析
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/about">
+                        <i class="fas fa-info-circle me-1"></i>关于
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- 主内容区域 -->
+<div class="container-fluid mt-4">
+    <!-- 页面标题 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-exclamation-triangle me-2 text-danger"></i>错误分析</h2>
+            <p class="text-muted mb-0">监控和诊断应用中的错误与异常</p>
+        </div>
+    </div>
+
+    <!-- 错误概览 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card-container text-center">
+                <div class="text-danger">
+                    <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                </div>
+                <h3 id="total-errors">0</h3>
+                <p class="text-muted mb-0">总错误数</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-container text-center">
+                <div class="text-warning">
+                    <i class="fas fa-server fa-3x mb-3"></i>
+                </div>
+                <h3 id="error-services">0</h3>
+                <p class="text-muted mb-0">异常服务</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-container text-center">
+                <div class="text-info">
+                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                </div>
+                <h3 id="error-rate">0%</h3>
+                <p class="text-muted mb-0">错误率</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card-container text-center">
+                <div class="text-primary">
+                    <i class="fas fa-clock fa-3x mb-3"></i>
+                </div>
+                <h3 id="avg-response">0ms</h3>
+                <p class="text-muted mb-0">平均响应时间</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 错误趋势图 -->
+    <div class="chart-container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5><i class="fas fa-chart-line me-2 text-primary"></i>错误趋势</h5>
+            <select class="form-select w-auto" id="trend-time-range">
+                <option value="24">近24小时</option>
+                <option value="168">近7天</option>
+                <option value="720">近30天</option>
+            </select>
+        </div>
+        <div id="error-trend-chart"></div>
+    </div>
+
+    <div class="row">
+        <!-- 错误类型分布 -->
+        <div class="col-md-6">
+            <div class="chart-container">
+                <h5 class="mb-3"><i class="fas fa-chart-pie me-2 text-success"></i>错误类型分布</h5>
+                <div id="error-type-chart"></div>
+            </div>
+        </div>
+
+        <!-- 服务错误排名 -->
+        <div class="col-md-6">
+            <div class="card-container">
+                <h5 class="mb-3"><i class="fas fa-list-ol me-2 text-warning"></i>服务错误排名</h5>
+                <div id="service-error-ranking">
+                    <!-- 动态加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 错误详情列表 -->
+    <div class="card-container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5><i class="fas fa-list me-2 text-primary"></i>错误详情</h5>
+            <button class="btn btn-outline-primary btn-sm" onclick="loadErrorDetails()">
+                <i class="fas fa-sync-alt me-1"></i>刷新
+            </button>
+        </div>
+        <div id="error-details">
+            <!-- 动态加载 -->
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let errorTrendChart = null;
+    let errorTypeChart = null;
+
+    // 初始化图表
+    function initCharts() {
+        errorTrendChart = echarts.init(document.getElementById('error-trend-chart'));
+        errorTypeChart = echarts.init(document.getElementById('error-type-chart'));
+
+        loadErrorData();
+
+        // 监听窗口大小变化
+        window.addEventListener('resize', function() {
+            if (errorTrendChart) errorTrendChart.resize();
+            if (errorTypeChart) errorTypeChart.resize();
+        });
+    }
+
+    // 加载错误数据
+    function loadErrorData() {
+        // 更新概览数据
+        updateOverview();
+
+        // 更新图表
+        updateErrorTrendChart();
+        updateErrorTypeChart();
+
+        // 更新服务排名
+        updateServiceRanking();
+
+        // 更新错误详情
+        updateErrorDetails();
+    }
+
+    // 更新概览数据
+    function updateOverview() {
+        // 模拟数据
+        document.getElementById('total-errors').textContent = '128';
+        document.getElementById('error-services').textContent = '5';
+        document.getElementById('error-rate').textContent = '2.5%';
+        document.getElementById('avg-response').textContent = '245ms';
+    }
+
+    // 更新错误趋势图
+    function updateErrorTrendChart() {
+        const timeRange = parseInt(document.getElementById('trend-time-range').value);
+
+        // 模拟数据
+        const hours = timeRange <= 24 ? timeRange : 7;
+        const categories = [];
+        const errorData = [];
+        const totalData = [];
+
+        for (let i = hours - 1; i >= 0; i--) {
+            const hour = new Date(Date.now() - i * 60 * 60 * 1000);
+            categories.push(hour.getHours() + ':00');
+            errorData.push(Math.floor(Math.random() * 20) + 5);
+            totalData.push(Math.floor(Math.random() * 1000) + 500);
+        }
+
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                formatter: function(params) {
+                    const errorCount = params[0].value;
+                    const totalCount = params[1].value;
+                    const rate = totalCount > 0 ? (errorCount / totalCount * 100).toFixed(2) : 0;
+                    return params[0].axisValue + '<br/>' +
+                        '错误数: ' + errorCount + '<br/>' +
+                        '总请求: ' + totalCount + '<br/>' +
+                        '错误率: ' + rate + '%';
+                }
+            },
+            legend: {
+                data: ['错误数', '总请求']
+            },
+            xAxis: {
+                type: 'category',
+                data: categories
+            },
+            yAxis: {
+                type: 'value'
+            },
+            series: [
+                {
+                    name: '错误数',
+                    type: 'line',
+                    data: errorData,
+                    itemStyle: {
+                        color: '#e74a3b'
+                    },
+                    lineStyle: {
+                        color: '#e74a3b'
+                    }
+                },
+                {
+                    name: '总请求',
+                    type: 'line',
+                    data: totalData,
+                    itemStyle: {
+                        color: '#4e73df'
+                    },
+                    lineStyle: {
+                        color: '#4e73df'
+                    }
+                }
+            ]
+        };
+
+        errorTrendChart.setOption(option);
+    }
+
+    // 更新错误类型分布图
+    function updateErrorTypeChart() {
+        // 模拟数据
+        const errorTypes = [
+            { name: '数据库错误', value: 45 },
+            { name: '网络超时', value: 32 },
+            { name: '参数错误', value: 25 },
+            { name: '权限错误', value: 18 },
+            { name: '其他错误', value: 8 }
+        ];
+
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: '{a} <br/>{b}: {c} ({d}%)'
+            },
+            legend: {
+                orient: 'vertical',
+                right: 10,
+                top: 'center'
+            },
+            series: [
+                {
+                    name: '错误类型',
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    label: {
+                        show: false,
+                        position: 'center'
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: '16',
+                            fontWeight: 'bold'
+                        }
+                    },
+                    labelLine: {
+                        show: false
+                    },
+                    data: errorTypes
+                }
+            ]
+        };
+
+        errorTypeChart.setOption(option);
+    }
+
+    // 更新服务排名
+    function updateServiceRanking() {
+        // 模拟数据
+        const services = [
+            { name: 'user-service', errorCount: 45, totalCount: 1200, errorRate: 3.75 },
+            { name: 'payment-service', errorCount: 32, totalCount: 850, errorRate: 3.76 },
+            { name: 'order-service', errorCount: 25, totalCount: 980, errorRate: 2.55 },
+            { name: 'product-service', errorCount: 18, totalCount: 750, errorRate: 2.40 },
+            { name: 'inventory-service', errorCount: 8, totalCount: 600, errorRate: 1.33 }
+        ];
+
+        const container = document.getElementById('service-error-ranking');
+        let html = '';
+
+        services.forEach(service => {
+            const errorLevel = service.errorRate > 3.5 ? 'critical' : service.errorRate > 2 ? 'warning' : 'info';
+
+            html += `
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 border-bottom">
+                        <div>
+                            <div class="fw-bold">${service.name}</div>
+                            <small class="text-muted">总请求: ${service.totalCount}</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-danger fw-bold">${service.errorCount} 次</div>
+                            <small class="text-muted">错误率: ${service.errorRate.toFixed(2)}%</small>
+                        </div>
+                    </div>
+                `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // 更新错误详情
+    function updateErrorDetails() {
+        // 模拟数据
+        const errors = [
+            {
+                id: 1,
+                service: 'user-service',
+                type: '数据库错误',
+                message: '数据库连接超时',
+                timestamp: '2026-01-12 22:15:30',
+                traceId: 'trace-abc123',
+                level: 'critical'
+            },
+            {
+                id: 2,
+                service: 'payment-service',
+                type: '网络超时',
+                message: '支付网关响应超时',
+                timestamp: '2026-01-12 21:45:22',
+                traceId: 'trace-def456',
+                level: 'warning'
+            },
+            {
+                id: 3,
+                service: 'order-service',
+                type: '参数错误',
+                message: '订单参数验证失败',
+                timestamp: '2026-01-12 20:30:15',
+                traceId: 'trace-ghi789',
+                level: 'info'
+            }
+        ];
+
+        const container = document.getElementById('error-details');
+        let html = '';
+
+        if (errors.length === 0) {
+            html = '<div class="text-center py-4 text-muted">暂无错误数据</div>';
+        } else {
+            errors.forEach(error => {
+                const levelClass = `error-level-${error.level}`;
+
+                html += `
+                        <div class="error-item ${levelClass}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <span class="badge ${error.level === 'critical' ? 'bg-danger' : error.level === 'warning' ? 'bg-warning' : 'bg-info'} me-2">
+                                        ${error.level === 'critical' ? '严重' : error.level === 'warning' ? '警告' : '信息'}
+                                    </span>
+                                    <strong>${error.service}</strong>
+                                </div>
+                                <small class="text-muted">${error.timestamp}</small>
+                            </div>
+
+                            <div class="mb-2">
+                                <small class="text-muted">错误类型:</small>
+                                <span class="ms-2">${error.type}</span>
+                            </div>
+
+                            <div class="mb-2">
+                                <small class="text-muted">错误信息:</small>
+                                <div class="ms-2 text-break">${error.message}</div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <small class="text-muted">Trace ID:</small>
+                                    <span class="ms-2">${error.traceId}</span>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-search me-1"></i>查看详情
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+            });
+        }
+
+        container.innerHTML = html;
+    }
+
+    // 重新加载错误详情
+    function loadErrorDetails() {
+        const container = document.getElementById('error-details');
+        container.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <div class="mt-2 text-muted">正在刷新数据...</div>
+                </div>
+            `;
+
+        setTimeout(() => {
+            updateErrorDetails();
+        }, 500);
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        initCharts();
+
+        // 绑定时间范围选择事件
+        document.getElementById('trend-time-range').addEventListener('change', function() {
+            updateErrorTrendChart();
+        });
+    });
+</script>
+</body>
+</html>

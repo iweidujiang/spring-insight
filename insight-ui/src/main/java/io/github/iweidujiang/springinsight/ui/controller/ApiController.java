@@ -1,4 +1,4 @@
-package io.github.iweidujiang.springinsight.ui.ui;
+package io.github.iweidujiang.springinsight.ui.controller;
 
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import lombok.extern.slf4j.Slf4j;

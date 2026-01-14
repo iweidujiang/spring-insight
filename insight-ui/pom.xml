@@ -28,6 +28,18 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
+        <!-- Spring WebSockets 支持 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-websocket</artifactId>
+        </dependency>
+
+        <!-- Spring Messaging（用于 STOMP、消息代理等） -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-messaging</artifactId>
+        </dependency>
+
 		<!-- Spring Boot Thymeleaf -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
