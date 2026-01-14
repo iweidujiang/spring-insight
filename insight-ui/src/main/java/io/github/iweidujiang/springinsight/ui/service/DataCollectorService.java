@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.ui.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -11,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.ResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
@@ -52,6 +54,10 @@ public class DataCollectorService {
 
         // 配置RestTemplate
         restTemplate.setErrorHandler(new RestTemplateErrorHandler());
+        // 配置RestTemplate超时
+        restTemplate.setRequestFactory(new SimpleClientHttpRequestFactory());
+        ((SimpleClientHttpRequestFactory) restTemplate.getRequestFactory()).setConnectTimeout(3000);
+        ((SimpleClientHttpRequestFactory) restTemplate.getRequestFactory()).setReadTimeout(10000);
     }
 
     /**
@@ -69,26 +75,27 @@ public class DataCollectorService {
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                CollectorStats stats = objectMapper.readValue(response.getBody(), CollectorStats.class);
+                Map<String, Object> data = objectMapper.readValue(response.getBody(), new TypeReference<>() {
+                });
+
+                CollectorStats stats = new CollectorStats();
+                stats.setTotalReceivedRequests(((Number) data.get("totalReceivedRequests")).longValue());
+                stats.setTotalReceivedSpans(((Number) data.get("totalReceivedSpans")).longValue());
+                stats.setTotalSuccessSpans(((Number) data.get("totalSuccessSpans")).longValue());
+                stats.setTotalFailedSpans(((Number) data.get("totalFailedSpans")).longValue());
+                stats.setSuccessRate(((Number) data.get("successRate")).doubleValue());
+                stats.setRunningHours(((Number) data.get("runningHours")).longValue());
+                stats.setCurrentTime(Instant.parse((String) data.get("currentTime")));
+
                 putToCache(cacheKey, stats);
-                log.debug("获取collector统计成功: {}", stats);
+                log.debug("获取collector统计成功");
                 return stats;
             }
         } catch (Exception e) {
-            log.error("获取collector统计失败", e);
+            log.error("获取collector统计失败: {}", e.getMessage());
         }
 
-        // 返回默认值
-        CollectorStats defaultStats = new CollectorStats();
-        defaultStats.setTotalReceivedRequests(0);
-        defaultStats.setTotalReceivedSpans(0);
-        defaultStats.setTotalSuccessSpans(0);
-        defaultStats.setTotalFailedSpans(0);
-        defaultStats.setSuccessRate(100.0);
-        defaultStats.setRunningHours(0);
-        defaultStats.setCurrentTime(Instant.now());
-
-        return defaultStats;
+        return createDefaultCollectorStats();
     }
 
     /**
@@ -101,26 +108,21 @@ public class DataCollectorService {
             return cached;
         }
 
-        // 从collector获取最近的服务
         try {
-            // 先获取最近1小时的链路，从中提取服务名
-            List<TraceSpan> recentSpans = getRecentSpans(1, 100);
-            Set<String> serviceSet = new TreeSet<>();
+            String url = collectorUrl + "/api/v1/ui/services";
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
-            for (TraceSpan span : recentSpans) {
-                if (span.getServiceName() != null && !span.getServiceName().isEmpty()) {
-                    serviceSet.add(span.getServiceName());
-                }
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                List<String> services = objectMapper.readValue(response.getBody(), new TypeReference<List<String>>() {});
+                putToCache(cacheKey, services);
+                log.debug("获取服务列表成功: {}", services);
+                return services;
             }
-
-            List<String> services = new ArrayList<>(serviceSet);
-            putToCache(cacheKey, services);
-            return services;
-
         } catch (Exception e) {
-            log.error("获取服务列表失败", e);
-            return List.of("demo-service");
+            log.error("获取服务列表失败: {}", e.getMessage());
         }
+
+        return Collections.emptyList();
     }
 
     /**
@@ -129,23 +131,26 @@ public class DataCollectorService {
     public List<TraceSpan> getRecentSpans(int hours, int limit) {
         String cacheKey = "recent-spans-" + hours + "-" + limit;
 
-        // 对于最近数据，使用更短的缓存时间
-        long ttl = hours <= 1 ? 10000 : CACHE_TTL_MS; // 1小时内数据缓存10秒
-
         List<TraceSpan> cached = getFromCache(cacheKey, List.class);
         if (cached != null) {
             return cached;
         }
 
         try {
-            // 注意：collector目前没有直接获取最近链路的接口
-            // 这里我们先从模拟数据开始，后续可以添加这个接口
-            return generateMockSpans(limit);
+            String url = collectorUrl + "/api/v1/ui/traces/recent?hours=" + hours + "&limit=" + limit;
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                List<TraceSpan> spans = objectMapper.readValue(response.getBody(), new TypeReference<List<TraceSpan>>() {});
+                putToCache(cacheKey, spans);
+                log.debug("获取最近链路成功: {}条", spans.size());
+                return spans;
+            }
         } catch (Exception e) {
-            log.error("获取最近链路失败", e);
-            return Collections.emptyList();
+            log.error("获取最近链路失败: {}", e.getMessage());
         }
+
+        return Collections.emptyList();
     }
 
     /**
@@ -160,22 +165,20 @@ public class DataCollectorService {
         }
 
         try {
-            List<TraceSpan> allSpans = getRecentSpans(24, 500);
-            List<TraceSpan> filtered = new ArrayList<>();
+            String url = collectorUrl + "/api/v1/ui/services/" + serviceName + "/traces?limit=" + limit;
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
-            for (TraceSpan span : allSpans) {
-                if (serviceName.equals(span.getServiceName()) && filtered.size() < limit) {
-                    filtered.add(span);
-                }
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                List<TraceSpan> spans = objectMapper.readValue(response.getBody(), new TypeReference<List<TraceSpan>>() {});
+                putToCache(cacheKey, spans);
+                log.debug("获取服务{}的链路成功: {}条", serviceName, spans.size());
+                return spans;
             }
-
-            putToCache(cacheKey, filtered);
-            return filtered;
-
         } catch (Exception e) {
-            log.error("获取服务{}的最近链路失败", serviceName, e);
-            return Collections.emptyList();
+            log.error("获取服务{}的链路失败: {}", serviceName, e.getMessage());
         }
+
+        return Collections.emptyList();
     }
 
     /**
@@ -190,52 +193,37 @@ public class DataCollectorService {
         }
 
         try {
-            // 从最近链路中分析依赖关系
-            List<TraceSpan> recentSpans = getRecentSpans(hours, 1000);
-            Map<String, ServiceDependency> dependencyMap = new HashMap<>();
+            String url = collectorUrl + "/api/v1/ui/dependencies?hours=" + hours;
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
-            for (TraceSpan span : recentSpans) {
-                if (span.getRemoteService() != null && !span.getRemoteService().isEmpty()) {
-                    String key = span.getServiceName() + "->" + span.getRemoteService();
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                List<Map<String, Object>> rawData = objectMapper.readValue(response.getBody(),
+                        new TypeReference<List<Map<String, Object>>>() {});
 
-                    ServiceDependency dep = dependencyMap.get(key);
-                    if (dep == null) {
-                        dep = new ServiceDependency();
-                        dep.setSourceService(span.getServiceName());
-                        dep.setTargetService(span.getRemoteService());
-                        dep.setCallCount(0);
-                        dep.setTotalDuration(0);
-                        dep.setErrorCount(0);
-                        dependencyMap.put(key, dep);
+                List<ServiceDependency> dependencies = new ArrayList<>();
+                for (Map<String, Object> raw : rawData) {
+                    ServiceDependency dep = new ServiceDependency();
+                    dep.setSourceService((String) raw.get("source_service"));
+                    dep.setTargetService((String) raw.get("target_service"));
+                    dep.setCallCount(((Number) raw.get("call_count")).intValue());
+
+                    Object avgDuration = raw.get("avg_duration");
+                    if (avgDuration != null) {
+                        dep.setAvgDuration(((Number) avgDuration).longValue());
                     }
 
-                    dep.setCallCount(dep.getCallCount() + 1);
-                    if (span.getDurationMs() != null) {
-                        dep.setTotalDuration(dep.getTotalDuration() + span.getDurationMs());
-                    }
-                    if ("ERROR".equals(span.getStatusCode())) {
-                        dep.setErrorCount(dep.getErrorCount() + 1);
-                    }
+                    dependencies.add(dep);
                 }
+
+                putToCache(cacheKey, dependencies);
+                log.debug("获取服务依赖关系成功: {}条", dependencies.size());
+                return dependencies;
             }
-
-            // 计算平均耗时和错误率
-            List<ServiceDependency> dependencies = new ArrayList<>();
-            for (ServiceDependency dep : dependencyMap.values()) {
-                if (dep.getCallCount() > 0) {
-                    dep.setAvgDuration(dep.getTotalDuration() / dep.getCallCount());
-                    dep.setErrorRate((double) dep.getErrorCount() / dep.getCallCount() * 100);
-                }
-                dependencies.add(dep);
-            }
-
-            putToCache(cacheKey, dependencies);
-            return dependencies;
-
         } catch (Exception e) {
-            log.error("获取服务依赖关系失败", e);
-            return Collections.emptyList();
+            log.error("获取服务依赖关系失败: {}", e.getMessage());
         }
+
+        return Collections.emptyList();
     }
 
     /**
@@ -250,52 +238,33 @@ public class DataCollectorService {
         }
 
         try {
-            List<TraceSpan> recentSpans = getRecentSpans(24, 2000);
-            Map<String, ServiceStats> statsMap = new HashMap<>();
+            String url = collectorUrl + "/api/v1/ui/services/stats";
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
-            for (TraceSpan span : recentSpans) {
-                String serviceName = span.getServiceName();
-                if (serviceName == null) continue;
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                List<Map<String, Object>> rawData = objectMapper.readValue(response.getBody(),
+                        new TypeReference<List<Map<String, Object>>>() {});
 
-                ServiceStats stats = statsMap.get(serviceName);
-                if (stats == null) {
-                    stats = new ServiceStats();
-                    stats.setServiceName(serviceName);
-                    stats.setTotalSpans(0);
-                    stats.setErrorSpans(0);
-                    stats.setTotalDuration(0);
-                    statsMap.put(serviceName, stats);
+                List<ServiceStats> statsList = new ArrayList<>();
+                for (Map<String, Object> raw : rawData) {
+                    ServiceStats stats = new ServiceStats();
+                    stats.setServiceName((String) raw.get("service_name"));
+                    stats.setTotalSpans(((Number) raw.get("span_count")).intValue());
+                    statsList.add(stats);
                 }
 
-                stats.setTotalSpans(stats.getTotalSpans() + 1);
-                if ("ERROR".equals(span.getStatusCode())) {
-                    stats.setErrorSpans(stats.getErrorSpans() + 1);
-                }
-                if (span.getDurationMs() != null) {
-                    stats.setTotalDuration(stats.getTotalDuration() + span.getDurationMs());
-                }
+                // 按总Span数排序
+                statsList.sort((a, b) -> Integer.compare(b.getTotalSpans(), a.getTotalSpans()));
+
+                putToCache(cacheKey, statsList);
+                log.debug("获取服务统计成功: {}个服务", statsList.size());
+                return statsList;
             }
-
-            // 计算平均值和错误率
-            List<ServiceStats> statsList = new ArrayList<>();
-            for (ServiceStats stats : statsMap.values()) {
-                if (stats.getTotalSpans() > 0) {
-                    stats.setAvgDuration(stats.getTotalDuration() / stats.getTotalSpans());
-                    stats.setErrorRate((double) stats.getErrorSpans() / stats.getTotalSpans() * 100);
-                }
-                statsList.add(stats);
-            }
-
-            // 按总Span数排序
-            statsList.sort((a, b) -> Integer.compare(b.getTotalSpans(), a.getTotalSpans()));
-
-            putToCache(cacheKey, statsList);
-            return statsList;
-
         } catch (Exception e) {
-            log.error("获取服务统计失败", e);
-            return Collections.emptyList();
+            log.error("获取服务统计失败: {}", e.getMessage());
         }
+
+        return Collections.emptyList();
     }
 
     /**
@@ -310,30 +279,42 @@ public class DataCollectorService {
         }
 
         try {
-            List<ServiceStats> statsList = getServiceStats();
-            List<ErrorAnalysis> errorList = new ArrayList<>();
+            String url = collectorUrl + "/api/v1/ui/errors/analysis?hours=" + hours;
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
-            for (ServiceStats stats : statsList) {
-                if (stats.getErrorSpans() > 0) {
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                List<Map<String, Object>> rawData = objectMapper.readValue(response.getBody(),
+                        new TypeReference<List<Map<String, Object>>>() {});
+
+                List<ErrorAnalysis> errorList = new ArrayList<>();
+                for (Map<String, Object> raw : rawData) {
                     ErrorAnalysis error = new ErrorAnalysis();
-                    error.setServiceName(stats.getServiceName());
-                    error.setTotalCalls(stats.getTotalSpans());
-                    error.setErrorCalls(stats.getErrorSpans());
-                    error.setErrorRate(stats.getErrorRate());
+                    error.setServiceName((String) raw.get("service_name"));
+                    error.setTotalCalls(((Number) raw.get("total_calls")).intValue());
+                    error.setErrorCalls(((Number) raw.get("error_calls")).intValue());
+
+                    Object errorRate = raw.get("error_rate");
+                    if (errorRate != null) {
+                        error.setErrorRate(((Number) errorRate).doubleValue());
+                    } else if (error.getTotalCalls() > 0) {
+                        error.setErrorRate((double) error.getErrorCalls() / error.getTotalCalls() * 100);
+                    }
+
                     errorList.add(error);
                 }
+
+                // 按错误率排序
+                errorList.sort((a, b) -> Double.compare(b.getErrorRate(), a.getErrorRate()));
+
+                putToCache(cacheKey, errorList);
+                log.debug("获取错误分析成功: {}个服务", errorList.size());
+                return errorList;
             }
-
-            // 按错误率排序
-            errorList.sort((a, b) -> Double.compare(b.getErrorRate(), a.getErrorRate()));
-
-            putToCache(cacheKey, errorList);
-            return errorList;
-
         } catch (Exception e) {
-            log.error("获取错误分析失败", e);
-            return Collections.emptyList();
+            log.error("获取错误分析失败: {}", e.getMessage());
         }
+
+        return Collections.emptyList();
     }
 
     /**
@@ -341,13 +322,50 @@ public class DataCollectorService {
      */
     public List<TraceSpan> getTraceDetail(String traceId) {
         try {
-            // TODO: 实现从collector获取指定traceId的链路详情
-            // 目前返回模拟数据
-            return generateMockTraceSpans(traceId);
+            // 先从所有数据中查找指定traceId的链路
+            List<TraceSpan> recentSpans = getRecentSpans(24, 1000);
+            List<TraceSpan> traceSpans = new ArrayList<>();
+
+            for (TraceSpan span : recentSpans) {
+                if (traceId.equals(span.getTraceId())) {
+                    traceSpans.add(span);
+                }
+            }
+
+            if (!traceSpans.isEmpty()) {
+                // 按开始时间排序
+                traceSpans.sort(Comparator.comparing(TraceSpan::getStartTime));
+                return traceSpans;
+            }
+
+            log.debug("未找到traceId: {}的链路", traceId);
+            return Collections.emptyList();
+
         } catch (Exception e) {
             log.error("获取链路详情失败: {}", traceId, e);
             return Collections.emptyList();
         }
+    }
+
+    /**
+     * 获取实时统计
+     */
+    public Map<String, Object> getRealtimeStats() {
+        try {
+            String url = collectorUrl + "/api/v1/ui/stats/realtime";
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return objectMapper.readValue(response.getBody(), new TypeReference<Map<String, Object>>() {});
+            }
+        } catch (Exception e) {
+            log.error("获取实时统计失败: {}", e.getMessage());
+        }
+
+        Map<String, Object> defaultStats = new HashMap<>();
+        defaultStats.put("collectorStats", createDefaultCollectorStats());
+        defaultStats.put("timestamp", Instant.now().toString());
+        return defaultStats;
     }
 
     /**
@@ -378,6 +396,18 @@ public class DataCollectorService {
 
     private <T> void putToCache(String key, T data) {
         cache.put(key, new CacheEntry<>(data));
+    }
+
+    private CollectorStats createDefaultCollectorStats() {
+        CollectorStats stats = new CollectorStats();
+        stats.setTotalReceivedRequests(0);
+        stats.setTotalReceivedSpans(0);
+        stats.setTotalSuccessSpans(0);
+        stats.setTotalFailedSpans(0);
+        stats.setSuccessRate(100.0);
+        stats.setRunningHours(0);
+        stats.setCurrentTime(Instant.now());
+        return stats;
     }
 
     // ========== 模型类 ==========
