@@ -103,6 +103,13 @@
 			<version>${project.version}</version>
 		</dependency>
 
+		<!-- Agent 模块依赖（用于 TraceSpan 模型） -->
+		<dependency>
+			<groupId>io.github.iweidujiang</groupId>
+			<artifactId>insight-agent</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
 		<!-- 开发工具 -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

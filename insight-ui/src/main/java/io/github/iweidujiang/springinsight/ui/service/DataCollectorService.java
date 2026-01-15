@@ -133,23 +133,41 @@ public class DataCollectorService {
 
         List<TraceSpan> cached = getFromCache(cacheKey, List.class);
         if (cached != null) {
+            log.debug("从缓存获取最近链路: {}条", cached.size());
             return cached;
         }
 
         try {
+            log.debug("开始获取最近链路，hours: {}, limit: {}", hours, limit);
             String url = collectorUrl + "/api/v1/ui/traces/recent?hours=" + hours + "&limit=" + limit;
-            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            log.debug("请求URL: {}", url);
+            
+            // 设置连接超时和读取超时
+            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(5000);
+            factory.setReadTimeout(5000);
+            RestTemplate timeoutRestTemplate = new RestTemplate(factory);
+            
+            ResponseEntity<String> response = timeoutRestTemplate.getForEntity(url, String.class);
+            log.debug("响应状态码: {}", response.getStatusCode());
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                log.debug("响应体长度: {}字符", response.getBody().length());
+                // 限制响应体长度，避免处理过大的数据
+                if (response.getBody().length() > 1000000) {
+                    log.warn("响应体过大，超过1MB，返回空列表");
+                    return Collections.emptyList();
+                }
                 List<TraceSpan> spans = objectMapper.readValue(response.getBody(), new TypeReference<List<TraceSpan>>() {});
                 putToCache(cacheKey, spans);
                 log.debug("获取最近链路成功: {}条", spans.size());
                 return spans;
             }
         } catch (Exception e) {
-            log.error("获取最近链路失败: {}", e.getMessage());
+            log.error("获取最近链路失败: {}", e.getMessage(), e);
         }
 
+        log.debug("返回空链路列表");
         return Collections.emptyList();
     }
 
@@ -322,12 +340,17 @@ public class DataCollectorService {
      */
     public List<TraceSpan> getTraceDetail(String traceId) {
         try {
+            log.debug("开始获取traceId: {}的链路详情", traceId);
+            
             // 先从所有数据中查找指定traceId的链路
-            List<TraceSpan> recentSpans = getRecentSpans(24, 1000);
+            // 使用较小的limit值，避免处理过多数据
+            List<TraceSpan> recentSpans = getRecentSpans(24, 100);
+            log.debug("获取到最近链路: {}条", recentSpans.size());
+            
             List<TraceSpan> traceSpans = new ArrayList<>();
 
             for (TraceSpan span : recentSpans) {
-                if (traceId.equals(span.getTraceId())) {
+                if (span != null && traceId.equals(span.getTraceId())) {
                     traceSpans.add(span);
                 }
             }
@@ -335,6 +358,7 @@ public class DataCollectorService {
             if (!traceSpans.isEmpty()) {
                 // 按开始时间排序
                 traceSpans.sort(Comparator.comparing(TraceSpan::getStartTime));
+                log.debug("找到traceId: {}的链路: {}条", traceId, traceSpans.size());
                 return traceSpans;
             }
 

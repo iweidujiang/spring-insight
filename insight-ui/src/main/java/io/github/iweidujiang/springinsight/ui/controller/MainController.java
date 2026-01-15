@@ -10,6 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -125,12 +126,15 @@ public class MainController {
             Model model) {
 
         try {
+            log.debug("开始处理链路详情请求，traceId: {}", traceId);
+            
+            // 尝试从数据收集服务获取链路详情
             var traceSpans = dataCollectorService.getTraceDetail(traceId);
             model.addAttribute("traceId", traceId);
             model.addAttribute("traceSpans", traceSpans);
 
+            // 计算统计信息
             if (!traceSpans.isEmpty()) {
-                // 计算总体统计信息
                 long totalDuration = traceSpans.stream()
                         .filter(span -> span.getDurationMs() != null)
                         .mapToLong(span -> span.getDurationMs())
@@ -143,12 +147,25 @@ public class MainController {
                         .filter(span -> span.getParentSpanId() == null || span.getParentSpanId().isEmpty())
                         .findFirst();
                 rootSpan.ifPresent(span -> model.addAttribute("rootOperation", span.getOperationName()));
+            } else {
+                // 当没有找到数据时，设置默认值
+                model.addAttribute("totalDuration", 0);
+                model.addAttribute("spanCount", 0);
+                model.addAttribute("rootOperation", "");
+                model.addAttribute("error", "未找到对应的链路数据");
+                log.warn("未找到对应的链路数据，traceId: {}", traceId);
             }
-
+            
+            log.debug("链路详情请求处理完成，traceId: {}", traceId);
             return "trace-detail";
 
         } catch (Exception e) {
             log.error("加载链路详情失败", e);
+            model.addAttribute("traceId", traceId);
+            model.addAttribute("traceSpans", Collections.emptyList());
+            model.addAttribute("totalDuration", 0);
+            model.addAttribute("spanCount", 0);
+            model.addAttribute("rootOperation", "");
             model.addAttribute("error", "加载链路详情失败: " + e.getMessage());
             return "trace-detail";
         }
