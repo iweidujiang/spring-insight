@@ -77,6 +77,7 @@ public class CollectorApiController {
 
         try {
             var dependencies = traceSpanPersistenceService.getServiceDependencies(hours);
+            System.out.println("服务依赖关系=====" + dependencies);
             return ResponseEntity.ok(dependencies);
         } catch (Exception e) {
             log.error("获取服务依赖关系失败", e);
@@ -138,9 +139,6 @@ public class CollectorApiController {
     public ResponseEntity<?> getRealtimeStats() {
         try {
             var collectorStats = traceSpanCollectorService.getStats();
-
-            // 获取最近1小时数据用于计算实时指标
-            long sinceTime = Instant.now().minus(1, ChronoUnit.HOURS).toEpochMilli();
 
             Map<String, Object> result = new HashMap<>();
             result.put("collectorStats", collectorStats);

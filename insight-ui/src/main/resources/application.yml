@@ -57,10 +57,6 @@ logging:
   level:
     io.github.iweidujiang.springinsight.ui: DEBUG
     io.github.iweidujiang.springinsight.storage: INFO
-  file:
-    name: ${user.home}/.spring-insight/logs/spring-insight-ui.log
-  pattern:
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 management:
   endpoints:

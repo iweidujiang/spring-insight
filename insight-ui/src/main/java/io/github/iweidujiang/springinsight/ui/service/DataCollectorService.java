@@ -38,12 +38,12 @@ public class DataCollectorService {
     private final ObjectMapper objectMapper;
 
     @Getter
-    @Value("${spring-insight.collector.url:http://localhost:8080}")
+    @Value("${spring-insight.collector.url:http://localhost:8082}")
     private String collectorUrl;
 
     // 本地缓存，避免频繁请求collector
     private final Map<String, CacheEntry<?>> cache = new ConcurrentHashMap<>();
-    private static final long CACHE_TTL_MS = 30000; // 30秒缓存
+    private static final long CACHE_TTL_MS = 10000; // 10秒缓存
 
     public DataCollectorService() {
         this.restTemplate = new RestTemplate();
@@ -87,7 +87,7 @@ public class DataCollectorService {
                 stats.setCurrentTime(Instant.parse((String) data.get("currentTime")));
 
                 putToCache(cacheKey, stats);
-                log.debug("获取collector统计成功");
+                log.debug("获取collector统计成功：{}", stats);
                 return stats;
             }
         } catch (Exception e) {
@@ -215,7 +215,8 @@ public class DataCollectorService {
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 List<Map<String, Object>> rawData = objectMapper.readValue(response.getBody(),
-                        new TypeReference<List<Map<String, Object>>>() {});
+                        new TypeReference<>() {
+                        });
 
                 List<ServiceDependency> dependencies = new ArrayList<>();
                 for (Map<String, Object> raw : rawData) {
@@ -301,7 +302,8 @@ public class DataCollectorService {
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 List<Map<String, Object>> rawData = objectMapper.readValue(response.getBody(),
-                        new TypeReference<List<Map<String, Object>>>() {});
+                        new TypeReference<>() {
+                        });
 
                 List<ErrorAnalysis> errorList = new ArrayList<>();
                 for (Map<String, Object> raw : rawData) {
