@@ -43,36 +43,47 @@ public class PaymentService {
             log.info("处理支付: orderId={}, paymentMethod={}, amount={}", orderId, paymentMethod, amount);
             
             // 1. 获取订单详情
+            log.info("1. 获取订单详情: orderId={}", orderId);
             Map<String, Object> order = orderService.getOrderDetail(orderId);
+            log.info("获取订单详情成功: {}", order);
             
             // 2. 验证订单状态
+            log.info("2. 验证订单状态");
             String orderStatus = (String) order.get("status");
+            log.info("订单状态: {}", orderStatus);
             if (!"CREATED".equals(orderStatus)) {
                 throw new RuntimeException("订单状态不正确: " + orderStatus);
             }
             
             // 3. 验证金额
+            log.info("3. 验证金额");
             double orderAmount = (double) order.get("totalPrice");
+            log.info("订单金额: {}, 支付金额: {}", orderAmount, amount);
             if (Math.abs(amount - orderAmount) > 0.01) {
                 throw new RuntimeException("支付金额与订单金额不符");
             }
             
             // 4. 模拟支付处理时间
+            log.info("4. 模拟支付处理时间");
             Thread.sleep(150 + random.nextInt(200));
             
             // 5. 模拟错误场景
+            log.info("5. 模拟错误场景");
             if (random.nextDouble() > 0.85) {
                 throw new RuntimeException("支付网关暂时不可用");
             }
             
             // 6. 模拟支付成功
+            log.info("6. 模拟支付成功");
             String paymentId = "PAY" + System.currentTimeMillis() + random.nextInt(1000);
             String transactionId = "TXN" + System.currentTimeMillis() + random.nextInt(1000000);
             
             // 7. 更新订单状态
+            log.info("7. 更新订单状态: {} -> PAID", orderId);
             orderService.updateOrderStatus(orderId, "PAID");
             
             // 8. 构造支付结果
+            log.info("8. 构造支付结果");
             Map<String, Object> payment = new HashMap<>();
             payment.put("paymentId", paymentId);
             payment.put("orderId", orderId);

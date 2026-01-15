@@ -35,6 +35,7 @@ public class OrderService {
     private ProductService productService;
 
     private final Random random = new Random();
+    private final Map<String, Map<String, Object>> orderStore = new HashMap<>();
 
     /**
      * 创建订单
@@ -60,7 +61,15 @@ public class OrderService {
             
             for (Map<String, Object> item : items) {
                 String productId = (String) item.get("productId");
-                int quantity = (int) item.get("quantity");
+                int quantity;
+                Object quantityObj = item.get("quantity");
+                if (quantityObj instanceof String) {
+                    quantity = Integer.parseInt((String) quantityObj);
+                } else if (quantityObj instanceof Integer) {
+                    quantity = (Integer) quantityObj;
+                } else {
+                    throw new RuntimeException("无效的商品数量类型: " + quantityObj.getClass());
+                }
                 
                 // 检查库存
                 int stock = productService.checkProductStock(productId);
@@ -110,6 +119,7 @@ public class OrderService {
             order.put("shippingAddress", userInfo.get("address"));
             order.put("phone", userInfo.get("phone"));
             
+            orderStore.put(orderId, order);
             log.info("订单创建成功: {}", order);
             return order;
             
@@ -138,15 +148,23 @@ public class OrderService {
                 throw new RuntimeException("订单不存在: " + orderId);
             }
             
+            // 从订单存储中获取订单详情
+            if (orderStore.containsKey(orderId)) {
+                Map<String, Object> order = orderStore.get(orderId);
+                log.info("从订单存储中获取订单详情: {}", order);
+                return order;
+            }
+            
             // 模拟订单详情
+            log.info("从订单存储中未找到订单，返回模拟订单详情");
             Map<String, Object> order = new HashMap<>();
             order.put("orderId", orderId);
             order.put("userId", "1001");
             order.put("userName", "用户1001");
             order.put("totalPrice", ThreadLocalRandom.current().nextDouble(100, 10000));
-            order.put("status", List.of("CREATED", "PAID", "SHIPPING", "DELIVERED", "COMPLETED").get(random.nextInt(5)));
-            order.put("createTime", new Date(System.currentTimeMillis() - random.nextInt(86400000 * 30)));
-            order.put("paymentStatus", random.nextBoolean() ? "PAID" : "UNPAID");
+            order.put("status", "CREATED");
+            order.put("createTime", new Date(System.currentTimeMillis() - ThreadLocalRandom.current().nextLong(86400000L * 30L)));
+            order.put("paymentStatus", "UNPAID");
             order.put("shippingAddress", "北京市朝阳区" + random.nextInt(1000) + "号");
             order.put("phone", "138" + String.format("%08d", random.nextInt(100000000)));
             
@@ -205,7 +223,7 @@ public class OrderService {
                 order.put("userId", userId);
                 order.put("totalPrice", ThreadLocalRandom.current().nextDouble(100, 10000));
                 order.put("status", List.of("CREATED", "PAID", "SHIPPING", "DELIVERED", "COMPLETED").get(random.nextInt(5)));
-                order.put("createTime", new Date(System.currentTimeMillis() - random.nextInt(86400000 * 30)));
+                order.put("createTime", new Date(System.currentTimeMillis() - ThreadLocalRandom.current().nextLong(86400000L * 30L)));
                 order.put("itemCount", random.nextInt(5) + 1);
                 orders.add(order);
             }
@@ -236,6 +254,27 @@ public class OrderService {
             // 模拟错误场景
             if ("CANCELLED".equals(status) && random.nextDouble() > 0.7) {
                 throw new RuntimeException("订单已超过取消时限");
+            }
+            
+            // 从订单存储中获取订单并更新状态
+            if (orderStore.containsKey(orderId)) {
+                Map<String, Object> order = orderStore.get(orderId);
+                String oldStatus = (String) order.get("status");
+                order.put("status", status);
+                if ("PAID".equals(status)) {
+                    order.put("paymentStatus", "PAID");
+                }
+                log.info("更新订单状态成功: {} -> {} (旧状态: {})", orderId, status, oldStatus);
+                
+                // 构造更新结果
+                Map<String, Object> result = new HashMap<>();
+                result.put("orderId", orderId);
+                result.put("oldStatus", oldStatus);
+                result.put("newStatus", status);
+                result.put("updateTime", new Date());
+                result.put("success", true);
+                
+                return result;
             }
             
             // 模拟更新结果

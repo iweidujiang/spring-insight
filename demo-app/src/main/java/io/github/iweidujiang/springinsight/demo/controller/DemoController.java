@@ -54,14 +54,19 @@ public class DemoController {
             String paymentMethod = (String) request.get("paymentMethod");
             
             // 1. 创建订单
+            log.info("1. 创建订单");
             Map<String, Object> order = orderService.createOrder(userId, items);
             String orderId = (String) order.get("orderId");
             double totalPrice = (double) order.get("totalPrice");
+            String orderStatus = (String) order.get("status");
+            log.info("订单创建成功: orderId={}, status={}, totalPrice={}", orderId, orderStatus, totalPrice);
             
             // 2. 处理支付
+            log.info("2. 处理支付: orderId={}, paymentMethod={}, amount={}", orderId, paymentMethod, totalPrice);
             Map<String, Object> payment = paymentService.processPayment(orderId, paymentMethod, totalPrice);
             
             // 3. 构造结果
+            log.info("3. 构造结果");
             Map<String, Object> result = new HashMap<>();
             result.put("status", "SUCCESS");
             result.put("message", "完整订单流程测试成功");
@@ -212,7 +217,19 @@ public class DemoController {
             
             String orderId = (String) request.get("orderId");
             String paymentMethod = (String) request.get("paymentMethod");
-            double amount = (double) request.get("amount");
+            
+            // 处理 amount 参数，支持字符串和数字类型
+            double amount;
+            Object amountObj = request.get("amount");
+            if (amountObj instanceof String) {
+                amount = Double.parseDouble((String) amountObj);
+            } else if (amountObj instanceof Double) {
+                amount = (Double) amountObj;
+            } else if (amountObj instanceof Integer) {
+                amount = ((Integer) amountObj).doubleValue();
+            } else {
+                throw new RuntimeException("无效的金额类型: " + amountObj.getClass());
+            }
             
             // 处理支付
             Map<String, Object> payment = paymentService.processPayment(orderId, paymentMethod, amount);
