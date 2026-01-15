@@ -165,8 +165,16 @@
     function updateTopologyData() {
         if (!topologyChart) return;
 
-        // 模拟数据
-        const services = ['user-service', 'order-service', 'product-service', 'payment-service', 'inventory-service'];
+        // 从后端获取的实际数据
+        const dependencies = /*[[${dependencies}]]*/ [];
+        
+        // 提取服务列表
+        const serviceSet = new Set();
+        dependencies.forEach(dep => {
+            serviceSet.add(dep.sourceService);
+            serviceSet.add(dep.targetService);
+        });
+        const services = Array.from(serviceSet);
 
         // 生成节点
         const nodes = services.map(service => ({
@@ -181,21 +189,14 @@
         }));
 
         // 生成边（调用关系）
-        const links = [];
-        for (let i = 0; i < services.length; i++) {
-            for (let j = 0; j < services.length; j++) {
-                if (i !== j && Math.random() > 0.5) {
-                    links.push({
-                        source: services[i],
-                        target: services[j],
-                        value: Math.floor(Math.random() * 100) + 10,
-                        lineStyle: {
-                            width: Math.min(5, Math.random() * 3 + 1)
-                        }
-                    });
-                }
+        const links = dependencies.map(dep => ({
+            source: dep.sourceService,
+            target: dep.targetService,
+            value: dep.callCount,
+            lineStyle: {
+                width: Math.min(5, Math.max(1, dep.callCount / 100))
             }
-        }
+        }));
 
         const layoutType = document.getElementById('layout-type').value;
 

@@ -131,7 +131,7 @@ public class TraceSpan {
             this.statusCode = "ERROR";
             this.errorCode = errorCode;
             this.errorMessage = errorMessage;
-        } else if ("UNKNOWN".equals(this.statusCode)) {
+        } else {
             this.statusCode = "OK";
         }
 

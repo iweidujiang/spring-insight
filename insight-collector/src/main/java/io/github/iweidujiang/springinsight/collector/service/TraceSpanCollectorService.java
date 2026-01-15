@@ -190,7 +190,27 @@ public class TraceSpanCollectorService {
         }
 
         if (span.getStatusCode() == null || span.getStatusCode().trim().isEmpty()) {
-            span.setStatusCode(span.getSuccess() != null && span.getSuccess() ? "OK" : "ERROR");
+            // 检查HTTP状态码
+            Integer httpStatus = null;
+            if (span.getTags() != null) {
+                String statusStr = (String) span.getTags().get("http.status_code");
+                if (statusStr != null) {
+                    try {
+                        httpStatus = Integer.parseInt(statusStr);
+                    } catch (NumberFormatException e) {
+                        // 忽略解析错误
+                    }
+                }
+            }
+            
+            // 根据HTTP状态码或success字段设置statusCode
+            if (httpStatus != null && httpStatus >= 200 && httpStatus < 300) {
+                span.setStatusCode("OK");
+            } else if (span.getSuccess() != null && span.getSuccess()) {
+                span.setStatusCode("OK");
+            } else {
+                span.setStatusCode("ERROR");
+            }
         }
 
         // 计算持续时间（如果未提供）

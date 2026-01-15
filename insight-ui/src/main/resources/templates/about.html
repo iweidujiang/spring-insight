@@ -18,6 +18,36 @@
         <a class="navbar-brand" href="/insight-ui">
             <i class="fas fa-chart-network me-2"></i>Spring Insight
         </a>
+
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui">
+                        <i class="fas fa-tachometer-alt me-1"></i>仪表盘
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/topology">
+                        <i class="fas fa-project-diagram me-1"></i>拓扑图
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/traces">
+                        <i class="fas fa-stream me-1"></i>链路追踪
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/error-analysis">
+                        <i class="fas fa-exclamation-triangle me-1"></i>错误分析
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/insight-ui/about">
+                        <i class="fas fa-info-circle me-1"></i>关于
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
 </nav>
 
@@ -66,9 +96,61 @@
                     <div class="alert alert-info mt-3">
                         <h5><i class="fas fa-lightbulb me-2"></i>使用说明</h5>
                         <p class="mb-0">
-                            这是一个Spring Insight的演示版本，目前展示的是模拟数据。
-                            请访问仪表盘查看监控信息。
+                            Spring Insight是一个面向Spring Boot应用的轻量级诊断与架构洞察工具，
+                            提供服务拓扑图、链路追踪、错误分析等功能。
                         </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 个人信息部分 -->
+    <div class="row mt-5">
+        <div class="col-md-6 offset-md-3">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">
+                        <i class="fas fa-user-circle text-primary me-2"></i>
+                        关于作者
+                    </h4>
+
+                    <div class="row">
+                        <div class="col-12 mb-4">
+                            <p class="card-text">
+                                我是苏渡苇，一名热爱技术的软件工程师，专注于Java后端开发和微服务架构。
+                            </p>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <a href="https://github.com/iweidujiang" target="_blank" class="text-center d-block text-decoration-none text-dark">
+                                <div class="mb-2">
+                                    <i class="fab fa-github fa-3x text-dark"></i>
+                                </div>
+                                <div>GitHub</div>
+                                <div class="text-muted small">iweidujiang</div>
+                            </a>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <a href="#" class="text-center d-block text-decoration-none text-dark">
+                                <div class="mb-2">
+                                    <i class="fab fa-weixin fa-3x text-success"></i>
+                                </div>
+                                <div>公众号</div>
+                                <div class="text-muted small">苏渡苇</div>
+                            </a>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <a href="https://blog.csdn.net/iweidujiang" class="text-center d-block text-decoration-none text-dark">
+                                <div class="mb-2">
+                                    <i class="fas fa-code fa-3x text-info"></i>
+                                </div>
+                                <div>CSDN</div>
+                                <div class="text-muted small">苏渡苇</div>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
