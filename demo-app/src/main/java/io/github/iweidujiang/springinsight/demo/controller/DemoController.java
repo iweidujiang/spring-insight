@@ -55,6 +55,7 @@ public class DemoController {
             
             // 1. 创建订单
             log.info("1. 创建订单");
+            TraceContext.setRemoteService("order-service");
             Map<String, Object> order = orderService.createOrder(userId, items);
             String orderId = (String) order.get("orderId");
             double totalPrice = (double) order.get("totalPrice");
@@ -63,6 +64,7 @@ public class DemoController {
             
             // 2. 处理支付
             log.info("2. 处理支付: orderId={}, paymentMethod={}, amount={}", orderId, paymentMethod, totalPrice);
+            TraceContext.setRemoteService("payment-service");
             Map<String, Object> payment = paymentService.processPayment(orderId, paymentMethod, totalPrice);
             
             // 3. 构造结果
@@ -100,9 +102,11 @@ public class DemoController {
             log.info("测试用户服务: {}", userId);
             
             // 1. 检查用户是否存在
+            TraceContext.setRemoteService("user-service");
             boolean exists = userService.checkUserExists(userId);
             
             // 2. 获取用户信息
+            TraceContext.setRemoteService("user-service");
             Map<String, Object> userInfo = userService.getUserInfo(userId);
             
             // 3. 构造结果
@@ -139,9 +143,11 @@ public class DemoController {
             log.info("测试产品服务: {}", productId);
             
             // 1. 获取产品详情
+            TraceContext.setRemoteService("product-service");
             Map<String, Object> productDetail = productService.getProductDetail(productId);
             
             // 2. 检查产品库存
+            TraceContext.setRemoteService("product-service");
             int stock = productService.checkProductStock(productId);
             
             // 3. 构造结果
@@ -181,6 +187,7 @@ public class DemoController {
             List<Map<String, Object>> items = (List<Map<String, Object>>) request.get("items");
             
             // 创建订单
+            TraceContext.setRemoteService("order-service");
             Map<String, Object> order = orderService.createOrder(userId, items);
             
             // 构造结果
@@ -232,6 +239,7 @@ public class DemoController {
             }
             
             // 处理支付
+            TraceContext.setRemoteService("payment-service");
             Map<String, Object> payment = paymentService.processPayment(orderId, paymentMethod, amount);
             
             // 构造结果
@@ -270,10 +278,13 @@ public class DemoController {
             Map<String, Object> result = new HashMap<>();
             
             // 1. 用户服务调用
+            TraceContext.setRemoteService("user-service");
             Map<String, Object> userInfo = userService.getUserInfo("1001");
             
             // 2. 产品服务调用
+            TraceContext.setRemoteService("product-service");
             List<Map<String, Object>> productList = productService.getProductList(1, 5);
+            TraceContext.setRemoteService("product-service");
             Map<String, Object> productDetail = productService.getProductDetail("P1");
             
             // 3. 订单服务调用
@@ -283,11 +294,13 @@ public class DemoController {
             item.put("quantity", 2);
             orderItems.add(item);
             
+            TraceContext.setRemoteService("order-service");
             Map<String, Object> order = orderService.createOrder("1001", orderItems);
             
             // 4. 支付服务调用
             String orderId = (String) order.get("orderId");
             double totalPrice = (double) order.get("totalPrice");
+            TraceContext.setRemoteService("payment-service");
             Map<String, Object> payment = paymentService.processPayment(orderId, "ALIPAY", totalPrice);
             
             // 构造结果

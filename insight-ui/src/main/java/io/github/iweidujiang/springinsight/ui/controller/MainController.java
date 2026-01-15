@@ -131,10 +131,10 @@ public class MainController {
             // 尝试从数据收集服务获取链路详情
             var traceSpans = dataCollectorService.getTraceDetail(traceId);
             model.addAttribute("traceId", traceId);
-            model.addAttribute("traceSpans", traceSpans);
 
             // 计算统计信息
             if (!traceSpans.isEmpty()) {
+                model.addAttribute("traceSpans", traceSpans);
                 long totalDuration = traceSpans.stream()
                         .filter(span -> span.getDurationMs() != null)
                         .mapToLong(span -> span.getDurationMs())
@@ -162,7 +162,6 @@ public class MainController {
         } catch (Exception e) {
             log.error("加载链路详情失败", e);
             model.addAttribute("traceId", traceId);
-            model.addAttribute("traceSpans", Collections.emptyList());
             model.addAttribute("totalDuration", 0);
             model.addAttribute("spanCount", 0);
             model.addAttribute("rootOperation", "");

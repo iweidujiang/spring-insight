@@ -152,4 +152,18 @@ public class CollectorApiController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    /**
+     * 根据TraceID获取完整的调用链
+     */
+    @GetMapping("/traces/{traceId}")
+    public ResponseEntity<?> getTraceById(@PathVariable("traceId") String traceId) {
+        try {
+            var traceSpans = traceSpanPersistenceService.getTraceById(traceId);
+            return ResponseEntity.ok(traceSpans);
+        } catch (Exception e) {
+            log.error("获取指定链路失败", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

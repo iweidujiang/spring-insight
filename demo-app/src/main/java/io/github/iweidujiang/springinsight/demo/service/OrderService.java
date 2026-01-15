@@ -47,12 +47,14 @@ public class OrderService {
             log.info("创建订单: userId={}, items={}", userId, items);
             
             // 1. 检查用户是否存在
+            TraceContext.setRemoteService("user-service");
             boolean userExists = userService.checkUserExists(userId);
             if (!userExists) {
                 throw new RuntimeException("用户不存在: " + userId);
             }
             
             // 2. 获取用户信息
+            TraceContext.setRemoteService("user-service");
             Map<String, Object> userInfo = userService.getUserInfo(userId);
             
             // 3. 验证商品库存并计算总价
@@ -72,12 +74,14 @@ public class OrderService {
                 }
                 
                 // 检查库存
+                TraceContext.setRemoteService("product-service");
                 int stock = productService.checkProductStock(productId);
                 if (stock < quantity) {
                     throw new RuntimeException("商品库存不足: " + productId);
                 }
                 
                 // 获取商品详情
+                TraceContext.setRemoteService("product-service");
                 Map<String, Object> product = productService.getProductDetail(productId);
                 double price = (double) product.get("price");
                 

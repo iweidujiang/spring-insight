@@ -18,7 +18,7 @@ spring:
       path: /h2-console
 # 服务器配置
 server:
-  port: 8080
+  port: 8082
   servlet:
     context-path: /
   tomcat:

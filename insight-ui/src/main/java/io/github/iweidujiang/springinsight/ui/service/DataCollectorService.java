@@ -1,7 +1,6 @@
 package io.github.iweidujiang.springinsight.ui.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -342,27 +341,23 @@ public class DataCollectorService {
         try {
             log.debug("开始获取traceId: {}的链路详情", traceId);
             
-            // 先从所有数据中查找指定traceId的链路
-            // 使用较小的limit值，避免处理过多数据
-            List<TraceSpan> recentSpans = getRecentSpans(24, 100);
-            log.debug("获取到最近链路: {}条", recentSpans.size());
-            
-            List<TraceSpan> traceSpans = new ArrayList<>();
+            String url = collectorUrl + "/api/v1/ui/traces/" + traceId;
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
-            for (TraceSpan span : recentSpans) {
-                if (span != null && traceId.equals(span.getTraceId())) {
-                    traceSpans.add(span);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                List<TraceSpan> traceSpans = objectMapper.readValue(response.getBody(), new TypeReference<List<TraceSpan>>() {});
+                
+                if (!traceSpans.isEmpty()) {
+                    // 按开始时间排序
+                    traceSpans.sort(Comparator.comparing(TraceSpan::getStartTime));
+                    log.debug("找到traceId: {}的链路: {}条", traceId, traceSpans.size());
+                    return traceSpans;
                 }
+
+                log.debug("未找到traceId: {}的链路", traceId);
+                return Collections.emptyList();
             }
 
-            if (!traceSpans.isEmpty()) {
-                // 按开始时间排序
-                traceSpans.sort(Comparator.comparing(TraceSpan::getStartTime));
-                log.debug("找到traceId: {}的链路: {}条", traceId, traceSpans.size());
-                return traceSpans;
-            }
-
-            log.debug("未找到traceId: {}的链路", traceId);
             return Collections.emptyList();
 
         } catch (Exception e) {

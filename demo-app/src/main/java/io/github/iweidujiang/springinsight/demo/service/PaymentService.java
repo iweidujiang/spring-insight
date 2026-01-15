@@ -44,6 +44,7 @@ public class PaymentService {
             
             // 1. 获取订单详情
             log.info("1. 获取订单详情: orderId={}", orderId);
+            TraceContext.setRemoteService("order-service");
             Map<String, Object> order = orderService.getOrderDetail(orderId);
             log.info("获取订单详情成功: {}", order);
             
@@ -80,6 +81,7 @@ public class PaymentService {
             
             // 7. 更新订单状态
             log.info("7. 更新订单状态: {} -> PAID", orderId);
+            TraceContext.setRemoteService("order-service");
             orderService.updateOrderStatus(orderId, "PAID");
             
             // 8. 构造支付结果

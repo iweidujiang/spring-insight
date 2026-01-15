@@ -38,7 +38,7 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        log.info("[调试] HTTP拦截器触发: {} {}", request.getMethod(), request.getRequestURI());
+        log.info("[HTTP拦截器] 触发: {} {}", request.getMethod(), request.getRequestURI());
         long startTime = System.currentTimeMillis();
 
         // 构建操作名称：方法 + 路径
@@ -62,7 +62,7 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
         request.setAttribute(TRACE_START_TIME_ATTR, startTime);
         request.setAttribute(TRACE_SPAN_ATTR, span);
 
-        log.debug("[HTTP拦截器] 开始追踪请求: traceId={}, spanId={}, operation={}, uri={}",
+        log.info("[HTTP拦截器] 开始追踪请求: traceId={}, spanId={}, operation={}, uri={}",
                 span.getTraceId(), span.getSpanId(), operationName, request.getRequestURI());
 
         return true; // 继续处理请求

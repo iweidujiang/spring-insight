@@ -193,6 +193,16 @@ public class AsyncSpanReporter {
         int batchSize = batch.size();
 
         try {
+            // 为每个Span设置服务名称和实例
+            for (TraceSpan span : batch) {
+                if (span.getServiceName() == null) {
+                    span.setServiceName(serviceName);
+                }
+                if (span.getServiceInstance() == null) {
+                    span.setServiceInstance(serviceInstance);
+                }
+            }
+
             // 构建上报请求
             SpanBatchRequest request = new SpanBatchRequest();
             request.setServiceName(serviceName);

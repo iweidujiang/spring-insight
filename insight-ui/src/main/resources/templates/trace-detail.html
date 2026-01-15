@@ -255,7 +255,7 @@
             <h5 class="mb-0"><i class="fas fa-list-alt me-2 text-primary"></i>Span详情</h5>
         </div>
         <div class="card-body">
-            <div th:if="${traceSpans != null and not traceSpans.empty}">
+            <div th:if="${traceSpans != null and not #lists.isEmpty(traceSpans)}">
                 <div th:each="span : ${traceSpans}">
                     <div class="span-item" th:classappend="${span.statusCode == 'ERROR' ? 'error' : 'success'}">
                         <div class="span-header">
@@ -294,26 +294,14 @@
                                 <span th:text="${#dates.format(new java.util.Date(span.startTime), 'yyyy-MM-dd HH:mm:ss.SSS')}"></span>
                             </div>
                         </div>
-                        <div th:if="${span.attributes}" class="mt-2">
+                        <div th:if="${span.tags}" class="mt-2">
                             <details>
                                 <summary class="text-sm text-muted">
                                     <i class="fas fa-chevron-down me-1"></i>Attributes
                                 </summary>
-                                <pre class="mt-2 p-2 bg-light rounded text-sm" th:text="${#strings.replace(#jsonUtil.toJson(span.attributes), ',', ',\n')}"></pre>
-                            </details>
-                        </div>
-                        <div th:if="${span.events}" class="mt-2">
-                            <details>
-                                <summary class="text-sm text-muted">
-                                    <i class="fas fa-chevron-down me-1"></i>Events
-                                </summary>
-                                <div class="mt-2">
-                                    <div th:each="event : ${span.events}" class="p-2 bg-light rounded text-sm mb-1">
-                                        <strong th:text="${event.name}"></strong>: 
-                                        <span th:text="${#dates.format(new java.util.Date(event.timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')}"></span>
-                                        <span th:if="${event.attributes}" class="ms-2">
-                                            <code th:text="${#jsonUtil.toJson(event.attributes)}"></code>
-                                        </span>
+                                <div class="mt-2 p-2 bg-light rounded text-sm">
+                                    <div th:each="entry : ${span.tags}">
+                                        <strong th:text="${entry.key}"></strong>: <span th:text="${entry.value}"></span>
                                     </div>
                                 </div>
                             </details>
@@ -321,7 +309,7 @@
                     </div>
                 </div>
             </div>
-            <div th:else class="text-center py-4 text-muted">
+            <div th:unless="${traceSpans != null and not #lists.isEmpty(traceSpans)}" class="text-center py-4 text-muted">
                 <i class="fas fa-info-circle fa-3x mb-2"></i>
                 <p>没有找到Span数据</p>
             </div>
@@ -332,7 +320,7 @@
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
-<script>
+<script th:inline="javascript">
     // 初始化时间线图表
     function initTimelineChart() {
         const timelineChart = echarts.init(document.getElementById('trace-timeline'));

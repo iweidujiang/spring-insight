@@ -150,4 +150,18 @@ public class TraceContext {
         }
         return sb.toString();
     }
+
+    /**
+     * 设置当前 Span 的 remoteService 字段
+     */
+    public static void setRemoteService(String remoteService) {
+        Deque<TraceSpan> stack = SPAN_STACK.get();
+        if (!stack.isEmpty()) {
+            TraceSpan span = stack.peek();
+            span.setRemoteService(remoteService);
+            log.debug("[追踪上下文] 设置当前Span的remoteService: spanId={}, remoteService={}", span.getSpanId(), remoteService);
+        } else {
+            log.warn("[追踪上下文] 尝试设置remoteService，但当前上下文栈为空");
+        }
+    }
 }
