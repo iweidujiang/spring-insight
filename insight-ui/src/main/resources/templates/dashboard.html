@@ -100,7 +100,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/insight-ui/errors">
+                    <a class="nav-link" href="/insight-ui/error-analysis">
                         <i class="fas fa-exclamation-triangle me-1"></i>错误分析
                     </a>
                 </li>
@@ -324,29 +324,46 @@
         // 服务依赖拓扑图
         const topologyChart = echarts.init(document.getElementById('topology-chart'));
 
-        // 模拟数据
-        const services = ['user-service', 'order-service', 'product-service', 'payment-service', 'inventory-service'];
-        const nodes = services.map(service => ({
-            name: service,
-            symbolSize: 30 + Math.random() * 30,
-            category: 0
+        // 使用真实数据
+        const dependencies = /*[[${dependencies}]]*/ [];
+        const serviceStats = /*[[${serviceStats}]]*/ [];
+        
+        // 提取所有服务名称
+        const serviceNames = [...new Set(
+            dependencies.flatMap(dep => [dep.sourceService, dep.targetService])
+        )];
+        
+        // 准备节点数据
+        const nodes = serviceNames.map(service => {
+            // 查找该服务的统计信息
+            const stats = serviceStats.find(s => s.serviceName === service);
+            return {
+                name: service,
+                symbolSize: 30 + (stats ? Math.min(stats.totalSpans / 100, 30) : 0),
+                category: 0
+            };
+        });
+
+        // 准备边数据
+        const links = dependencies.map(dep => ({
+            source: dep.sourceService,
+            target: dep.targetService,
+            value: dep.callCount,
+            label: {
+                show: true,
+                formatter: dep.callCount
+            }
         }));
 
-        const links = [];
-        for (let i = 0; i < services.length; i++) {
-            for (let j = 0; j < services.length; j++) {
-                if (i !== j && Math.random() > 0.5) {
-                    links.push({
-                        source: services[i],
-                        target: services[j],
-                        value: Math.floor(Math.random() * 100) + 10
-                    });
-                }
-            }
-        }
-
         const topologyOption = {
-            tooltip: {},
+            tooltip: {
+                formatter: function(params) {
+                    if (params.dataType === 'edge') {
+                        return `${params.data.source} → ${params.data.target}<br>调用次数: ${params.data.value}`;
+                    }
+                    return params.name;
+                }
+            },
             animationDurationUpdate: 1500,
             animationEasingUpdate: 'quinticInOut',
             series: [{
@@ -380,6 +397,14 @@
 
         // 服务排名图
         const rankChart = echarts.init(document.getElementById('service-rank-chart'));
+        
+        // 按Span数量排序服务
+        const sortedServices = [...serviceStats]
+            .sort((a, b) => b.totalSpans - a.totalSpans)
+            .slice(0, 5);
+        
+        const serviceNamesForChart = sortedServices.map(s => s.serviceName);
+        const spanCounts = sortedServices.map(s => s.totalSpans);
 
         const rankOption = {
             tooltip: {
@@ -401,12 +426,15 @@
             },
             yAxis: {
                 type: 'category',
-                data: services.slice(0, 5)
+                data: serviceNamesForChart
             },
             series: [{
                 name: '请求数量',
                 type: 'bar',
-                data: [1200, 950, 850, 720, 600]
+                data: spanCounts,
+                itemStyle: {
+                    color: '#4e73df'
+                }
             }]
         };
 

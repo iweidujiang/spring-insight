@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spring Insight - 链路详情</title>
+
+    <!-- 应用CSS -->
+    <link href="/insight-ui/static/css/optimized.css" rel="stylesheet">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f8f9fc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-top: 70px;
+        }
+
+        .navbar {
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+
+        .card {
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+            margin-bottom: 20px;
+        }
+
+        .trace-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .span-item {
+            border-left: 4px solid #4e73df;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .span-item.error {
+            border-left-color: #e74a3b;
+        }
+
+        .span-item.success {
+            border-left-color: #1cc88a;
+        }
+
+        .span-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .span-service {
+            font-weight: bold;
+            color: #4e73df;
+        }
+
+        .span-operation {
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .span-duration {
+            font-size: 14px;
+        }
+
+        .span-meta {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .badge-success {
+            background-color: #1cc88a;
+        }
+
+        .badge-error {
+            background-color: #e74a3b;
+        }
+
+        .badge-info {
+            background-color: #36b9cc;
+        }
+
+        .badge-warning {
+            background-color: #f6c23e;
+        }
+
+        #trace-timeline {
+            height: 300px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/insight-ui">
+            <i class="fas fa-chart-network me-2"></i>Spring Insight
+        </a>
+
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui">
+                        <i class="fas fa-tachometer-alt me-1"></i>仪表盘
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/topology">
+                        <i class="fas fa-project-diagram me-1"></i>拓扑图
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="/insight-ui/traces">
+                        <i class="fas fa-stream me-1"></i>链路追踪
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/error-analysis">
+                        <i class="fas fa-exclamation-triangle me-1"></i>错误分析
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/insight-ui/about">
+                        <i class="fas fa-info-circle me-1"></i>关于
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- 主内容区域 -->
+<div class="container-fluid mt-4">
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!-- 页面标题 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-stream me-2 text-primary"></i>链路详情</h2>
+            <p class="text-muted mb-0">Trace ID: <code th:text="${traceId}"></code></p>
+        </div>
+        <div>
+            <a href="/insight-ui/traces" class="btn btn-primary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>返回列表
+            </a>
+        </div>
+    </div>
+
+    <!-- 链路统计 -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                总耗时
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                <span th:text="${totalDuration}">0</span> ms
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="fas fa-clock fa-2x text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Span数量
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                <span th:text="${spanCount}">0</span> 个
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="fas fa-list fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                根操作
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800" th:text="${rootOperation}">
+                                - 
+                            </div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="fas fa-code-branch fa-2x text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 链路时间线 -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-chart-line me-2 text-primary"></i>链路时间线</h5>
+        </div>
+        <div class="card-body">
+            <div id="trace-timeline"></div>
+        </div>
+    </div>
+
+    <!-- Span列表 -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0"><i class="fas fa-list-alt me-2 text-primary"></i>Span详情</h5>
+        </div>
+        <div class="card-body">
+            <div th:if="${traceSpans != null and not traceSpans.empty}">
+                <div th:each="span : ${traceSpans}">
+                    <div class="span-item" th:classappend="${span.statusCode == 'ERROR' ? 'error' : 'success'}">
+                        <div class="span-header">
+                            <div>
+                                <span class="span-service" th:text="${span.serviceName}"></span>
+                                <span class="span-operation" th:text="${span.operationName}"></span>
+                            </div>
+                            <div>
+                                <span class="span-duration" th:text="${span.durationMs} + ' ms'">0 ms</span>
+                                <span class="badge" th:classappend="${span.statusCode == 'ERROR' ? 'badge-error' : 'badge-success'}" th:text="${span.statusCode}">OK</span>
+                            </div>
+                        </div>
+                        <div class="span-meta">
+                            <div class="meta-item">
+                                <i class="fas fa-tag"></i>
+                                <span>Span ID: <code th:text="${span.spanId}"></code></span>
+                            </div>
+                            <div class="meta-item" th:if="${span.parentSpanId}">
+                                <i class="fas fa-link"></i>
+                                <span>Parent ID: <code th:text="${span.parentSpanId}"></code></span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-layer-group"></i>
+                                <span th:text="${span.spanKind}"></span>
+                            </div>
+                            <div class="meta-item" th:if="${span.component}">
+                                <i class="fas fa-cube"></i>
+                                <span th:text="${span.component}"></span>
+                            </div>
+                            <div class="meta-item" th:if="${span.remoteService}">
+                                <i class="fas fa-server"></i>
+                                <span th:text="${span.remoteService}"></span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-clock"></i>
+                                <span th:text="${#dates.format(new java.util.Date(span.startTime), 'yyyy-MM-dd HH:mm:ss.SSS')}"></span>
+                            </div>
+                        </div>
+                        <div th:if="${span.attributes}" class="mt-2">
+                            <details>
+                                <summary class="text-sm text-muted">
+                                    <i class="fas fa-chevron-down me-1"></i>Attributes
+                                </summary>
+                                <pre class="mt-2 p-2 bg-light rounded text-sm" th:text="${#strings.replace(#jsonUtil.toJson(span.attributes), ',', ',\n')}"></pre>
+                            </details>
+                        </div>
+                        <div th:if="${span.events}" class="mt-2">
+                            <details>
+                                <summary class="text-sm text-muted">
+                                    <i class="fas fa-chevron-down me-1"></i>Events
+                                </summary>
+                                <div class="mt-2">
+                                    <div th:each="event : ${span.events}" class="p-2 bg-light rounded text-sm mb-1">
+                                        <strong th:text="${event.name}"></strong>: 
+                                        <span th:text="${#dates.format(new java.util.Date(event.timestamp), 'yyyy-MM-dd HH:mm:ss.SSS')}"></span>
+                                        <span th:if="${event.attributes}" class="ms-2">
+                                            <code th:text="${#jsonUtil.toJson(event.attributes)}"></code>
+                                        </span>
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div th:else class="text-center py-4 text-muted">
+                <i class="fas fa-info-circle fa-3x mb-2"></i>
+                <p>没有找到Span数据</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // 初始化时间线图表
+    function initTimelineChart() {
+        const timelineChart = echarts.init(document.getElementById('trace-timeline'));
+        
+        // 获取Span数据
+        const spans = /*[[${traceSpans}]]*/ [];
+        
+        if (spans.length === 0) {
+            // 空数据处理
+            timelineChart.setOption({
+                title: {
+                    text: '没有数据',
+                    left: 'center',
+                    top: 'center',
+                    textStyle: {
+                        color: '#999'
+                    }
+                }
+            });
+            return;
+        }
+        
+        // 准备图表数据
+        const services = [...new Set(spans.map(span => span.serviceName))];
+        const categories = services.map((service, index) => ({
+            name: service,
+            index: index
+        }));
+        
+        const seriesData = spans.map(span => {
+            const categoryIndex = services.indexOf(span.serviceName);
+            return {
+                name: span.operationName,
+                value: [
+                    span.startTime,
+                    span.startTime + span.durationMs,
+                    categoryIndex,
+                    span.durationMs,
+                    span.statusCode
+                ],
+                itemStyle: {
+                    color: span.statusCode === 'ERROR' ? '#e74a3b' : '#1cc88a'
+                },
+                label: {
+                    show: false
+                },
+                emphasis: {
+                    label: {
+                        show: true,
+                        formatter: '{b}\n{@[3]}ms',
+                        position: 'top'
+                    }
+                }
+            };
+        });
+        
+        const option = {
+            tooltip: {
+                formatter: function(params) {
+                    const data = params.data;
+                    const duration = data.value[3];
+                    const status = data.value[4];
+                    return `
+                        <div style="padding: 5px;">
+                            <strong>${params.data.name}</strong><br>
+                            耗时: ${duration} ms<br>
+                            状态: ${status}
+                        </div>
+                    `;
+                }
+            },
+            grid: {
+                height: '60%',
+                left: '10%',
+                right: '10%',
+                bottom: '15%'
+            },
+            xAxis: {
+                type: 'time',
+                splitLine: {
+                    lineStyle: {
+                        type: 'dashed'
+                    }
+                }
+            },
+            yAxis: {
+                type: 'category',
+                data: services,
+                splitLine: {
+                    show: false
+                }
+            },
+            series: [{
+                type: 'custom',
+                renderItem: function(params, api) {
+                    const categoryIndex = api.value(2);
+                    const start = api.coord([api.value(0), categoryIndex]);
+                    const end = api.coord([api.value(1), categoryIndex]);
+                    const height = api.size([0, 1])[1] * 0.6;
+                    
+                    const rectShape = echarts.graphic.clipRectByRect({
+                        x: start[0],
+                        y: start[1] - height / 2,
+                        width: end[0] - start[0],
+                        height: height
+                    }, {
+                        x: params.coordSys.x,
+                        y: params.coordSys.y,
+                        width: params.coordSys.width,
+                        height: params.coordSys.height
+                    });
+                    
+                    return rectShape && {
+                        type: 'rect',
+                        shape: rectShape,
+                        style: api.style()
+                    };
+                },
+                label: {
+                    show: false
+                },
+                itemStyle: {
+                    opacity: 0.8
+                },
+                encode: {
+                    x: [0, 1],
+                    y: 2
+                },
+                data: seriesData
+            }]
+        };
+        
+        timelineChart.setOption(option);
+        
+        // 监听窗口大小变化
+        window.addEventListener('resize', function() {
+            timelineChart.resize();
+        });
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        initTimelineChart();
+    });
+</script>
+</body>
+</html>

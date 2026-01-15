@@ -88,7 +88,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/insight-ui/errors">
+                    <a class="nav-link" href="/insight-ui/error-analysis">
                         <i class="fas fa-exclamation-triangle me-1"></i>错误分析
                     </a>
                 </li>
@@ -117,46 +117,32 @@
         <div class="row g-3">
             <div class="col-md-3">
                 <label class="form-label">服务名称</label>
-                <select class="form-select" id="service-filter">
+                <select class="form-select" name="service" onchange="this.form.submit()">
                     <option value="">所有服务</option>
-                    <option value="user-service">用户服务</option>
-                    <option value="order-service">订单服务</option>
-                    <option value="product-service">产品服务</option>
+                    <option th:each="service : ${services}" th:value="${service}" th:text="${service}" th:selected="${selectedService == service}"></option>
                 </select>
             </div>
             <div class="col-md-3">
                 <label class="form-label">时间范围</label>
-                <select class="form-select" id="time-filter">
-                    <option value="1">近1小时</option>
-                    <option value="6">近6小时</option>
-                    <option value="24" selected>近24小时</option>
-                    <option value="168">近7天</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">状态</label>
-                <select class="form-select" id="status-filter">
-                    <option value="">所有状态</option>
-                    <option value="success">成功</option>
-                    <option value="error">失败</option>
+                <select class="form-select" name="hours" onchange="this.form.submit()">
+                    <option value="1" th:selected="${selectedHours == 1}">近1小时</option>
+                    <option value="6" th:selected="${selectedHours == 6}">近6小时</option>
+                    <option value="24" th:selected="${selectedHours == 24}">近24小时</option>
+                    <option value="168" th:selected="${selectedHours == 168}">近7天</option>
                 </select>
             </div>
             <div class="col-md-3">
                 <label class="form-label">每页显示</label>
-                <select class="form-select" id="limit-filter">
-                    <option value="10">10条</option>
-                    <option value="50" selected>50条</option>
-                    <option value="100">100条</option>
+                <select class="form-select" name="limit" onchange="this.form.submit()">
+                    <option value="10" th:selected="${selectedLimit == 10}">10条</option>
+                    <option value="50" th:selected="${selectedLimit == 50}">50条</option>
+                    <option value="100" th:selected="${selectedLimit == 100}">100条</option>
                 </select>
             </div>
-        </div>
-        <div class="row mt-3">
-            <div class="col-12">
-                <button class="btn btn-primary" onclick="loadTraces()">
+            <div class="col-md-3">
+                <label class="form-label">操作</label>
+                <button type="submit" class="btn btn-primary w-100">
                     <i class="fas fa-search me-1"></i>搜索
-                </button>
-                <button class="btn btn-outline-secondary ms-2" onclick="resetFilters()">
-                    <i class="fas fa-redo me-1"></i>重置
                 </button>
             </div>
         </div>
@@ -167,220 +153,53 @@
         <h5 class="mb-3">链路列表</h5>
         <div id="traces-list">
             <!-- 动态加载的内容 -->
-            <div class="text-center py-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">加载中...</span>
+            <div th:if="${#lists.isEmpty(traces)}" class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">暂无数据</h5>
+                <p class="text-muted">没有找到符合条件的链路记录</p>
+            </div>
+            
+            <div th:unless="${#lists.isEmpty(traces)}" th:each="trace : ${traces}" class="trace-item">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span th:classappend="${trace.statusCode == 'ERROR' ? 'badge-error' : 'badge-success'}" class="badge me-2">
+                            <span th:text="${trace.statusCode == 'ERROR' ? '失败' : '成功'}"></span>
+                        </span>
+                        <strong th:text="${trace.operationName}"></strong>
+                    </div>
+                    <small class="text-muted" th:text="${trace.timestamp}"></small>
                 </div>
-                <div class="mt-2 text-muted">正在加载链路数据...</div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-2">
+                            <small class="text-muted">服务名称:</small>
+                            <span class="ms-2" th:text="${trace.serviceName}"></span>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">Trace ID:</small>
+                            <span class="ms-2" th:text="${trace.traceId}"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-2">
+                            <small class="text-muted">持续时间:</small>
+                            <span class="ms-2" th:text="${trace.durationMs} + 'ms'"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-2">
+                    <a th:href="@{/trace(id=${trace.traceId})}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-eye me-1"></i>查看详情
+                    </a>
+                </div>
             </div>
         </div>
-
-        <!-- 分页 -->
-        <nav aria-label="分页导航" class="mt-4">
-            <ul class="pagination justify-content-center" id="pagination">
-                <!-- 动态生成分页 -->
-            </ul>
-        </nav>
     </div>
 </div>
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-    let currentPage = 1;
-    let totalPages = 1;
-
-    // 生成模拟链路数据
-    function generateMockTraces(count) {
-        const traces = [];
-        const services = ['user-service', 'order-service', 'product-service', 'payment-service'];
-        const methods = ['GET', 'POST', 'PUT', 'DELETE'];
-        const paths = ['/api/users', '/api/orders', '/api/products', '/api/payments'];
-        const statuses = ['success', 'error'];
-
-        for (let i = 0; i < count; i++) {
-            const service = services[Math.floor(Math.random() * services.length)];
-            const method = methods[Math.floor(Math.random() * methods.length)];
-            const path = paths[Math.floor(Math.random() * paths.length)];
-            const status = statuses[Math.floor(Math.random() * statuses.length)];
-            const duration = Math.floor(Math.random() * 500) + 50;
-            const time = new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000);
-
-            traces.push({
-                traceId: 'trace-' + Math.random().toString(36).substr(2, 8),
-                serviceName: service,
-                operation: method + ' ' + path,
-                status: status,
-                duration: duration,
-                timestamp: time.toLocaleString(),
-                spanCount: Math.floor(Math.random() * 5) + 1
-            });
-        }
-
-        return traces;
-    }
-
-    // 加载链路数据
-    function loadTraces() {
-        const serviceFilter = document.getElementById('service-filter').value;
-        const timeFilter = document.getElementById('time-filter').value;
-        const statusFilter = document.getElementById('status-filter').value;
-        const limit = parseInt(document.getElementById('limit-filter').value);
-
-        // 显示加载中
-        document.getElementById('traces-list').innerHTML = `
-                <div class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">加载中...</span>
-                    </div>
-                    <div class="mt-2 text-muted">正在加载数据...</div>
-                </div>
-            `;
-
-        // 模拟API调用延迟
-        setTimeout(() => {
-            const traces = generateMockTraces(limit);
-
-            // 应用过滤
-            let filteredTraces = traces;
-            if (serviceFilter) {
-                filteredTraces = filteredTraces.filter(t => t.serviceName === serviceFilter);
-            }
-            if (statusFilter) {
-                filteredTraces = filteredTraces.filter(t => t.status === statusFilter);
-            }
-
-            renderTracesList(filteredTraces);
-            updatePagination(filteredTraces.length, limit);
-        }, 500);
-    }
-
-    // 渲染链路列表
-    function renderTracesList(traces) {
-        const container = document.getElementById('traces-list');
-
-        if (traces.length === 0) {
-            container.innerHTML = `
-                    <div class="text-center py-5">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">暂无数据</h5>
-                        <p class="text-muted">没有找到符合条件的链路记录</p>
-                    </div>
-                `;
-            return;
-        }
-
-        let html = '';
-        traces.forEach(trace => {
-            const isError = trace.status === 'error';
-
-            html += `
-                    <div class="trace-item">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <span class="badge ${isError ? 'badge-error' : 'badge-success'} me-2">
-                                    ${isError ? '失败' : '成功'}
-                                </span>
-                                <strong>${trace.operation}</strong>
-                            </div>
-                            <small class="text-muted">${trace.timestamp}</small>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-2">
-                                    <small class="text-muted">服务名称:</small>
-                                    <span class="ms-2">${trace.serviceName}</span>
-                                </div>
-                                <div class="mb-2">
-                                    <small class="text-muted">Trace ID:</small>
-                                    <span class="ms-2">${trace.traceId}</span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-2">
-                                    <small class="text-muted">持续时间:</small>
-                                    <span class="ms-2">${trace.duration}ms</span>
-                                </div>
-                                <div class="mb-2">
-                                    <small class="text-muted">Span数量:</small>
-                                    <span class="ms-2">${trace.spanCount}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-2">
-                            <a href="#" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-eye me-1"></i>查看详情
-                            </a>
-                        </div>
-                    </div>
-                `;
-        });
-
-        container.innerHTML = html;
-    }
-
-    // 更新分页
-    function updatePagination(totalItems, itemsPerPage) {
-        totalPages = Math.ceil(totalItems / itemsPerPage);
-        const pagination = document.getElementById('pagination');
-
-        if (totalPages <= 1) {
-            pagination.innerHTML = '';
-            return;
-        }
-
-        let html = '';
-
-        // 上一页
-        html += `
-                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">上一页</a>
-                </li>
-            `;
-
-        // 页码
-        for (let i = 1; i <= totalPages; i++) {
-            if (i === currentPage) {
-                html += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
-            } else {
-                html += `<li class="page-item"><a class="page-link" href="#" onclick="changePage(${i})">${i}</a></li>`;
-            }
-        }
-
-        // 下一页
-        html += `
-                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                    <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">下一页</a>
-                </li>
-            `;
-
-        pagination.innerHTML = html;
-    }
-
-    // 切换页码
-    function changePage(page) {
-        if (page < 1 || page > totalPages) return;
-        currentPage = page;
-        loadTraces();
-    }
-
-    // 重置过滤条件
-    function resetFilters() {
-        document.getElementById('service-filter').value = '';
-        document.getElementById('time-filter').value = '24';
-        document.getElementById('status-filter').value = '';
-        document.getElementById('limit-filter').value = '50';
-        currentPage = 1;
-        loadTraces();
-    }
-
-    // 页面加载完成后初始化
-    document.addEventListener('DOMContentLoaded', function() {
-        loadTraces();
-    });
-</script>
 </body>
 </html>

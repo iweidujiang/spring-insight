@@ -50,10 +50,12 @@ public class MainController {
             // 获取各服务Span数量统计
             var serviceStats = dataCollectorService.getServiceStats();
             model.addAttribute("serviceStats", serviceStats);
+            model.addAttribute("spanCounts", serviceStats);
 
             // 获取高错误率服务
             var errorAnalysis = dataCollectorService.getErrorAnalysis(24);
             model.addAttribute("errorAnalysis", errorAnalysis);
+            model.addAttribute("errorServices", errorAnalysis);
 
             // 获取collector统计
             var collectorStats = dataCollectorService.getCollectorStats();
@@ -152,7 +154,7 @@ public class MainController {
         }
     }
 
-    @GetMapping("/errors")
+    @GetMapping("/error-analysis")
     public String errorAnalysis(
             @RequestParam(value = "hours", defaultValue = "24") int hours,
             Model model) {
@@ -161,12 +163,12 @@ public class MainController {
             var errorAnalysis = dataCollectorService.getErrorAnalysis(hours);
             model.addAttribute("errorAnalysis", errorAnalysis);
             model.addAttribute("hours", hours);
-            return "errors";
+            return "error-analysis";
 
         } catch (Exception e) {
             log.error("加载错误分析数据失败", e);
             model.addAttribute("error", "加载错误分析数据失败: " + e.getMessage());
-            return "errors";
+            return "error-analysis";
         }
     }
 

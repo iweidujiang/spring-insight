@@ -5,7 +5,7 @@ spring:
   # Spring Insight 配置（关键！）
   insight:
     enabled: true
-    service-name: demo-service-test
+    service-name: demo-service
     service-instance: localhost:8081
     collector:
       url: http://localhost:8080  # Collector地址
@@ -30,5 +30,6 @@ management:
 logging:
   level:
     # 用户可在此控制 Spring Insight Agent的日志细节
-    io.github.springinsight.agent: DEBUG # 设置为 DEBUG 可查看详细追踪流程，INFO 只显示关键信息
-    io.github.springinsight.agent.collector.AsyncSpanReporter: DEBUG # 配置这个，可以查看上报队列详情
+    io.github.iweidujiang.springinsight.agent: DEBUG # 设置为 DEBUG 可查看详细追踪流程，INFO 只显示关键信息
+    io.github.iweidujiang.springinsight.agent.collector.AsyncSpanReporter: DEBUG # 配置这个，可以查看上报队列详情
+    io.github.iweidujiang.springinsight.demo: DEBUG # 开启demo模块的调试日志
