@@ -163,7 +163,7 @@
                                 链路总数
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                    <span th:if="${spanCounts != null and not #lists.isEmpty(spanCounts)}"
+                                <span th:if="${spanCounts != null and not #lists.isEmpty(spanCounts)}"
                                           th:text="${spanCounts[0].span_count}">0</span>
                                 <span th:if="${spanCounts == null or #lists.isEmpty(spanCounts)}">0</span> 条
                             </div>
@@ -263,8 +263,8 @@
         </div>
     </div>
 
-    <!-- 错误服务列表 -->
-    <div class="row" th:if="${errorServices != null and not #lists.isEmpty(errorServices)}">
+    <!-- 错误服务表格 -->
+    <div class="row" th:if="${errorAnalysis != null and not #lists.isEmpty(errorAnalysis)}">
         <div class="col-12">
             <div class="chart-container">
                 <h5 class="mb-3"><i class="fas fa-exclamation-triangle me-2 text-danger"></i>异常服务告警</h5>
@@ -280,20 +280,21 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="service : ${errorServices}">
-                            <td th:text="${service.service_name}">service</td>
-                            <td th:text="${service.total_calls}">0</td>
-                            <td th:text="${service.error_calls}">0</td>
+                        <tr th:each="error : ${errorAnalysis}">
+                            <td th:text="${error.serviceName}">service</td>
+                            <td th:text="${error.totalCalls}">0</td>
+                            <td th:text="${error.errorCalls}">0</td>
                             <td>
-                                        <span class="badge" th:classappend="${service.error_rate > 10} ? 'bg-danger' : 'bg-warning'">
-                                            <span th:text="${service.error_rate}">0</span>%
-                                        </span>
+                                <span class="badge"
+                                      th:classappend="${error.errorRate > 10} ? 'bg-danger' : 'bg-warning'">
+                                    <span th:text="${#numbers.formatDecimal(error.errorRate, 1, 2)}">0</span>%
+                                </span>
                             </td>
                             <td>
-                                <span th:if="${service.error_rate > 10}" class="badge bg-danger">严重</span>
-                                <span th:if="${service.error_rate <= 10 and service.error_rate > 5}"
+                                <span th:if="${error.errorRate > 10}" class="badge bg-danger">严重</span>
+                                <span th:if="${error.errorRate <= 10 and error.errorRate > 5}"
                                       class="badge bg-warning">警告</span>
-                                <span th:if="${service.error_rate <= 5}" class="badge bg-info">注意</span>
+                                <span th:if="${error.errorRate <= 5}" class="badge bg-info">注意</span>
                             </td>
                         </tr>
                         </tbody>
@@ -324,58 +325,107 @@
 
     // 初始化图表
     function initCharts() {
-        console.log('开始初始化图表...');
-        
+        // 获取Thymeleaf传递的数据
+        const dependencies = JSON.parse(document.getElementById('dependencies-data').textContent || '[]');
+        const serviceStats = JSON.parse(document.getElementById('service-stats-data').textContent || '[]');
+
         // 服务依赖拓扑图
+        initTopologyChart(dependencies);
+
+        // 服务请求排名图
+        initServiceRankChart(serviceStats);
+    }
+
+    // 初始化拓扑图
+    function initTopologyChart(dependencies) {
         const topologyChart = echarts.init(document.getElementById('topology-chart'));
 
-        // 使用真实数据
-        const dependencies = /*[[${dependencies}]]*/ [];
-        const serviceStats = /*[[${serviceStats}]]*/ [];
-        
-        console.log('依赖关系数据:', dependencies);
-        console.log('服务统计数据:', serviceStats);
-        
-        // 提取所有服务名称
-        const serviceNames = [...new Set(
-            dependencies.flatMap(dep => [dep.sourceService, dep.targetService])
-        )];
-        
-        console.log('服务名称列表:', serviceNames);
-        
-        // 准备节点数据
-        const nodes = serviceNames.map(service => {
-            // 查找该服务的统计信息
-            const stats = serviceStats.find(s => s.serviceName === service);
-            return {
-                name: service,
-                symbolSize: 30 + (stats ? Math.min(stats.totalSpans / 100, 30) : 0),
-                category: 0
-            };
+        if (!dependencies || dependencies.length === 0) {
+            topologyChart.setOption({
+                title: {
+                    text: '暂无依赖数据',
+                    subtext: '请确保collector正在运行且demo-app正在产生数据',
+                    left: 'center',
+                    top: 'center',
+                    textStyle: {
+                        color: '#999',
+                        fontSize: 16
+                    }
+                }
+            });
+            return;
+        }
+
+        // 从依赖数据构建节点和边
+        const nodes = new Map();
+        const links = [];
+
+        dependencies.forEach(dep => {
+            const source = dep.sourceService;
+            const target = dep.targetService;
+            const callCount = dep.callCount || 1;
+            const avgDuration = dep.avgDuration || 0;
+
+            // 添加节点
+            if (!nodes.has(source)) {
+                nodes.set(source, {
+                    name: source,
+                    value: 0,
+                    symbolSize: 30,
+                    itemStyle: {
+                        color: getServiceColor(source)
+                    }
+                });
+            }
+
+            if (!nodes.has(target)) {
+                nodes.set(target, {
+                    name: target,
+                    value: 0,
+                    symbolSize: 30,
+                    itemStyle: {
+                        color: getServiceColor(target)
+                    }
+                });
+            }
+
+            // 更新节点值
+            nodes.get(source).value += callCount;
+            nodes.get(target).value += callCount;
+
+            // 添加边
+            links.push({
+                source: source,
+                target: target,
+                value: callCount,
+                lineStyle: {
+                    width: Math.min(5, Math.log(callCount + 1) * 2),
+                    curveness: 0.2
+                },
+                label: {
+                    show: true,
+                    formatter: `${callCount}次\n${avgDuration.toFixed(0)}ms`
+                }
+            });
         });
 
-        console.log('节点数据:', nodes);
+        // 根据调用量调整节点大小
+        const nodeValues = Array.from(nodes.values()).map(n => n.value);
+        const maxValue = Math.max(...nodeValues);
 
-        // 准备边数据
-        const links = dependencies.map(dep => ({
-            source: dep.sourceService,
-            target: dep.targetService,
-            value: dep.callCount,
-            label: {
-                show: true,
-                formatter: dep.callCount
-            }
-        }));
+        nodes.forEach(node => {
+            node.symbolSize = 20 + (node.value / maxValue) * 40;
+        });
 
-        console.log('边数据:', links);
-
-        const topologyOption = {
+        const option = {
             tooltip: {
                 formatter: function(params) {
-                    if (params.dataType === 'edge') {
-                        return `${params.data.source} → ${params.data.target}<br>调用次数: ${params.data.value}`;
+                    if (params.dataType === 'node') {
+                        return params.data.name + '<br/>调用次数: ' + params.data.value;
+                    } else {
+                        return params.data.source + ' → ' + params.data.target +
+                            '<br/>调用次数: ' + params.data.value;
                     }
-                    return params.name;
                 }
             },
             animationDurationUpdate: 1500,
@@ -383,12 +433,13 @@
             series: [{
                 type: 'graph',
                 layout: 'force',
-                data: nodes,
+                data: Array.from(nodes.values()),
                 links: links,
                 roam: true,
                 label: {
                     show: true,
-                    position: 'right'
+                    position: 'right',
+                    formatter: '{b}'
                 },
                 lineStyle: {
                     color: 'source',
@@ -407,30 +458,40 @@
             }]
         };
 
-        topologyChart.setOption(topologyOption);
+        topologyChart.setOption(option);
+    }
 
-        // 服务排名图
+    // 初始化服务排名图
+    function initServiceRankChart(serviceStats) {
         const rankChart = echarts.init(document.getElementById('service-rank-chart'));
-        
-        // 按Span数量排序服务
-        const sortedServices = [...serviceStats]
-            .sort((a, b) => b.totalSpans - a.totalSpans)
-            .slice(0, 5);
-        
-        console.log('排序后的服务:', sortedServices);
-        
-        const serviceNamesForChart = sortedServices.map(s => s.serviceName);
-        const spanCounts = sortedServices.map(s => s.totalSpans);
 
-        console.log('服务名称（图表）:', serviceNamesForChart);
-        console.log('Span数量:', spanCounts);
+        if (!serviceStats || serviceStats.length === 0) {
+            rankChart.setOption({
+                title: {
+                    text: '暂无服务数据',
+                    subtext: '请确保collector正在运行',
+                    left: 'center',
+                    top: 'center',
+                    textStyle: {
+                        color: '#999',
+                        fontSize: 16
+                    }
+                }
+            });
+            return;
+        }
 
-        const rankOption = {
+        // 准备数据
+        const services = serviceStats.slice(0, 10).map(s => s.serviceName);
+        const spanCounts = serviceStats.slice(0, 10).map(s => s.totalSpans);
+
+        const option = {
             tooltip: {
                 trigger: 'axis',
                 axisPointer: {
                     type: 'shadow'
-                }
+                },
+                formatter: '{b}: {c} 条'
             },
             grid: {
                 left: '3%',
@@ -441,31 +502,55 @@
             },
             xAxis: {
                 type: 'value',
+                name: '请求数量',
                 boundaryGap: [0, 0.01]
             },
             yAxis: {
                 type: 'category',
-                data: serviceNamesForChart
+                data: services,
+                axisLabel: {
+                    interval: 0,
+                    width: 80,
+                    overflow: 'break'
+                }
             },
             series: [{
                 name: '请求数量',
                 type: 'bar',
                 data: spanCounts,
                 itemStyle: {
-                    color: '#4e73df'
+                    color: function(params) {
+                        const colorList = [
+                            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e',
+                            '#e74a3b', '#6f42c1', '#fd7e14', '#20c9a6'
+                        ];
+                        return colorList[params.dataIndex % colorList.length];
+                    }
+                },
+                label: {
+                    show: true,
+                    position: 'right',
+                    formatter: '{c}'
                 }
             }]
         };
 
-        rankChart.setOption(rankOption);
+        rankChart.setOption(option);
+    }
 
-        // 监听窗口大小变化
-        window.addEventListener('resize', function() {
-            topologyChart.resize();
-            rankChart.resize();
-        });
-        
-        console.log('图表初始化完成');
+    // 获取服务颜色
+    function getServiceColor(serviceName) {
+        const colors = [
+            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e',
+            '#e74a3b', '#6f42c1', '#fd7e14', '#20c9a6'
+        ];
+
+        let hash = 0;
+        for (let i = 0; i < serviceName.length; i++) {
+            hash = serviceName.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        return colors[Math.abs(hash) % colors.length];
     }
 
     // 页面加载完成后初始化
@@ -475,7 +560,37 @@
 
         // 初始化图表
         setTimeout(initCharts, 100);
+
+        // 监听窗口大小变化
+        window.addEventListener('resize', function() {
+            const charts = echarts.getInstanceByDom(document.getElementById('topology-chart'));
+            if (charts) charts.resize();
+
+            const rankChart = echarts.getInstanceByDom(document.getElementById('service-rank-chart'));
+            if (rankChart) rankChart.resize();
+        });
     });
 </script>
 </body>
+<!-- 将数据传递给JavaScript -->
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    // 传递依赖数据
+    const dependenciesData = /*[[${dependencies}]]*/ [];
+    const serviceStatsData = /*[[${serviceStats}]]*/ [];
+
+    // 创建隐藏元素存储数据
+    const dependenciesEl = document.createElement('div');
+    dependenciesEl.id = 'dependencies-data';
+    dependenciesEl.style.display = 'none';
+    dependenciesEl.textContent = JSON.stringify(dependenciesData);
+    document.body.appendChild(dependenciesEl);
+
+    const serviceStatsEl = document.createElement('div');
+    serviceStatsEl.id = 'service-stats-data';
+    serviceStatsEl.style.display = 'none';
+    serviceStatsEl.textContent = JSON.stringify(serviceStatsData);
+    document.body.appendChild(serviceStatsEl);
+    /*]]>*/
+</script>
 </html>
