@@ -51,18 +51,17 @@ public class MainController {
             // 获取各服务Span数量统计
             var serviceStats = dataCollectorService.getServiceStats();
             model.addAttribute("serviceStats", serviceStats);
-            model.addAttribute("spanCounts", serviceStats);
 
             // 获取高错误率服务
             var errorAnalysis = dataCollectorService.getErrorAnalysis(24);
             model.addAttribute("errorAnalysis", errorAnalysis);
-            model.addAttribute("errorServices", errorAnalysis);
 
             // 获取collector统计
             var collectorStats = dataCollectorService.getCollectorStats();
             model.addAttribute("collectorStats", collectorStats);
 
-            log.info("仪表盘数据加载完成，服务数: {}", services.size());
+            log.info("仪表盘数据加载完成，服务数: {}, 依赖数: {}, 统计数: {}",
+                    services.size(), dependencies.size(), serviceStats.size());
             return "dashboard";
 
         } catch (Exception e) {

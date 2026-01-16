@@ -325,34 +325,62 @@
 
     // 初始化图表
     function initCharts() {
-        // 获取Thymeleaf传递的数据
-        const dependencies = JSON.parse(document.getElementById('dependencies-data').textContent || '[]');
-        const serviceStats = JSON.parse(document.getElementById('service-stats-data').textContent || '[]');
+        try {
+            // 安全获取Thymeleaf传递的数据
+            const dependenciesData = safeParseJson('dependencies-data');
+            const serviceStatsData = safeParseJson('service-stats-data');
 
-        // 服务依赖拓扑图
-        initTopologyChart(dependencies);
+            console.log('依赖数据:', dependenciesData);
+            console.log('服务统计:', serviceStatsData);
 
-        // 服务请求排名图
-        initServiceRankChart(serviceStats);
+            // 服务依赖拓扑图
+            initTopologyChart(dependenciesData);
+
+            // 服务请求排名图
+            initServiceRankChart(serviceStatsData);
+        } catch (error) {
+            console.error('初始化图表失败:', error);
+        }
+    }
+
+    // 安全解析JSON
+    function safeParseJson(elementId) {
+        try {
+            const element = document.getElementById(elementId);
+            if (!element || !element.textContent) {
+                return [];
+            }
+            const text = element.textContent.trim();
+            if (!text || text === '[]' || text === '{}') {
+                return [];
+            }
+            return JSON.parse(text);
+        } catch (error) {
+            console.error(`解析${elementId}失败:`, error);
+            return [];
+        }
     }
 
     // 初始化拓扑图
     function initTopologyChart(dependencies) {
         const topologyChart = echarts.init(document.getElementById('topology-chart'));
 
-        if (!dependencies || dependencies.length === 0) {
-            topologyChart.setOption({
-                title: {
-                    text: '暂无依赖数据',
-                    subtext: '请确保collector正在运行且demo-app正在产生数据',
-                    left: 'center',
-                    top: 'center',
-                    textStyle: {
-                        color: '#999',
-                        fontSize: 16
-                    }
-                }
-            });
+        // 检查数据
+        if (!Array.isArray(dependencies) || dependencies.length === 0) {
+            showNoDataChart(topologyChart, '服务依赖拓扑', '暂无服务依赖数据，请确保collector正在运行且demo-app正在产生数据');
+            return;
+        }
+
+        // 过滤有效数据
+        const validDeps = dependencies.filter(dep =>
+            dep &&
+            dep.sourceService &&
+            dep.targetService &&
+            dep.sourceService !== dep.targetService
+        );
+
+        if (validDeps.length === 0) {
+            showNoDataChart(topologyChart, '服务依赖拓扑', '暂无有效的服务依赖关系数据');
             return;
         }
 
@@ -360,7 +388,7 @@
         const nodes = new Map();
         const links = [];
 
-        dependencies.forEach(dep => {
+        validDeps.forEach(dep => {
             const source = dep.sourceService;
             const target = dep.targetService;
             const callCount = dep.callCount || 1;
@@ -390,8 +418,8 @@
             }
 
             // 更新节点值
-            nodes.get(source).value += callCount;
-            nodes.get(target).value += callCount;
+            if (nodes.get(source)) nodes.get(source).value += callCount;
+            if (nodes.get(target)) nodes.get(target).value += callCount;
 
             // 添加边
             links.push({
@@ -404,27 +432,39 @@
                 },
                 label: {
                     show: true,
-                    formatter: `${callCount}次\n${avgDuration.toFixed(0)}ms`
+                    formatter: function(params) {
+                        return `${callCount}次\n${avgDuration.toFixed(0)}ms`;
+                    }
                 }
             });
         });
 
         // 根据调用量调整节点大小
-        const nodeValues = Array.from(nodes.values()).map(n => n.value);
-        const maxValue = Math.max(...nodeValues);
+        const nodeValues = Array.from(nodes.values()).filter(n => n).map(n => n.value);
+        const maxValue = Math.max(...nodeValues, 1);
 
         nodes.forEach(node => {
-            node.symbolSize = 20 + (node.value / maxValue) * 40;
+            if (node) {
+                node.symbolSize = 20 + (node.value / maxValue) * 40;
+            }
         });
 
         const option = {
+            title: {
+                text: '服务依赖拓扑',
+                left: 'center',
+                textStyle: {
+                    fontSize: 16,
+                    color: '#333'
+                }
+            },
             tooltip: {
+                trigger: 'item',
                 formatter: function(params) {
                     if (params.dataType === 'node') {
-                        return params.data.name + '<br/>调用次数: ' + params.data.value;
+                        return `<div style="font-weight:bold">${params.data.name}</div>调用次数: ${params.data.value}`;
                     } else {
-                        return params.data.source + ' → ' + params.data.target +
-                            '<br/>调用次数: ' + params.data.value;
+                        return `<div style="font-weight:bold">${params.data.source} → ${params.data.target}</div>调用次数: ${params.data.value}`;
                     }
                 }
             },
@@ -433,7 +473,7 @@
             series: [{
                 type: 'graph',
                 layout: 'force',
-                data: Array.from(nodes.values()),
+                data: Array.from(nodes.values()).filter(n => n),
                 links: links,
                 roam: true,
                 label: {
@@ -453,7 +493,8 @@
                 },
                 force: {
                     repulsion: 1000,
-                    edgeLength: 150
+                    edgeLength: 150,
+                    gravity: 0.1
                 }
             }]
         };
@@ -465,53 +506,73 @@
     function initServiceRankChart(serviceStats) {
         const rankChart = echarts.init(document.getElementById('service-rank-chart'));
 
-        if (!serviceStats || serviceStats.length === 0) {
-            rankChart.setOption({
-                title: {
-                    text: '暂无服务数据',
-                    subtext: '请确保collector正在运行',
-                    left: 'center',
-                    top: 'center',
-                    textStyle: {
-                        color: '#999',
-                        fontSize: 16
-                    }
-                }
-            });
+        // 检查数据
+        if (!Array.isArray(serviceStats) || serviceStats.length === 0) {
+            showNoDataChart(rankChart, '服务请求排名', '暂无服务统计数据显示');
             return;
         }
 
-        // 准备数据
-        const services = serviceStats.slice(0, 10).map(s => s.serviceName);
-        const spanCounts = serviceStats.slice(0, 10).map(s => s.totalSpans);
+        // 过滤有效数据
+        const validStats = serviceStats.filter(stat =>
+            stat &&
+            stat.serviceName &&
+            typeof stat.totalSpans === 'number'
+        );
+
+        if (validStats.length === 0) {
+            showNoDataChart(rankChart, '服务请求排名', '暂无有效的服务统计数据');
+            return;
+        }
+
+        // 准备数据（最多显示10个）
+        const displayStats = validStats.slice(0, 10);
+        const services = displayStats.map(s => s.serviceName);
+        const spanCounts = displayStats.map(s => s.totalSpans);
 
         const option = {
+            title: {
+                text: '服务请求排名',
+                left: 'center',
+                textStyle: {
+                    fontSize: 16,
+                    color: '#333'
+                }
+            },
             tooltip: {
                 trigger: 'axis',
                 axisPointer: {
                     type: 'shadow'
                 },
-                formatter: '{b}: {c} 条'
+                formatter: function(params) {
+                    const data = params[0];
+                    return `${data.name}<br/>请求数量: ${data.value} 条`;
+                }
             },
             grid: {
                 left: '3%',
                 right: '4%',
                 bottom: '3%',
-                top: '5%',
+                top: '15%',
                 containLabel: true
             },
             xAxis: {
                 type: 'value',
                 name: '请求数量',
+                nameTextStyle: {
+                    fontSize: 12
+                },
+                axisLabel: {
+                    fontSize: 11
+                },
                 boundaryGap: [0, 0.01]
             },
             yAxis: {
                 type: 'category',
                 data: services,
                 axisLabel: {
-                    interval: 0,
+                    fontSize: 11,
                     width: 80,
-                    overflow: 'break'
+                    overflow: 'truncate'
                 }
             },
             series: [{
@@ -530,7 +591,8 @@
                 label: {
                     show: true,
                     position: 'right',
-                    formatter: '{c}'
+                    formatter: '{c}',
+                    fontSize: 11
                 }
             }]
         };
@@ -538,8 +600,43 @@
         rankChart.setOption(option);
     }
 
+    // 显示无数据图表
+    function showNoDataChart(chart, title, message) {
+        const option = {
+            title: {
+                text: title,
+                subtext: message,
+                left: 'center',
+                top: 'center',
+                textStyle: {
+                    color: '#999',
+                    fontSize: 16,
+                    fontWeight: 'normal'
+                },
+                subtextStyle: {
+                    color: '#aaa',
+                    fontSize: 12
+                }
+            },
+            graphic: {
+                type: 'text',
+                left: 'center',
+                top: '45%',
+                style: {
+                    text: '📊',
+                    fontSize: 40,
+                    fill: '#ddd'
+                }
+            }
+        };
+
+        chart.setOption(option);
+    }
+
     // 获取服务颜色
     function getServiceColor(serviceName) {
+        if (!serviceName) return '#4e73df';
+
         const colors = [
             '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e',
             '#e74a3b', '#6f42c1', '#fd7e14', '#20c9a6'
@@ -558,13 +655,13 @@
         updateCurrentTime();
         setInterval(updateCurrentTime, 1000);
 
-        // 初始化图表
-        setTimeout(initCharts, 100);
+        // 延迟初始化图表，确保DOM和数据都已加载
+        setTimeout(initCharts, 500);
 
         // 监听窗口大小变化
         window.addEventListener('resize', function() {
-            const charts = echarts.getInstanceByDom(document.getElementById('topology-chart'));
-            if (charts) charts.resize();
+            const topologyChart = echarts.getInstanceByDom(document.getElementById('topology-chart'));
+            if (topologyChart) topologyChart.resize();
 
             const rankChart = echarts.getInstanceByDom(document.getElementById('service-rank-chart'));
             if (rankChart) rankChart.resize();

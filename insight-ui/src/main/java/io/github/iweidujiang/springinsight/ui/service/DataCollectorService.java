@@ -211,31 +211,90 @@ public class DataCollectorService {
 
         try {
             String url = collectorUrl + "/api/v1/ui/dependencies?hours=" + hours;
+            log.debug("请求依赖关系API: {}", url);
+
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                List<Map<String, Object>> rawData = objectMapper.readValue(response.getBody(),
-                        new TypeReference<>() {
-                        });
+                // 尝试解析JSON
+                String body = response.getBody().trim();
+                if (body.isEmpty()) {
+                    log.warn("依赖关系API返回空响应");
+                    return Collections.emptyList();
+                }
+
+                List<Map<String, Object>> rawData;
+                try {
+                    rawData = objectMapper.readValue(body, new TypeReference<List<Map<String, Object>>>() {});
+                } catch (Exception e) {
+                    log.error("解析依赖关系JSON失败: {}", body.substring(0, Math.min(100, body.length())), e);
+                    return Collections.emptyList();
+                }
+
+                log.debug("获取到依赖关系原始数据: {}条", rawData == null ? 0 : rawData.size());
 
                 List<ServiceDependency> dependencies = new ArrayList<>();
-                for (Map<String, Object> raw : rawData) {
-                    ServiceDependency dep = new ServiceDependency();
-                    dep.setSourceService((String) raw.get("source_service"));
-                    dep.setTargetService((String) raw.get("target_service"));
-                    dep.setCallCount(((Number) raw.get("call_count")).intValue());
+                if (rawData != null) {
+                    for (Map<String, Object> raw : rawData) {
+                        try {
+                            ServiceDependency dep = new ServiceDependency();
 
-                    Object avgDuration = raw.get("avg_duration");
-                    if (avgDuration != null) {
-                        dep.setAvgDuration(((Number) avgDuration).longValue());
+                            // 安全获取字段
+                            String sourceService = getStringValue(raw.get("source_service"));
+                            String targetService = getStringValue(raw.get("target_service"));
+
+                            if (sourceService == null || targetService == null) {
+                                log.debug("跳过无效依赖数据: source={}, target={}", sourceService, targetService);
+                                continue;
+                            }
+
+                            dep.setSourceService(sourceService);
+                            dep.setTargetService(targetService);
+
+                            // 处理call_count，可能是Integer、Long或null
+                            Object callCountObj = raw.get("call_count");
+                            if (callCountObj != null) {
+                                if (callCountObj instanceof Number) {
+                                    dep.setCallCount(((Number) callCountObj).intValue());
+                                } else if (callCountObj instanceof String) {
+                                    try {
+                                        dep.setCallCount(Integer.parseInt((String) callCountObj));
+                                    } catch (NumberFormatException e) {
+                                        dep.setCallCount(1);
+                                    }
+                                } else {
+                                    dep.setCallCount(1);
+                                }
+                            } else {
+                                dep.setCallCount(1);
+                            }
+
+                            // 处理avg_duration
+                            Object avgDurationObj = raw.get("avg_duration");
+                            if (avgDurationObj != null) {
+                                if (avgDurationObj instanceof Number) {
+                                    dep.setAvgDuration(((Number) avgDurationObj).longValue());
+                                } else if (avgDurationObj instanceof String) {
+                                    try {
+                                        dep.setAvgDuration(Long.parseLong((String) avgDurationObj));
+                                    } catch (NumberFormatException e) {
+                                        dep.setAvgDuration(0L);
+                                    }
+                                }
+                            }
+
+                            dependencies.add(dep);
+                        } catch (Exception e) {
+                            log.warn("解析依赖关系数据失败: {}", raw, e);
+                        }
                     }
-
-                    dependencies.add(dep);
                 }
 
                 putToCache(cacheKey, dependencies);
-                log.debug("获取服务依赖关系成功: {}条", dependencies.size());
+                log.info("获取服务依赖关系成功: {}条", dependencies.size());
                 return dependencies;
+            } else {
+                log.warn("获取依赖关系API返回状态: {}", response.getStatusCode());
             }
         } catch (Exception e) {
             log.error("获取服务依赖关系失败: {}", e.getMessage());
@@ -260,22 +319,57 @@ public class DataCollectorService {
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                List<Map<String, Object>> rawData = objectMapper.readValue(response.getBody(),
-                        new TypeReference<List<Map<String, Object>>>() {});
+                String body = response.getBody().trim();
+                if (body.isEmpty()) {
+                    log.warn("服务统计API返回空响应");
+                    return Collections.emptyList();
+                }
+
+                List<Map<String, Object>> rawData;
+                try {
+                    rawData = objectMapper.readValue(body, new TypeReference<List<Map<String, Object>>>() {});
+                } catch (Exception e) {
+                    log.error("解析服务统计JSON失败: {}", body.substring(0, Math.min(100, body.length())), e);
+                    return Collections.emptyList();
+                }
 
                 List<ServiceStats> statsList = new ArrayList<>();
-                for (Map<String, Object> raw : rawData) {
-                    ServiceStats stats = new ServiceStats();
-                    stats.setServiceName((String) raw.get("service_name"));
-                    stats.setTotalSpans(((Number) raw.get("span_count")).intValue());
-                    statsList.add(stats);
+                if (rawData != null) {
+                    for (Map<String, Object> raw : rawData) {
+                        try {
+                            ServiceStats stats = new ServiceStats();
+
+                            String serviceName = getStringValue(raw.get("service_name"));
+                            if (serviceName == null) {
+                                continue;
+                            }
+                            stats.setServiceName(serviceName);
+
+                            Object spanCountObj = raw.get("span_count");
+                            if (spanCountObj instanceof Number) {
+                                stats.setTotalSpans(((Number) spanCountObj).intValue());
+                            } else if (spanCountObj instanceof String) {
+                                try {
+                                    stats.setTotalSpans(Integer.parseInt((String) spanCountObj));
+                                } catch (NumberFormatException e) {
+                                    stats.setTotalSpans(0);
+                                }
+                            } else {
+                                stats.setTotalSpans(0);
+                            }
+
+                            statsList.add(stats);
+                        } catch (Exception e) {
+                            log.warn("解析服务统计数据失败: {}", raw, e);
+                        }
+                    }
                 }
 
                 // 按总Span数排序
                 statsList.sort((a, b) -> Integer.compare(b.getTotalSpans(), a.getTotalSpans()));
 
                 putToCache(cacheKey, statsList);
-                log.debug("获取服务统计成功: {}个服务", statsList.size());
+                log.info("获取服务统计成功: {}个服务", statsList.size());
                 return statsList;
             }
         } catch (Exception e) {
@@ -301,25 +395,84 @@ public class DataCollectorService {
             ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                List<Map<String, Object>> rawData = objectMapper.readValue(response.getBody(),
-                        new TypeReference<>() {
-                        });
+                String body = response.getBody().trim();
+                if (body.isEmpty()) {
+                    log.warn("错误分析API返回空响应");
+                    return Collections.emptyList();
+                }
+
+                List<Map<String, Object>> rawData;
+                try {
+                    rawData = objectMapper.readValue(body, new TypeReference<List<Map<String, Object>>>() {});
+                } catch (Exception e) {
+                    log.error("解析错误分析JSON失败: {}", body.substring(0, Math.min(100, body.length())), e);
+                    return Collections.emptyList();
+                }
 
                 List<ErrorAnalysis> errorList = new ArrayList<>();
-                for (Map<String, Object> raw : rawData) {
-                    ErrorAnalysis error = new ErrorAnalysis();
-                    error.setServiceName((String) raw.get("service_name"));
-                    error.setTotalCalls(((Number) raw.get("total_calls")).intValue());
-                    error.setErrorCalls(((Number) raw.get("error_calls")).intValue());
+                if (rawData != null) {
+                    for (Map<String, Object> raw : rawData) {
+                        try {
+                            ErrorAnalysis error = new ErrorAnalysis();
 
-                    Object errorRate = raw.get("error_rate");
-                    if (errorRate != null) {
-                        error.setErrorRate(((Number) errorRate).doubleValue());
-                    } else if (error.getTotalCalls() > 0) {
-                        error.setErrorRate((double) error.getErrorCalls() / error.getTotalCalls() * 100);
+                            // 安全获取字段
+                            String serviceName = getStringValue(raw.get("service_name"));
+                            if (serviceName == null) {
+                                continue;
+                            }
+                            error.setServiceName(serviceName);
+
+                            // 处理total_calls
+                            Object totalCallsObj = raw.get("total_calls");
+                            if (totalCallsObj instanceof Number) {
+                                error.setTotalCalls(((Number) totalCallsObj).intValue());
+                            } else if (totalCallsObj instanceof String) {
+                                try {
+                                    error.setTotalCalls(Integer.parseInt((String) totalCallsObj));
+                                } catch (NumberFormatException e) {
+                                    error.setTotalCalls(0);
+                                }
+                            } else {
+                                error.setTotalCalls(0);
+                            }
+
+                            // 处理error_calls
+                            Object errorCallsObj = raw.get("error_calls");
+                            if (errorCallsObj instanceof Number) {
+                                error.setErrorCalls(((Number) errorCallsObj).intValue());
+                            } else if (errorCallsObj instanceof String) {
+                                try {
+                                    error.setErrorCalls(Integer.parseInt((String) errorCallsObj));
+                                } catch (NumberFormatException e) {
+                                    error.setErrorCalls(0);
+                                }
+                            } else {
+                                error.setErrorCalls(0);
+                            }
+
+                            // 处理error_rate
+                            Object errorRateObj = raw.get("error_rate");
+                            if (errorRateObj != null) {
+                                if (errorRateObj instanceof Number) {
+                                    error.setErrorRate(((Number) errorRateObj).doubleValue());
+                                } else if (errorRateObj instanceof String) {
+                                    try {
+                                        error.setErrorRate(Double.parseDouble((String) errorRateObj));
+                                    } catch (NumberFormatException e) {
+                                        error.setErrorRate(0.0);
+                                    }
+                                }
+                            } else if (error.getTotalCalls() > 0) {
+                                error.setErrorRate((double) error.getErrorCalls() / error.getTotalCalls() * 100);
+                            } else {
+                                error.setErrorRate(0.0);
+                            }
+
+                            errorList.add(error);
+                        } catch (Exception e) {
+                            log.warn("解析错误分析数据失败: {}", raw, e);
+                        }
                     }
-
-                    errorList.add(error);
                 }
 
                 // 按错误率排序
@@ -405,6 +558,17 @@ public class DataCollectorService {
     }
 
     // ========== 辅助方法 ==========
+
+    private String getStringValue(Object obj) {
+        if (obj == null) {
+            return null;
+        }
+        if (obj instanceof String) {
+            String str = (String) obj;
+            return str.trim().isEmpty() ? null : str;
+        }
+        return obj.toString();
+    }
 
     @SuppressWarnings("unchecked")
     private <T> T getFromCache(String key, Class<T> type) {
