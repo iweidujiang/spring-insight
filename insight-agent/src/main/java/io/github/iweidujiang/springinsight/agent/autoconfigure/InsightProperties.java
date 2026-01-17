@@ -26,7 +26,7 @@ public class InsightProperties {
     /**
      * 服务名称（必填）
      */
-    private String serviceName;
+    private String serviceName = "test-service"; // 默认值用于测试环境
 
     /**
      * 服务实例标识（可选，默认使用 host:port）

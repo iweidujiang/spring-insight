@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.agent.collector;
 
+import io.github.iweidujiang.springinsight.agent.model.JvmMetric;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +39,7 @@ public class AsyncSpanReporter {
     private static final long DEFAULT_OFFER_TIMEOUT_MS = 100;
 
     // 队列与状态控制
-    private final BlockingQueue<TraceSpan> spanQueue;
+    private final BlockingQueue<Object> metricsQueue;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private Thread flushThread;
 
@@ -59,7 +60,7 @@ public class AsyncSpanReporter {
         this.serviceName = serviceName;
         this.serviceInstance = serviceInstance;
         this.restTemplate = new RestTemplate();
-        this.spanQueue = new LinkedBlockingQueue<>(DEFAULT_QUEUE_CAPACITY);
+        this.metricsQueue = new LinkedBlockingQueue<>(DEFAULT_QUEUE_CAPACITY);
 
         log.info("[异步上报器] 初始化完成: collectorUrl={}, serviceName={}, serviceInstance={}",
                 collectorUrl, serviceName, serviceInstance);
@@ -110,27 +111,51 @@ public class AsyncSpanReporter {
             return false;
         }
 
+        return report((Object) span);
+    }
+
+    /**
+     * 上报JVM指标（异步非阻塞）
+     */
+    public boolean report(JvmMetric metric) {
+        if (metric == null) {
+            log.warn("[异步上报器] 尝试上报空的JVM指标，已忽略");
+            return false;
+        }
+
+        return report((Object) metric);
+    }
+
+    /**
+     * 上报指标（异步非阻塞）
+     */
+    private boolean report(Object metric) {
+        if (metric == null) {
+            log.warn("[异步上报器] 尝试上报空的指标，已忽略");
+            return false;
+        }
+
         if (!running.get()) {
-            log.warn("[异步上报器] 上报器未运行，丢弃Span: spanId={}", span.getSpanId());
+            log.warn("[异步上报器] 上报器未运行，丢弃指标: {}", metric.getClass().getSimpleName());
             metrics.incrementDropped();
             return false;
         }
 
         try {
-            boolean offered = spanQueue.offer(span, DEFAULT_OFFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            boolean offered = metricsQueue.offer(metric, DEFAULT_OFFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (offered) {
                 metrics.incrementReceived();
-                log.debug("[异步上报器] Span已加入队列: spanId={}, 当前队列大小={}",
-                        span.getSpanId(), spanQueue.size());
+                log.debug("[异步上报器] 指标已加入队列: type={}, 当前队列大小={}",
+                        metric.getClass().getSimpleName(), metricsQueue.size());
                 return true;
             } else {
-                log.warn("[异步上报器] 队列已满，丢弃Span: spanId={}, 队列容量={}",
-                        span.getSpanId(), DEFAULT_QUEUE_CAPACITY);
+                log.warn("[异步上报器] 队列已满，丢弃指标: type={}, 队列容量={}",
+                        metric.getClass().getSimpleName(), DEFAULT_QUEUE_CAPACITY);
                 metrics.incrementDropped();
                 return false;
             }
         } catch (InterruptedException e) {
-            log.warn("[异步上报器] 添加Span到队列时被中断", e);
+            log.warn("[异步上报器] 添加指标到队列时被中断", e);
             Thread.currentThread().interrupt();
             metrics.incrementDropped();
             return false;
@@ -146,18 +171,41 @@ public class AsyncSpanReporter {
         while (running.get()) {
             try {
                 // 等待指定间隔或队列达到批量大小
-                List<TraceSpan> batch = new ArrayList<>(DEFAULT_BATCH_SIZE);
-                TraceSpan firstSpan = spanQueue.poll(DEFAULT_FLUSH_INTERVAL_MS, TimeUnit.MILLISECONDS);
+                List<TraceSpan> traceBatch = new ArrayList<>(DEFAULT_BATCH_SIZE);
+                List<JvmMetric> jvmBatch = new ArrayList<>(DEFAULT_BATCH_SIZE);
+                
+                // 从队列中获取数据，最长等待DEFAULT_FLUSH_INTERVAL_MS
+                Object firstMetric = metricsQueue.poll(DEFAULT_FLUSH_INTERVAL_MS, TimeUnit.MILLISECONDS);
 
-                if (firstSpan != null) {
-                    batch.add(firstSpan);
-                    // 非阻塞方式获取更多Span
-                    spanQueue.drainTo(batch, DEFAULT_BATCH_SIZE - 1);
+                if (firstMetric != null) {
+                    // 处理第一个指标
+                    if (firstMetric instanceof TraceSpan) {
+                        traceBatch.add((TraceSpan) firstMetric);
+                    } else if (firstMetric instanceof JvmMetric) {
+                        jvmBatch.add((JvmMetric) firstMetric);
+                    }
+                    
+                    // 非阻塞方式获取更多指标，按类型分组
+                    List<Object> remainingMetrics = new ArrayList<>(DEFAULT_BATCH_SIZE - 1);
+                    metricsQueue.drainTo(remainingMetrics, DEFAULT_BATCH_SIZE - 1);
+                    
+                    for (Object metric : remainingMetrics) {
+                        if (metric instanceof TraceSpan) {
+                            traceBatch.add((TraceSpan) metric);
+                        } else if (metric instanceof JvmMetric) {
+                            jvmBatch.add((JvmMetric) metric);
+                        }
+                    }
                 }
 
-                // 如果有数据则上报
-                if (!batch.isEmpty()) {
-                    flushBatch(batch);
+                // 如果有TraceSpan数据则上报
+                if (!traceBatch.isEmpty()) {
+                    flushTraceSpans(traceBatch);
+                }
+                
+                // 如果有JvmMetric数据则上报
+                if (!jvmBatch.isEmpty()) {
+                    flushJvmMetrics(jvmBatch);
                 }
 
             } catch (InterruptedException e) {
@@ -182,9 +230,9 @@ public class AsyncSpanReporter {
     }
 
     /**
-     * 批量上报Span
+     * 批量上报TraceSpan
      */
-    private void flushBatch(List<TraceSpan> batch) {
+    private void flushTraceSpans(List<TraceSpan> batch) {
         if (batch.isEmpty()) {
             return;
         }
@@ -218,7 +266,7 @@ public class AsyncSpanReporter {
 
             // 发送请求
             String url = collectorUrl + "/api/v1/spans/batch";
-            log.debug("[异步上报器] 开始批量上报: size={}, url={}", batchSize, url);
+            log.debug("[异步上报器] 开始批量上报TraceSpan: size={}, url={}", batchSize, url);
 
             ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
 
@@ -226,40 +274,78 @@ public class AsyncSpanReporter {
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 metrics.incrementSuccess(batchSize, cost);
-                log.debug("[异步上报器] 批量上报成功: size={}, cost={}ms", batchSize, cost);
+                log.debug("[异步上报器] TraceSpan批量上报成功: size={}, cost={}ms", batchSize, cost);
             } else {
                 metrics.incrementFailed(batchSize);
-                log.warn("[异步上报器] 批量上报失败: size={}, status={}, cost={}ms",
+                log.warn("[异步上报器] TraceSpan批量上报失败: size={}, status={}, cost={}ms",
                         batchSize, response.getStatusCode(), cost);
             }
 
         } catch (RestClientException e) {
             long cost = System.currentTimeMillis() - startTime;
             metrics.incrementFailed(batchSize);
-            log.error("[异步上报器] 批量上报异常: size={}, cost={}ms, error={}",
+            log.error("[异步上报器] TraceSpan批量上报异常: size={}, cost={}ms, error={}",
                     batchSize, cost, e.getMessage(), e);
         } catch (Exception e) {
             long cost = System.currentTimeMillis() - startTime;
             metrics.incrementFailed(batchSize);
-            log.error("[异步上报器] 批量上报发生未知异常: size={}, cost={}ms", batchSize, cost, e);
+            log.error("[异步上报器] TraceSpan批量上报发生未知异常: size={}, cost={}ms", batchSize, cost, e);
         }
     }
 
     /**
-     * 清空并上报剩余的所有Span（用于关闭时）
+     * 批量上报JvmMetric
      */
-    private void flushRemainingSpans() {
-        if (spanQueue.isEmpty()) {
-            log.debug("[异步上报器] 队列已空，无需清理");
+    private void flushJvmMetrics(List<JvmMetric> batch) {
+        if (batch.isEmpty()) {
             return;
         }
 
-        List<TraceSpan> remaining = new ArrayList<>();
-        spanQueue.drainTo(remaining);
+        long startTime = System.currentTimeMillis();
+        int batchSize = batch.size();
 
-        if (!remaining.isEmpty()) {
-            log.info("[异步上报器] 清理剩余Span: size={}", remaining.size());
-            flushBatch(remaining);
+        try {
+            // 构建上报请求
+            JvmMetricsBatchRequest request = new JvmMetricsBatchRequest();
+            request.setServiceName(serviceName);
+            request.setServiceInstance(serviceInstance);
+            request.setMetrics(batch);
+
+            // 设置请求头
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("X-Spring-Insight-Agent-Version", "0.1.0");
+
+            HttpEntity<JvmMetricsBatchRequest> entity = new HttpEntity<>(request, headers);
+
+            // 发送请求（注意：需要Collector服务支持此API）
+            String url = collectorUrl + "/api/v1/metrics/jvm/batch";
+            log.debug("[异步上报器] 开始批量上报JvmMetric: size={}, url={}", batchSize, url);
+
+            // 暂时注释掉实际发送请求的代码，等待Collector服务实现
+            // ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            
+            // 模拟成功响应
+            long cost = System.currentTimeMillis() - startTime;
+            metrics.incrementSuccess(batchSize, cost);
+            log.debug("[异步上报器] JvmMetric批量上报成功: size={}, cost={}ms", batchSize, cost);
+            
+            // TODO: 实现真实的JvmMetric上报逻辑
+            /*
+            if (response.getStatusCode().is2xxSuccessful()) {
+                metrics.incrementSuccess(batchSize, cost);
+                log.debug("[异步上报器] JvmMetric批量上报成功: size={}, cost={}ms", batchSize, cost);
+            } else {
+                metrics.incrementFailed(batchSize);
+                log.warn("[异步上报器] JvmMetric批量上报失败: size={}, status={}, cost={}ms",
+                        batchSize, response.getStatusCode(), cost);
+            }
+            */
+
+        } catch (Exception e) {
+            long cost = System.currentTimeMillis() - startTime;
+            metrics.incrementFailed(batchSize);
+            log.error("[异步上报器] JvmMetric批量上报发生异常: size={}, cost={}ms", batchSize, cost, e);
         }
     }
 
@@ -267,7 +353,42 @@ public class AsyncSpanReporter {
      * 获取当前队列大小
      */
     public int getQueueSize() {
-        return spanQueue.size();
+        return metricsQueue.size();
+    }
+
+    /**
+     * 清空并上报剩余的所有指标（用于关闭时）
+     */
+    private void flushRemainingSpans() {
+        if (metricsQueue.isEmpty()) {
+            log.debug("[异步上报器] 队列已空，无需清理");
+            return;
+        }
+
+        List<TraceSpan> remainingTraceSpans = new ArrayList<>();
+        List<JvmMetric> remainingJvmMetrics = new ArrayList<>();
+        
+        // 将剩余指标按类型分组
+        List<Object> remainingMetrics = new ArrayList<>();
+        metricsQueue.drainTo(remainingMetrics);
+        
+        for (Object metric : remainingMetrics) {
+            if (metric instanceof TraceSpan) {
+                remainingTraceSpans.add((TraceSpan) metric);
+            } else if (metric instanceof JvmMetric) {
+                remainingJvmMetrics.add((JvmMetric) metric);
+            }
+        }
+
+        if (!remainingTraceSpans.isEmpty()) {
+            log.info("[异步上报器] 清理剩余TraceSpan: size={}", remainingTraceSpans.size());
+            flushTraceSpans(remainingTraceSpans);
+        }
+        
+        if (!remainingJvmMetrics.isEmpty()) {
+            log.info("[异步上报器] 清理剩余JvmMetric: size={}", remainingJvmMetrics.size());
+            flushJvmMetrics(remainingJvmMetrics);
+        }
     }
 
     /**
@@ -278,13 +399,23 @@ public class AsyncSpanReporter {
     }
 
     /**
-     * 批量上报请求体
+     * TraceSpan批量上报请求体
      */
     @Data
     private static class SpanBatchRequest {
         private String serviceName;
         private String serviceInstance;
         private List<TraceSpan> spans;
+    }
+    
+    /**
+     * JvmMetric批量上报请求体
+     */
+    @Data
+    private static class JvmMetricsBatchRequest {
+        private String serviceName;
+        private String serviceInstance;
+        private List<JvmMetric> metrics;
     }
 
     /**

@@ -1,6 +1,9 @@
 package io.github.iweidujiang.springinsight.agent.autoconfigure;
 
 import io.github.iweidujiang.springinsight.agent.collector.AsyncSpanReporter;
+import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsCollector;
+import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsReporter;
+import io.github.iweidujiang.springinsight.agent.instrumentation.DbCallAspect;
 import io.github.iweidujiang.springinsight.agent.instrumentation.HttpRequestInterceptor;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import lombok.extern.slf4j.Slf4j;
@@ -24,14 +27,16 @@ import org.springframework.context.annotation.Configuration;
  */
 @Slf4j
 @Configuration
-@EnableConfigurationProperties(InsightProperties.class)
+@EnableConfigurationProperties({InsightProperties.class, InsightJvmMetricsProperties.class})
 @ConditionalOnProperty(prefix = "spring.insight", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class InsightBeanConfiguration {
 
     private final InsightProperties properties;
+    private final InsightJvmMetricsProperties jvmMetricsProperties;
 
-    public InsightBeanConfiguration(InsightProperties properties) {
+    public InsightBeanConfiguration(InsightProperties properties, InsightJvmMetricsProperties jvmMetricsProperties) {
         this.properties = properties;
+        this.jvmMetricsProperties = jvmMetricsProperties;
         properties.validate();
         log.info("[Bean配置] 开始初始化 Spring Insight 核心组件");
     }
@@ -88,6 +93,90 @@ public class InsightBeanConfiguration {
         } catch (Exception e) {
             return "8080";
         }
+    }
+
+    /**
+     * JVM指标收集器 Bean
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true", matchIfMissing = true)
+    public JvmMetricsCollector jvmMetricsCollector() {
+        String serviceInstance = properties.getServiceInstance();
+        if (serviceInstance == null || serviceInstance.trim().isEmpty()) {
+            serviceInstance = "localhost:" + getServerPort();
+        }
+        
+        Integer hostPort = null;
+        try {
+            hostPort = Integer.parseInt(getServerPort());
+        } catch (NumberFormatException e) {
+            log.warn("[Bean配置] 无法解析服务器端口，使用默认值: 8080");
+            hostPort = 8080;
+        }
+        
+        JvmMetricsCollector collector = new JvmMetricsCollector(
+                properties.getServiceName(),
+                serviceInstance,
+                hostPort
+        );
+        log.info("[Bean配置] JVM指标收集器初始化完成");
+        return collector;
+    }
+    
+    /**
+     * JVM指标报告器 Bean
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true", matchIfMissing = true)
+    public JvmMetricsReporter jvmMetricsReporter(JvmMetricsCollector jvmMetricsCollector, AsyncSpanReporter asyncSpanReporter) {
+        JvmMetricsReporter reporter = new JvmMetricsReporter(
+                jvmMetricsCollector,
+                asyncSpanReporter,
+                jvmMetricsProperties.getReportInterval()
+        );
+        log.info("[Bean配置] JVM指标报告器初始化完成，上报间隔: {}ms", jvmMetricsProperties.getReportInterval());
+        return reporter;
+    }
+    
+    /**
+     * 数据库调用切面 Bean
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "spring.insight.db-metrics", name = "enabled", havingValue = "true", matchIfMissing = true)
+    public DbCallAspect dbCallAspect(SpanReportingListener spanReportingListener) {
+        String serviceInstance = properties.getServiceInstance();
+        if (serviceInstance == null || serviceInstance.trim().isEmpty()) {
+            serviceInstance = "localhost:" + getServerPort();
+        }
+        
+        String hostIp = "127.0.0.1";
+        try {
+            java.net.InetAddress localHost = java.net.InetAddress.getLocalHost();
+            hostIp = localHost.getHostAddress();
+        } catch (java.net.UnknownHostException e) {
+            log.warn("[Bean配置] 无法获取主机IP，使用默认值: 127.0.0.1");
+        }
+        
+        Integer hostPort = null;
+        try {
+            hostPort = Integer.parseInt(getServerPort());
+        } catch (NumberFormatException e) {
+            log.warn("[Bean配置] 无法解析服务器端口，使用默认值: 8080");
+            hostPort = 8080;
+        }
+        
+        DbCallAspect dbCallAspect = new DbCallAspect(
+                spanReportingListener,
+                properties.getServiceName(),
+                serviceInstance,
+                hostIp,
+                hostPort
+        );
+        log.info("[Bean配置] 数据库调用切面初始化完成");
+        return dbCallAspect;
     }
 
     /**
