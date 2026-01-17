@@ -1,0 +1,78 @@
+/* 全局样式 */
+body {
+  background-color: #f8f9fc;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding-top: 70px;
+}
+
+.navbar {
+  box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+/* 统计卡片样式 */
+.stat-card {
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+  transition: all 0.3s;
+  margin-bottom: 20px;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.5rem 2rem 0 rgba(58, 59, 69, 0.2);
+}
+
+/* 图表容器样式 */
+.chart-container {
+  background: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+  margin-bottom: 20px;
+  height: 400px;
+}
+
+/* 链路项样式 */
+.trace-item {
+  border-left: 4px solid #4e73df;
+  padding: 10px 15px;
+  margin-bottom: 10px;
+  background: white;
+  border-radius: 5px;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+/* 自定义徽章样式 */
+.badge-success {
+  background-color: #1cc88a;
+}
+
+.badge-error {
+  background-color: #e74a3b;
+}
+
+/* 页面标题样式 */
+.page-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+/* 页面描述样式 */
+.page-description {
+  color: #6c757d;
+  margin-bottom: 1.5rem;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .chart-container {
+    height: 300px;
+  }
+  
+  .stat-card {
+    margin-bottom: 15px;
+  }
+}
