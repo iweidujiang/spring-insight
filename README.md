@@ -27,7 +27,7 @@
 ```xml
 <dependency>
     <groupId>io.github.iweidujiang</groupId>
-    <artifactId>spring-insight-core-spring-boot-starter</artifactId>
+    <artifactId>spring-insight-spring-boot-starter</artifactId>
     <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
@@ -117,12 +117,23 @@ spring:
 
 ## 🗄️ 数据库支持
 
-Spring Insight 采用 **“开箱即用，按需扩展”** 的数据库策略：
+Spring Insight 支持 **MySQL 数据库**，并提供自动数据库和表创建功能。
 
-### 默认模式（无需配置）
-默认集成 **嵌入式 H2 数据库**，数据存储在本地 `./data/spring-insight-db.mv.db` 文件中。
-启动后可通过 `http://localhost:[端口]/h2-console` 管理数据（JDBC URL: `jdbc:h2:file:./data/spring-insight-db`）。
+### 配置示例
+```yaml
+spring:
+  insight:
+    datasource:
+      url: jdbc:mysql://localhost:3306/spring_insight?useSSL=false&serverTimezone=UTC
+      username: root
+      password: 123456
+    server:
+      port: 8088  # 自定义端口，默认8088
+```
 
-
+**说明：**
+- 引入starter后，只需配置MySQL连接信息，Spring Insight会自动创建数据库和表。
+- 支持自定义端口，默认端口为8088。
+- 所有数据存储在MySQL中，确保数据持久化和可靠性。
 
 ## 未完待续...

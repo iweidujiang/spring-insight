@@ -17,8 +17,7 @@
         <module>insight-agent</module>
         <module>insight-collector</module>
         <module>insight-storage</module>
-        <module>insight-ui</module>
-        <module>demo-app</module>
+        <module>spring-insight-spring-boot-starter</module>
     </modules>
 
     <properties>
@@ -59,11 +58,7 @@
                 <artifactId>insight-collector</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>io.github.iweidujiang</groupId>
-                <artifactId>insight-ui</artifactId>
-                <version>${project.version}</version>
-            </dependency>
+            
 
             <!-- Lombok -->
             <dependency>
@@ -71,6 +66,20 @@
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
                 <scope>provided</scope>
+            </dependency>
+            
+            <!-- MyBatis Plus -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                <version>3.5.6</version>
+            </dependency>
+            
+            <!-- Spring Insight Starter -->
+            <dependency>
+                <groupId>io.github.iweidujiang</groupId>
+                <artifactId>spring-insight-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
