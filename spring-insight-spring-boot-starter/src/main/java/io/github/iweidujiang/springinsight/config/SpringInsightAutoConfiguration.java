@@ -3,31 +3,26 @@ package io.github.iweidujiang.springinsight.config;
 import com.baomidou.mybatisplus.extension.spring.MybatisSqlSessionFactoryBean;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.session.SqlSessionFactory;
-import org.apache.ibatis.type.JdbcType;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.jdbc.datasource.init.DatabasePopulator;
 import org.springframework.jdbc.datasource.init.DatabasePopulatorUtils;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
-import java.io.File;
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * ┌───────────────────────────────────────────────
@@ -41,11 +36,15 @@ import java.util.List;
  */
 @Slf4j
 @AutoConfiguration
-@EnableConfigurationProperties(SpringInsightProperties.class)
+@EnableConfigurationProperties(InsightProperties.class)
+@ComponentScan(basePackages = {
+        "io.github.iweidujiang.springinsight.collector",
+        "io.github.iweidujiang.springinsight.storage"
+})
 public class SpringInsightAutoConfiguration {
 
     @Autowired
-    private SpringInsightProperties properties;
+    private InsightProperties properties;
 
     /**
      * 配置数据源

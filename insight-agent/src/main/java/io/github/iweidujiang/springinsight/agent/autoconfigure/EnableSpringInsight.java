@@ -55,9 +55,4 @@ public @interface EnableSpringInsight {
      * 是否启用数据库调用监控
      */
     boolean dbMetricsEnabled() default true;
-    
-    /**
-     * Collector 服务 URL
-     */
-    String collectorUrl() default "http://localhost:8080";
 }

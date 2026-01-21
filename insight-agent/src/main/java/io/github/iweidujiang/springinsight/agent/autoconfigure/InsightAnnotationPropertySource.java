@@ -51,14 +51,6 @@ public class InsightAnnotationPropertySource implements EnvironmentPostProcessor
                 // 采样率
                 properties.setProperty("spring.insight.sample-rate", String.valueOf(annotation.sampleRate()));
                 
-                // HTTP请求追踪开关
-                properties.setProperty("spring.insight.http-tracing-enabled", String.valueOf(annotation.httpTracingEnabled()));
-                
-                // Collector服务URL
-                if (!annotation.collectorUrl().isEmpty()) {
-                    properties.setProperty("spring.insight.collector.url", annotation.collectorUrl());
-                }
-                
                 // 添加到环境中
                 environment.getPropertySources().addFirst(new PropertiesPropertySource("springInsightAnnotation", properties));
             }

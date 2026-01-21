@@ -44,8 +44,7 @@
     sampleRate = 0.8,                          // 采样率（0.0-1.0）
     httpTracingEnabled = true,                 // 启用HTTP请求追踪
     jvmMetricsEnabled = true,                  // 启用JVM指标监控
-    dbMetricsEnabled = true,                   // 启用数据库调用监控
-    collectorUrl = "http://localhost:8080"     // Collector服务URL
+    dbMetricsEnabled = true                    // 启用数据库调用监控
 )
 public class MyApplication {
     public static void main(String[] args) {
@@ -64,7 +63,6 @@ public class MyApplication {
 | `httpTracingEnabled` | `boolean` | `true` | 是否启用HTTP请求追踪 |
 | `jvmMetricsEnabled` | `boolean` | `true` | 是否启用JVM指标监控 |
 | `dbMetricsEnabled` | `boolean` | `true` | 是否启用数据库调用监控 |
-| `collectorUrl` | `String` | `http://localhost:8080` | Collector服务URL |
 
 **配置文件方式（application.yml）：**
 
@@ -83,11 +81,6 @@ spring:
     jvm-metrics:
       enabled: true
       report-interval: 30000  # JVM指标上报间隔，单位毫秒
-    collector:
-      url: http://localhost:8080
-      connect-timeout: 5000
-      read-timeout: 10000
-      max-retries: 3
 ```
 
 **优先级：** 配置文件 > 注解属性 > 默认值

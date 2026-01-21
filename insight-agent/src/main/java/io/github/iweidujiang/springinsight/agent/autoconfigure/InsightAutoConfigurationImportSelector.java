@@ -34,7 +34,8 @@ public class InsightAutoConfigurationImportSelector implements ImportSelector {
             InsightProperties.class.getName(),
             InsightJvmMetricsProperties.class.getName(),
             InsightBeanConfiguration.class.getName(),
-            InsightAutoConfiguration.class.getName()
+            InsightAutoConfiguration.class.getName(),
+            "io.github.iweidujiang.springinsight.config.SpringInsightAutoConfiguration"
         };
     }
 }

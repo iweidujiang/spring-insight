@@ -1,2 +1,1 @@
-# Spring Insight 自动配置
 org.springframework.boot.env.EnvironmentPostProcessor=io.github.iweidujiang.springinsight.agent.autoconfigure.InsightAnnotationPropertySource

@@ -34,11 +34,6 @@ public class InsightProperties {
     private String serviceInstance;
 
     /**
-     * Collector 服务配置
-     */
-    private Collector collector = new Collector();
-
-    /**
      * 采样率（0.0 - 1.0，1.0表示采样所有请求）
      */
     private double sampleRate = 1.0;
@@ -54,29 +49,45 @@ public class InsightProperties {
     private String[] excludePatterns = { "/actuator/**", "/health", "/prometheus" };
 
     /**
-     * Collector 配置
+     * 数据源配置
+     */
+    private Datasource datasource = new Datasource();
+    
+    /**
+     * 服务配置
+     */
+    private Server server = new Server();
+    
+    /**
+     * 数据源配置类
      */
     @Data
-    public static class Collector {
+    public static class Datasource {
         /**
-         * Collector 服务地址（必填）
+         * 数据库URL
          */
-        private String url = "http://localhost:8080";
-
+        private String url;
+        
         /**
-         * 连接超时时间（毫秒）
+         * 数据库用户名
          */
-        private int connectTimeout = 5000;
-
+        private String username;
+        
         /**
-         * 读取超时时间（毫秒）
+         * 数据库密码
          */
-        private int readTimeout = 10000;
-
+        private String password;
+    }
+    
+    /**
+     * 服务配置类
+     */
+    @Data
+    public static class Server {
         /**
-         * 最大重试次数
+         * 服务端口
          */
-        private int maxRetries = 3;
+        private Integer port = 8088;
     }
 
     /**
@@ -86,9 +97,6 @@ public class InsightProperties {
         if (enabled) {
             if (serviceName == null || serviceName.trim().isEmpty()) {
                 throw new IllegalArgumentException("spring.insight.service-name 必须配置");
-            }
-            if (collector.url == null || collector.url.trim().isEmpty()) {
-                throw new IllegalArgumentException("spring.insight.collector.url 必须配置");
             }
         }
     }

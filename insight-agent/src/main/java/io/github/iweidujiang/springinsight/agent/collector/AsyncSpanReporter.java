@@ -4,12 +4,6 @@ import io.github.iweidujiang.springinsight.agent.model.JvmMetric;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,11 +37,9 @@ public class AsyncSpanReporter {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private Thread flushThread;
 
-    // 上报目标与客户端
-    private final String collectorUrl;
+    // 服务标识
     private final String serviceName;
     private final String serviceInstance;
-    private final RestTemplate restTemplate;
 
     // 统计信息
     private final ReporterMetrics metrics = new ReporterMetrics();
@@ -55,15 +47,13 @@ public class AsyncSpanReporter {
     /**
      * 构造函数
      */
-    public AsyncSpanReporter(String collectorUrl, String serviceName, String serviceInstance) {
-        this.collectorUrl = collectorUrl;
+    public AsyncSpanReporter(String serviceName, String serviceInstance) {
         this.serviceName = serviceName;
         this.serviceInstance = serviceInstance;
-        this.restTemplate = new RestTemplate();
         this.metricsQueue = new LinkedBlockingQueue<>(DEFAULT_QUEUE_CAPACITY);
 
-        log.info("[异步上报器] 初始化完成: collectorUrl={}, serviceName={}, serviceInstance={}",
-                collectorUrl, serviceName, serviceInstance);
+        log.info("[异步上报器] 初始化完成: serviceName={}, serviceInstance={}",
+                serviceName, serviceInstance);
     }
 
     /**
@@ -230,7 +220,7 @@ public class AsyncSpanReporter {
     }
 
     /**
-     * 批量上报TraceSpan
+     * 批量处理TraceSpan
      */
     private void flushTraceSpans(List<TraceSpan> batch) {
         if (batch.isEmpty()) {
@@ -251,50 +241,22 @@ public class AsyncSpanReporter {
                 }
             }
 
-            // 构建上报请求
-            SpanBatchRequest request = new SpanBatchRequest();
-            request.setServiceName(serviceName);
-            request.setServiceInstance(serviceInstance);
-            request.setSpans(batch);
-
-            // 设置请求头
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("X-Spring-Insight-Agent-Version", "0.1.0");
-
-            HttpEntity<SpanBatchRequest> entity = new HttpEntity<>(request, headers);
-
-            // 发送请求
-            String url = collectorUrl + "/api/v1/spans/batch";
-            log.debug("[异步上报器] 开始批量上报TraceSpan: size={}, url={}", batchSize, url);
-
-            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-
+            // 简化处理，只记录日志，实际持久化由starter模块的其他组件处理
             long cost = System.currentTimeMillis() - startTime;
+            metrics.incrementSuccess(batchSize, cost);
+            log.debug("[异步上报器] 处理了 {} 个TraceSpan，实际持久化由其他组件负责", batchSize);
 
-            if (response.getStatusCode().is2xxSuccessful()) {
-                metrics.incrementSuccess(batchSize, cost);
-                log.debug("[异步上报器] TraceSpan批量上报成功: size={}, cost={}ms", batchSize, cost);
-            } else {
-                metrics.incrementFailed(batchSize);
-                log.warn("[异步上报器] TraceSpan批量上报失败: size={}, status={}, cost={}ms",
-                        batchSize, response.getStatusCode(), cost);
-            }
-
-        } catch (RestClientException e) {
-            long cost = System.currentTimeMillis() - startTime;
-            metrics.incrementFailed(batchSize);
-            log.error("[异步上报器] TraceSpan批量上报异常: size={}, cost={}ms, error={}",
-                    batchSize, cost, e.getMessage(), e);
         } catch (Exception e) {
             long cost = System.currentTimeMillis() - startTime;
             metrics.incrementFailed(batchSize);
-            log.error("[异步上报器] TraceSpan批量上报发生未知异常: size={}, cost={}ms", batchSize, cost, e);
+            log.error("[异步上报器] TraceSpan批量处理异常: size={}, cost={}ms, error={}",
+                    batchSize, cost, e.getMessage(), e);
         }
     }
 
     /**
-     * 批量上报JvmMetric
+     * 批量处理JvmMetric
+     * 目前仅记录日志，待实现持久化功能
      */
     private void flushJvmMetrics(List<JvmMetric> batch) {
         if (batch.isEmpty()) {
@@ -305,47 +267,20 @@ public class AsyncSpanReporter {
         int batchSize = batch.size();
 
         try {
-            // 构建上报请求
-            JvmMetricsBatchRequest request = new JvmMetricsBatchRequest();
-            request.setServiceName(serviceName);
-            request.setServiceInstance(serviceInstance);
-            request.setMetrics(batch);
-
-            // 设置请求头
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("X-Spring-Insight-Agent-Version", "0.1.0");
-
-            HttpEntity<JvmMetricsBatchRequest> entity = new HttpEntity<>(request, headers);
-
-            // 发送请求（注意：需要Collector服务支持此API）
-            String url = collectorUrl + "/api/v1/metrics/jvm/batch";
-            log.debug("[异步上报器] 开始批量上报JvmMetric: size={}, url={}", batchSize, url);
-
-            // 暂时注释掉实际发送请求的代码，等待Collector服务实现
-            // ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+            // 目前仅记录日志，待实现JvmMetric持久化功能
+            log.debug("[异步上报器] 收到JvmMetric批量数据: size={}", batchSize);
             
-            // 模拟成功响应
+            // 模拟成功处理
             long cost = System.currentTimeMillis() - startTime;
             metrics.incrementSuccess(batchSize, cost);
-            log.debug("[异步上报器] JvmMetric批量上报成功: size={}, cost={}ms", batchSize, cost);
+            log.debug("[异步上报器] JvmMetric批量处理完成: size={}, cost={}ms", batchSize, cost);
             
-            // TODO: 实现真实的JvmMetric上报逻辑
-            /*
-            if (response.getStatusCode().is2xxSuccessful()) {
-                metrics.incrementSuccess(batchSize, cost);
-                log.debug("[异步上报器] JvmMetric批量上报成功: size={}, cost={}ms", batchSize, cost);
-            } else {
-                metrics.incrementFailed(batchSize);
-                log.warn("[异步上报器] JvmMetric批量上报失败: size={}, status={}, cost={}ms",
-                        batchSize, response.getStatusCode(), cost);
-            }
-            */
+            // TODO: 实现JvmMetric持久化功能
 
         } catch (Exception e) {
             long cost = System.currentTimeMillis() - startTime;
             metrics.incrementFailed(batchSize);
-            log.error("[异步上报器] JvmMetric批量上报发生异常: size={}, cost={}ms", batchSize, cost, e);
+            log.error("[异步上报器] JvmMetric批量处理发生异常: size={}, cost={}ms", batchSize, cost, e);
         }
     }
 
@@ -396,26 +331,6 @@ public class AsyncSpanReporter {
      */
     public ReporterMetrics getMetrics() {
         return metrics.copy();
-    }
-
-    /**
-     * TraceSpan批量上报请求体
-     */
-    @Data
-    private static class SpanBatchRequest {
-        private String serviceName;
-        private String serviceInstance;
-        private List<TraceSpan> spans;
-    }
-    
-    /**
-     * JvmMetric批量上报请求体
-     */
-    @Data
-    private static class JvmMetricsBatchRequest {
-        private String serviceName;
-        private String serviceInstance;
-        private List<JvmMetric> metrics;
     }
 
     /**

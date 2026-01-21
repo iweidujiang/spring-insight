@@ -53,7 +53,6 @@ public class InsightBeanConfiguration {
         }
 
         AsyncSpanReporter reporter = new AsyncSpanReporter(
-                properties.getCollector().getUrl(),
                 properties.getServiceName(),
                 serviceInstance
         );
