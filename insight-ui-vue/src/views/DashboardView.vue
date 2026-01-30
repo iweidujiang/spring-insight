@@ -1,14 +1,17 @@
 <template>
-  <div>
+  <div class="fade-in">
     <!-- 页面标题 -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
       <div>
         <h2 class="page-title">
-          <i class="fa fa-tachometer-alt me-2 text-primary"></i>监控仪表盘
+          <i class="fa fa-tachometer-alt me-2"></i>监控仪表盘
         </h2>
         <p class="page-description">实时监控您的 Spring Boot 应用架构</p>
       </div>
-      <div>
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-primary" @click="loadData" :disabled="loading">
+          <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新数据
+        </button>
         <span class="badge bg-info">
           <i class="fa fa-clock me-1"></i>
           <span>{{ currentTime }}</span>
@@ -16,253 +19,171 @@
       </div>
     </div>
 
-    <!-- 统计卡片 -->
-    <div class="row mb-4" v-if="loading">
-      <div class="col-md-3 col-sm-6">
-        <div class="card stat-card border-left-primary">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-8">
-                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                  监控服务
-                </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                  <i class="fa fa-spinner fa-spin"></i> 加载中...
-                </div>
-              </div>
-              <div class="col-4 text-end">
-                <i class="fa fa-server fa-2x text-primary"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3 col-sm-6">
-        <div class="card stat-card border-left-success">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-8">
-                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                  链路总数
-                </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                  <i class="fa fa-spinner fa-spin"></i> 加载中...
-                </div>
-              </div>
-              <div class="col-4 text-end">
-                <i class="fa fa-stream fa-2x text-success"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3 col-sm-6">
-        <div class="card stat-card border-left-info">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-8">
-                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                  依赖关系
-                </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                  <i class="fa fa-spinner fa-spin"></i> 加载中...
-                </div>
-              </div>
-              <div class="col-4 text-end">
-                <i class="fa fa-project-diagram fa-2x text-info"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3 col-sm-6">
-        <div class="card stat-card border-left-warning">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-8">
-                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                  异常服务
-                </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                  <i class="fa fa-spinner fa-spin"></i> 加载中...
-                </div>
-              </div>
-              <div class="col-4 text-end">
-                <i class="fa fa-exclamation-triangle fa-2x text-warning"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- 加载动画 -->
+    <div v-if="loading" class="loading-spinner">
+      <i class="fa fa-spinner fa-spin"></i>
+      <span class="ms-2">正在加载数据...</span>
     </div>
 
-    <!-- 统计卡片 - 数据加载完成 -->
-    <div class="row mb-4" v-else>
-      <div class="col-md-3 col-sm-6">
-        <div class="card stat-card border-left-primary">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-8">
-                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                  监控服务
+    <!-- 数据内容 -->
+    <div v-else class="fade-in">
+      <!-- 统计卡片 -->
+      <div class="row mb-4">
+        <div class="col-md-3 col-sm-6" v-for="(stat, index) in stats" :key="index">
+          <div class="card stat-card" :style="{ animationDelay: `${index * 0.1}s` }">
+            <div class="card-body">
+              <div class="row align-items-center">
+                <div class="col-8">
+                  <div class="text-xs font-weight-bold" :class="`text-${stat.color} text-uppercase mb-1`">
+                    {{ stat.title }}
+                  </div>
+                  <div class="h5 mb-0 font-weight-bold">
+                    {{ stat.value }}
+                  </div>
                 </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                  {{ services.length }} 个
+                <div class="col-4 text-end">
+                  <i :class="`fa ${stat.icon} fa-2x text-${stat.color}`"></i>
                 </div>
-              </div>
-              <div class="col-4 text-end">
-                <i class="fa fa-server fa-2x text-primary"></i>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-md-3 col-sm-6">
-        <div class="card stat-card border-left-success">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-8">
-                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                  链路总数
-                </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                  {{ totalSpans }} 条
-                </div>
-              </div>
-              <div class="col-4 text-end">
-                <i class="fa fa-stream fa-2x text-success"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3 col-sm-6">
-        <div class="card stat-card border-left-info">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-8">
-                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                  依赖关系
-                </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                  {{ dependencies.length }} 条
-                </div>
-              </div>
-              <div class="col-4 text-end">
-                <i class="fa fa-project-diagram fa-2x text-info"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-3 col-sm-6">
-        <div class="card stat-card border-left-warning">
-          <div class="card-body">
-            <div class="row align-items-center">
-              <div class="col-8">
-                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                  异常服务
-                </div>
-                <div class="h5 mb-0 font-weight-bold text-gray-800">
-                  {{ errorAnalysis.length }} 个
-                </div>
-              </div>
-              <div class="col-4 text-end">
-                <i class="fa fa-exclamation-triangle fa-2x text-warning"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Collector 状态 -->
-    <div class="row mb-4" v-if="collectorStats && !loading">
-      <div class="col-12">
-        <div class="card stat-card">
-          <div class="card-body">
-            <h5 class="card-title">
-              <i class="fa fa-database me-2"></i>Collector 状态
-            </h5>
-            <div class="row">
-              <div class="col-md-3">
-                <small class="text-muted">接收请求数</small>
-                <div class="h4">{{ collectorStats.totalReceivedRequests || 0 }}</div>
-              </div>
-              <div class="col-md-3">
-                <small class="text-muted">总Span数</small>
-                <div class="h4">{{ collectorStats.totalReceivedSpans || 0 }}</div>
-              </div>
-              <div class="col-md-3">
-                <small class="text-muted">成功率</small>
-                <div class="h4 text-success">{{ collectorStats.successRate || 100 }}%</div>
-              </div>
-              <div class="col-md-3">
-                <small class="text-muted">运行时长</small>
-                <div class="h4">{{ collectorStats.runningHours || 0 }}小时</div>
+      <!-- Collector 状态 -->
+      <div class="row mb-4" v-if="collectorStats">
+        <div class="col-12">
+          <div class="card stat-card">
+            <div class="card-body">
+              <h5 class="card-title">
+                <i class="fa fa-database me-2"></i>Collector 状态
+              </h5>
+              <div class="row g-4">
+                <div class="col-md-3 col-sm-6">
+                  <div class="stat-item">
+                    <small class="text-muted">接收请求数</small>
+                    <div class="h4">{{ collectorStats.totalReceivedRequests || 0 }}</div>
+                  </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                  <div class="stat-item">
+                    <small class="text-muted">总Span数</small>
+                    <div class="h4">{{ collectorStats.totalReceivedSpans || 0 }}</div>
+                  </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                  <div class="stat-item">
+                    <small class="text-muted">成功率</small>
+                    <div class="h4" :class="collectorStats.successRate < 90 ? 'text-danger' : 'text-success'">
+                      {{ collectorStats.successRate || 100 }}%
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                  <div class="stat-item">
+                    <small class="text-muted">运行时长</small>
+                    <div class="h4">{{ collectorStats.runningHours || 0 }}小时</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 图表区域 -->
-    <div class="row">
-      <div class="col-lg-8">
-        <div class="chart-container">
-          <h5 class="mb-3">
-            <i class="fa fa-project-diagram me-2 text-primary"></i>服务依赖拓扑
-          </h5>
-          <div id="topology-chart" class="w-100 h-100"></div>
+      <!-- 图表区域 -->
+      <div class="row gap-4">
+        <div class="col-lg-8 col-md-12">
+          <div class="chart-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5>
+                <i class="fa fa-project-diagram me-2"></i>服务依赖拓扑
+              </h5>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-primary" @click="refreshTopologyChart">
+                  <i class="fa fa-refresh"></i>
+                </button>
+              </div>
+            </div>
+            <div id="topology-chart" class="w-100 h-100"></div>
+          </div>
+        </div>
+        <div class="col-lg-4 col-md-12">
+          <div class="chart-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5>
+                <i class="fa fa-chart-bar me-2"></i>服务请求排名
+              </h5>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-primary" @click="refreshServiceRankChart">
+                  <i class="fa fa-refresh"></i>
+                </button>
+              </div>
+            </div>
+            <div id="service-rank-chart" class="w-100 h-100"></div>
+          </div>
         </div>
       </div>
-      <div class="col-lg-4">
-        <div class="chart-container">
-          <h5 class="mb-3">
-            <i class="fa fa-chart-bar me-2 text-success"></i>服务请求排名
-          </h5>
-          <div id="service-rank-chart" class="w-100 h-100"></div>
+
+      <!-- 错误服务表格 -->
+      <div class="row" v-if="errorAnalysis && errorAnalysis.length > 0">
+        <div class="col-12">
+          <div class="chart-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5>
+                <i class="fa fa-exclamation-triangle me-2"></i>异常服务告警
+              </h5>
+              <span class="badge bg-danger">{{ errorAnalysis.length }} 个异常</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>服务名称</th>
+                    <th>总调用数</th>
+                    <th>错误调用数</th>
+                    <th>错误率</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="error in errorAnalysis" :key="error.serviceName" :class="{ 'table-danger': error.errorRate > 10, 'table-warning': error.errorRate <= 10 && error.errorRate > 5 }">
+                    <td>{{ error.serviceName }}</td>
+                    <td>{{ error.totalCalls }}</td>
+                    <td>{{ error.errorCalls }}</td>
+                    <td>
+                      <span class="badge" :class="error.errorRate > 10 ? 'bg-danger' : error.errorRate > 5 ? 'bg-warning' : 'bg-info'">
+                        {{ error.errorRate.toFixed(2) }}%
+                      </span>
+                    </td>
+                    <td>
+                      <span v-if="error.errorRate > 10" class="badge bg-danger">严重</span>
+                      <span v-else-if="error.errorRate <= 10 && error.errorRate > 5" class="badge bg-warning">警告</span>
+                      <span v-else class="badge bg-info">注意</span>
+                    </td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-primary" @click="viewServiceDetails(error.serviceName)">
+                        <i class="fa fa-eye"></i> 查看
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- 错误服务表格 -->
-    <div class="row" v-if="errorAnalysis && errorAnalysis.length > 0">
-      <div class="col-12">
-        <div class="chart-container">
-          <h5 class="mb-3">
-            <i class="fa fa-exclamation-triangle me-2 text-danger"></i>异常服务告警
-          </h5>
-          <div class="table-responsive">
-            <table class="table table-hover">
-              <thead class="table-light">
-                <tr>
-                  <th>服务名称</th>
-                  <th>总调用数</th>
-                  <th>错误调用数</th>
-                  <th>错误率</th>
-                  <th>状态</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="error in errorAnalysis" :key="error.serviceName">
-                  <td>{{ error.serviceName }}</td>
-                  <td>{{ error.totalCalls }}</td>
-                  <td>{{ error.errorCalls }}</td>
-                  <td>
-                    <span class="badge" :class="error.errorRate > 10 ? 'bg-danger' : 'bg-warning'">
-                      {{ error.errorRate.toFixed(2) }}%
-                    </span>
-                  </td>
-                  <td>
-                    <span v-if="error.errorRate > 10" class="badge bg-danger">严重</span>
-                    <span v-else-if="error.errorRate <= 10 && error.errorRate > 5" class="badge bg-warning">警告</span>
-                    <span v-else class="badge bg-info">注意</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+      <!-- 无错误提示 -->
+      <div class="row" v-else-if="!loading">
+        <div class="col-12">
+          <div class="chart-container">
+            <div class="d-flex flex-column align-items-center justify-content-center h-100">
+              <i class="fa fa-check-circle fa-4x text-success mb-3"></i>
+              <h5 class="text-center">暂无异常服务</h5>
+              <p class="text-muted text-center">所有服务运行正常</p>
+            </div>
           </div>
         </div>
       </div>
@@ -271,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { ApiService } from '../services/ApiService'
 
@@ -292,6 +213,34 @@ let serviceRankChart: echarts.ECharts | null = null
 // 时间更新定时器
 let timeInterval: number | null = null
 
+// 计算属性：统计卡片数据
+const stats = computed(() => [
+  {
+    title: '监控服务',
+    value: `${services.value.length} 个`,
+    icon: 'fa-server',
+    color: 'primary'
+  },
+  {
+    title: '链路总数',
+    value: `${totalSpans.value} 条`,
+    icon: 'fa-stream',
+    color: 'success'
+  },
+  {
+    title: '依赖关系',
+    value: `${dependencies.value.length} 条`,
+    icon: 'fa-project-diagram',
+    color: 'info'
+  },
+  {
+    title: '异常服务',
+    value: `${errorAnalysis.value.length} 个`,
+    icon: 'fa-exclamation-triangle',
+    color: 'warning'
+  }
+])
+
 // 更新当前时间
 const updateCurrentTime = () => {
   const now = new Date()
@@ -305,14 +254,6 @@ const initCharts = () => {
   if (topologyChartDom) {
     topologyChart = echarts.init(topologyChartDom)
     const topologyOption = {
-      title: {
-        text: '服务依赖拓扑',
-        left: 'center',
-        textStyle: {
-          fontSize: 16,
-          color: '#333'
-        }
-      },
       tooltip: {
         trigger: 'item',
         formatter: function(params: any) {
@@ -334,21 +275,27 @@ const initCharts = () => {
         label: {
           show: true,
           position: 'right',
-          formatter: '{b}'
+          formatter: '{b}',
+          fontSize: 12
         },
         lineStyle: {
           color: 'source',
-          curveness: 0.3
+          curveness: 0.3,
+          width: 2
         },
         emphasis: {
           focus: 'adjacency',
           lineStyle: {
-            width: 10
+            width: 4
+          },
+          itemStyle: {
+            shadowBlur: 10,
+            shadowColor: 'rgba(59, 130, 246, 0.5)'
           }
         },
         force: {
-          repulsion: 1000,
-          edgeLength: 150,
+          repulsion: 1500,
+          edgeLength: 200,
           gravity: 0.1
         }
       }]
@@ -361,14 +308,6 @@ const initCharts = () => {
   if (serviceRankChartDom) {
     serviceRankChart = echarts.init(serviceRankChartDom)
     const rankOption = {
-      title: {
-        text: '服务请求排名',
-        left: 'center',
-        textStyle: {
-          fontSize: 16,
-          color: '#333'
-        }
-      },
       tooltip: {
         trigger: 'axis',
         axisPointer: {
@@ -402,7 +341,7 @@ const initCharts = () => {
         data: [],
         axisLabel: {
           fontSize: 11,
-          width: 80,
+          width: 100,
           overflow: 'truncate'
         }
       },
@@ -413,17 +352,21 @@ const initCharts = () => {
         itemStyle: {
           color: function(params: any) {
             const colorList = [
-              '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e',
-              '#e74a3b', '#6f42c1', '#fd7e14', '#20c9a6'
+              '#3b82f6', '#10b981', '#06b6d4', '#f59e0b',
+              '#ef4444', '#8b5cf6', '#f97316', '#14b8a6'
             ]
             return colorList[params.dataIndex % colorList.length]
-          }
+          },
+          borderRadius: [0, 4, 4, 0]
         },
         label: {
           show: true,
           position: 'right',
           formatter: '{c}',
           fontSize: 11
+        },
+        animationDelay: function(idx: number) {
+          return idx * 100
         }
       }]
     }
@@ -459,7 +402,8 @@ const updateCharts = () => {
     serviceCallCounts.forEach((value, key) => {
       nodes.set(key, {
         name: key,
-        value: value
+        value: value,
+        symbolSize: Math.max(30, Math.min(60, 10 + Math.sqrt(value) * 5))
       })
     })
     
@@ -497,6 +441,30 @@ const updateCharts = () => {
       }]
     })
   }
+}
+
+// 刷新拓扑图
+const refreshTopologyChart = () => {
+  if (topologyChart) {
+    topologyChart.resize()
+    updateCharts()
+  }
+}
+
+// 刷新服务排名图
+const refreshServiceRankChart = () => {
+  if (serviceRankChart) {
+    serviceRankChart.resize()
+    updateCharts()
+  }
+}
+
+// 查看服务详情
+const viewServiceDetails = (serviceName: string) => {
+  // 这里可以添加跳转到服务详情页面的逻辑
+  console.log('查看服务详情:', serviceName)
+  // 示例：可以跳转到链路追踪页面并筛选该服务
+  // router.push({ path: '/traces', query: { service: serviceName } })
 }
 
 // 加载数据

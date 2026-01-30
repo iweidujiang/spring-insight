@@ -1,14 +1,17 @@
 <template>
-  <div>
+  <div class="fade-in">
     <!-- 页面标题 -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
       <div>
         <h2 class="page-title">
-          <i class="fa fa-stream me-2 text-primary"></i>链路追踪
+          <i class="fa fa-stream me-2"></i>链路追踪
         </h2>
         <p class="page-description">查看和分析服务调用链路的详细信息</p>
       </div>
-      <div>
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-primary" @click="loadData" :disabled="loading">
+          <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新数据
+        </button>
         <span class="badge bg-info">
           <i class="fa fa-clock me-1"></i>
           <span>{{ currentTime }}</span>
@@ -18,14 +21,14 @@
 
     <!-- 筛选条件 -->
     <div class="row mb-4">
-      <div class="col-md-12">
+      <div class="col-12">
         <div class="card stat-card">
           <div class="card-body">
             <h5 class="card-title">
               <i class="fa fa-filter me-2"></i>筛选条件
             </h5>
             <div class="row g-3 align-items-end">
-              <div class="col-md-3">
+              <div class="col-md-3 col-sm-6">
                 <label for="service-select" class="form-label">服务名称</label>
                 <select id="service-select" class="form-select" v-model="selectedService" @change="loadData">
                   <option value="">所有服务</option>
@@ -34,7 +37,7 @@
                   </option>
                 </select>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-3 col-sm-6">
                 <label for="hours-select" class="form-label">时间范围</label>
                 <select id="hours-select" class="form-select" v-model="hours" @change="loadData">
                   <option value="1">1小时</option>
@@ -44,7 +47,7 @@
                   <option value="72">72小时</option>
                 </select>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-3 col-sm-6">
                 <label for="limit-select" class="form-label">显示数量</label>
                 <select id="limit-select" class="form-select" v-model="limit" @change="loadData">
                   <option value="20">20条</option>
@@ -53,10 +56,15 @@
                   <option value="200">200条</option>
                 </select>
               </div>
-              <div class="col-md-3">
-                <button class="btn btn-primary w-100" @click="loadData" :disabled="loading">
-                  <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新数据
-                </button>
+              <div class="col-md-3 col-sm-6">
+                <div class="d-flex gap-2">
+                  <button class="btn btn-primary flex-grow-1" @click="loadData" :disabled="loading">
+                    <i class="fa fa-search"></i> 搜索
+                  </button>
+                  <button class="btn btn-outline-secondary" @click="resetFilters" :disabled="loading">
+                    <i class="fa fa-refresh"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -64,14 +72,23 @@
       </div>
     </div>
 
+    <!-- 加载动画 -->
+    <div v-if="loading" class="loading-spinner">
+      <i class="fa fa-spinner fa-spin"></i>
+      <span class="ms-2">正在加载链路数据...</span>
+    </div>
+
     <!-- 链路列表 -->
-    <div class="row">
+    <div v-else class="row">
       <div class="col-12">
         <div class="card stat-card">
           <div class="card-body">
-            <h5 class="card-title">
-              <i class="fa fa-list me-2"></i>链路列表
-            </h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="card-title">
+                <i class="fa fa-list me-2"></i>链路列表
+              </h5>
+              <span class="badge bg-primary">{{ traces.length }} 条链路</span>
+            </div>
             <div class="table-responsive">
               <table class="table table-hover">
                 <thead class="table-light">
@@ -86,27 +103,39 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="trace in traces" :key="trace.traceId">
+                  <tr v-for="(trace, index) in traces" :key="trace.traceId" class="fade-in" :style="{ animationDelay: `${index * 0.05}s` }">
                     <td class="text-truncate" style="max-width: 150px;">
-                      <code>{{ trace.traceId }}</code>
+                      <code class="text-primary">{{ trace.traceId }}</code>
                     </td>
                     <td>{{ trace.serviceName }}</td>
-                    <td>{{ trace.operationName }}</td>
+                    <td class="text-truncate" style="max-width: 200px;">{{ trace.operationName }}</td>
                     <td>{{ formatTime(trace.startTime) }}</td>
-                    <td>{{ trace.durationMs }}</td>
+                    <td :class="trace.durationMs > 1000 ? 'text-danger font-weight-bold' : trace.durationMs > 500 ? 'text-warning' : 'text-success'">
+                      {{ trace.durationMs }}
+                    </td>
                     <td>
                       <span class="badge" :class="trace.statusCode === 'OK' ? 'bg-success' : 'bg-danger'">
                         {{ trace.statusCode }}
                       </span>
                     </td>
                     <td>
-                      <button class="btn btn-sm btn-primary" @click="viewTraceDetail(trace.traceId)">
-                        <i class="fa fa-eye"></i> 查看详情
-                      </button>
+                      <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-primary" @click="viewTraceDetail(trace.traceId)">
+                          <i class="fa fa-eye"></i> 查看
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @click="copyTraceId(trace.traceId)">
+                          <i class="fa fa-copy"></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                   <tr v-if="traces.length === 0">
-                    <td colspan="7" class="text-center text-muted">暂无链路数据</td>
+                    <td colspan="7" class="text-center text-muted">
+                      <div class="py-4">
+                        <i class="fa fa-info-circle fa-2x mb-2"></i>
+                        <p>暂无链路数据</p>
+                      </div>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -183,11 +212,29 @@ const loadServices = async () => {
   }
 }
 
+// 重置筛选条件
+const resetFilters = () => {
+  selectedService.value = ''
+  hours.value = 24
+  limit.value = 50
+  loadData()
+}
+
 // 查看链路详情
 const viewTraceDetail = (traceId: string) => {
   // 这里可以跳转到链路详情页面，暂时先在控制台输出
   console.log(`查看链路详情: ${traceId}`)
   // router.push(`/trace/${traceId}`)
+}
+
+// 复制Trace ID
+const copyTraceId = (traceId: string) => {
+  navigator.clipboard.writeText(traceId).then(() => {
+    // 可以添加一个提示，告诉用户复制成功
+    console.log('Trace ID 已复制到剪贴板:', traceId)
+  }).catch(err => {
+    console.error('复制失败:', err)
+  })
 }
 
 // 组件挂载时初始化

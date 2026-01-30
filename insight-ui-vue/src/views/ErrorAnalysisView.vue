@@ -1,14 +1,20 @@
 <template>
-  <div>
+  <div class="fade-in">
     <!-- 页面标题 -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
       <div>
         <h2 class="page-title">
-          <i class="fa fa-exclamation-triangle me-2 text-primary"></i>错误分析
+          <i class="fa fa-exclamation-triangle me-2"></i>错误分析
         </h2>
         <p class="page-description">分析服务的错误率和错误调用情况</p>
       </div>
-      <div>
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-primary" @click="loadData" :disabled="loading">
+          <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新数据
+        </button>
+        <button class="btn btn-outline-secondary" @click="downloadErrorData" :disabled="loading || errorAnalysis.length === 0">
+          <i class="fa fa-download"></i> 导出数据
+        </button>
         <span class="badge bg-info">
           <i class="fa fa-clock me-1"></i>
           <span>{{ currentTime }}</span>
@@ -18,14 +24,14 @@
 
     <!-- 时间范围选择 -->
     <div class="row mb-4">
-      <div class="col-md-4">
+      <div class="col-md-6 col-sm-12">
         <div class="card stat-card">
           <div class="card-body">
             <h5 class="card-title">
               <i class="fa fa-filter me-2"></i>时间范围
             </h5>
-            <div class="d-flex align-items-center">
-              <div class="me-3">
+            <div class="d-flex flex-wrap align-items-center gap-3">
+              <div class="flex-grow-1">
                 <label for="hours-select" class="form-label">最近</label>
                 <select id="hours-select" class="form-select" v-model="hours" @change="loadData">
                   <option value="1">1小时</option>
@@ -35,45 +41,56 @@
                   <option value="72">72小时</option>
                 </select>
               </div>
-              <div>
-                <button class="btn btn-primary" @click="loadData" :disabled="loading">
-                  <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新数据
-                </button>
-              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- 加载动画 -->
+    <div v-if="loading" class="loading-spinner">
+      <i class="fa fa-spinner fa-spin"></i>
+      <span class="ms-2">正在加载错误分析数据...</span>
+    </div>
+
     <!-- 错误分析图表 -->
-    <div class="row">
-      <div class="col-lg-8">
+    <div class="row gap-4 mb-4">
+      <div class="col-lg-8 col-md-12">
         <div class="chart-container">
-          <h5 class="mb-3">
-            <i class="fa fa-bar-chart me-2 text-danger"></i>服务错误率分布
-          </h5>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5>
+              <i class="fa fa-bar-chart me-2"></i>服务错误率分布
+            </h5>
+            <button class="btn btn-sm btn-outline-primary" @click="refreshCharts">
+              <i class="fa fa-refresh"></i> 刷新图表
+            </button>
+          </div>
           <div id="error-rate-chart" class="w-100 h-100"></div>
         </div>
       </div>
-      <div class="col-lg-4">
+      <div class="col-lg-4 col-md-12">
         <div class="chart-container">
-          <h5 class="mb-3">
-            <i class="fa fa-pie-chart me-2 text-danger"></i>错误调用占比
-          </h5>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5>
+              <i class="fa fa-pie-chart me-2"></i>错误调用占比
+            </h5>
+          </div>
           <div id="error-pie-chart" class="w-100 h-100"></div>
         </div>
       </div>
     </div>
 
     <!-- 错误服务列表 -->
-    <div class="row mt-4">
+    <div class="row">
       <div class="col-12">
         <div class="card stat-card">
           <div class="card-body">
-            <h5 class="card-title">
-              <i class="fa fa-list me-2"></i>错误服务列表
-            </h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="card-title">
+                <i class="fa fa-list me-2"></i>错误服务列表
+              </h5>
+              <span class="badge bg-danger">{{ errorAnalysis.length }} 个异常服务</span>
+            </div>
             <div class="table-responsive">
               <table class="table table-hover">
                 <thead class="table-light">
@@ -83,15 +100,16 @@
                     <th>错误调用数</th>
                     <th>错误率</th>
                     <th>状态</th>
+                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="error in errorAnalysis" :key="error.serviceName">
+                  <tr v-for="(error, index) in errorAnalysis" :key="error.serviceName" class="fade-in" :style="{ animationDelay: `${index * 0.05}s` }" :class="error.errorRate > 10 ? 'table-danger' : error.errorRate > 5 ? 'table-warning' : ''">
                     <td>{{ error.serviceName }}</td>
                     <td>{{ error.totalCalls }}</td>
-                    <td>{{ error.errorCalls }}</td>
+                    <td class="text-danger">{{ error.errorCalls }}</td>
                     <td>
-                      <span class="badge" :class="error.errorRate > 10 ? 'bg-danger' : 'bg-warning'">
+                      <span class="badge" :class="error.errorRate > 10 ? 'bg-danger' : error.errorRate > 5 ? 'bg-warning' : 'bg-info'">
                         {{ error.errorRate.toFixed(2) }}%
                       </span>
                     </td>
@@ -100,9 +118,20 @@
                       <span v-else-if="error.errorRate <= 10 && error.errorRate > 5" class="badge bg-warning">警告</span>
                       <span v-else class="badge bg-info">注意</span>
                     </td>
+                    <td>
+                      <button class="btn btn-sm btn-primary" @click="viewServiceDetails(error.serviceName)">
+                        <i class="fa fa-eye"></i> 查看详情
+                      </button>
+                    </td>
                   </tr>
                   <tr v-if="errorAnalysis.length === 0">
-                    <td colspan="5" class="text-center text-muted">暂无错误分析数据</td>
+                    <td colspan="6" class="text-center text-muted">
+                      <div class="py-4">
+                        <i class="fa fa-check-circle fa-2x text-success mb-2"></i>
+                        <p>暂无错误分析数据</p>
+                        <p class="text-sm">所有服务运行正常</p>
+                      </div>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -145,14 +174,6 @@ const initCharts = () => {
   if (errorRateChartDom) {
     errorRateChart = echarts.init(errorRateChartDom)
     const option = {
-      title: {
-        text: '服务错误率分布',
-        left: 'center',
-        textStyle: {
-          fontSize: 16,
-          color: '#333'
-        }
-      },
       tooltip: {
         trigger: 'axis',
         axisPointer: {
@@ -166,8 +187,8 @@ const initCharts = () => {
       grid: {
         left: '3%',
         right: '4%',
-        bottom: '10%',
-        top: '15%',
+        bottom: '15%',
+        top: '5%',
         containLabel: true
       },
       xAxis: {
@@ -197,16 +218,20 @@ const initCharts = () => {
         itemStyle: {
           color: function(params: any) {
             const value = params.value
-            if (value > 10) return '#e74a3b' // 严重 - 红色
-            if (value > 5) return '#f6c23e' // 警告 - 黄色
-            return '#36b9cc' // 注意 - 蓝色
-          }
+            if (value > 10) return '#ef4444' // 严重 - 红色
+            if (value > 5) return '#f59e0b' // 警告 - 黄色
+            return '#06b6d4' // 注意 - 蓝色
+          },
+          borderRadius: [4, 4, 0, 0]
         },
         label: {
           show: true,
           position: 'top',
           formatter: '{c}%',
           fontSize: 11
+        },
+        animationDelay: function(idx: number) {
+          return idx * 100
         }
       }]
     }
@@ -218,14 +243,6 @@ const initCharts = () => {
   if (errorPieChartDom) {
     errorPieChart = echarts.init(errorPieChartDom)
     const option = {
-      title: {
-        text: '错误调用占比',
-        left: 'center',
-        textStyle: {
-          fontSize: 16,
-          color: '#333'
-        }
-      },
       tooltip: {
         trigger: 'item',
         formatter: '{b}: {c} 次 ({d}%)'
@@ -248,7 +265,14 @@ const initCharts = () => {
         itemStyle: {
           borderRadius: 10,
           borderColor: '#fff',
-          borderWidth: 2
+          borderWidth: 2,
+          color: function(params: any) {
+            const colorList = [
+              '#ef4444', '#f59e0b', '#06b6d4', '#8b5cf6',
+              '#10b981', '#3b82f6', '#f97316', '#14b8a6'
+            ]
+            return colorList[params.dataIndex % colorList.length]
+          }
         },
         label: {
           show: false,
@@ -259,6 +283,11 @@ const initCharts = () => {
             show: true,
             fontSize: 16,
             fontWeight: 'bold'
+          },
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
           }
         },
         labelLine: {
@@ -308,6 +337,35 @@ const updateCharts = () => {
       }]
     })
   }
+}
+
+// 刷新图表
+const refreshCharts = () => {
+  if (errorRateChart) {
+    errorRateChart.resize()
+  }
+  if (errorPieChart) {
+    errorPieChart.resize()
+  }
+  updateCharts()
+}
+
+// 查看服务详情
+const viewServiceDetails = (serviceName: string) => {
+  console.log('查看服务详情:', serviceName)
+  // 这里可以添加跳转到服务详情页面的逻辑
+}
+
+// 导出错误数据
+const downloadErrorData = () => {
+  const dataStr = JSON.stringify(errorAnalysis.value, null, 2)
+  const dataBlob = new Blob([dataStr], { type: 'application/json' })
+  const url = URL.createObjectURL(dataBlob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `error-analysis-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 // 加载数据

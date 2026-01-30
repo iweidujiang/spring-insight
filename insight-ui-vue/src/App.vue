@@ -39,6 +39,13 @@
               </router-link>
             </li>
           </ul>
+          
+          <!-- 通知组件 -->
+          <div class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <NotificationComponent />
+            </li>
+          </div>
         </div>
       </div>
     </nav>
@@ -51,6 +58,7 @@
 </template>
 
 <script setup lang="ts">
+import NotificationComponent from './components/NotificationComponent.vue'
 // 根组件逻辑
 </script>
 
