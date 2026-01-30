@@ -24,6 +24,9 @@ import java.time.LocalDateTime;
  */
 @Configuration
 @EnableTransactionManagement
+@org.mybatis.spring.annotation.MapperScan({
+        "io.github.iweidujiang.springinsight.storage.mapper"
+})
 public class MybatisPlusConfig {
 
     /**

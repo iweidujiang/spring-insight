@@ -48,42 +48,42 @@ async function requestWithDefault<T>(url: string, defaultValue: T, options: Axio
 export class ApiService {
   // 获取服务列表
   static async getServiceNames(): Promise<string[]> {
-    return requestWithDefault<string[]>('/api/services', [])
+    return requestWithDefault<string[]>('/services', [])
   }
 
   // 获取服务依赖关系
   static async getServiceDependencies(hours: number = 24): Promise<any[]> {
-    return requestWithDefault<any[]>(`/api/dependencies?hours=${hours}`, [])
+    return requestWithDefault<any[]>(`/dependencies?hours=${hours}`, [])
   }
 
   // 获取服务统计信息
   static async getServiceStats(): Promise<any[]> {
-    return requestWithDefault<any[]>('/api/services/stats', [])
+    return requestWithDefault<any[]>('/services/stats', [])
   }
 
   // 获取错误分析
   static async getErrorAnalysis(hours: number = 24): Promise<any[]> {
-    return requestWithDefault<any[]>(`/api/errors/analysis?hours=${hours}`, [])
+    return requestWithDefault<any[]>(`/errors/analysis?hours=${hours}`, [])
   }
 
   // 获取Collector统计信息
   static async getCollectorStats(): Promise<any> {
-    return requestWithDefault<any>('/api/stats', {})
+    return requestWithDefault<any>('/stats', {})
   }
 
   // 获取最近链路
   static async getRecentSpans(hours: number = 24, limit: number = 50): Promise<any[]> {
-    return requestWithDefault<any[]>(`/api/traces/recent?hours=${hours}&limit=${limit}`, [])
+    return requestWithDefault<any[]>(`/traces/recent?hours=${hours}&limit=${limit}`, [])
   }
 
   // 获取指定服务的最近链路
   static async getRecentSpansByService(serviceName: string, limit: number = 50): Promise<any[]> {
-    return requestWithDefault<any[]>(`/api/services/${serviceName}/traces?limit=${limit}`, [])
+    return requestWithDefault<any[]>(`/services/${serviceName}/traces?limit=${limit}`, [])
   }
 
   // 获取链路详情
   static async getTraceDetail(traceId: string): Promise<any[]> {
-    return requestWithDefault<any[]>(`/api/traces/${traceId}`, [])
+    return requestWithDefault<any[]>(`/traces/${traceId}`, [])
   }
 }
 

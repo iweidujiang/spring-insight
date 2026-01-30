@@ -54,11 +54,26 @@ public class SpringInsightAutoConfiguration {
     public DataSource dataSource() {
         log.info("📦 正在初始化 Spring Insight 数据源");
         
-        // 确保数据库存在
-        createDatabaseIfNotExists();
+        // 对于非H2数据库，确保数据库存在
+        if (properties.getStorageType() != InsightProperties.StorageType.H2) {
+            createDatabaseIfNotExists();
+        }
         
         HikariConfig hikariConfig = new HikariConfig();
-        hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        
+        // 根据存储类型设置驱动类名
+        switch (properties.getStorageType()) {
+            case H2:
+                hikariConfig.setDriverClassName("org.h2.Driver");
+                break;
+            case MYSQL:
+                hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
+                break;
+            case POSTGRESQL:
+                hikariConfig.setDriverClassName("org.postgresql.Driver");
+                break;
+        }
+        
         hikariConfig.setJdbcUrl(properties.getDatasource().getUrl());
         hikariConfig.setUsername(properties.getDatasource().getUsername());
         hikariConfig.setPassword(properties.getDatasource().getPassword());
@@ -148,9 +163,25 @@ public class SpringInsightAutoConfiguration {
             
             // 读取schema文件
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-            populator.addScripts(
-                    resolver.getResource("classpath:sql/schema-mysql.sql")
-            );
+            
+            // 根据存储类型选择合适的schema文件
+            switch (properties.getStorageType()) {
+                case H2:
+                    populator.addScripts(
+                            resolver.getResource("classpath:sql/schema-h2.sql")
+                    );
+                    break;
+                case MYSQL:
+                    populator.addScripts(
+                            resolver.getResource("classpath:sql/schema-mysql.sql")
+                    );
+                    break;
+                case POSTGRESQL:
+                    populator.addScripts(
+                            resolver.getResource("classpath:sql/schema-postgresql.sql")
+                    );
+                    break;
+            }
             
             // 设置执行脚本的分隔符和编码
             populator.setSeparator(";");
@@ -177,6 +208,9 @@ public class SpringInsightAutoConfiguration {
         // 设置Mapper位置
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         factoryBean.setMapperLocations(resolver.getResources("classpath*:mapper/**/*.xml"));
+        
+        // 设置类型别名包
+        factoryBean.setTypeAliasesPackage("io.github.iweidujiang.springinsight.storage.entity");
         
         return factoryBean.getObject();
     }
