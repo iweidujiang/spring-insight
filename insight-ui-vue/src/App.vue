@@ -50,8 +50,11 @@
       </div>
     </nav>
 
-    <!-- 主内容区域 -->
-    <main class="container-fluid mt-4 pt-5">
+    <!-- 主内容区域：仪表盘单屏大屏，其余页保留上边距 -->
+    <main
+      class="container-fluid"
+      :class="$route.path === '/' ? 'si-main-dashboard' : 'mt-4 pt-5'"
+    >
       <router-view />
     </main>
   </div>
@@ -59,7 +62,6 @@
 
 <script setup lang="ts">
 import NotificationComponent from './components/NotificationComponent.vue'
-// 根组件逻辑
 </script>
 
 <style scoped>

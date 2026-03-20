@@ -1,5 +1,6 @@
 /* 全局样式 — 深色科技风 */
 :root {
+  --si-nav-offset: 4.5rem;
   --si-cyan: #22d3ee;
   --si-violet: #818cf8;
   --primary-color: #38bdf8;
@@ -50,6 +51,25 @@ body::before {
 main.container-fluid {
   position: relative;
   z-index: 1;
+}
+
+/* 仪表盘：一屏展示，主区域不滚动 */
+main.si-main-dashboard {
+  margin-top: 0 !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+  height: calc(100dvh - var(--si-nav-offset, 4.5rem));
+  max-height: calc(100vh - var(--si-nav-offset, 4.5rem));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+main.si-main-dashboard > * {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 导航栏 */
