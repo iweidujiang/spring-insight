@@ -2,6 +2,8 @@ package io.github.iweidujiang.springinsight.agent.collector;
 
 import io.github.iweidujiang.springinsight.agent.model.JvmMetric;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
+import io.github.iweidujiang.springinsight.agent.sink.InsightBatchSink;
+import org.springframework.beans.factory.ObjectProvider;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,15 +43,22 @@ public class AsyncSpanReporter {
     private final String serviceName;
     private final String serviceInstance;
 
+    /**
+     * 延迟解析，避免与 Starter 中 BatchSink Bean 的初始化顺序竞态
+     */
+    private final ObjectProvider<InsightBatchSink> batchSinkProvider;
+
     // 统计信息
     private final ReporterMetrics metrics = new ReporterMetrics();
 
     /**
      * 构造函数
      */
-    public AsyncSpanReporter(String serviceName, String serviceInstance) {
+    public AsyncSpanReporter(String serviceName, String serviceInstance,
+                             ObjectProvider<InsightBatchSink> batchSinkProvider) {
         this.serviceName = serviceName;
         this.serviceInstance = serviceInstance;
+        this.batchSinkProvider = batchSinkProvider;
         this.metricsQueue = new LinkedBlockingQueue<>(DEFAULT_QUEUE_CAPACITY);
 
         log.info("[异步上报器] 初始化完成: serviceName={}, serviceInstance={}",
@@ -241,10 +250,16 @@ public class AsyncSpanReporter {
                 }
             }
 
-            // 简化处理，只记录日志，实际持久化由starter模块的其他组件处理
+            InsightBatchSink sink = batchSinkProvider.getIfAvailable();
+            if (sink != null) {
+                sink.acceptTraceSpans(batch);
+            } else {
+                log.debug("[异步上报器] 未注册 InsightBatchSink，跳过本批 TraceSpan: size={}", batchSize);
+            }
+
             long cost = System.currentTimeMillis() - startTime;
             metrics.incrementSuccess(batchSize, cost);
-            log.debug("[异步上报器] 处理了 {} 个TraceSpan，实际持久化由其他组件负责", batchSize);
+            log.debug("[异步上报器] 已交付 {} 个 TraceSpan 至 BatchSink", batchSize);
 
         } catch (Exception e) {
             long cost = System.currentTimeMillis() - startTime;
@@ -267,15 +282,16 @@ public class AsyncSpanReporter {
         int batchSize = batch.size();
 
         try {
-            // 目前仅记录日志，待实现JvmMetric持久化功能
-            log.debug("[异步上报器] 收到JvmMetric批量数据: size={}", batchSize);
-            
-            // 模拟成功处理
+            InsightBatchSink sink = batchSinkProvider.getIfAvailable();
+            if (sink != null) {
+                sink.acceptJvmMetrics(batch);
+            } else {
+                log.debug("[异步上报器] 未注册 InsightBatchSink，忽略 JVM 指标批次: size={}", batchSize);
+            }
+
             long cost = System.currentTimeMillis() - startTime;
             metrics.incrementSuccess(batchSize, cost);
-            log.debug("[异步上报器] JvmMetric批量处理完成: size={}, cost={}ms", batchSize, cost);
-            
-            // TODO: 实现JvmMetric持久化功能
+            log.debug("[异步上报器] JvmMetric 批次已处理: size={}, cost={}ms", batchSize, cost);
 
         } catch (Exception e) {
             long cost = System.currentTimeMillis() - startTime;

@@ -39,7 +39,8 @@ import java.sql.SQLException;
 @EnableConfigurationProperties(InsightProperties.class)
 @ComponentScan(basePackages = {
         "io.github.iweidujiang.springinsight.collector",
-        "io.github.iweidujiang.springinsight.storage"
+        "io.github.iweidujiang.springinsight.storage",
+        "io.github.iweidujiang.springinsight.sink"
 })
 public class SpringInsightAutoConfiguration {
 
@@ -52,7 +53,7 @@ public class SpringInsightAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public DataSource dataSource() {
-        log.info("📦 正在初始化 Spring Insight 数据源");
+        log.info("[Starter配置] 正在初始化 Spring Insight 数据源");
         
         // 对于非H2数据库，确保数据库存在
         if (properties.getStorageType() != InsightProperties.StorageType.H2) {
@@ -68,9 +69,6 @@ public class SpringInsightAutoConfiguration {
                 break;
             case MYSQL:
                 hikariConfig.setDriverClassName("com.mysql.cj.jdbc.Driver");
-                break;
-            case POSTGRESQL:
-                hikariConfig.setDriverClassName("org.postgresql.Driver");
                 break;
         }
         
@@ -107,7 +105,7 @@ public class SpringInsightAutoConfiguration {
         // 提取数据库名
         String databaseName = extractDatabaseName(jdbcUrl);
         if (databaseName == null) {
-            log.warn("⚠️ 无法提取数据库名，跳过自动创建数据库");
+            log.warn("[Starter配置] 无法提取数据库名，跳过自动创建数据库");
             return;
         }
         
@@ -117,10 +115,10 @@ public class SpringInsightAutoConfiguration {
         try {
             Connection conn = DriverManager.getConnection(connectionUrl, username, password);
             conn.createStatement().execute("CREATE DATABASE IF NOT EXISTS `" + databaseName + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            log.info("✅ 数据库 '{}' 已创建或已存在", databaseName);
+            log.info("[Starter配置] 数据库 '{}' 已创建或已存在", databaseName);
             conn.close();
         } catch (SQLException e) {
-            log.error("❌ 创建数据库失败: {}", e.getMessage());
+            log.error("[Starter配置] 创建数据库失败: {}", e.getMessage());
         }
     }
     
@@ -176,11 +174,6 @@ public class SpringInsightAutoConfiguration {
                             resolver.getResource("classpath:sql/schema-mysql.sql")
                     );
                     break;
-                case POSTGRESQL:
-                    populator.addScripts(
-                            resolver.getResource("classpath:sql/schema-postgresql.sql")
-                    );
-                    break;
             }
             
             // 设置执行脚本的分隔符和编码
@@ -190,9 +183,9 @@ public class SpringInsightAutoConfiguration {
             
             // 执行脚本
             DatabasePopulatorUtils.execute(populator, dataSource);
-            log.info("✅ 数据库表初始化完成");
+            log.info("[Starter配置] 数据库表初始化完成");
         } catch (Exception e) {
-            log.error("❌ 数据库表初始化失败: {}", e.getMessage());
+            log.error("[Starter配置] 数据库表初始化失败: {}", e.getMessage());
         }
     }
     

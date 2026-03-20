@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.controller;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.servlet.view.RedirectView;
 
 /**
  * ┌───────────────────────────────────────────────
@@ -16,6 +17,14 @@ import org.springframework.web.bind.annotation.GetMapping;
  */
 @Controller
 public class SpaController {
+
+    /**
+     * 兼容文档中的 /insight-ui 入口，重定向到 SPA 根路径
+     */
+    @GetMapping("/insight-ui")
+    public RedirectView redirectLegacyInsightUi() {
+        return new RedirectView("/", true, false);
+    }
 
     /**
      * 处理SPA路由转发

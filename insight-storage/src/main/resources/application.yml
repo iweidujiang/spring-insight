@@ -1,0 +1,13 @@
+# 独立运行 insight-storage 模块时的默认内嵌库与表结构（与 Starter 内嵌场景一致）
+spring:
+  application:
+    name: spring-insight-storage
+  datasource:
+    url: jdbc:h2:mem:spring_insight_storage;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema-h2.sql

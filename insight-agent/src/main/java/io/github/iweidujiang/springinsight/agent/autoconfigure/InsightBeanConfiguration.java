@@ -6,7 +6,9 @@ import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsReporter;
 import io.github.iweidujiang.springinsight.agent.instrumentation.DbCallAspect;
 import io.github.iweidujiang.springinsight.agent.instrumentation.HttpRequestInterceptor;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
+import io.github.iweidujiang.springinsight.agent.sink.InsightBatchSink;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -46,7 +48,7 @@ public class InsightBeanConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public AsyncSpanReporter asyncSpanReporter() {
+    public AsyncSpanReporter asyncSpanReporter(ObjectProvider<InsightBatchSink> batchSinkProvider) {
         String serviceInstance = properties.getServiceInstance();
         if (serviceInstance == null || serviceInstance.trim().isEmpty()) {
             serviceInstance = "localhost:" + getServerPort();
@@ -54,7 +56,8 @@ public class InsightBeanConfiguration {
 
         AsyncSpanReporter reporter = new AsyncSpanReporter(
                 properties.getServiceName(),
-                serviceInstance
+                serviceInstance,
+                batchSinkProvider
         );
         reporter.start();
         log.info("[Bean配置] 异步上报器初始化完成");

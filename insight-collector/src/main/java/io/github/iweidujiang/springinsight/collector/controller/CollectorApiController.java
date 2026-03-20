@@ -77,7 +77,7 @@ public class CollectorApiController {
 
         try {
             var dependencies = traceSpanPersistenceService.getServiceDependencies(hours);
-            System.out.println("服务依赖关系=====" + dependencies);
+            log.debug("[UI接口] 服务依赖条数={}", dependencies.size());
             return ResponseEntity.ok(dependencies);
         } catch (Exception e) {
             log.error("获取服务依赖关系失败", e);

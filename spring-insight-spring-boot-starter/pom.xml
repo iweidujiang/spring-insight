@@ -42,11 +42,12 @@
             <artifactId>insight-storage</artifactId>
         </dependency>
 
-        <!-- MySQL 驱动 -->
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
+            <groupId>io.github.iweidujiang</groupId>
+            <artifactId>insight-collector</artifactId>
         </dependency>
+
+        <!-- 使用 MySQL 时请自行引入 mysql-connector-j；默认内嵌 H2，无需此依赖 -->
 
         <!-- MyBatis Plus -->
         <dependency>

@@ -85,8 +85,9 @@ spring:
 
 **优先级：** 配置文件 > 注解属性 > 默认值
 
-### 3. 查看报告
-启动应用，访问：`http://localhost:8088/insight-ui`
+### 3. 查看控制台
+启动应用后，在浏览器访问应用根路径（端口以 `server.port` 为准），例如：`http://localhost:8080/`  
+兼容旧文档入口：`http://localhost:8080/insight-ui`（会重定向到 `/`）。
 
 ## 🏗️ 核心功能（第一期规划）
 
@@ -108,25 +109,35 @@ spring:
 
 - **Phase 3:** 引入智能分析规则与预测（~2026.Q4）
 
-## 🗄️ 数据库支持
+## 🗄️ 数据存储（默认零外部依赖）
 
-Spring Insight 支持 **MySQL 数据库**，并提供自动数据库和表创建功能。
+默认使用 **进程内嵌 H2 内存库**（与业务应用同一 JVM），无需安装或配置 MySQL。
 
-### 配置示例
+```yaml
+# 可选：显式写出默认值（一般可省略）
+spring:
+  insight:
+    storage-type: h2
+    datasource:
+      url: jdbc:h2:mem:spring_insight;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+      username: sa
+      password: ""
+```
+
+### 可选：使用 MySQL
+
+若希望将监控数据写入独立 MySQL，请在项目中 **自行添加** `mysql-connector-j` 依赖，并配置：
+
 ```yaml
 spring:
   insight:
+    storage-type: mysql
     datasource:
       url: jdbc:mysql://localhost:3306/spring_insight?useSSL=false&serverTimezone=UTC
       username: root
-      password: 123456
-    server:
-      port: 8088  # 自定义端口，默认8088
+      password: your_password
 ```
 
-**说明：**
-- 引入starter后，只需配置MySQL连接信息，Spring Insight会自动创建数据库和表。
-- 支持自定义端口，默认端口为8088。
-- 所有数据存储在MySQL中，确保数据持久化和可靠性。
+Starter 会在启动时尝试执行建库 SQL（`CREATE DATABASE IF NOT EXISTS`）并初始化表结构。
 
 ## 未完待续...

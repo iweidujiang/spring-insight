@@ -9,7 +9,7 @@ export interface ApiResponse<T> {
 
 // 创建Axios实例
 const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: '/api/v1/ui',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'

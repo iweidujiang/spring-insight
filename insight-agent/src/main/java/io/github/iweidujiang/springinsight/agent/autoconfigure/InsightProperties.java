@@ -49,7 +49,7 @@ public class InsightProperties {
     private String[] excludePatterns = { "/actuator/**", "/health", "/prometheus" };
 
     /**
-     * 存储类型：h2 (默认), mysql, postgresql
+     * 存储类型：h2 (默认), mysql（需自行引入 JDBC 驱动）
      */
     private StorageType storageType = StorageType.H2;
 
@@ -68,8 +68,7 @@ public class InsightProperties {
      */
     public enum StorageType {
         H2,
-        MYSQL,
-        POSTGRESQL
+        MYSQL
     }
     
     /**
