@@ -1,13 +1,11 @@
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios'
 
-// 类型定义
 export interface ApiResponse<T> {
   data: T
   status: number
   statusText: string
 }
 
-// 创建Axios实例
 const apiClient = axios.create({
   baseURL: '/api/v1/ui',
   timeout: 10000,
@@ -16,7 +14,6 @@ const apiClient = axios.create({
   }
 })
 
-// 通用请求方法
 async function request<T>(url: string, options: AxiosRequestConfig = {}): Promise<T> {
   try {
     const response = await apiClient<T>({
@@ -30,7 +27,6 @@ async function request<T>(url: string, options: AxiosRequestConfig = {}): Promis
   }
 }
 
-// 带默认值的请求方法
 async function requestWithDefault<T>(url: string, defaultValue: T, options: AxiosRequestConfig = {}): Promise<T> {
   try {
     const response = await apiClient<T>({
@@ -44,53 +40,77 @@ async function requestWithDefault<T>(url: string, defaultValue: T, options: Axio
   }
 }
 
-// API服务类
+/** 后端 Map 使用 snake_case，统一转成前端 camelCase */
+function normalizeDependency(raw: any) {
+  return {
+    sourceService: raw.source_service ?? raw.sourceService ?? '',
+    targetService: raw.target_service ?? raw.targetService ?? '',
+    callCount: Number(raw.call_count ?? raw.callCount ?? 0),
+    avgDuration: Number(raw.avg_duration ?? raw.avgDuration ?? 0)
+  }
+}
+
+function normalizeServiceStat(raw: any) {
+  return {
+    serviceName: raw.service_name ?? raw.serviceName ?? '',
+    totalSpans: Number(raw.span_count ?? raw.totalSpans ?? 0)
+  }
+}
+
+function normalizeErrorRow(raw: any) {
+  const rate = Number(raw.error_rate ?? raw.errorRate ?? 0)
+  return {
+    serviceName: raw.service_name ?? raw.serviceName ?? '',
+    totalCalls: Number(raw.total_calls ?? raw.totalCalls ?? 0),
+    errorCalls: Number(raw.error_calls ?? raw.errorCalls ?? 0),
+    errorRate: rate
+  }
+}
+
 export class ApiService {
-  // 获取服务列表
   static async getServiceNames(): Promise<string[]> {
     return requestWithDefault<string[]>('/services', [])
   }
 
-  // 获取服务依赖关系
   static async getServiceDependencies(hours: number = 24): Promise<any[]> {
-    return requestWithDefault<any[]>(`/dependencies?hours=${hours}`, [])
+    const rows = await requestWithDefault<any[]>(`/dependencies?hours=${hours}`, [])
+    return rows.map(normalizeDependency)
   }
 
-  // 获取服务统计信息
   static async getServiceStats(): Promise<any[]> {
-    return requestWithDefault<any[]>('/services/stats', [])
+    const rows = await requestWithDefault<any[]>('/services/stats', [])
+    return rows.map(normalizeServiceStat)
   }
 
-  // 获取错误分析
   static async getErrorAnalysis(hours: number = 24): Promise<any[]> {
-    return requestWithDefault<any[]>(`/errors/analysis?hours=${hours}`, [])
+    const rows = await requestWithDefault<any[]>(`/errors/analysis?hours=${hours}`, [])
+    return rows.map(normalizeErrorRow)
   }
 
-  // 获取Collector统计信息
+  /** 返回 Collector 内部统计对象（非外层 wrapper） */
   static async getCollectorStats(): Promise<any> {
-    return requestWithDefault<any>('/stats', {})
+    const raw = await requestWithDefault<any>('/stats', {})
+    if (raw && typeof raw === 'object' && raw.collectorStats) {
+      return raw.collectorStats
+    }
+    return raw && typeof raw === 'object' ? raw : {}
   }
 
-  // 获取最近链路
   static async getRecentSpans(hours: number = 24, limit: number = 50): Promise<any[]> {
     return requestWithDefault<any[]>(`/traces/recent?hours=${hours}&limit=${limit}`, [])
   }
 
-  // 获取指定服务的最近链路
   static async getRecentSpansByService(serviceName: string, limit: number = 50): Promise<any[]> {
-    return requestWithDefault<any[]>(`/services/${serviceName}/traces?limit=${limit}`, [])
+    return requestWithDefault<any[]>(`/services/${encodeURIComponent(serviceName)}/traces?limit=${limit}`, [])
   }
 
-  // 获取链路详情
   static async getTraceDetail(traceId: string): Promise<any[]> {
-    return requestWithDefault<any[]>(`/traces/${traceId}`, [])
+    return requestWithDefault<any[]>(`/traces/${encodeURIComponent(traceId)}`, [])
   }
 }
 
-// 导出请求实例，方便其他地方直接使用
 export { apiClient }
 
-// 导出类型
 export type {
   AxiosRequestConfig,
   AxiosResponse,

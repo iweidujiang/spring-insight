@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -108,6 +109,22 @@ public class GlobalExceptionHandler {
         log.warn("[全局异常处理] 业务异常: {} -> {}", request.getRequestURI(), ex.getMessage());
 
         return ResponseEntity.status(ex.getStatus()).body(response);
+    }
+
+    /**
+     * 无对应 Controller 映射（避免误报 500）
+     */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(
+            NoHandlerFoundException ex, HttpServletRequest request) {
+
+        Map<String, Object> response = createErrorResponse(
+                HttpStatus.NOT_FOUND,
+                "路径不存在: " + ex.getRequestURL(),
+                request.getRequestURI()
+        );
+        log.debug("[全局异常处理] 404: {}", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     /**

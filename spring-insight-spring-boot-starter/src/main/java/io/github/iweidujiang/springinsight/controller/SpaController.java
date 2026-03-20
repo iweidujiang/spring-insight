@@ -31,11 +31,12 @@ public class SpaController {
      * 将所有前端路由请求转发到index.html
      */
     @GetMapping(value = {
-            "/", 
-            "/dashboard", 
-            "/topology", 
-            "/traces", 
-            "/error-analysis", 
+            "/",
+            "/dashboard",
+            "/topology",
+            "/traces",
+            "/traces/**",
+            "/error-analysis",
             "/about"
     })
     public String forwardToIndex() {

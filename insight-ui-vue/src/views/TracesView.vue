@@ -220,11 +220,8 @@ const resetFilters = () => {
   loadData()
 }
 
-// 查看链路详情
 const viewTraceDetail = (traceId: string) => {
-  // 这里可以跳转到链路详情页面，暂时先在控制台输出
-  console.log(`查看链路详情: ${traceId}`)
-  // router.push(`/trace/${traceId}`)
+  router.push({ name: 'trace-detail', params: { traceId } })
 }
 
 // 复制Trace ID

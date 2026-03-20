@@ -1,33 +1,48 @@
-/* 全局样式 */
+/* 全局样式 — 深色科技风 */
 :root {
-  --primary-color: #3b82f6;
-  --secondary-color: #64748b;
-  --success-color: #10b981;
-  --warning-color: #f59e0b;
-  --danger-color: #ef4444;
-  --info-color: #06b6d4;
-  --light-color: #f8fafc;
-  --dark-color: #1e293b;
-  --card-bg: #ffffff;
+  --si-cyan: #22d3ee;
+  --si-violet: #818cf8;
+  --primary-color: #38bdf8;
+  --secondary-color: #94a3b8;
+  --success-color: #34d399;
+  --warning-color: #fbbf24;
+  --danger-color: #f87171;
+  --info-color: #22d3ee;
+  --light-color: #e2e8f0;
+  --dark-color: #f1f5f9;
+  --card-bg: rgba(15, 23, 42, 0.72);
+  --card-border: rgba(56, 189, 248, 0.18);
   --border-radius: 12px;
-  --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --box-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.12), 0 8px 32px rgba(0, 0, 0, 0.45);
+  --box-shadow-hover: 0 0 0 1px rgba(56, 189, 248, 0.35), 0 12px 40px rgba(34, 211, 238, 0.12);
   --transition: all 0.3s ease;
 }
 
 body {
-  background-color: #f1f5f9;
+  background-color: #020617;
+  background-image:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(56, 189, 248, 0.15), transparent),
+    radial-gradient(ellipse 80% 50% at 100% 50%, rgba(129, 140, 248, 0.08), transparent),
+    linear-gradient(180deg, #0f172a 0%, #020617 40%);
+  background-attachment: fixed;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   padding-top: 70px;
   color: var(--dark-color);
   line-height: 1.6;
 }
 
-/* 导航栏样式 */
-.navbar {
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+/* 导航栏 */
+.navbar,
+.si-navbar {
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.92) 50%, rgba(15, 23, 42, 0.95) 100%) !important;
+  border-bottom: 1px solid var(--card-border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 40px rgba(34, 211, 238, 0.06);
+  backdrop-filter: blur(12px);
   padding: 0.75rem 1rem;
+}
+
+.si-navbar .navbar-brand {
+  text-shadow: 0 0 24px rgba(34, 211, 238, 0.35);
 }
 
 .navbar-brand {
@@ -75,11 +90,12 @@ body {
 /* 统计卡片样式 */
 .stat-card {
   border-radius: var(--border-radius);
-  border: none;
+  border: 1px solid var(--card-border);
   box-shadow: var(--box-shadow);
   transition: var(--transition);
   margin-bottom: 20px;
   background: var(--card-bg);
+  backdrop-filter: blur(10px);
   overflow: hidden;
   position: relative;
 }
@@ -91,7 +107,8 @@ body {
   left: 0;
   width: 4px;
   height: 100%;
-  background: linear-gradient(to bottom, var(--primary-color), var(--info-color));
+  background: linear-gradient(to bottom, var(--si-cyan), var(--si-violet));
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.5);
 }
 
 .stat-card:hover {
@@ -119,6 +136,7 @@ body {
 /* 图表容器样式 */
 .chart-container {
   background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: var(--border-radius);
   padding: 1.5rem;
   box-shadow: var(--box-shadow);
@@ -126,6 +144,7 @@ body {
   height: 400px;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(10px);
 }
 
 .chart-container::before {
@@ -140,7 +159,7 @@ body {
 
 .chart-container h5 {
   font-weight: 600;
-  color: var(--dark-color);
+  color: var(--light-color);
   margin-bottom: 1rem;
   display: flex;
   align-items: center;
@@ -209,11 +228,16 @@ body {
 .page-title {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--dark-color);
+  color: var(--light-color);
   margin-bottom: 0.5rem;
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.page-title i {
+  color: var(--si-cyan);
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.45));
 }
 
 /* 页面描述样式 */
@@ -230,19 +254,20 @@ body {
 }
 
 .table thead th {
-  background-color: #f8fafc;
+  background-color: rgba(30, 41, 59, 0.9);
   font-weight: 600;
   color: var(--secondary-color);
   border-top: none;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 1px solid var(--card-border);
   padding: 1rem;
   text-align: left;
 }
 
 .table tbody td {
   padding: 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.5);
   vertical-align: middle;
+  color: #cbd5e1;
 }
 
 .table tbody tr {
@@ -250,7 +275,7 @@ body {
 }
 
 .table tbody tr:hover {
-  background-color: #f8fafc;
+  background-color: rgba(56, 189, 248, 0.06);
 }
 
 /* 加载动画 */
@@ -329,18 +354,18 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #0f172a;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #334155;
   border-radius: 4px;
   transition: var(--transition);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #475569;
 }
 
 /* 动画效果 */
@@ -390,24 +415,42 @@ body {
   background-color: #059669;
 }
 
-/* 输入框样式 */
-.form-control {
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  padding: 0.75rem 1rem;
-  transition: var(--transition);
-}
-
-.form-control:focus {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  outline: none;
-}
-
 /* 卡片标题样式 */
 .card-title {
   font-weight: 600;
-  color: var(--dark-color);
+  color: var(--light-color);
   margin-bottom: 1rem;
   font-size: 1.1rem;
+}
+
+/* 表单控件深色 */
+.form-select,
+.form-control {
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  transition: var(--transition);
+  background-color: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--card-border);
+  color: #e2e8f0;
+}
+
+.form-select:focus,
+.form-control:focus {
+  border-color: var(--si-cyan);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
+  background-color: rgba(15, 23, 42, 0.95);
+  color: #f8fafc;
+}
+
+.form-label {
+  color: #94a3b8;
+}
+
+.text-muted {
+  color: #64748b !important;
+}
+
+.table-light {
+  --bs-table-bg: rgba(30, 41, 59, 0.95);
+  color: #cbd5e1;
 }

@@ -81,9 +81,13 @@ spring:
     jvm-metrics:
       enabled: true
       report-interval: 30000  # JVM指标上报间隔，单位毫秒
+    # 诊断日志：true 时打印 HTTP 拦截器每次触发、TraceContext 强制清理等（默认 false，避免刷屏）
+    diagnostic-logs: false
 ```
 
 **优先级：** 配置文件 > 注解属性 > 默认值
+
+**日志：** 需要更细粒度时可用标准 Spring 配置，例如 `logging.level.io.github.iweidujiang.springinsight=DEBUG`；日常建议保持 `diagnostic-logs: false`。
 
 ### 3. 查看控制台
 启动应用后，在浏览器访问应用根路径（端口以 `server.port` 为准），例如：`http://localhost:8080/`  

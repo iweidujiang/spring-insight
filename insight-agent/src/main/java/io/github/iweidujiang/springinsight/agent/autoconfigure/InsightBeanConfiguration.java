@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.agent.autoconfigure;
 import io.github.iweidujiang.springinsight.agent.collector.AsyncSpanReporter;
 import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsCollector;
 import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsReporter;
+import io.github.iweidujiang.springinsight.agent.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.instrumentation.DbCallAspect;
 import io.github.iweidujiang.springinsight.agent.instrumentation.HttpRequestInterceptor;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -82,7 +84,18 @@ public class InsightBeanConfiguration {
     @ConditionalOnProperty(prefix = "spring.insight", name = "http-tracing-enabled", havingValue = "true", matchIfMissing = true)
     public HttpRequestInterceptor httpRequestInterceptor(SpanReportingListener spanReportingListener) {
         log.info("[Bean配置] HTTP请求拦截器初始化完成");
-        return new HttpRequestInterceptor(spanReportingListener);
+        return new HttpRequestInterceptor(spanReportingListener, properties);
+    }
+
+    /**
+     * 同步诊断日志开关到 TraceContext（静态上下文）
+     */
+    @Bean
+    public ApplicationRunner insightTraceContextDiagnosticSync() {
+        return args -> {
+            TraceContext.setDiagnosticLogs(properties.isDiagnosticLogs());
+            log.info("[Bean配置] TraceContext 诊断日志: {}", properties.isDiagnosticLogs());
+        };
     }
 
     /**

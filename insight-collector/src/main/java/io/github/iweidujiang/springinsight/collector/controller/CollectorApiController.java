@@ -133,10 +133,22 @@ public class CollectorApiController {
     }
 
     /**
-     * 获取实时统计
+     * 获取实时统计（与前端 /stats 路径对齐）
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<?> getStatsSummary() {
+        return getRealtimeStatsBody();
+    }
+
+    /**
+     * 获取实时统计（保留原名）
      */
     @GetMapping("/stats/realtime")
     public ResponseEntity<?> getRealtimeStats() {
+        return getRealtimeStatsBody();
+    }
+
+    private ResponseEntity<?> getRealtimeStatsBody() {
         try {
             var collectorStats = traceSpanCollectorService.getStats();
 
@@ -146,7 +158,7 @@ public class CollectorApiController {
 
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            log.error("获取实时统计失败", e);
+            log.error("[UI接口] 获取实时统计失败", e);
             return ResponseEntity.internalServerError().build();
         }
     }

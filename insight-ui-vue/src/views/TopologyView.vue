@@ -158,8 +158,12 @@ const updateCurrentTime = () => {
 const initChart = () => {
   const chartDom = document.getElementById('topology-chart')
   if (chartDom) {
-    topologyChart = echarts.init(chartDom)
+    topologyChart = echarts.init(chartDom, null, { renderer: 'canvas' })
     const option = {
+      backgroundColor: 'transparent',
+      textStyle: {
+        color: '#cbd5e1'
+      },
       tooltip: {
         trigger: 'item',
         formatter: function(params: any) {
@@ -182,7 +186,8 @@ const initChart = () => {
           show: true,
           position: 'right',
           formatter: '{b}',
-          fontSize: 12
+          fontSize: 12,
+          color: '#e2e8f0'
         },
         lineStyle: {
           color: 'source',
@@ -198,7 +203,7 @@ const initChart = () => {
             ]
             return colorList[params.dataIndex % colorList.length]
           },
-          borderColor: '#fff',
+          borderColor: 'rgba(56, 189, 248, 0.6)',
           borderWidth: 2,
           shadowBlur: 10,
           shadowColor: 'rgba(59, 130, 246, 0.3)'

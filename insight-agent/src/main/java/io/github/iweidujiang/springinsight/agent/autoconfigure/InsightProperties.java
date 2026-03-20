@@ -44,9 +44,22 @@ public class InsightProperties {
     private boolean httpTracingEnabled = true;
 
     /**
-     * 需要排除的路径模式
+     * 需要排除的路径模式（不创建 HTTP Span，减少静态资源噪音）
      */
-    private String[] excludePatterns = { "/actuator/**", "/health", "/prometheus" };
+    private String[] excludePatterns = {
+            "/actuator/**",
+            "/health",
+            "/prometheus",
+            "/assets/**",
+            "/vite.svg",
+            "/favicon.ico",
+            "/api/v1/**"
+    };
+
+    /**
+     * 是否输出 Insight 诊断级日志（HTTP 每次触发、上下文强制清理等）；默认 false
+     */
+    private boolean diagnosticLogs = false;
 
     /**
      * 验证配置是否有效

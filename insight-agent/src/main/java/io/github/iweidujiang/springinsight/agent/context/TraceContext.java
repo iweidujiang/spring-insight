@@ -23,6 +23,9 @@ import java.util.Optional;
 @Slf4j
 public class TraceContext {
 
+    /** 与 {@link io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties#diagnosticLogs} 同步 */
+    private static volatile boolean diagnosticLogs = false;
+
     private static final ThreadLocal<Deque<TraceSpan>> SPAN_STACK =
             new NamedThreadLocal<>("Spring Insight Trace Context") {
                 @Override
@@ -33,6 +36,10 @@ public class TraceContext {
 
     private TraceContext() {
         // 私有构造器，防止实例化
+    }
+
+    public static void setDiagnosticLogs(boolean enabled) {
+        diagnosticLogs = enabled;
     }
 
     /**
@@ -97,7 +104,11 @@ public class TraceContext {
     public static Optional<TraceSpan> endSpan(String errorCode, String errorMessage) {
         Deque<TraceSpan> stack = SPAN_STACK.get();
         if (stack.isEmpty()) {
-            log.warn("[追踪上下文] 尝试结束Span，但当前上下文栈为空");
+            if (diagnosticLogs) {
+                log.warn("[追踪上下文] 尝试结束Span，但当前上下文栈为空");
+            } else {
+                log.trace("[追踪上下文] 尝试结束Span，但当前上下文栈为空");
+            }
             return Optional.empty();
         }
 
@@ -123,13 +134,20 @@ public class TraceContext {
     public static void clear() {
         Deque<TraceSpan> stack = SPAN_STACK.get();
         if (!stack.isEmpty()) {
-            log.warn("[追踪上下文] 强制清除非空上下文栈，栈深度: {}", stack.size());
-            // 结束栈中所有未完成的Span
+            if (diagnosticLogs) {
+                log.warn("[追踪上下文] 强制清除非空上下文栈，栈深度: {}", stack.size());
+            } else {
+                log.debug("[追踪上下文] 强制清除非空上下文栈，栈深度: {}", stack.size());
+            }
             while (!stack.isEmpty()) {
                 TraceSpan span = stack.pop();
                 if (!span.isFinished()) {
                     span.finish("CONTEXT_CLEARED", "上下文被强制清理");
-                    log.warn("[追踪上下文] 强制结束未完成Span: spanId={}", span.getSpanId());
+                    if (diagnosticLogs) {
+                        log.warn("[追踪上下文] 强制结束未完成Span: spanId={}", span.getSpanId());
+                    } else {
+                        log.debug("[追踪上下文] 强制结束未完成Span: spanId={}", span.getSpanId());
+                    }
                 }
             }
         }
@@ -161,7 +179,11 @@ public class TraceContext {
             span.setRemoteService(remoteService);
             log.debug("[追踪上下文] 设置当前Span的remoteService: spanId={}, remoteService={}", span.getSpanId(), remoteService);
         } else {
-            log.warn("[追踪上下文] 尝试设置remoteService，但当前上下文栈为空");
+            if (diagnosticLogs) {
+                log.warn("[追踪上下文] 尝试设置remoteService，但当前上下文栈为空");
+            } else {
+                log.trace("[追踪上下文] 尝试设置remoteService，但当前上下文栈为空");
+            }
         }
     }
 }

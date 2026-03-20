@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <!-- 导航栏 -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark si-navbar fixed-top">
       <div class="container-fluid">
         <router-link class="navbar-brand" to="/">
           <i class="fa fa-chart-network me-2"></i>Spring Insight
@@ -24,7 +24,7 @@
               </router-link>
             </li>
             <li class="nav-item">
-              <router-link class="nav-link" :class="{ active: $route.path === '/traces' }" to="/traces">
+              <router-link class="nav-link" :class="{ active: $route.path === '/traces' || $route.path.startsWith('/traces/') }" to="/traces">
                 <i class="fa fa-stream me-1"></i>链路追踪
               </router-link>
             </li>

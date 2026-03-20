@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.agent.instrumentation;
 
+import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
@@ -28,9 +29,12 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
     private static final String TRACE_SPAN_ATTR = "X-Trace-Span";
 
     private final SpanReportingListener spanReportingListener;
+    private final InsightProperties insightProperties;
 
-    public HttpRequestInterceptor(SpanReportingListener spanReportingListener) {
+    public HttpRequestInterceptor(SpanReportingListener spanReportingListener,
+                                  InsightProperties insightProperties) {
         this.spanReportingListener = spanReportingListener;
+        this.insightProperties = insightProperties;
     }
 
     /**
@@ -38,7 +42,11 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        log.info("[HTTP拦截器] 触发: {} {}", request.getMethod(), request.getRequestURI());
+        if (insightProperties.isDiagnosticLogs()) {
+            log.info("[HTTP拦截器] 触发: {} {}", request.getMethod(), request.getRequestURI());
+        } else {
+            log.trace("[HTTP拦截器] 触发: {} {}", request.getMethod(), request.getRequestURI());
+        }
         long startTime = System.currentTimeMillis();
 
         // 构建操作名称：方法 + 路径
@@ -62,8 +70,12 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
         request.setAttribute(TRACE_START_TIME_ATTR, startTime);
         request.setAttribute(TRACE_SPAN_ATTR, span);
 
-        log.info("[HTTP拦截器] 开始追踪请求: traceId={}, spanId={}, operation={}, uri={}",
-                span.getTraceId(), span.getSpanId(), operationName, request.getRequestURI());
+        if (insightProperties.isDiagnosticLogs()) {
+            log.info("[HTTP拦截器] 开始追踪请求: traceId={}, spanId={}, operation={}, uri={}",
+                    span.getTraceId(), span.getSpanId(), operationName, request.getRequestURI());
+        } else {
+            log.debug("[HTTP拦截器] 开始追踪: traceId={}, uri={}", span.getTraceId(), request.getRequestURI());
+        }
 
         return true; // 继续处理请求
     }

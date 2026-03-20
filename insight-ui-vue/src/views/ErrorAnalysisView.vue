@@ -174,6 +174,8 @@ const initCharts = () => {
   if (errorRateChartDom) {
     errorRateChart = echarts.init(errorRateChartDom)
     const option = {
+      backgroundColor: 'transparent',
+      textStyle: { color: '#94a3b8' },
       tooltip: {
         trigger: 'axis',
         axisPointer: {
@@ -194,9 +196,11 @@ const initCharts = () => {
       xAxis: {
         type: 'category',
         data: [],
+        axisLine: { lineStyle: { color: '#334155' } },
         axisLabel: {
           fontSize: 11,
-          rotate: 45
+          rotate: 45,
+          color: '#94a3b8'
         },
         boundaryGap: true
       },
@@ -204,10 +208,13 @@ const initCharts = () => {
         type: 'value',
         name: '错误率 (%)',
         nameTextStyle: {
-          fontSize: 12
+          fontSize: 12,
+          color: '#94a3b8'
         },
+        splitLine: { lineStyle: { color: 'rgba(51, 65, 85, 0.5)' } },
         axisLabel: {
-          fontSize: 11
+          fontSize: 11,
+          color: '#94a3b8'
         },
         max: 100
       },
@@ -243,6 +250,8 @@ const initCharts = () => {
   if (errorPieChartDom) {
     errorPieChart = echarts.init(errorPieChartDom)
     const option = {
+      backgroundColor: 'transparent',
+      textStyle: { color: '#94a3b8' },
       tooltip: {
         trigger: 'item',
         formatter: '{b}: {c} 次 ({d}%)'
@@ -252,6 +261,7 @@ const initCharts = () => {
         right: 10,
         top: 'center',
         type: 'scroll',
+        textStyle: { color: '#94a3b8' },
         formatter: function(name: string) {
           return name.length > 15 ? name.substring(0, 15) + '...' : name
         }
@@ -264,7 +274,7 @@ const initCharts = () => {
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 10,
-          borderColor: '#fff',
+          borderColor: 'rgba(15, 23, 42, 0.9)',
           borderWidth: 2,
           color: function(params: any) {
             const colorList = [

@@ -4,6 +4,7 @@ import App from './App.vue'
 import DashboardView from './views/DashboardView.vue'
 import TopologyView from './views/TopologyView.vue'
 import TracesView from './views/TracesView.vue'
+import TraceDetailView from './views/TraceDetailView.vue'
 import ErrorAnalysisView from './views/ErrorAnalysisView.vue'
 import AboutView from './views/AboutView.vue'
 
@@ -33,6 +34,12 @@ const router = createRouter({
       name: 'traces',
       component: TracesView,
       meta: { title: '链路追踪' }
+    },
+    {
+      path: '/traces/:traceId',
+      name: 'trace-detail',
+      component: TraceDetailView,
+      meta: { title: '链路详情' }
     },
     {
       path: '/error-analysis',
