@@ -254,6 +254,8 @@ const initCharts = () => {
   if (topologyChartDom) {
     topologyChart = echarts.init(topologyChartDom)
     const topologyOption = {
+      backgroundColor: 'transparent',
+      textStyle: { color: '#94a3b8' },
       tooltip: {
         trigger: 'item',
         formatter: function(params: any) {
@@ -276,7 +278,8 @@ const initCharts = () => {
           show: true,
           position: 'right',
           formatter: '{b}',
-          fontSize: 12
+          fontSize: 12,
+          color: '#e2e8f0'
         },
         lineStyle: {
           color: 'source',
@@ -308,6 +311,8 @@ const initCharts = () => {
   if (serviceRankChartDom) {
     serviceRankChart = echarts.init(serviceRankChartDom)
     const rankOption = {
+      backgroundColor: 'transparent',
+      textStyle: { color: '#94a3b8' },
       tooltip: {
         trigger: 'axis',
         axisPointer: {
@@ -329,20 +334,26 @@ const initCharts = () => {
         type: 'value',
         name: '请求数量',
         nameTextStyle: {
-          fontSize: 12
+          fontSize: 12,
+          color: '#94a3b8'
         },
+        axisLine: { lineStyle: { color: '#334155' } },
+        splitLine: { lineStyle: { color: 'rgba(51, 65, 85, 0.45)' } },
         axisLabel: {
-          fontSize: 11
+          fontSize: 11,
+          color: '#94a3b8'
         },
         boundaryGap: [0, 0.01]
       },
       yAxis: {
         type: 'category',
         data: [],
+        axisLine: { lineStyle: { color: '#334155' } },
         axisLabel: {
           fontSize: 11,
           width: 100,
-          overflow: 'truncate'
+          overflow: 'truncate',
+          color: '#cbd5e1'
         }
       },
       series: [{
@@ -363,7 +374,8 @@ const initCharts = () => {
           show: true,
           position: 'right',
           formatter: '{c}',
-          fontSize: 11
+          fontSize: 11,
+          color: '#e2e8f0'
         },
         animationDelay: function(idx: number) {
           return idx * 100
@@ -407,10 +419,24 @@ const updateCharts = () => {
       })
     })
     
-    // 更新拓扑图数据
+    const nodeList = Array.from(nodes.values())
     topologyChart.setOption({
+      graphic: nodeList.length === 0
+        ? [{
+            type: 'text',
+            left: 'center',
+            top: 'center',
+            style: {
+              text: '暂无依赖拓扑\n产生跨服务调用后将显示节点与连线',
+              fill: '#94a3b8',
+              fontSize: 13,
+              textAlign: 'center',
+              lineHeight: 22
+            }
+          }]
+        : [],
       series: [{
-        data: Array.from(nodes.values()),
+        data: nodeList,
         links: links
       }]
     })
@@ -431,8 +457,20 @@ const updateCharts = () => {
       callCounts.push(service.totalSpans || 0)
     })
     
-    // 更新排名图数据
     serviceRankChart.setOption({
+      graphic: serviceNames.length === 0
+        ? [{
+            type: 'text',
+            left: 'center',
+            top: 'center',
+            style: {
+              text: '暂无 Span 统计数据',
+              fill: '#94a3b8',
+              fontSize: 13,
+              textAlign: 'center'
+            }
+          }]
+        : [],
       yAxis: {
         data: serviceNames
       },

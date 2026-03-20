@@ -235,7 +235,8 @@ const initCharts = () => {
           show: true,
           position: 'top',
           formatter: '{c}%',
-          fontSize: 11
+          fontSize: 11,
+          color: '#e2e8f0'
         },
         animationDelay: function(idx: number) {
           return idx * 100
@@ -258,10 +259,16 @@ const initCharts = () => {
       },
       legend: {
         orient: 'vertical',
-        right: 10,
+        right: 12,
         top: 'center',
         type: 'scroll',
-        textStyle: { color: '#94a3b8' },
+        textStyle: {
+          color: '#e2e8f0',
+          fontSize: 13,
+          fontWeight: 500,
+          rich: {}
+        },
+        pageTextStyle: { color: '#94a3b8' },
         formatter: function(name: string) {
           return name.length > 15 ? name.substring(0, 15) + '...' : name
         }
@@ -292,7 +299,8 @@ const initCharts = () => {
           label: {
             show: true,
             fontSize: 16,
-            fontWeight: 'bold'
+            fontWeight: 'bold',
+            color: '#f8fafc'
           },
           itemStyle: {
             shadowBlur: 10,
@@ -322,8 +330,21 @@ const updateCharts = () => {
       errorRates.push(error.errorRate)
     })
     
-    // 更新错误率柱状图
     errorRateChart.setOption({
+      graphic: serviceNames.length === 0
+        ? [{
+            type: 'text',
+            left: 'center',
+            top: 'center',
+            style: {
+              text: '暂无错误率数据\n当前无异常服务',
+              fill: '#94a3b8',
+              fontSize: 13,
+              textAlign: 'center',
+              lineHeight: 22
+            }
+          }]
+        : [],
       xAxis: {
         data: serviceNames
       },
@@ -334,14 +355,26 @@ const updateCharts = () => {
   }
   
   if (errorPieChart) {
-    // 处理错误调用饼图数据
     const pieData = errorAnalysis.value.map((error: any) => ({
       name: error.serviceName,
       value: error.errorCalls
     }))
     
-    // 更新饼图数据
     errorPieChart.setOption({
+      graphic: pieData.length === 0
+        ? [{
+            type: 'text',
+            left: 'center',
+            top: 'center',
+            style: {
+              text: '暂无错误分布\n服务运行正常',
+              fill: '#94a3b8',
+              fontSize: 13,
+              textAlign: 'center',
+              lineHeight: 22
+            }
+          }]
+        : [],
       series: [{
         data: pieData
       }]
