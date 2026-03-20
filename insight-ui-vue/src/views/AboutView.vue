@@ -1,7 +1,7 @@
 <template>
-  <div>
+  <div class="si-page fade-in">
     <!-- 页面标题 -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="si-page__header mb-2">
       <div>
         <h2 class="page-title">
           <i class="fa fa-info-circle me-2 text-primary"></i>关于

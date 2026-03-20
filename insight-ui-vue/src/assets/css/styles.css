@@ -650,3 +650,119 @@ main.si-main-dashboard > * {
   color: #1c1917 !important;
   font-weight: 700;
 }
+
+/* ========== 内页统一布局（错误分析 / 拓扑 / 链路等） ========== */
+.si-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.si-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.si-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.si-toolbar-card {
+  margin-bottom: 0 !important;
+}
+
+.si-toolbar-card .card-body {
+  padding: 0.65rem 1rem !important;
+}
+
+.si-toolbar-card .card-title {
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem !important;
+}
+
+.si-toolbar-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.si-toolbar-inner .form-label {
+  margin-bottom: 0.2rem;
+  font-size: 0.75rem;
+}
+
+/* 两列等宽图表（大屏整齐排列） */
+.si-charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  align-items: stretch;
+  min-height: clamp(280px, 36vh, 420px);
+}
+
+@media (max-width: 991px) {
+  .si-charts-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.si-chart-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-bottom: 0 !important;
+}
+
+.si-chart-panel .chart-container {
+  flex: 1;
+  min-height: 260px;
+  height: auto !important;
+  margin-bottom: 0 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.si-chart-panel .chart-container .si-chart-canvas-wrap {
+  flex: 1;
+  min-height: 220px;
+  width: 100%;
+}
+
+/* 拓扑主图区：占满一行时更高 */
+.si-topology-main .chart-container {
+  min-height: clamp(320px, 48vh, 560px);
+  height: auto !important;
+  margin-bottom: 0 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.si-topology-main .si-chart-canvas-wrap {
+  flex: 1;
+  min-height: 280px;
+  width: 100%;
+}
+
+/* 表格区域：内部滚动，避免整页过长 */
+.si-table-panel {
+  margin-bottom: 0 !important;
+}
+
+.si-table-panel .table-responsive {
+  max-height: min(46vh, 400px);
+  overflow-y: auto;
+  border-radius: 0 0 10px 10px;
+}
+
+.si-page .loading-spinner {
+  min-height: 200px;
+}

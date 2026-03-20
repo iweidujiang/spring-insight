@@ -1,29 +1,24 @@
 <template>
-  <div class="fade-in">
-    <!-- 页面标题 -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+  <div class="si-page fade-in">
+    <div class="si-page__header">
       <div>
-        <h2 class="page-title">
+        <h2 class="page-title mb-1">
           <i class="fa fa-stream me-2"></i>链路追踪
         </h2>
-        <p class="page-description">查看和分析服务调用链路的详细信息</p>
+        <p class="page-description mb-0">调用链路 Span 列表</p>
       </div>
-      <div class="d-flex align-items-center gap-3">
+      <div class="si-page__toolbar">
         <button class="btn btn-primary" @click="loadData" :disabled="loading">
-          <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新数据
+          <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
         </button>
         <span class="badge bg-info">
-          <i class="fa fa-clock me-1"></i>
-          <span>{{ currentTime }}</span>
+          <i class="fa fa-clock me-1"></i>{{ currentTime }}
         </span>
       </div>
     </div>
 
-    <!-- 筛选条件 -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card stat-card">
-          <div class="card-body">
+    <div class="card stat-card si-toolbar-card">
+      <div class="card-body">
             <h5 class="card-title">
               <i class="fa fa-filter me-2"></i>筛选条件
             </h5>
@@ -67,8 +62,6 @@
                 </div>
               </div>
             </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -78,19 +71,16 @@
       <span class="ms-2">正在加载链路数据...</span>
     </div>
 
-    <!-- 链路列表 -->
-    <div v-else class="row">
-      <div class="col-12">
-        <div class="card stat-card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="card-title">
+    <div v-else class="card stat-card si-table-panel">
+      <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="card-title mb-0">
                 <i class="fa fa-list me-2"></i>链路列表
               </h5>
               <span class="badge bg-primary">{{ traces.length }} 条链路</span>
             </div>
             <div class="table-responsive">
-              <table class="table table-hover">
+              <table class="table table-hover mb-0">
                 <thead class="table-light">
                   <tr>
                     <th>Trace ID</th>
@@ -140,8 +130,6 @@
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>

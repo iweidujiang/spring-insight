@@ -1,95 +1,81 @@
 <template>
-  <div class="fade-in">
-    <!-- 页面标题 -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+  <div class="si-page fade-in">
+    <div class="si-page__header">
       <div>
-        <h2 class="page-title">
+        <h2 class="page-title mb-1">
           <i class="fa fa-project-diagram me-2"></i>服务拓扑图
         </h2>
-        <p class="page-description">可视化展示服务间的依赖关系和调用情况</p>
+        <p class="page-description mb-0">服务间依赖与调用次数</p>
       </div>
-      <div class="d-flex align-items-center gap-3">
-        <span class="badge bg-info">
-          <i class="fa fa-clock me-1"></i>
-          <span>{{ currentTime }}</span>
-        </span>
-      </div>
+      <span class="badge bg-info">
+        <i class="fa fa-clock me-1"></i>{{ currentTime }}
+      </span>
     </div>
 
-    <!-- 时间范围选择 -->
-    <div class="row mb-4">
-      <div class="col-md-6 col-sm-12">
-        <div class="card stat-card">
-          <div class="card-body">
-            <h5 class="card-title">
-              <i class="fa fa-filter me-2"></i>时间范围
-            </h5>
-            <div class="d-flex flex-wrap align-items-center gap-3">
-              <div class="flex-grow-1">
-                <label for="hours-select" class="form-label">最近</label>
-                <select id="hours-select" class="form-select" v-model="hours" @change="loadData">
-                  <option value="1">1小时</option>
-                  <option value="6">6小时</option>
-                  <option value="12">12小时</option>
-                  <option value="24" selected>24小时</option>
-                  <option value="72">72小时</option>
-                </select>
-              </div>
-              <div class="d-flex gap-2">
-                <button class="btn btn-primary" @click="loadData" :disabled="loading">
-                  <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新数据
-                </button>
-                <button class="btn btn-outline-secondary" @click="downloadTopology" :disabled="loading || dependencies.length === 0">
-                  <i class="fa fa-download"></i> 导出数据
-                </button>
-              </div>
-            </div>
+    <div class="card stat-card si-toolbar-card">
+      <div class="card-body">
+        <h5 class="card-title">
+          <i class="fa fa-filter me-2"></i>筛选与操作
+        </h5>
+        <div class="si-toolbar-inner">
+          <div>
+            <label class="form-label" for="hours-topology">时间范围</label>
+            <select id="hours-topology" class="form-select" style="min-width: 11rem" v-model="hours" @change="loadData">
+              <option :value="1">最近 1 小时</option>
+              <option :value="6">最近 6 小时</option>
+              <option :value="12">最近 12 小时</option>
+              <option :value="24">最近 24 小时</option>
+              <option :value="72">最近 72 小时</option>
+            </select>
+          </div>
+          <div class="d-flex flex-wrap gap-2 ms-auto">
+            <button class="btn btn-primary" type="button" @click="loadData" :disabled="loading">
+              <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
+            </button>
+            <button class="btn btn-outline-secondary" type="button" @click="downloadTopology" :disabled="loading || dependencies.length === 0">
+              <i class="fa fa-download"></i> 导出
+            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 加载动画 -->
     <div v-if="loading" class="loading-spinner">
       <i class="fa fa-spinner fa-spin"></i>
-      <span class="ms-2">正在加载服务拓扑数据...</span>
+      <span class="ms-2">正在加载拓扑数据...</span>
     </div>
 
-    <!-- 拓扑图区域 -->
-    <div v-else class="row mb-4">
-      <div class="col-12">
-        <div class="chart-container" style="height: 600px;">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5>
-              <i class="fa fa-project-diagram me-2"></i>服务依赖拓扑图
-            </h5>
-            <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-outline-primary" @click="refreshTopology">
-                <i class="fa fa-refresh"></i> 刷新视图
-              </button>
-              <button class="btn btn-sm btn-outline-secondary" @click="fitToScreen">
-                <i class="fa fa-expand"></i> 适应屏幕
-              </button>
-            </div>
+    <div v-show="!loading" class="si-topology-main">
+      <div class="chart-container">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+          <h5 class="mb-0">
+            <i class="fa fa-project-diagram me-2"></i>服务依赖拓扑图
+          </h5>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshTopology">
+              <i class="fa fa-refresh"></i> 刷新视图
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @click="fitToScreen">
+              <i class="fa fa-expand"></i> 适应屏幕
+            </button>
           </div>
-          <div id="topology-chart" class="w-100 h-100"></div>
+        </div>
+        <div class="si-chart-canvas-wrap">
+          <div id="topology-chart" class="w-100 h-100" style="min-height: 280px"></div>
         </div>
       </div>
     </div>
 
-    <!-- 依赖关系表格 -->
-    <div class="row" v-if="!loading">
-      <div class="col-12">
-        <div class="card stat-card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="card-title">
-                <i class="fa fa-list me-2"></i>依赖关系列表
-              </h5>
-              <span class="badge bg-primary">{{ dependencies.length }} 条依赖</span>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-hover">
+    <div v-show="!loading" class="card stat-card si-table-panel">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="card-title mb-0">
+            <i class="fa fa-list me-2"></i>依赖关系列表
+          </h5>
+          <span class="badge bg-primary">{{ dependencies.length }} 条依赖</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
                 <thead class="table-light">
                   <tr>
                     <th>源服务</th>
@@ -123,8 +109,6 @@
                   </tr>
                 </tbody>
               </table>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -132,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { ApiService } from '../services/ApiService'
 
@@ -264,10 +248,24 @@ const updateChart = () => {
       })
     })
     
-    // 更新拓扑图数据
+    const nodeList = Array.from(nodes.values())
     topologyChart.setOption({
+      graphic: nodeList.length === 0
+        ? [{
+            type: 'text',
+            left: 'center',
+            top: 'center',
+            style: {
+              text: '暂无依赖边\n请产生带下游服务的调用后刷新',
+              fill: '#94a3b8',
+              fontSize: 13,
+              textAlign: 'center',
+              lineHeight: 22
+            }
+          }]
+        : [],
       series: [{
-        data: Array.from(nodes.values()),
+        data: nodeList,
         links: links
       }]
     })
@@ -325,6 +323,8 @@ const loadData = async () => {
     console.error('加载拓扑数据失败:', error)
   } finally {
     loading.value = false
+    await nextTick()
+    topologyChart?.resize()
   }
 }
 
@@ -334,19 +334,13 @@ const handleResize = () => {
 }
 
 // 组件挂载时初始化
-onMounted(() => {
-  // 初始化图表
+onMounted(async () => {
+  await nextTick()
   initChart()
-  
-  // 加载数据
-  loadData()
-  
-  // 启动时间更新
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
-  
-  // 监听窗口大小变化
   window.addEventListener('resize', handleResize)
+  await loadData()
 })
 
 // 组件卸载时清理
