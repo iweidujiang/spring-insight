@@ -45,7 +45,7 @@ public class CollectorInsightBatchSink implements InsightBatchSink {
 
         var response = traceSpanCollectorService.processBatchRequest(request);
         if (!response.isSuccess()) {
-            log.warn("[收集链路] 批量持久化未成功: {}", response.getMessage());
+            log.warn("[收集链路] 批量写入内存未成功: {}", response.getMessage());
         }
     }
 

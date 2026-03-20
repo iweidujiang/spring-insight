@@ -1,6 +1,0 @@
-# 存储模块集成测试：使用 Spring SQL 初始化替代已移除的 DatabaseInitializer
-spring:
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:sql/schema-h2.sql

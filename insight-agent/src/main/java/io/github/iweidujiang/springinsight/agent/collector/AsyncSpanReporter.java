@@ -270,8 +270,7 @@ public class AsyncSpanReporter {
     }
 
     /**
-     * 批量处理JvmMetric
-     * 目前仅记录日志，待实现持久化功能
+     * 批量处理 JvmMetric（经 InsightBatchSink 出口，默认不落库）
      */
     private void flushJvmMetrics(List<JvmMetric> batch) {
         if (batch.isEmpty()) {

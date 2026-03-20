@@ -19,7 +19,7 @@ import java.util.List;
 public interface InsightBatchSink {
 
     /**
-     * 接收一批已结束的 TraceSpan（同 JVM 内持久化或聚合）
+     * 接收一批已结束的 TraceSpan（同 JVM 内内存聚合）
      */
     void acceptTraceSpans(List<TraceSpan> spans);
 

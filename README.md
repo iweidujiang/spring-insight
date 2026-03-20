@@ -109,35 +109,8 @@ spring:
 
 - **Phase 3:** 引入智能分析规则与预测（~2026.Q4）
 
-## 🗄️ 数据存储（默认零外部依赖）
+## 🗄️ 链路数据放哪
 
-默认使用 **进程内嵌 H2 内存库**（与业务应用同一 JVM），无需安装或配置 MySQL。
-
-```yaml
-# 可选：显式写出默认值（一般可省略）
-spring:
-  insight:
-    storage-type: h2
-    datasource:
-      url: jdbc:h2:mem:spring_insight;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-      username: sa
-      password: ""
-```
-
-### 可选：使用 MySQL
-
-若希望将监控数据写入独立 MySQL，请在项目中 **自行添加** `mysql-connector-j` 依赖，并配置：
-
-```yaml
-spring:
-  insight:
-    storage-type: mysql
-    datasource:
-      url: jdbc:mysql://localhost:3306/spring_insight?useSSL=false&serverTimezone=UTC
-      username: root
-      password: your_password
-```
-
-Starter 会在启动时尝试执行建库 SQL（`CREATE DATABASE IF NOT EXISTS`）并初始化表结构。
+Trace / Span **只存在当前 JVM 的内存里**（有上限条数，超出会丢最旧的），**不用 JDBC、不配数据源**；进程一重启控制台历史就空。
 
 ## 未完待续...

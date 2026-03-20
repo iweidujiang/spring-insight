@@ -47,19 +47,16 @@ public class InsightStorageApplication {
                 Start Time: {}ms
                 Local URL:    http://localhost:{}{}
                 External URL: http://{}:{}{}
-                Database:     {}
+                Trace store:  in-memory (no JDBC)
                 Profiles:     {}
                 ----------------------------------------------------------""",
                 appName,
                 stopWatch.getTotalTimeMillis(),
                 port, contextPath,
                 hostAddress, port, contextPath,
-                env.getProperty("spring.datasource.url"),
                 env.getActiveProfiles().length > 0 ? env.getActiveProfiles() : "default");
 
-        // 记录额外的启动信息
-        log.info("MyBatis Plus initialized successfully");
-        log.info("Trace span persistence service is ready");
+        log.info("[存储模块] 链路数据为进程内内存存储，重启后清空");
     }
 
     // 简单的StopWatch替代类

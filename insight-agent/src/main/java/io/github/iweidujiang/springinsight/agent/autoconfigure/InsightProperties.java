@@ -49,61 +49,6 @@ public class InsightProperties {
     private String[] excludePatterns = { "/actuator/**", "/health", "/prometheus" };
 
     /**
-     * 存储类型：h2 (默认), mysql（需自行引入 JDBC 驱动）
-     */
-    private StorageType storageType = StorageType.H2;
-
-    /**
-     * 数据源配置
-     */
-    private Datasource datasource = new Datasource();
-    
-    /**
-     * 服务配置
-     */
-    private Server server = new Server();
-    
-    /**
-     * 存储类型枚举
-     */
-    public enum StorageType {
-        H2,
-        MYSQL
-    }
-    
-    /**
-     * 数据源配置类
-     */
-    @Data
-    public static class Datasource {
-        /**
-         * 数据库URL
-         */
-        private String url = "jdbc:h2:mem:spring_insight;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE";
-        
-        /**
-         * 数据库用户名
-         */
-        private String username = "sa";
-        
-        /**
-         * 数据库密码
-         */
-        private String password = "";
-    }
-    
-    /**
-     * 服务配置类
-     */
-    @Data
-    public static class Server {
-        /**
-         * 服务端口
-         */
-        private Integer port = 8088;
-    }
-
-    /**
      * 验证配置是否有效
      */
     public void validate() {

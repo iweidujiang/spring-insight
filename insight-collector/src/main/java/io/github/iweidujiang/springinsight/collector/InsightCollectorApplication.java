@@ -64,8 +64,7 @@ public class InsightCollectorApplication {
                 env.getProperty("spring.config.name", "application.yml")
         );
 
-        // 打印一些关键配置
-        log.info("数据存储配置: {}", env.getProperty("spring.datasource.url", "未配置"));
+        log.info("[Collector] 链路数据为内存存储（与 insight-storage 同进程时由 TraceSpanPersistenceService 持有）");
         log.info("Collector服务已就绪，等待接收Span数据上报...");
     }
 

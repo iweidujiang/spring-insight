@@ -175,4 +175,36 @@ public class TraceSpan {
         this.tags.put(key, value);
         return this;
     }
+
+    /**
+     * 生成快照副本，避免存入内存队列后仍被上游修改
+     */
+    public static TraceSpan snapshot(TraceSpan s) {
+        TraceSpan t = new TraceSpan();
+        t.setTraceId(s.getTraceId());
+        t.setSpanId(s.getSpanId());
+        t.setParentSpanId(s.getParentSpanId());
+        t.setServiceName(s.getServiceName());
+        t.setServiceInstance(s.getServiceInstance());
+        t.setHostIp(s.getHostIp());
+        t.setHostPort(s.getHostPort());
+        t.setOperationName(s.getOperationName());
+        t.setSpanKind(s.getSpanKind());
+        t.setComponent(s.getComponent());
+        t.setEndpoint(s.getEndpoint());
+        t.setStartTime(s.getStartTime());
+        t.setEndTime(s.getEndTime());
+        t.setDurationMs(s.getDurationMs());
+        t.setStatusCode(s.getStatusCode());
+        t.setSuccess(s.getSuccess());
+        t.setErrorCode(s.getErrorCode());
+        t.setErrorMessage(s.getErrorMessage());
+        t.setRemoteService(s.getRemoteService());
+        t.setRemoteEndpoint(s.getRemoteEndpoint());
+        if (s.getTags() != null) {
+            t.setTags(new HashMap<>(s.getTags()));
+        }
+        t.finished = s.finished;
+        return t;
+    }
 }

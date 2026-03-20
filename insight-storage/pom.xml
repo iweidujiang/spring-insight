@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-         http://maven.apache.org/xsd/maven-4.0.xsd">
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -13,58 +13,25 @@
 
     <artifactId>insight-storage</artifactId>
     <name>Spring Insight Storage</name>
-    <description>Spring Insight 数据存储模块</description>
+    <description>Spring Insight 内存存储模块（链路 Span 进程内环形缓冲）</description>
 
     <dependencies>
-        <!-- MyBatis Plus 启动器 -->
         <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
-            <version>3.5.15</version>
-        </dependency>
-        <dependency>
-            <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-jsqlparser</artifactId>
-            <version>3.5.15</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
         </dependency>
 
-        <!-- 默认使用 H2 (嵌入式) -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- MySQL 驱动  -->
-        <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <scope>provided</scope> <!-- 或 runtime，但默认不打包 -->
-            <optional>true</optional> <!-- 标记为可选 -->
-        </dependency>
-
-        <!-- PostgreSQL 驱动 -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>provided</scope> <!-- 或 runtime，但默认不打包 -->
-            <optional>true</optional> <!-- 标记为可选 -->
-        </dependency>
-
-        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
 
-        <!-- 依赖 Agent 模块（共享数据模型） -->
         <dependency>
             <groupId>io.github.iweidujiang</groupId>
             <artifactId>insight-agent</artifactId>
         </dependency>
 
-        <!-- 测试 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

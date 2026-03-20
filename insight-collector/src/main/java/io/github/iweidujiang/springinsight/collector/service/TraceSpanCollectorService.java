@@ -71,9 +71,8 @@ public class TraceSpanCollectorService {
             List<TraceSpan> cleanedSpans = cleanAndEnrichSpans(request);
 
             stopWatch.stop();
-            stopWatch.start("保存到存储");
+            stopWatch.start("写入内存");
 
-            // 批量保存到数据库
             traceSpanPersistenceService.saveTraceSpans(cleanedSpans);
 
             stopWatch.stop();
@@ -82,7 +81,7 @@ public class TraceSpanCollectorService {
             totalSuccessSpans.addAndGet(spanCount);
 
             // 记录处理结果
-            log.info("[收集服务] 批量请求处理成功: {}, 处理耗时={}ms, 验证={}ms, 清洗={}ms, 存储={}ms",
+            log.info("[收集服务] 批量请求处理成功: {}, 处理耗时={}ms, 验证={}ms, 清洗={}ms, 内存写入={}ms",
                     request.getSummary(),
                     stopWatch.getTotalTimeMillis(),
                     stopWatch.getTaskInfo()[0].getTimeMillis(),

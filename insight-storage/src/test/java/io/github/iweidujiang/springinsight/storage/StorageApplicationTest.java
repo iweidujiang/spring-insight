@@ -37,8 +37,8 @@ public class StorageApplicationTest {
         // 1. 创建测试 TraceSpan
         TraceSpan span = createTestTraceSpan();
 
-        // 2. 保存到数据库
-        log.info("将追踪链路跨度保存至数据库...");
+        // 2. 写入内存存储
+        log.info("将追踪链路跨度写入内存...");
         traceSpanPersistenceService.saveTraceSpan(span);
         log.info("追踪链路跨度保存成功");
 
