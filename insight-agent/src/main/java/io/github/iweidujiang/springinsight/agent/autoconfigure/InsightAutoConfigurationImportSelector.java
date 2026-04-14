@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.agent.autoconfigure;
 
+import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.DeferredImportSelector;
 import org.springframework.core.env.Environment;
@@ -7,8 +8,10 @@ import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.util.ClassUtils;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * ┌───────────────────────────────────────────────
@@ -21,13 +24,27 @@ import java.util.Map;
  * | 📅 @since：2026/1/17
  * └───────────────────────────────────────────────
  */
-public class InsightAutoConfigurationImportSelector implements DeferredImportSelector, EnvironmentAware {
+public class InsightAutoConfigurationImportSelector implements DeferredImportSelector, EnvironmentAware, BeanClassLoaderAware {
+
+    /** 勿使用 {@code InsightAutoConfiguration.class}：会触发类加载并解析 {@code WebMvcConfigurer}。 */
+    private static final String INSIGHT_SERVLET_WEB_CONFIGURATION =
+            "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightAutoConfiguration";
+
+    private static final String SPRING_CLOUD_GATEWAY_GLOBAL_FILTER =
+            "org.springframework.cloud.gateway.filter.GlobalFilter";
 
     private Environment environment;
+
+    private ClassLoader beanClassLoader;
 
     @Override
     public void setEnvironment(Environment environment) {
         this.environment = environment;
+    }
+
+    @Override
+    public void setBeanClassLoader(ClassLoader classLoader) {
+        this.beanClassLoader = classLoader;
     }
 
     @Override
@@ -45,7 +62,7 @@ public class InsightAutoConfigurationImportSelector implements DeferredImportSel
         List<String> imports = new ArrayList<>();
         imports.add(InsightBeanConfiguration.class.getName());
         if (shouldImportServletWebInsight()) {
-            imports.add(InsightAutoConfiguration.class.getName());
+            imports.add(INSIGHT_SERVLET_WEB_CONFIGURATION);
         }
         imports.add(InsightWebFluxAutoConfiguration.class.getName());
         imports.add("io.github.iweidujiang.springinsight.config.SpringInsightAutoConfiguration");
@@ -63,15 +80,37 @@ public class InsightAutoConfigurationImportSelector implements DeferredImportSel
                 return "servlet".equalsIgnoreCase(type.trim());
             }
         }
-        ClassLoader cl = ClassUtils.getDefaultClassLoader();
-        if (cl == null) {
-            cl = InsightAutoConfigurationImportSelector.class.getClassLoader();
+        return !isSpringCloudGatewayPresent();
+    }
+
+    /**
+     * Fat jar / 多层 ClassLoader 下单一路径可能找不到 Gateway，需逐个尝试，避免误判为 Servlet 并导入 MVC 配置。
+     */
+    private boolean isSpringCloudGatewayPresent() {
+        Set<ClassLoader> loaders = new LinkedHashSet<>();
+        if (beanClassLoader != null) {
+            loaders.add(beanClassLoader);
         }
-        try {
-            Class.forName("org.springframework.cloud.gateway.filter.GlobalFilter", false, cl);
-            return false;
-        } catch (ClassNotFoundException | LinkageError e) {
-            return true;
+        ClassLoader tcl = Thread.currentThread().getContextClassLoader();
+        if (tcl != null) {
+            loaders.add(tcl);
         }
+        ClassLoader def = ClassUtils.getDefaultClassLoader();
+        if (def != null) {
+            loaders.add(def);
+        }
+        loaders.add(InsightAutoConfigurationImportSelector.class.getClassLoader());
+        for (ClassLoader cl : loaders) {
+            if (cl == null) {
+                continue;
+            }
+            try {
+                Class.forName(SPRING_CLOUD_GATEWAY_GLOBAL_FILTER, false, cl);
+                return true;
+            } catch (ClassNotFoundException | LinkageError ignored) {
+                // try next
+            }
+        }
+        return false;
     }
 }
