@@ -40,7 +40,7 @@ public class ReactiveInsightWebFilter implements WebFilter {
         }
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getPath().pathWithinApplication().value();
-        for (String pattern : insightProperties.getExcludePatterns()) {
+        for (String pattern : insightProperties.resolveExcludePatterns()) {
             if (pathMatcher.match(pattern, path)) {
                 return chain.filter(exchange);
             }

@@ -1,45 +1,45 @@
 package io.github.iweidujiang.springinsight.controller;
 
+import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.servlet.view.RedirectView;
 
 /**
- * ┌───────────────────────────────────────────────
- * │ 📦 SPA路由转发控制器
- * │ 用于处理单页应用的路由请求，将所有前端路由转发到index.html
- * │
- * │ 👤 作者：苏渡苇
- * │ 🔗 公众号：苏渡苇
- * │ 💻 GitHub：https://github.com/iweidujiang
- * │ 📅 @since 2026/1/21
- * └───────────────────────────────────────────────
+ * 控制台 SPA：History 路由回退到 index.html。路径前缀由 {@code spring.insight.ui-base-path} 决定，空则挂在根路径。
  */
 @Controller
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@RequiredArgsConstructor
 public class SpaController {
 
-    /**
-     * 兼容文档中的 /insight-ui 入口，重定向到 SPA 根路径
-     */
+    private final InsightProperties insightProperties;
+
     @GetMapping("/insight-ui")
     public RedirectView redirectLegacyInsightUi() {
-        return new RedirectView("/", true, false);
+        String base = insightProperties.normalizeUiBasePath();
+        if (base.isEmpty()) {
+            return new RedirectView("/", true, false);
+        }
+        return new RedirectView(base + "/", true, false);
     }
 
-    /**
-     * 处理SPA路由转发
-     * 将所有前端路由请求转发到index.html
-     */
-    @GetMapping(value = {
-            "/",
-            "/dashboard",
-            "/topology",
-            "/traces",
-            "/traces/**",
-            "/error-analysis",
-            "/about"
+    @GetMapping({
+            "${spring.insight.ui-base-path:/spring-insight}/",
+            "${spring.insight.ui-base-path:/spring-insight}/dashboard",
+            "${spring.insight.ui-base-path:/spring-insight}/topology",
+            "${spring.insight.ui-base-path:/spring-insight}/traces",
+            "${spring.insight.ui-base-path:/spring-insight}/traces/**",
+            "${spring.insight.ui-base-path:/spring-insight}/error-analysis",
+            "${spring.insight.ui-base-path:/spring-insight}/about"
     })
     public String forwardToIndex() {
-        return "forward:/index.html";
+        String base = insightProperties.normalizeUiBasePath();
+        if (base.isEmpty()) {
+            return "forward:/index.html";
+        }
+        return "forward:" + base + "/index.html";
     }
 }

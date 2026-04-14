@@ -63,8 +63,8 @@ public class InsightAutoConfiguration implements WebMvcConfigurer {
         if (properties.isHttpTracingEnabled() && interceptor != null) {
             registry.addInterceptor(interceptor)
                     .addPathPatterns("/**")
-                    .excludePathPatterns(properties.getExcludePatterns());
-            log.info("[MVC配置] HTTP拦截器已成功注册，排除路径: {}", (Object) properties.getExcludePatterns());
+                    .excludePathPatterns(properties.resolveExcludePatterns());
+            log.info("[MVC配置] HTTP拦截器已成功注册，排除路径: {}", (Object) properties.resolveExcludePatterns());
         } else if (properties.isHttpTracingEnabled()) {
             log.warn("[MVC配置] HTTP追踪已启用，但 HttpRequestInterceptor Bean 未找到。请检查配置。");
         }

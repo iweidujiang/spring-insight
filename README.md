@@ -113,6 +113,7 @@ spring:
     jvm-metrics:
       enabled: true
       report-interval: 30000  # JVM指标上报间隔，单位毫秒
+    ui-base-path: /spring-insight   # 控制台 SPA 挂载路径（默认）；与 insight-ui-vue 的 Vite base 一致；改用其他前缀时需自行重建前端静态资源
     # 诊断日志：true 时打印 HTTP 拦截器每次触发、TraceContext 强制清理等（默认 false，避免刷屏）
     diagnostic-logs: false
 ```
