@@ -15,6 +15,7 @@
 
     <modules>
         <module>insight-agent</module>
+        <module>insight-collector-service</module>
         <module>insight-collector</module>
         <module>insight-storage</module>
         <module>spring-insight-spring-boot-starter</module>
@@ -55,11 +56,15 @@
             </dependency>
             <dependency>
                 <groupId>io.github.iweidujiang</groupId>
+                <artifactId>insight-collector-service</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.iweidujiang</groupId>
                 <artifactId>insight-collector</artifactId>
                 <version>${project.version}</version>
             </dependency>
             
-
             <!-- Lombok -->
             <dependency>
                 <groupId>org.projectlombok</groupId>

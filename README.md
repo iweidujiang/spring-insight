@@ -23,6 +23,38 @@
 3.  **智能诊断**：超越数据展示，提供架构层面的健康分析与改进建议。
 
 ## 🚀 快速开始
+
+### 0. 安装到本机 Maven 仓库
+
+默认本地仓库路径为 **`~/.m2/repository`**（Windows 多为 `%USERPROFILE%\.m2\repository`）。
+
+当前版本（如 `0.1.0-SNAPSHOT`）尚未发布到 **Maven Central**，需要先把工程**编译并安装**到本地仓库，业务项目才能解析依赖。
+
+**仓库定位**：`spring-insight` 是 **独立维护的通用工具库**（自研 Starter + 内部模块），**与任何具体业务工程无编译耦合**；业务方只需在自身项目的 `pom.xml` 中声明 `spring-insight-spring-boot-starter` 即可。
+
+本仓库是 **Maven 多模块**工程，父工程为 `spring-insight-parent`，子模块包括：
+
+| 模块 | 说明 |
+|------|------|
+| `insight-agent` | 采集与自动配置（Servlet 拦截器 + WebFlux `WebFilter`，Span、JVM 指标等） |
+| `insight-collector-service` | **收集器业务层**：批处理、校验、写入存储等，**不依赖** Servlet/WebMVC |
+| `insight-collector` | **收集器 HTTP 适配层**：基于 Spring MVC 的 REST / 控制台；依赖 `insight-collector-service` |
+| `insight-storage` | 内存存储 |
+| `spring-insight-spring-boot-starter` | **对外唯一推荐坐标**：聚合上述模块，供任意 Spring Boot 应用引用 |
+
+**宿主为 WebFlux 时（例如 Spring Cloud Gateway）**：Starter 默认会带上基于 MVC 的 `insight-collector`，从而引入 `spring-boot-starter-web`，与 WebFlux 冲突。做法是：仍依赖 **`spring-insight-spring-boot-starter`**，对 **`insight-collector`** 与 **`spring-boot-starter-web`** 做 Maven `<exclusions>`；**`insight-collector-service` 仍随 Starter 进入 classpath**，进程内上报与内存聚合照常工作，入口 HTTP 追踪由 **`ReactiveInsightWebFilter`** 完成。需要 **Insight 控制台 UI** 时，在**任意一个 Servlet 栈**的服务上保留完整 Starter（不做上述排除）即可。
+
+**无需逐个模块安装。** 在 **`spring-insight` 目录**（与父 `pom.xml` 同级）执行一条命令即可按 reactor 顺序编译并全部 `install` 到本机：
+
+```bash
+cd spring-insight
+mvn clean install -DskipTests
+```
+
+成功后，本地仓库中会有 `io.github.iweidujiang` 下各构件；业务工程在 `pom.xml` 里只声明 **`spring-insight-spring-boot-starter`** 即可（版本与父 POM 的 `<version>` 一致，见下文）。
+
+
+
 ### 1. 添加依赖
 ```xml
 <dependency>

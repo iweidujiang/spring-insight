@@ -33,6 +33,7 @@ public class InsightAutoConfigurationImportSelector implements ImportSelector {
         return new String[] {
             InsightBeanConfiguration.class.getName(),
             InsightAutoConfiguration.class.getName(),
+            InsightWebFluxAutoConfiguration.class.getName(),
             "io.github.iweidujiang.springinsight.config.SpringInsightAutoConfiguration"
         };
     }

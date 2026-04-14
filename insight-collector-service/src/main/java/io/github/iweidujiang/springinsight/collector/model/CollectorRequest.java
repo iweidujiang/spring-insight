@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 /**
  * ┌───────────────────────────────────────────────
@@ -94,6 +95,6 @@ public class CollectorRequest {
         private String environment;
 
         /** 扩展信息 */
-        private java.util.Map<String, String> extensions;
+        private Map<String, String> extensions;
     }
 }

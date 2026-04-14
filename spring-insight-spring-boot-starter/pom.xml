@@ -25,12 +25,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
-        <!-- Web 依赖，设置为可选，在Gateway环境中可以排除 -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-            <optional>true</optional>
-        </dependency>
 
         <!-- 项目核心模块 -->
         <dependency>
@@ -42,6 +36,10 @@
             <artifactId>insight-storage</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.github.iweidujiang</groupId>
+            <artifactId>insight-collector-service</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.github.iweidujiang</groupId>
             <artifactId>insight-collector</artifactId>

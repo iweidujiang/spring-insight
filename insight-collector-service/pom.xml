@@ -10,37 +10,28 @@
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>insight-collector</artifactId>
-    <name>Spring Insight Collector</name>
-    <description>收集器 Servlet/MVC 侧：REST 控制器与独立可运行形态；依赖 collector-service 领域层</description>
+    <artifactId>insight-collector-service</artifactId>
+    <name>Spring Insight Collector Service</name>
+    <description>收集器业务层：Span 批处理、校验与写入存储等，与 Servlet/WebMVC 传输层解耦；任意 Spring Boot 应用经 Starter 引用，与具体业务工程（如微服务 demo）无关</description>
 
     <dependencies>
         <dependency>
-            <groupId>io.github.iweidujiang</groupId>
-            <artifactId>insight-collector-service</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>io.github.iweidujiang</groupId>
+            <artifactId>insight-storage</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -51,8 +42,8 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
