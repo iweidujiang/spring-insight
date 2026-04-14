@@ -3,9 +3,11 @@ package io.github.iweidujiang.springinsight.controller;
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.servlet.view.RedirectView;
 
 /**
  * 控制台 SPA：History 路由回退到 index.html。路径前缀由 {@code spring.insight.ui-base-path} 决定，空则挂在根路径。
@@ -17,13 +19,16 @@ public class SpaController {
 
     private final InsightProperties insightProperties;
 
+    /**
+     * 使用 {@link ResponseEntity} 302，避免依赖 {@code RedirectView}（spring-webmvc），否则在仅 WebFlux 的 classpath 上扫描到本类即可能触发接口解析失败。
+     */
     @GetMapping("/insight-ui")
-    public RedirectView redirectLegacyInsightUi() {
+    public ResponseEntity<Void> redirectLegacyInsightUi() {
         String base = insightProperties.normalizeUiBasePath();
-        if (base.isEmpty()) {
-            return new RedirectView("/", true, false);
-        }
-        return new RedirectView(base + "/", true, false);
+        String location = base.isEmpty() ? "/" : base + "/";
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .header(HttpHeaders.LOCATION, location)
+                .build();
     }
 
     @GetMapping({

@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Import;
 
 /**
  * ┌───────────────────────────────────────────────
@@ -20,7 +19,6 @@ import org.springframework.context.annotation.Import;
 @Slf4j
 @AutoConfiguration
 @EnableConfigurationProperties(InsightProperties.class)
-@Import(InsightUiWebMvcConfiguration.class)
 @ComponentScan(basePackages = {
         "io.github.iweidujiang.springinsight.collector",
         "io.github.iweidujiang.springinsight.storage",
