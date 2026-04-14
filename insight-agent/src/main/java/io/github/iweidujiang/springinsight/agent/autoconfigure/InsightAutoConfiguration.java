@@ -3,7 +3,7 @@ package io.github.iweidujiang.springinsight.agent.autoconfigure;
 import io.github.iweidujiang.springinsight.agent.instrumentation.HttpRequestInterceptor;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -33,13 +33,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @ConditionalOnProperty(prefix = "spring.insight", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class InsightAutoConfiguration implements WebMvcConfigurer {
 
-    @Autowired(required = false) // 允许为null，如果httpTracingEnabled=false则不会创建此Bean
-    private HttpRequestInterceptor httpRequestInterceptor;
-
     private final InsightProperties properties;
 
-    public InsightAutoConfiguration(InsightProperties properties) {
+    /** 延迟解析，避免与本类 {@link Bean} 方法同名的拦截器形成构造/字段注入环（见 Spring MVC 对 WebMvcConfigurer 的装配顺序）。 */
+    private final ObjectProvider<HttpRequestInterceptor> httpRequestInterceptorProvider;
+
+    public InsightAutoConfiguration(InsightProperties properties,
+                                    ObjectProvider<HttpRequestInterceptor> httpRequestInterceptorProvider) {
         this.properties = properties;
+        this.httpRequestInterceptorProvider = httpRequestInterceptorProvider;
         log.info("[MVC配置] Spring Insight MVC 配置准备就绪");
     }
 
@@ -57,9 +59,9 @@ public class InsightAutoConfiguration implements WebMvcConfigurer {
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 确保HTTP追踪启用且拦截器Bean已成功创建
-        if (properties.isHttpTracingEnabled() && httpRequestInterceptor != null) {
-            registry.addInterceptor(httpRequestInterceptor)
+        HttpRequestInterceptor interceptor = httpRequestInterceptorProvider.getIfAvailable();
+        if (properties.isHttpTracingEnabled() && interceptor != null) {
+            registry.addInterceptor(interceptor)
                     .addPathPatterns("/**")
                     .excludePathPatterns(properties.getExcludePatterns());
             log.info("[MVC配置] HTTP拦截器已成功注册，排除路径: {}", (Object) properties.getExcludePatterns());
