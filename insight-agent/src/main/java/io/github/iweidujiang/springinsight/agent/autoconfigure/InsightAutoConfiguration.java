@@ -1,12 +1,15 @@
 package io.github.iweidujiang.springinsight.agent.autoconfigure;
 
 import io.github.iweidujiang.springinsight.agent.instrumentation.HttpRequestInterceptor;
+import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -38,6 +41,14 @@ public class InsightAutoConfiguration implements WebMvcConfigurer {
     public InsightAutoConfiguration(InsightProperties properties) {
         this.properties = properties;
         log.info("[MVC配置] Spring Insight MVC 配置准备就绪");
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "spring.insight", name = "http-tracing-enabled", havingValue = "true", matchIfMissing = true)
+    public HttpRequestInterceptor httpRequestInterceptor(SpanReportingListener spanReportingListener) {
+        log.info("[MVC配置] HTTP 请求拦截器 Bean 已创建");
+        return new HttpRequestInterceptor(spanReportingListener, properties);
     }
 
     /**

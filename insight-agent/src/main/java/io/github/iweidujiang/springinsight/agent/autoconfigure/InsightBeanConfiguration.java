@@ -5,14 +5,12 @@ import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsCollector;
 import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsReporter;
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.instrumentation.DbCallAspect;
-import io.github.iweidujiang.springinsight.agent.instrumentation.HttpRequestInterceptor;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.sink.InsightBatchSink;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
@@ -75,18 +73,6 @@ public class InsightBeanConfiguration {
     public SpanReportingListener spanReportingListener(AsyncSpanReporter asyncSpanReporter) {
         log.info("[Bean配置] Span报告监听器初始化完成");
         return new SpanReportingListener(asyncSpanReporter);
-    }
-
-    /**
-     * HTTP 请求拦截器 Bean
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-    @ConditionalOnProperty(prefix = "spring.insight", name = "http-tracing-enabled", havingValue = "true", matchIfMissing = true)
-    public HttpRequestInterceptor httpRequestInterceptor(SpanReportingListener spanReportingListener) {
-        log.info("[Bean配置] HTTP请求拦截器初始化完成");
-        return new HttpRequestInterceptor(spanReportingListener, properties);
     }
 
     /**
