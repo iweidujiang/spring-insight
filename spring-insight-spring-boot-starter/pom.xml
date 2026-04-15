@@ -45,6 +45,14 @@
             <artifactId>insight-collector</artifactId>
         </dependency>
 
+        <!-- OpenFeign Client 包装（可选）；版本与 Spring Cloud OpenFeign 常用栈对齐，仅用于编译 -->
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-core</artifactId>
+            <version>13.2.1</version>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

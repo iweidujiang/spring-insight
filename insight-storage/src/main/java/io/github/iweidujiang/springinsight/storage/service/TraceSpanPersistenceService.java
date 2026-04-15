@@ -68,7 +68,7 @@ public class TraceSpanPersistenceService {
 
     private void evictIfNeeded() {
         while (spans.size() > DEFAULT_MAX_SPANS) {
-            spans.remove(0);
+            spans.removeFirst();
         }
     }
 
@@ -220,7 +220,7 @@ public class TraceSpanPersistenceService {
 
     private static boolean isError(TraceSpan s) {
         String sc = s.getStatusCode();
-        if (sc != null && "ERROR".equalsIgnoreCase(sc)) {
+        if ("ERROR".equalsIgnoreCase(sc)) {
             return true;
         }
         return Boolean.FALSE.equals(s.getSuccess());

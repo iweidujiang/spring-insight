@@ -1,2 +1,3 @@
 io.github.iweidujiang.springinsight.config.SpringInsightAutoConfiguration
 io.github.iweidujiang.springinsight.config.InsightUiWebMvcAutoConfiguration
+io.github.iweidujiang.springinsight.feign.InsightFeignTracingAutoConfiguration
