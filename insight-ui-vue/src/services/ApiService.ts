@@ -67,6 +67,19 @@ function normalizeErrorRow(raw: any) {
   }
 }
 
+function normalizeLatencyRow(raw: any) {
+  return {
+    serviceName: raw.service_name ?? raw.serviceName ?? '',
+    spanCount: Number(raw.span_count ?? raw.spanCount ?? 0),
+    errorCount: Number(raw.error_count ?? raw.errorCount ?? 0),
+    errorRate: Number(raw.error_rate ?? raw.errorRate ?? 0),
+    avgMs: Number(raw.avg_ms ?? raw.avgMs ?? 0),
+    p50Ms: Number(raw.p50_ms ?? raw.p50Ms ?? 0),
+    p95Ms: Number(raw.p95_ms ?? raw.p95Ms ?? 0),
+    maxMs: Number(raw.max_ms ?? raw.maxMs ?? 0)
+  }
+}
+
 export class ApiService {
   static async getServiceNames(): Promise<string[]> {
     return requestWithDefault<string[]>('/services', [])
@@ -80,6 +93,11 @@ export class ApiService {
   static async getServiceStats(): Promise<any[]> {
     const rows = await requestWithDefault<any[]>('/services/stats', [])
     return rows.map(normalizeServiceStat)
+  }
+
+  static async getServiceLatency(hours: number = 24, limit: number = 20): Promise<any[]> {
+    const rows = await requestWithDefault<any[]>(`/services/latency?hours=${hours}&limit=${limit}`, [])
+    return rows.map(normalizeLatencyRow)
   }
 
   static async getErrorAnalysis(hours: number = 24): Promise<any[]> {

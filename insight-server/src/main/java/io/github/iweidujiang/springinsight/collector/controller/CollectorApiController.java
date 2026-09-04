@@ -105,6 +105,22 @@ public class CollectorApiController {
     }
 
     /**
+     * 服务延迟摘要（avg / p50 / p95 / 错误率），按 p95 降序
+     */
+    @GetMapping("/services/latency")
+    public ResponseEntity<?> getServiceLatency(
+            @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "limit", defaultValue = "20") int limit) {
+        try {
+            var rows = traceSpanPersistenceService.getServiceLatencySummaries(hours, limit);
+            return ResponseEntity.ok(rows);
+        } catch (Exception e) {
+            log.error("获取服务延迟摘要失败", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
      * 获取错误分析
      */
     @GetMapping("/errors/analysis")

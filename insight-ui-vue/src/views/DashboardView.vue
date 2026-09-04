@@ -69,6 +69,78 @@
         </div>
       </section>
 
+      <!-- 诊断：慢服务 / 错服务 → 一键进已筛 Trace -->
+      <section class="si-dashboard__diag" aria-label="慢请求与错误服务">
+        <div class="si-dashboard__diag-panel">
+          <div class="si-dashboard__diag-head">
+            <span><i class="fa fa-tachometer me-2"></i>慢服务 Top（按 p95）</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goSlowTraces()">看慢链路</button>
+          </div>
+          <div v-if="slowServices.length === 0" class="si-dashboard__diag-empty">暂无延迟数据</div>
+          <div v-else class="table-responsive si-dashboard__diag-scroll">
+            <table class="table table-hover table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>服务</th>
+                  <th>p50</th>
+                  <th>p95</th>
+                  <th>Span</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in slowServices"
+                  :key="'slow-' + row.serviceName"
+                  class="si-dashboard__diag-row"
+                  @click="goServiceSlow(row)"
+                >
+                  <td class="text-truncate" style="max-width: 9rem" :title="row.serviceName">{{ row.serviceName }}</td>
+                  <td>{{ formatMs(row.p50Ms) }}</td>
+                  <td :class="row.p95Ms >= 1000 ? 'text-danger fw-bold' : row.p95Ms >= 500 ? 'text-warning' : ''">
+                    {{ formatMs(row.p95Ms) }}
+                  </td>
+                  <td class="text-muted">{{ row.spanCount }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="si-dashboard__diag-panel">
+          <div class="si-dashboard__diag-head">
+            <span><i class="fa fa-exclamation-triangle me-2"></i>错服务 Top</span>
+            <button type="button" class="btn btn-sm btn-outline-danger py-0" @click="goErrors">错误分析</button>
+          </div>
+          <div v-if="!errorAnalysis || errorAnalysis.length === 0" class="si-dashboard__diag-empty">最近窗口无异常服务</div>
+          <div v-else class="table-responsive si-dashboard__diag-scroll">
+            <table class="table table-hover table-sm mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>服务</th>
+                  <th>调用</th>
+                  <th>错误</th>
+                  <th>错误率</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="error in errorAnalysis.slice(0, 8)"
+                  :key="'err-' + error.serviceName"
+                  class="si-dashboard__diag-row"
+                  :class="{ 'table-danger': error.errorRate > 10, 'table-warning': error.errorRate <= 10 && error.errorRate > 5 }"
+                  @click="goServiceErrors(error.serviceName)"
+                >
+                  <td class="text-truncate" style="max-width: 9rem" :title="error.serviceName">{{ error.serviceName }}</td>
+                  <td>{{ error.totalCalls }}</td>
+                  <td>{{ error.errorCalls }}</td>
+                  <td>{{ error.errorRate.toFixed(1) }}%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <!-- 主体：拓扑主视图 + 排名辅栏 -->
       <section class="si-dashboard__body">
         <div class="chart-container si-dashboard__panel si-dashboard__chart-topology si-dashboard__hero">
@@ -98,7 +170,7 @@
                 <h6 class="si-dashboard__panel-title mb-0">
                   <i class="fa fa-chart-bar me-2"></i>辅栏 · 请求排名
                 </h6>
-                <p class="si-dashboard__panel-desc mb-0">按 Span 量 Top 服务</p>
+                <p class="si-dashboard__panel-desc mb-0">按 Span 量 Top · 点击柱可筛链路</p>
               </div>
               <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshServiceRankChart">
                 <i class="fa fa-refresh"></i>
@@ -111,41 +183,6 @@
           </div>
         </aside>
       </section>
-
-      <section v-if="errorAnalysis && errorAnalysis.length > 0" class="si-dashboard__alerts">
-        <div class="si-dashboard__alerts-head">
-          <span><i class="fa fa-exclamation-triangle me-2"></i>异常服务（点击行可查链路）</span>
-          <button type="button" class="btn btn-sm btn-outline-danger py-0" @click="goErrors">错误分析</button>
-        </div>
-        <div class="table-responsive si-dashboard__alerts-scroll">
-          <table class="table table-hover table-sm mb-0">
-            <thead class="table-light">
-              <tr>
-                <th>服务</th>
-                <th>调用</th>
-                <th>错误</th>
-                <th>错误率</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="error in errorAnalysis"
-                :key="error.serviceName"
-                :class="{ 'table-danger': error.errorRate > 10, 'table-warning': error.errorRate <= 10 && error.errorRate > 5 }"
-              >
-                <td>{{ error.serviceName }}</td>
-                <td>{{ error.totalCalls }}</td>
-                <td>{{ error.errorCalls }}</td>
-                <td>{{ error.errorRate.toFixed(1) }}%</td>
-                <td>
-                  <button type="button" class="btn btn-sm btn-outline-primary py-0" @click="viewServiceDetails(error.serviceName)">查看</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
     </div>
   </div>
 </template>
@@ -156,6 +193,7 @@ import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { ApiService } from '../services/ApiService'
 import { buildTopologyOption } from '../utils/topologyGraph'
+import { formatDuration } from '../utils/traceTimeline'
 
 const router = useRouter()
 
@@ -164,6 +202,7 @@ const currentTime = ref('')
 const services = ref<string[]>([])
 const dependencies = ref<any[]>([])
 const serviceStats = ref<any[]>([])
+const serviceLatency = ref<any[]>([])
 const errorAnalysis = ref<any[]>([])
 const collectorStats = ref<any>({})
 const totalSpans = ref(0)
@@ -171,6 +210,14 @@ const totalSpans = ref(0)
 let topologyChart: echarts.ECharts | null = null
 let serviceRankChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
+
+const slowServices = computed(() =>
+  [...serviceLatency.value]
+    .sort((a, b) => (b.p95Ms || 0) - (a.p95Ms || 0))
+    .slice(0, 8)
+)
+
+const formatMs = (ms: number) => formatDuration(Number(ms) || 0)
 
 const stats = computed(() => [
   {
@@ -216,8 +263,19 @@ const onKpiClick = (to: string) => {
 }
 
 const goTopology = () => router.push('/topology')
-const goTraces = () => router.push('/traces')
+const goTraces = (query: Record<string, string> = {}) => router.push({ path: '/traces', query })
 const goErrors = () => router.push('/error-analysis')
+
+const goSlowTraces = () => goTraces({ minDurationMs: '500' })
+
+const goServiceSlow = (row: { serviceName: string; p50Ms?: number }) => {
+  const minDur = Math.max(100, Math.floor(Number(row.p50Ms) || 100))
+  goTraces({ service: row.serviceName, minDurationMs: String(minDur) })
+}
+
+const goServiceErrors = (serviceName: string) => {
+  goTraces({ service: serviceName, status: 'error' })
+}
 
 const initCharts = () => {
   const topologyChartDom = document.getElementById('topology-chart')
@@ -279,6 +337,12 @@ const initCharts = () => {
         label: { show: true, position: 'right', formatter: '{c}', fontSize: 10, color: '#3d524a' }
       }]
     })
+    serviceRankChart.on('click', (params: any) => {
+      const name = params?.name
+      if (typeof name === 'string' && name) {
+        goTraces({ service: name })
+      }
+    })
   }
 }
 
@@ -320,23 +384,21 @@ const refreshServiceRankChart = () => {
   updateCharts()
 }
 
-const viewServiceDetails = (serviceName: string) => {
-  router.push({ path: '/traces', query: { service: serviceName } })
-}
-
 const loadData = async () => {
   try {
     loading.value = true
-    const [serviceNames, serviceDeps, serviceStatsData, errorAnalysisData, collectorStatsData] = await Promise.all([
+    const [serviceNames, serviceDeps, serviceStatsData, latencyData, errorAnalysisData, collectorStatsData] = await Promise.all([
       ApiService.getServiceNames(),
       ApiService.getServiceDependencies(24),
       ApiService.getServiceStats(),
+      ApiService.getServiceLatency(24, 20),
       ApiService.getErrorAnalysis(24),
       ApiService.getCollectorStats()
     ])
     services.value = serviceNames
     dependencies.value = serviceDeps
     serviceStats.value = serviceStatsData
+    serviceLatency.value = latencyData
     errorAnalysis.value = errorAnalysisData
     collectorStats.value = collectorStatsData
     totalSpans.value = serviceStatsData.reduce((sum: number, s: any) => sum + (s.totalSpans || 0), 0)
@@ -656,38 +718,65 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.si-dashboard__alerts {
+.si-dashboard__diag {
   flex-shrink: 0;
-  max-height: 6rem;
-  border: 1px solid rgba(185, 28, 28, 0.2);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  max-height: 9.5rem;
+}
+
+@media (max-width: 991px) {
+  .si-dashboard__diag {
+    grid-template-columns: 1fr;
+    max-height: none;
+  }
+}
+
+.si-dashboard__diag-panel {
+  min-height: 0;
+  border: 1px solid var(--card-border);
   border-radius: 10px;
-  background: #fff5f5;
+  background: var(--card-bg);
+  box-shadow: var(--box-shadow);
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.si-dashboard__alerts-head {
+.si-dashboard__diag-head {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   padding: 0.35rem 0.7rem;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #7f1d1d;
-  background: rgba(185, 28, 28, 0.08);
-  border-bottom: 1px solid rgba(185, 28, 28, 0.15);
+  color: var(--si-ink);
+  background: rgba(15, 118, 110, 0.05);
+  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
 }
 
-.si-dashboard__alerts-scroll {
+.si-dashboard__diag-empty {
+  padding: 0.85rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--si-muted);
+  text-align: center;
+}
+
+.si-dashboard__diag-scroll {
   overflow-y: auto;
-  max-height: 4rem;
+  max-height: 7.25rem;
 }
 
-.si-dashboard__alerts-scroll :deep(th),
-.si-dashboard__alerts-scroll :deep(td) {
+.si-dashboard__diag-scroll :deep(th),
+.si-dashboard__diag-scroll :deep(td) {
   padding: 0.25rem 0.5rem;
   font-size: 0.72rem;
+}
+
+.si-dashboard__diag-row {
+  cursor: pointer;
 }
 </style>

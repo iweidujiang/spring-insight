@@ -388,6 +388,96 @@ public class TraceSpanPersistenceService {
         }
     }
 
+    /**
+     * 按服务汇总延迟与错误率（基于窗口内该服务的 Span 耗时）。
+     *
+     * @param lastHours 时间窗口
+     * @param limit     返回条数上限（按 p95 降序截断）
+     */
+    public List<Map<String, Object>> getServiceLatencySummaries(int lastHours, int limit) {
+        long sinceTime = Instant.now().minus(lastHours, ChronoUnit.HOURS).toEpochMilli();
+        int max = Math.max(1, limit);
+
+        record Acc(List<Long> durations, long errorCount) {}
+        Map<String, Acc> byService = new HashMap<>();
+
+        synchronized (lock) {
+            for (TraceSpan s : spans) {
+                if (s == null || n(s.getStartTime()) < sinceTime) {
+                    continue;
+                }
+                String name = s.getServiceName();
+                if (name == null || name.isBlank()) {
+                    continue;
+                }
+                Acc acc = byService.computeIfAbsent(name, x -> new Acc(new ArrayList<>(), 0L));
+                long dur = n(s.getDurationMs());
+                if (dur <= 0 && s.getEndTime() != null) {
+                    dur = Math.max(0L, n(s.getEndTime()) - n(s.getStartTime()));
+                }
+                acc.durations().add(Math.max(0L, dur));
+                if (isError(s)) {
+                    byService.put(name, new Acc(acc.durations(), acc.errorCount() + 1));
+                }
+            }
+        }
+
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map.Entry<String, Acc> e : byService.entrySet()) {
+            Acc acc = e.getValue();
+            List<Long> durs = acc.durations();
+            if (durs.isEmpty()) {
+                continue;
+            }
+            durs.sort(Long::compareTo);
+            int n = durs.size();
+            long sum = 0L;
+            for (Long d : durs) {
+                sum += d;
+            }
+            long p50 = percentile(durs, 0.50);
+            long p95 = percentile(durs, 0.95);
+            long maxMs = durs.get(n - 1);
+            double avg = sum / (double) n;
+            double errRate = Math.round((acc.errorCount() * 10000.0 / n)) / 100.0;
+
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("service_name", e.getKey());
+            row.put("span_count", n);
+            row.put("error_count", acc.errorCount());
+            row.put("error_rate", errRate);
+            row.put("avg_ms", Math.round(avg * 100.0) / 100.0);
+            row.put("p50_ms", p50);
+            row.put("p95_ms", p95);
+            row.put("max_ms", maxMs);
+            out.add(row);
+        }
+        out.sort((a, b) -> Long.compare(
+                ((Number) b.get("p95_ms")).longValue(),
+                ((Number) a.get("p95_ms")).longValue()));
+        if (out.size() > max) {
+            return new ArrayList<>(out.subList(0, max));
+        }
+        return out;
+    }
+
+    private static long percentile(List<Long> sortedAsc, double p) {
+        if (sortedAsc.isEmpty()) {
+            return 0L;
+        }
+        if (sortedAsc.size() == 1) {
+            return sortedAsc.getFirst();
+        }
+        double idx = p * (sortedAsc.size() - 1);
+        int lo = (int) Math.floor(idx);
+        int hi = (int) Math.ceil(idx);
+        if (lo == hi) {
+            return sortedAsc.get(lo);
+        }
+        double w = idx - lo;
+        return Math.round(sortedAsc.get(lo) * (1 - w) + sortedAsc.get(hi) * w);
+    }
+
     public List<TraceSpan> getRecentSpansByService(String serviceName, int limit) {
         synchronized (lock) {
             return spans.stream()
