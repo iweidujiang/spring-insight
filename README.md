@@ -82,7 +82,8 @@
 <img width="2533" height="750" alt="局部截取_20260904_182635" src="https://github.com/user-attachments/assets/6b60fcb8-ff84-4645-bf7b-b08e2306fa97" />
 
 
-<img width="2538" height="828" alt="局部截取_20260904_182657" src="https://github.com/user-attachments/assets/87ae162f-dcd3-4136-bff1-a3f6687ab85b" />
+<img width="2521" height="1177" alt="局部截取_20260904_193044" src="https://github.com/user-attachments/assets/f7fda1bb-6d6b-4364-b566-1a4c838dbf37" />
+
 
 
 
