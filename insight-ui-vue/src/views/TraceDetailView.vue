@@ -7,9 +7,30 @@
         </h2>
         <p class="page-description text-truncate" style="max-width: 90vw">
           Trace ID：<code class="text-cyan">{{ traceId }}</code>
+          <button class="btn btn-sm btn-link p-0 ms-2 align-baseline" type="button" @click="copyTraceId" title="复制">
+            <i class="fa fa-copy"></i>
+          </button>
         </p>
       </div>
       <div class="si-page__toolbar">
+        <button
+          v-if="timeline.errorCount > 0"
+          class="btn btn-outline-danger"
+          type="button"
+          @click="jumpError(-1)"
+          title="上一个异常 Span"
+        >
+          <i class="fa fa-chevron-up"></i> 异常
+        </button>
+        <button
+          v-if="timeline.errorCount > 0"
+          class="btn btn-outline-danger"
+          type="button"
+          @click="jumpError(1)"
+          title="下一个异常 Span"
+        >
+          异常 <i class="fa fa-chevron-down"></i>
+        </button>
         <button class="btn btn-outline-secondary" type="button" @click="goBack">
           <i class="fa fa-arrow-left me-1"></i>返回
         </button>
@@ -18,6 +39,8 @@
         </button>
       </div>
     </div>
+
+    <div v-if="copyHint" class="alert alert-success py-2 mb-3" role="status">{{ copyHint }}</div>
 
     <div v-if="loading" class="loading-spinner">
       <i class="fa fa-spinner fa-spin"></i>
@@ -62,10 +85,12 @@
               <h5 class="card-title mb-0">
                 <i class="fa fa-align-left me-2"></i>调用时间线（瀑布图）
               </h5>
-              <span class="trace-waterfall-hint">条形起点为相对根请求的偏移，宽度为耗时；缩进表示父子层级</span>
+              <span class="trace-waterfall-hint">
+                缩进=父子；橙边=关键路径（最晚结束路径）；红条=异常
+              </span>
             </div>
 
-            <div class="trace-waterfall">
+            <div class="trace-waterfall" ref="waterfallEl">
               <div class="trace-waterfall__axis">
                 <div class="trace-waterfall__axis-label"></div>
                 <div class="trace-waterfall__axis-track">
@@ -81,8 +106,13 @@
               <div
                 v-for="(row, idx) in timeline.rows"
                 :key="row.span.spanId || idx"
+                :data-span-id="row.span.spanId"
                 class="trace-waterfall__row"
-                :class="{ 'is-error': row.isError, 'is-active': selectedSpanId === row.span.spanId }"
+                :class="{
+                  'is-error': row.isError,
+                  'is-active': selectedSpanId === row.span.spanId,
+                  'is-critical': row.isOnCriticalPath
+                }"
                 @click="selectSpan(row.span.spanId)"
               >
                 <div class="trace-waterfall__meta" :style="{ paddingLeft: `${12 + row.depth * 16}px` }">
@@ -188,7 +218,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiService } from '../services/ApiService'
 import {
@@ -204,8 +234,15 @@ const traceId = ref('')
 const spans = ref<TraceSpanLike[]>([])
 const loading = ref(true)
 const selectedSpanId = ref<string | null>(null)
+const copyHint = ref('')
+const waterfallEl = ref<HTMLElement | null>(null)
+let copyTimer: number | null = null
 
 const timeline = computed(() => buildTraceTimeline(spans.value))
+
+const errorSpanIds = computed(() =>
+  timeline.value.rows.filter((r) => r.isError && r.span.spanId).map((r) => r.span.spanId as string)
+)
 
 const selected = computed(() =>
   spans.value.find((s) => s.spanId === selectedSpanId.value) || null
@@ -228,12 +265,52 @@ const remoteLabel = (span: TraceSpanLike) => {
   return svc || ep
 }
 
-const selectSpan = (id?: string | null) => {
-  selectedSpanId.value = id || null
+const scrollSelectedIntoView = async () => {
+  await nextTick()
+  const id = selectedSpanId.value
+  if (!id || !waterfallEl.value) return
+  const el = waterfallEl.value.querySelector(`[data-span-id="${CSS.escape(id)}"]`) as HTMLElement | null
+  el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 }
 
-const barTitle = (row: WaterfallRow) =>
-  `${row.span.serviceName} · ${row.span.operationName}\n偏移 +${formatDuration(row.offsetMs)} · 耗时 ${formatDuration(row.durationMs)}`
+const selectSpan = (id?: string | null) => {
+  selectedSpanId.value = id || null
+  scrollSelectedIntoView()
+}
+
+const jumpError = (dir: 1 | -1) => {
+  const ids = errorSpanIds.value
+  if (!ids.length) return
+  const cur = selectedSpanId.value
+  let idx = ids.indexOf(cur || '')
+  if (idx < 0) {
+    idx = dir > 0 ? -1 : 0
+  }
+  const next = ids[(idx + dir + ids.length) % ids.length]
+  selectSpan(next)
+}
+
+const copyTraceId = async () => {
+  if (!traceId.value) return
+  try {
+    await navigator.clipboard.writeText(traceId.value)
+    copyHint.value = `已复制 Trace ID：${traceId.value}`
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = window.setTimeout(() => {
+      copyHint.value = ''
+    }, 2000)
+  } catch {
+    copyHint.value = '复制失败'
+  }
+}
+
+const barTitle = (row: WaterfallRow) => {
+  const flags = [
+    row.isOnCriticalPath ? '关键路径' : '',
+    row.isError ? '异常' : ''
+  ].filter(Boolean).join(' · ')
+  return `${row.span.serviceName} · ${row.span.operationName}\n偏移 +${formatDuration(row.offsetMs)} · 耗时 ${formatDuration(row.durationMs)}${flags ? `\n${flags}` : ''}`
+}
 
 const load = async () => {
   const id = String(route.params.traceId || '')
@@ -247,16 +324,19 @@ const load = async () => {
   loading.value = true
   try {
     spans.value = await ApiService.getTraceDetail(id)
-    // 默认选中根 / 第一条
+    const firstError = spans.value.find((s) =>
+      s.success === false || (s.statusCode && !['OK', '0', '200'].includes(String(s.statusCode).toUpperCase()))
+    )
     const root = spans.value.find((s) => !s.parentSpanId) || spans.value[0]
-    selectedSpanId.value = root?.spanId || null
+    selectedSpanId.value = (firstError || root)?.spanId || null
+    await scrollSelectedIntoView()
   } finally {
     loading.value = false
   }
 }
 
 const goBack = () => {
-  router.push('/traces')
+  router.push({ path: '/traces', query: route.query })
 }
 
 watch(() => route.params.traceId, () => load())
@@ -377,6 +457,10 @@ onMounted(() => load())
 .trace-waterfall__row:hover,
 .trace-waterfall__row.is-active {
   background: rgba(15, 118, 110, 0.06);
+}
+
+.trace-waterfall__row.is-critical {
+  box-shadow: inset 3px 0 0 #c2410c;
 }
 
 .trace-waterfall__row.is-error:hover,

@@ -150,18 +150,20 @@ public class TraceSpanPersistenceService {
     /**
      * 按 Trace ID 聚合的最近链路摘要（一行 = 一次请求），供链路列表页使用。
      *
-     * @param lastHours 时间窗口（小时）
-     * @param limit     最多返回几条 Trace
-     * @param serviceName 可选：仅包含该服务参与过的 Trace
-     * @param status      {@code all}|{@code error}|{@code ok}
-     * @param query       可选：Trace ID / 操作名模糊匹配（忽略大小写）
+     * @param lastHours     时间窗口（小时）
+     * @param limit         最多返回几条 Trace
+     * @param serviceName   可选：仅包含该服务参与过的 Trace
+     * @param status        {@code all}|{@code error}|{@code ok}
+     * @param query         可选：Trace ID / 操作名模糊匹配（忽略大小写）
+     * @param minDurationMs 可选：总耗时下限（毫秒），用于找慢请求
      */
     public List<Map<String, Object>> getRecentTraceSummaries(
-            int lastHours, int limit, String serviceName, String status, String query) {
+            int lastHours, int limit, String serviceName, String status, String query, long minDurationMs) {
         long sinceTime = Instant.now().minus(lastHours, ChronoUnit.HOURS).toEpochMilli();
         String svc = serviceName != null ? serviceName.trim() : "";
         String st = status != null ? status.trim().toLowerCase() : "all";
         String q = query != null ? query.trim().toLowerCase() : "";
+        long minDur = Math.max(0L, minDurationMs);
         int max = Math.max(1, limit);
 
         record Acc(
@@ -252,12 +254,16 @@ public class TraceSpanPersistenceService {
                     continue;
                 }
             }
+            long durationMs = Math.max(0L, acc.maxEnd() - acc.minStart());
+            if (durationMs < minDur) {
+                continue;
+            }
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("traceId", acc.traceId());
             row.put("serviceName", rootSvc);
             row.put("operationName", rootOp.isBlank() ? "(unknown)" : rootOp);
             row.put("startTime", acc.minStart());
-            row.put("durationMs", Math.max(0L, acc.maxEnd() - acc.minStart()));
+            row.put("durationMs", durationMs);
             row.put("spanCount", acc.spanCount());
             row.put("serviceCount", acc.services().size());
             row.put("hasError", acc.hasError());

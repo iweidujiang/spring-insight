@@ -30,6 +30,8 @@ export interface WaterfallRow {
   widthPct: number
   color: string
   isError: boolean
+  /** 是否落在「最晚结束叶子 → 根」的关键路径上 */
+  isOnCriticalPath: boolean
 }
 
 export interface TraceTimelineModel {
@@ -40,6 +42,7 @@ export interface TraceTimelineModel {
   serviceCount: number
   errorCount: number
   tickMarks: number[]
+  criticalPathIds: string[]
 }
 
 const SERVICE_COLORS = [
@@ -86,6 +89,46 @@ function computeDepths(spans: TraceSpanLike[]): Map<string, number> {
   return depthCache
 }
 
+/** 取结束最晚的叶子，沿 parent 回溯到根，得到关键路径 */
+function computeCriticalPathIds(spans: TraceSpanLike[]): Set<string> {
+  const byId = new Map<string, TraceSpanLike>()
+  const childCount = new Map<string, number>()
+  spans.forEach((s) => {
+    if (s.spanId) byId.set(s.spanId, s)
+    if (s.parentSpanId) {
+      childCount.set(s.parentSpanId, (childCount.get(s.parentSpanId) || 0) + 1)
+    }
+  })
+
+  let leaf: TraceSpanLike | null = null
+  let leafEnd = -1
+  for (const s of spans) {
+    if (!s.spanId) continue
+    const kids = childCount.get(s.spanId) || 0
+    if (kids > 0) continue
+    const end = n(s.endTime, n(s.startTime) + n(s.durationMs))
+    if (end >= leafEnd) {
+      leafEnd = end
+      leaf = s
+    }
+  }
+  if (!leaf && spans.length) {
+    leaf = spans.reduce((a, b) =>
+      n(a.endTime, n(a.startTime) + n(a.durationMs)) >= n(b.endTime, n(b.startTime) + n(b.durationMs))
+        ? a : b)
+  }
+
+  const path = new Set<string>()
+  let cur: TraceSpanLike | undefined | null = leaf
+  const guard = new Set<string>()
+  while (cur?.spanId && !guard.has(cur.spanId)) {
+    guard.add(cur.spanId)
+    path.add(cur.spanId)
+    cur = cur.parentSpanId ? byId.get(cur.parentSpanId) : null
+  }
+  return path
+}
+
 export function buildTraceTimeline(rawSpans: TraceSpanLike[]): TraceTimelineModel {
   const spans = (rawSpans || []).map((s) => ({ ...s }))
   if (spans.length === 0) {
@@ -96,7 +139,8 @@ export function buildTraceTimeline(rawSpans: TraceSpanLike[]): TraceTimelineMode
       totalDurationMs: 0,
       serviceCount: 0,
       errorCount: 0,
-      tickMarks: [0]
+      tickMarks: [0],
+      criticalPathIds: []
     }
   }
 
@@ -118,6 +162,7 @@ export function buildTraceTimeline(rawSpans: TraceSpanLike[]): TraceTimelineMode
   const maxEnd = Math.max(...spans.map((s) => n(s.endTime, n(s.startTime) + n(s.durationMs))))
   const totalDurationMs = Math.max(1, maxEnd - minStart)
   const depths = computeDepths(spans)
+  const critical = computeCriticalPathIds(spans)
 
   const serviceIndex = new Map<string, number>()
   spans.forEach((s) => {
@@ -138,7 +183,8 @@ export function buildTraceTimeline(rawSpans: TraceSpanLike[]): TraceTimelineMode
       offsetPct: (offsetMs / totalDurationMs) * 100,
       widthPct: Math.max(0.4, (durationMs / totalDurationMs) * 100),
       color,
-      isError: isError(span)
+      isError: isError(span),
+      isOnCriticalPath: !!(span.spanId && critical.has(span.spanId))
     }
   })
 
@@ -155,7 +201,8 @@ export function buildTraceTimeline(rawSpans: TraceSpanLike[]): TraceTimelineMode
     totalDurationMs,
     serviceCount: serviceIndex.size,
     errorCount: rows.filter((r) => r.isError).length,
-    tickMarks
+    tickMarks,
+    criticalPathIds: [...critical]
   }
 }
 
