@@ -7,11 +7,18 @@ export interface TraceSpanLike {
   serviceName?: string
   operationName?: string
   spanKind?: string
+  component?: string
+  endpoint?: string
   startTime?: number
   endTime?: number
   durationMs?: number
   statusCode?: string
   success?: boolean
+  errorCode?: string
+  errorMessage?: string
+  remoteService?: string
+  remoteEndpoint?: string
+  tags?: Record<string, string>
 }
 
 export interface WaterfallRow {

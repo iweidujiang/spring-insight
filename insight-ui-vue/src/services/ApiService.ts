@@ -97,11 +97,28 @@ export class ApiService {
   }
 
   static async getRecentSpans(hours: number = 24, limit: number = 50): Promise<any[]> {
-    return requestWithDefault<any[]>(`/traces/recent?hours=${hours}&limit=${limit}`, [])
+    return this.getRecentTraces({ hours, limit })
   }
 
   static async getRecentSpansByService(serviceName: string, limit: number = 50): Promise<any[]> {
-    return requestWithDefault<any[]>(`/services/${encodeURIComponent(serviceName)}/traces?limit=${limit}`, [])
+    return this.getRecentTraces({ service: serviceName, limit })
+  }
+
+  /** 按 Trace 聚合的链路列表 */
+  static async getRecentTraces(params: {
+    hours?: number
+    limit?: number
+    service?: string
+    status?: string
+    q?: string
+  } = {}): Promise<any[]> {
+    const qs = new URLSearchParams()
+    qs.set('hours', String(params.hours ?? 24))
+    qs.set('limit', String(params.limit ?? 50))
+    if (params.service) qs.set('service', params.service)
+    if (params.status && params.status !== 'all') qs.set('status', params.status)
+    if (params.q && params.q.trim()) qs.set('q', params.q.trim())
+    return requestWithDefault<any[]>(`/traces/recent?${qs.toString()}`, [])
   }
 
   static async getTraceDetail(traceId: string): Promise<any[]> {

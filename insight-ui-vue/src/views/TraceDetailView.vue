@@ -114,14 +114,32 @@
           <div class="card-body">
             <h5 class="card-title mb-3"><i class="fa fa-info-circle me-2"></i>选中 Span</h5>
             <dl class="trace-selected">
-              <div><dt>服务</dt><dd>{{ selected.serviceName }}</dd></div>
-              <div><dt>操作</dt><dd>{{ selected.operationName }}</dd></div>
+              <div><dt>服务</dt><dd>{{ selected.serviceName || '-' }}</dd></div>
+              <div><dt>操作</dt><dd>{{ selected.operationName || '-' }}</dd></div>
               <div><dt>类型</dt><dd>{{ selected.spanKind || '-' }}</dd></div>
+              <div><dt>组件</dt><dd>{{ selected.component || '-' }}</dd></div>
+              <div><dt>端点</dt><dd>{{ selected.endpoint || '-' }}</dd></div>
               <div><dt>耗时</dt><dd>{{ formatDuration(Number(selected.durationMs) || 0) }}</dd></div>
               <div><dt>状态</dt><dd>{{ selected.statusCode || '-' }}</dd></div>
+              <div><dt>远端</dt><dd>{{ remoteLabel(selected) }}</dd></div>
               <div><dt>spanId</dt><dd><code>{{ selected.spanId }}</code></dd></div>
               <div><dt>parent</dt><dd><code>{{ selected.parentSpanId || '(root)' }}</code></dd></div>
             </dl>
+
+            <div v-if="selected.errorCode || selected.errorMessage" class="trace-error-box mt-3">
+              <div class="trace-error-box__title"><i class="fa fa-exclamation-triangle me-1"></i>错误信息</div>
+              <div v-if="selected.errorCode"><strong>errorCode</strong>：{{ selected.errorCode }}</div>
+              <div v-if="selected.errorMessage" class="mt-1">{{ selected.errorMessage }}</div>
+            </div>
+
+            <div v-if="tagEntries.length" class="mt-3">
+              <div class="trace-tags-title">Tags</div>
+              <div class="trace-tags">
+                <span v-for="[k, v] in tagEntries" :key="k" class="trace-tag">
+                  <em>{{ k }}</em>{{ v }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -192,6 +210,23 @@ const timeline = computed(() => buildTraceTimeline(spans.value))
 const selected = computed(() =>
   spans.value.find((s) => s.spanId === selectedSpanId.value) || null
 )
+
+const tagEntries = computed(() => {
+  const tags = selected.value?.tags
+  if (!tags || typeof tags !== 'object') return [] as [string, string][]
+  return Object.entries(tags)
+    .filter(([, v]) => v != null && String(v).length > 0)
+    .map(([k, v]) => [k, String(v)] as [string, string])
+    .sort((a, b) => a[0].localeCompare(b[0]))
+})
+
+const remoteLabel = (span: TraceSpanLike) => {
+  const svc = span.remoteService || ''
+  const ep = span.remoteEndpoint || ''
+  if (!svc && !ep) return '-'
+  if (svc && ep) return `${svc} · ${ep}`
+  return svc || ep
+}
 
 const selectSpan = (id?: string | null) => {
   selectedSpanId.value = id || null
@@ -442,5 +477,62 @@ onMounted(() => load())
   color: var(--si-ink);
   font-size: 0.9rem;
   word-break: break-all;
+}
+
+.trace-error-box {
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(185, 28, 28, 0.06);
+  border: 1px solid rgba(185, 28, 28, 0.2);
+  color: #991b1b;
+  font-size: 0.88rem;
+  word-break: break-word;
+}
+
+.trace-error-box__title {
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.trace-tags-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--si-muted);
+  margin-bottom: 0.45rem;
+}
+
+.trace-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.trace-tag {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: baseline;
+  max-width: 100%;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  background: rgba(15, 118, 110, 0.06);
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  font-size: 0.78rem;
+  color: var(--si-ink);
+  word-break: break-all;
+}
+
+.trace-tag em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--si-teal);
+}
+
+.trace-tag em::after {
+  content: ':';
 }
 </style>

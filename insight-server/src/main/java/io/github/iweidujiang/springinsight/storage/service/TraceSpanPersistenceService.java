@@ -147,6 +147,132 @@ public class TraceSpanPersistenceService {
         }
     }
 
+    /**
+     * 按 Trace ID 聚合的最近链路摘要（一行 = 一次请求），供链路列表页使用。
+     *
+     * @param lastHours 时间窗口（小时）
+     * @param limit     最多返回几条 Trace
+     * @param serviceName 可选：仅包含该服务参与过的 Trace
+     * @param status      {@code all}|{@code error}|{@code ok}
+     * @param query       可选：Trace ID / 操作名模糊匹配（忽略大小写）
+     */
+    public List<Map<String, Object>> getRecentTraceSummaries(
+            int lastHours, int limit, String serviceName, String status, String query) {
+        long sinceTime = Instant.now().minus(lastHours, ChronoUnit.HOURS).toEpochMilli();
+        String svc = serviceName != null ? serviceName.trim() : "";
+        String st = status != null ? status.trim().toLowerCase() : "all";
+        String q = query != null ? query.trim().toLowerCase() : "";
+        int max = Math.max(1, limit);
+
+        record Acc(
+                String traceId,
+                long minStart,
+                long maxEnd,
+                int spanCount,
+                boolean hasError,
+                String rootService,
+                String rootOperation,
+                java.util.LinkedHashSet<String> services
+        ) {}
+
+        Map<String, Acc> byTrace = new LinkedHashMap<>();
+        synchronized (lock) {
+            for (TraceSpan s : spans) {
+                if (s == null || s.getTraceId() == null || s.getTraceId().isBlank()) {
+                    continue;
+                }
+                long start = n(s.getStartTime());
+                if (start < sinceTime) {
+                    continue;
+                }
+                long end = n(s.getEndTime());
+                if (end <= 0) {
+                    end = start + n(s.getDurationMs());
+                }
+                Acc acc = byTrace.get(s.getTraceId());
+                if (acc == null) {
+                    java.util.LinkedHashSet<String> services = new java.util.LinkedHashSet<>();
+                    if (s.getServiceName() != null && !s.getServiceName().isBlank()) {
+                        services.add(s.getServiceName());
+                    }
+                    boolean root = s.getParentSpanId() == null || s.getParentSpanId().isBlank();
+                    byTrace.put(s.getTraceId(), new Acc(
+                            s.getTraceId(),
+                            start,
+                            Math.max(start, end),
+                            1,
+                            isError(s),
+                            root ? s.getServiceName() : null,
+                            root ? s.getOperationName() : null,
+                            services
+                    ));
+                } else {
+                    boolean root = s.getParentSpanId() == null || s.getParentSpanId().isBlank();
+                    if (s.getServiceName() != null && !s.getServiceName().isBlank()) {
+                        acc.services().add(s.getServiceName());
+                    }
+                    byTrace.put(s.getTraceId(), new Acc(
+                            acc.traceId(),
+                            Math.min(acc.minStart(), start),
+                            Math.max(acc.maxEnd(), Math.max(start, end)),
+                            acc.spanCount() + 1,
+                            acc.hasError() || isError(s),
+                            root && (acc.rootService() == null || acc.rootService().isBlank())
+                                    ? s.getServiceName() : acc.rootService(),
+                            root && (acc.rootOperation() == null || acc.rootOperation().isBlank())
+                                    ? s.getOperationName() : acc.rootOperation(),
+                            acc.services()
+                    ));
+                }
+            }
+        }
+
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Acc acc : byTrace.values()) {
+            if (!svc.isEmpty() && !acc.services().contains(svc)) {
+                continue;
+            }
+            if ("error".equals(st) && !acc.hasError()) {
+                continue;
+            }
+            if ("ok".equals(st) && acc.hasError()) {
+                continue;
+            }
+            String rootOp = acc.rootOperation() != null ? acc.rootOperation() : "";
+            String rootSvc = acc.rootService() != null ? acc.rootService() : "";
+            if (rootSvc.isBlank() && !acc.services().isEmpty()) {
+                rootSvc = acc.services().iterator().next();
+            }
+            if (!q.isEmpty()) {
+                boolean match = acc.traceId().toLowerCase().contains(q)
+                        || rootOp.toLowerCase().contains(q)
+                        || rootSvc.toLowerCase().contains(q)
+                        || acc.services().stream().anyMatch(x -> x.toLowerCase().contains(q));
+                if (!match) {
+                    continue;
+                }
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("traceId", acc.traceId());
+            row.put("serviceName", rootSvc);
+            row.put("operationName", rootOp.isBlank() ? "(unknown)" : rootOp);
+            row.put("startTime", acc.minStart());
+            row.put("durationMs", Math.max(0L, acc.maxEnd() - acc.minStart()));
+            row.put("spanCount", acc.spanCount());
+            row.put("serviceCount", acc.services().size());
+            row.put("hasError", acc.hasError());
+            row.put("statusCode", acc.hasError() ? "ERROR" : "OK");
+            out.add(row);
+        }
+        out.sort((a, b) -> Long.compare(
+                ((Number) b.get("startTime")).longValue(),
+                ((Number) a.get("startTime")).longValue()));
+        if (out.size() > max) {
+            return out.subList(0, max);
+        }
+        return out;
+    }
+
     public List<String> getAllServiceNames() {
         synchronized (lock) {
             return spans.stream()

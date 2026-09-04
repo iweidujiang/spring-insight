@@ -52,15 +52,18 @@ public class CollectorApiController {
     }
 
     /**
-     * 获取最近链路
+     * 获取最近链路（按 Trace ID 聚合；可选服务 / 状态 / 关键字）
      */
     @GetMapping("/traces/recent")
     public ResponseEntity<?> getRecentTraces(
             @RequestParam(value = "hours", defaultValue = "24") int hours,
-            @RequestParam(value = "limit", defaultValue = "100") int limit) {
+            @RequestParam(value = "limit", defaultValue = "100") int limit,
+            @RequestParam(value = "service", required = false) String service,
+            @RequestParam(value = "status", defaultValue = "all") String status,
+            @RequestParam(value = "q", required = false) String q) {
 
         try {
-            var traces = traceSpanPersistenceService.getRecentSpans(hours, limit);
+            var traces = traceSpanPersistenceService.getRecentTraceSummaries(hours, limit, service, status, q);
             return ResponseEntity.ok(traces);
         } catch (Exception e) {
             log.error("获取最近链路失败", e);
@@ -116,15 +119,19 @@ public class CollectorApiController {
     }
 
     /**
-     * 获取指定服务的链路
+     * 获取指定服务参与的链路（按 Trace 聚合）
      */
     @GetMapping("/services/{serviceName}/traces")
     public ResponseEntity<?> getServiceTraces(
             @PathVariable("serviceName") String serviceName,
-            @RequestParam(value = "limit", defaultValue = "100") int limit) {
+            @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "limit", defaultValue = "100") int limit,
+            @RequestParam(value = "status", defaultValue = "all") String status,
+            @RequestParam(value = "q", required = false) String q) {
 
         try {
-            var traces = traceSpanPersistenceService.getRecentSpansByService(serviceName, limit);
+            var traces = traceSpanPersistenceService.getRecentTraceSummaries(
+                    hours, limit, serviceName, status, q);
             return ResponseEntity.ok(traces);
         } catch (Exception e) {
             log.error("获取服务{}的链路失败", serviceName, e);
