@@ -1,0 +1,14 @@
+# Spring Insight Server —— 独立监测中心
+spring:
+  application:
+    # 服务名：仅用于本进程标识与日志
+    name: spring-insight-server
+
+server:
+  # 默认端口 9966：刻意避开业务常见的 8080，减少本地冲突
+  port: 9966
+
+# 可选：打开时便于排查上报/查询问题
+logging:
+  level:
+    io.github.iweidujiang.springinsight: INFO

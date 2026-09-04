@@ -1,0 +1,2 @@
+io.github.iweidujiang.springinsight.agent.starter.InsightAgentAutoConfiguration
+io.github.iweidujiang.springinsight.feign.InsightFeignTracingAutoConfiguration
