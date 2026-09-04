@@ -38,7 +38,7 @@
 
 ## 它现在能做什么
 
-<img width="2547" height="543" alt="局部截取_20260824_114112" src="https://github.com/user-attachments/assets/b4076a9a-060e-4918-85f8-3762a8f3b7e5" />
+
 
 
 | 能力 | 说明 | 成熟度 |
@@ -63,29 +63,33 @@
 
 ### 仪表盘
 
-<img width="2536" height="1188" alt="局部截取_20260824_113854" src="https://github.com/user-attachments/assets/fcd56dee-548e-44b4-bddf-1d2380be678c" />
+<img width="2558" height="1255" alt="局部截取_20260904_182526" src="https://github.com/user-attachments/assets/5d0d53b4-5654-4632-b675-7b31a9f26969" />
+
 
 
 
 
 ### 服务拓扑
 
-<img width="2520" height="1171" alt="局部截取_20260824_113921" src="https://github.com/user-attachments/assets/f524f35c-7816-4d0f-9725-92de05c52412" />
+<img width="2524" height="1158" alt="局部截取_20260904_182613" src="https://github.com/user-attachments/assets/3742cc8b-f369-441b-9371-87d320db7c8f" />
+
 
 
 
 
 ### 链路追踪
 
-<img width="2535" height="715" alt="局部截取_20260824_113944" src="https://github.com/user-attachments/assets/c2a3914e-898c-4008-b617-c3807e335be7" />
+<img width="2533" height="750" alt="局部截取_20260904_182635" src="https://github.com/user-attachments/assets/6b60fcb8-ff84-4645-bf7b-b08e2306fa97" />
 
 
-<img width="2542" height="354" alt="局部截取_20260824_114007" src="https://github.com/user-attachments/assets/5a905d59-0b31-46b7-aeb3-ba5f3248600b" />
+<img width="2538" height="828" alt="局部截取_20260904_182657" src="https://github.com/user-attachments/assets/87ae162f-dcd3-4136-bff1-a3f6687ab85b" />
+
 
 
 ### 错误分析
 
-<img width="2541" height="605" alt="局部截取_20260824_114045" src="https://github.com/user-attachments/assets/6c8dbaa0-4e8d-4c9b-9743-d8941b7cbba3" />
+<img width="2544" height="625" alt="局部截取_20260904_182715" src="https://github.com/user-attachments/assets/69243f02-13c7-4aee-bc0f-04de7721d373" />
+
 
 
 
@@ -104,8 +108,6 @@ cd spring-insight
 mvn clean install -DskipTests
 ```
 
-> IDEA 若报「无效的目标发行版: 21」：把 Maven Runner 的 JRE 换成 JDK 21  
-> （`Settings → Maven → Runner → JRE`）。
 
 ### 2. 启动监测中心
 
@@ -182,7 +184,7 @@ spring:
 
 ---
 
-## 已知局限 / 心里有数
+## 已知局限
 
 1. Span 存在 Server **内存**，有条数上限，超了会挤掉旧的；**重启 Server = 历史清空**。  
 2. UI、拓扑布局、错误分析都还在改，丑和怪的地方请多包涵。  
@@ -208,4 +210,4 @@ spring:
 ---
 
 如果你也在用 Spring 微服务、觉得这方向有点意思，欢迎 star 或提意见。  
-写得不好的地方直接说就行——我尽量改。
+写得不好的地方请直接将issue甩我脸上——我将感激不尽。
