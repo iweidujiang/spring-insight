@@ -1,12 +1,11 @@
 <template>
   <div class="si-dashboard fade-in">
-    <!-- 顶栏：标题 + 健康摘要 + 操作 -->
     <header class="si-dashboard__top">
       <div class="si-dashboard__title-block">
         <h2 class="si-dashboard__title">
           <i class="fa fa-tachometer-alt me-2"></i>监控仪表盘
         </h2>
-        <p class="si-dashboard__subtitle">实时监控 · Spring Boot 架构</p>
+        <p class="si-dashboard__subtitle">总览 · 拓扑为主，排名为辅</p>
       </div>
       <div class="si-dashboard__status" v-show="!loading">
         <span v-if="!errorAnalysis || errorAnalysis.length === 0" class="si-dashboard__pill si-dashboard__pill--ok">
@@ -32,80 +31,58 @@
     </div>
 
     <div v-show="!loading" class="si-dashboard__content">
-      <!-- KPI 四宫格 -->
-      <section class="si-dashboard__kpis">
-        <div
+      <!-- 一级：KPI 可点击跳转 -->
+      <section class="si-dashboard__kpis" aria-label="关键指标">
+        <button
           v-for="(stat, index) in stats"
           :key="index"
+          type="button"
           class="card stat-card si-dashboard__kpi"
           :style="{ animationDelay: `${index * 0.06}s` }"
+          @click="onKpiClick(stat.to)"
         >
           <div class="card-body">
             <div class="d-flex align-items-center justify-content-between">
-              <div>
-                <div class="text-xs font-weight-bold" :class="`text-${stat.color} text-uppercase mb-0 si-dashboard__kpi-label`">
+              <div class="text-start">
+                <div class="text-xs font-weight-bold text-uppercase mb-0 si-dashboard__kpi-label" :class="`text-${stat.color}`">
                   {{ stat.title }}
                 </div>
                 <div class="si-dashboard__kpi-value">{{ stat.value }}</div>
+                <div class="si-dashboard__kpi-hint">{{ stat.hint }}</div>
               </div>
               <i :class="`fa ${stat.icon} si-dashboard__kpi-icon text-${stat.color}`"></i>
             </div>
           </div>
+        </button>
+      </section>
+
+      <!-- 三级：Collector 收成一条，不与主图抢视线 -->
+      <section v-if="collectorStats" class="si-dashboard__collector-strip" aria-label="采集器状态">
+        <span class="si-dashboard__collector-strip-title"><i class="fa fa-database me-1"></i>Collector</span>
+        <div class="si-dashboard__collector-strip-items">
+          <span><em>接收</em>{{ collectorStats.totalReceivedRequests ?? 0 }}</span>
+          <span><em>Span</em>{{ collectorStats.totalReceivedSpans ?? 0 }}</span>
+          <span :class="(collectorStats.successRate ?? 100) < 90 ? 'text-danger' : ''">
+            <em>成功</em>{{ collectorStats.successRate ?? 100 }}%
+          </span>
+          <span><em>运行</em>{{ collectorStats.runningHours ?? 0 }}h</span>
         </div>
       </section>
 
-      <!-- 主体：左侧 Collector + 排名 | 中间拓扑 -->
+      <!-- 主体：拓扑主视图 + 排名辅栏 -->
       <section class="si-dashboard__body">
-        <aside class="si-dashboard__rail">
-          <div v-if="collectorStats" class="card stat-card si-dashboard__panel si-dashboard__collector">
-            <div class="card-body">
-              <h6 class="si-dashboard__panel-title">
-                <i class="fa fa-database me-2"></i>Collector
-              </h6>
-              <div class="si-dashboard__collector-grid">
-                <div class="si-dashboard__metric">
-                  <span class="si-dashboard__metric-label">接收请求</span>
-                  <span class="si-dashboard__metric-val">{{ collectorStats.totalReceivedRequests ?? 0 }}</span>
-                </div>
-                <div class="si-dashboard__metric">
-                  <span class="si-dashboard__metric-label">总 Span</span>
-                  <span class="si-dashboard__metric-val">{{ collectorStats.totalReceivedSpans ?? 0 }}</span>
-                </div>
-                <div class="si-dashboard__metric">
-                  <span class="si-dashboard__metric-label">成功率</span>
-                  <span
-                    class="si-dashboard__metric-val"
-                    :class="(collectorStats.successRate ?? 100) < 90 ? 'text-danger' : 'text-success'"
-                  >{{ collectorStats.successRate ?? 100 }}%</span>
-                </div>
-                <div class="si-dashboard__metric">
-                  <span class="si-dashboard__metric-label">运行</span>
-                  <span class="si-dashboard__metric-val">{{ collectorStats.runningHours ?? 0 }}h</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="chart-container si-dashboard__panel si-dashboard__chart-rank">
-            <div class="si-dashboard__chart-head">
-              <h6 class="si-dashboard__panel-title mb-0">
-                <i class="fa fa-chart-bar me-2"></i>请求排名
-              </h6>
-              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshServiceRankChart">
-                <i class="fa fa-refresh"></i>
-              </button>
-            </div>
-            <div id="service-rank-chart" class="si-dashboard__chart-canvas"></div>
-          </div>
-        </aside>
-
-        <div class="chart-container si-dashboard__panel si-dashboard__chart-topology">
+        <div class="chart-container si-dashboard__panel si-dashboard__chart-topology si-dashboard__hero">
           <div class="si-dashboard__chart-head">
-            <h6 class="si-dashboard__panel-title mb-0">
-              <i class="fa fa-project-diagram me-2"></i>服务依赖拓扑
-            </h6>
+            <div>
+              <h6 class="si-dashboard__panel-title mb-0">
+                <i class="fa fa-project-diagram me-2"></i>主视图 · 服务依赖拓扑
+              </h6>
+              <p class="si-dashboard__panel-desc mb-0">箭头指向被调用方 · 最近 24 小时</p>
+            </div>
             <div class="d-flex align-items-center gap-2">
-              <span class="si-dashboard__topo-hint">箭头指向被调用方</span>
+              <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTopology">
+                完整拓扑
+              </button>
               <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshTopologyChart">
                 <i class="fa fa-refresh"></i>
               </button>
@@ -113,13 +90,32 @@
           </div>
           <div id="topology-chart" class="si-dashboard__chart-canvas"></div>
         </div>
+
+        <aside class="si-dashboard__rail">
+          <div class="chart-container si-dashboard__panel si-dashboard__chart-rank">
+            <div class="si-dashboard__chart-head">
+              <div>
+                <h6 class="si-dashboard__panel-title mb-0">
+                  <i class="fa fa-chart-bar me-2"></i>辅栏 · 请求排名
+                </h6>
+                <p class="si-dashboard__panel-desc mb-0">按 Span 量 Top 服务</p>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshServiceRankChart">
+                <i class="fa fa-refresh"></i>
+              </button>
+            </div>
+            <div id="service-rank-chart" class="si-dashboard__chart-canvas"></div>
+            <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-2" @click="goTraces()">
+              查看链路列表
+            </button>
+          </div>
+        </aside>
       </section>
 
-      <!-- 异常：窄条，内部滚动，不占满屏 -->
       <section v-if="errorAnalysis && errorAnalysis.length > 0" class="si-dashboard__alerts">
         <div class="si-dashboard__alerts-head">
-          <span><i class="fa fa-exclamation-triangle me-2"></i>异常服务</span>
-          <span class="badge bg-danger">{{ errorAnalysis.length }}</span>
+          <span><i class="fa fa-exclamation-triangle me-2"></i>异常服务（点击行可查链路）</span>
+          <button type="button" class="btn btn-sm btn-outline-danger py-0" @click="goErrors">错误分析</button>
         </div>
         <div class="table-responsive si-dashboard__alerts-scroll">
           <table class="table table-hover table-sm mb-0">
@@ -177,21 +173,57 @@ let serviceRankChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
 
 const stats = computed(() => [
-  { title: '监控服务', value: `${services.value.length} 个`, icon: 'fa-server', color: 'primary' },
-  { title: '链路总数', value: `${totalSpans.value} 条`, icon: 'fa-stream', color: 'success' },
-  { title: '依赖关系', value: `${dependencies.value.length} 条`, icon: 'fa-project-diagram', color: 'info' },
-  { title: '异常服务', value: `${errorAnalysis.value.length} 个`, icon: 'fa-exclamation-triangle', color: 'warning' }
+  {
+    title: '监控服务',
+    value: `${services.value.length} 个`,
+    icon: 'fa-server',
+    color: 'primary',
+    hint: '进入链路筛选',
+    to: '/traces'
+  },
+  {
+    title: '链路总数',
+    value: `${totalSpans.value} 条`,
+    icon: 'fa-stream',
+    color: 'success',
+    hint: '最近上报 Span',
+    to: '/traces'
+  },
+  {
+    title: '依赖关系',
+    value: `${dependencies.value.length} 条`,
+    icon: 'fa-project-diagram',
+    color: 'info',
+    hint: '打开拓扑图',
+    to: '/topology'
+  },
+  {
+    title: '异常服务',
+    value: `${errorAnalysis.value.length} 个`,
+    icon: 'fa-exclamation-triangle',
+    color: 'warning',
+    hint: '错误分析',
+    to: '/error-analysis'
+  }
 ])
 
 const updateCurrentTime = () => {
   currentTime.value = new Date().toTimeString().split(' ')[0]
 }
 
+const onKpiClick = (to: string) => {
+  router.push(to)
+}
+
+const goTopology = () => router.push('/topology')
+const goTraces = () => router.push('/traces')
+const goErrors = () => router.push('/error-analysis')
+
 const initCharts = () => {
   const topologyChartDom = document.getElementById('topology-chart')
   if (topologyChartDom) {
     topologyChart = echarts.init(topologyChartDom)
-    topologyChart.setOption(buildTopologyOption([], { compact: true }))
+    topologyChart.setOption(buildTopologyOption([], { compact: false }))
   }
 
   const serviceRankChartDom = document.getElementById('service-rank-chart')
@@ -227,7 +259,7 @@ const initCharts = () => {
         axisLabel: {
           fontSize: 11,
           color: '#15241f',
-          width: 110,
+          width: 100,
           overflow: 'truncate',
           ellipsis: '…'
         }
@@ -252,7 +284,7 @@ const initCharts = () => {
 
 const updateCharts = () => {
   if (topologyChart) {
-    topologyChart.setOption(buildTopologyOption(dependencies.value, { compact: true }), { notMerge: true })
+    topologyChart.setOption(buildTopologyOption(dependencies.value, { compact: false }), { notMerge: true })
   }
 
   if (serviceRankChart) {
@@ -357,7 +389,7 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.55rem;
   overflow: hidden;
 }
 
@@ -367,7 +399,7 @@ onUnmounted(() => {
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 0.85rem 1.25rem;
-  padding: 0.55rem 0.35rem 0.35rem;
+  padding: 0.55rem 0.35rem 0.2rem;
 }
 
 .si-dashboard__title {
@@ -380,21 +412,16 @@ onUnmounted(() => {
   line-height: 1.2;
 }
 
-.si-dashboard__title i {
-  color: var(--si-teal);
-}
+.si-dashboard__title i { color: var(--si-teal); }
 
 .si-dashboard__subtitle {
   margin: 0.2rem 0 0;
   font-size: 0.8rem;
   color: var(--si-muted);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.si-dashboard__status {
-  justify-self: center;
-}
+.si-dashboard__status { justify-self: center; }
 
 .si-dashboard__pill {
   display: inline-flex;
@@ -458,13 +485,22 @@ onUnmounted(() => {
 }
 
 @media (max-width: 991px) {
-  .si-dashboard__kpis {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .si-dashboard__kpis { grid-template-columns: repeat(2, 1fr); }
 }
 
 .si-dashboard__kpi {
   min-height: 5.75rem;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  width: 100%;
+  padding: 0;
+  background: inherit;
+}
+
+.si-dashboard__kpi:focus-visible {
+  outline: 2px solid var(--si-teal);
+  outline-offset: 2px;
 }
 
 .si-dashboard__kpi :deep(.card-body) {
@@ -474,14 +510,12 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.si-dashboard__kpi :deep(.card-body > .d-flex) {
-  width: 100%;
-}
+.si-dashboard__kpi :deep(.card-body > .d-flex) { width: 100%; }
 
 .si-dashboard__kpi-label {
   font-size: 0.72rem !important;
   letter-spacing: 0.08em;
-  margin-bottom: 0.35rem !important;
+  margin-bottom: 0.25rem !important;
 }
 
 .si-dashboard__kpi-value {
@@ -490,8 +524,14 @@ onUnmounted(() => {
   font-weight: 700;
   color: var(--si-ink);
   line-height: 1.15;
-  margin-top: 0.1rem;
   letter-spacing: -0.02em;
+}
+
+.si-dashboard__kpi-hint {
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  color: var(--si-muted);
+  font-weight: 600;
 }
 
 .si-dashboard__kpi-icon {
@@ -499,28 +539,62 @@ onUnmounted(() => {
   opacity: 0.88;
 }
 
+/* Collector 收成横条 */
+.si-dashboard__collector-strip {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--box-shadow);
+}
+
+.si-dashboard__collector-strip-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--si-ink-soft);
+}
+
+.si-dashboard__collector-strip-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--si-ink);
+}
+
+.si-dashboard__collector-strip-items em {
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--si-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 0.35rem;
+}
+
+/* 拓扑主、排名辅 */
 .si-dashboard__body {
   flex: 1;
   min-height: 0;
   display: grid;
-  /* 左侧请求排名加宽，右侧拓扑占剩余空间 */
-  grid-template-columns: minmax(280px, 34%) 1fr;
-  gap: 0.65rem;
+  grid-template-columns: 1fr minmax(240px, 28%);
+  gap: 0.75rem;
   overflow: hidden;
 }
 
 @media (max-width: 991px) {
   .si-dashboard__body {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(180px, auto) minmax(220px, 1fr);
+    grid-template-rows: minmax(220px, 1fr) minmax(180px, auto);
   }
-}
-
-.si-dashboard__topo-hint {
-  font-size: 0.65rem;
-  color: var(--si-muted);
-  font-weight: 500;
-  letter-spacing: 0.02em;
 }
 
 .si-dashboard__rail {
@@ -538,47 +612,24 @@ onUnmounted(() => {
   margin-bottom: 0 !important;
 }
 
-.si-dashboard__collector :deep(.card-body) {
-  padding: 0.55rem 0.7rem;
+.si-dashboard__hero {
+  border-color: rgba(15, 118, 110, 0.22);
+  box-shadow: var(--box-shadow-hover);
 }
 
 .si-dashboard__panel-title {
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  color: var(--si-ink-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 0.45rem;
-}
-
-.si-dashboard__collector-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.35rem 0.5rem;
-}
-
-.si-dashboard__metric {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.25rem 0.35rem;
-  background: var(--si-paper);
-  border-radius: 6px;
-  border: 1px solid var(--card-border);
-}
-
-.si-dashboard__metric-label {
-  font-size: 0.62rem;
-  color: var(--si-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.si-dashboard__metric-val {
-  font-size: 0.95rem;
-  font-weight: 800;
   color: var(--si-ink);
+  text-transform: none;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.15rem;
+}
+
+.si-dashboard__panel-desc {
+  font-size: 0.7rem;
+  color: var(--si-muted);
+  font-weight: 500;
 }
 
 .si-dashboard__chart-rank,
@@ -587,23 +638,16 @@ onUnmounted(() => {
   min-height: 0;
   height: auto !important;
   margin-bottom: 0 !important;
-  padding: 0.5rem 0.65rem !important;
-}
-
-.si-dashboard__rail .si-dashboard__chart-rank {
-  flex: 1;
-}
-
-.si-dashboard__chart-topology {
-  min-height: 0;
+  padding: 0.65rem 0.85rem !important;
 }
 
 .si-dashboard__chart-head {
   flex-shrink: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 0.35rem;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
 }
 
 .si-dashboard__chart-canvas {
@@ -614,7 +658,7 @@ onUnmounted(() => {
 
 .si-dashboard__alerts {
   flex-shrink: 0;
-  max-height: 5.5rem;
+  max-height: 6rem;
   border: 1px solid rgba(185, 28, 28, 0.2);
   border-radius: 10px;
   background: #fff5f5;
@@ -628,8 +672,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.25rem 0.6rem;
-  font-size: 0.72rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: #7f1d1d;
   background: rgba(185, 28, 28, 0.08);
@@ -638,7 +682,7 @@ onUnmounted(() => {
 
 .si-dashboard__alerts-scroll {
   overflow-y: auto;
-  max-height: 3.6rem;
+  max-height: 4rem;
 }
 
 .si-dashboard__alerts-scroll :deep(th),
