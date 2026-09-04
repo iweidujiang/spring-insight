@@ -51,7 +51,7 @@
 
 **当前还没有做的**：
 
-- 没有持久化库：数据在 **Server 内存**里，进程重启就没了  
+- 默认仍是**内存存储**（重启清空）；可选打开 JSON 文件落盘，见下方「可选：Span 落盘」  
 - **尚未发布到 Maven Central**：需要自己 `mvn install` 到本地仓库  
 - 不是 OpenTelemetry / SkyWalking 的替代品  
 - 没有告警、没有多租户、没有鉴权完善的生产方案  
@@ -116,6 +116,27 @@ java -jar insight-server/target/insight-server-0.1.0-SNAPSHOT.jar
 ```
 
 浏览器打开：<http://localhost:9966/>
+
+#### 可选：Span 落盘（重启可恢复）
+
+默认 `memory`，进程一关数据就没了。需要跨重启保留时，改成 `file`：
+
+```yaml
+# application.yml 或同名外部配置
+spring:
+  insight:
+    server:
+      storage:
+        mode: file
+        max-spans: 50000
+        file-path: ./data/spans.json
+        flush-delay-ms: 2000
+```
+
+也可启动参数：`--spring.insight.server.storage.mode=file`。  
+目录会自动创建，一般**不必**手工 `mkdir`；文件在 **insight-server 进程工作目录**下的 `./data/spans.json`（Docker 里可挂卷到固定路径）。  
+这是 **Server 单点配置**，与业务微服务无关——微服务不要配这个属性。  
+健康检查 `GET /api/v1/health` 会带上 `storageMode` 与 `storedSpans`。
 
 ### 3. 业务服务接入
 
@@ -186,7 +207,7 @@ spring:
 
 ## 已知局限
 
-1. Span 存在 Server **内存**，有条数上限，超了会挤掉旧的；**重启 Server = 历史清空**。  
+1. 默认 Span 在 Server **内存**，有条数上限，超了会挤掉旧的；**重启 = 清空**。需要时可开 `spring.insight.server.storage.mode=file` 做 JSON 落盘（轻量，不是数据库）。  
 2. UI、拓扑布局、错误分析都还在改，丑和怪的地方请多包涵。  
 3. 文档和示例可能落后于代码，以仓库现状为准。  
 4. 作者也是边学边写，PR / Issue 都很欢迎。
@@ -195,7 +216,7 @@ spring:
 
 ## 以后可能想做的（画饼，随时可能变）
 
-- [ ] 持久化（解决重启就清空数据的问题）  
+- [x] 可选文件持久化（默认仍内存；`mode=file` 落盘）  
 - [ ] 发到 Maven Central，少一步本地 install  
 - [ ] 与 Prometheus / Micrometer 的轻量联动（连接池等指标）  
 

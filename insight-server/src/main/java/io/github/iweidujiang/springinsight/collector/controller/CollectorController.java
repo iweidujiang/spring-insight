@@ -3,6 +3,8 @@ package io.github.iweidujiang.springinsight.collector.controller;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.collector.model.CollectorRequest;
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
+import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -10,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -29,9 +32,15 @@ import java.util.Map;
 public class CollectorController {
 
     private final TraceSpanCollectorService traceSpanCollectorService;
+    private final TraceSpanPersistenceService persistenceService;
+    private final InsightServerStorageProperties storageProperties;
 
-    public CollectorController(TraceSpanCollectorService traceSpanCollectorService) {
+    public CollectorController(TraceSpanCollectorService traceSpanCollectorService,
+                               TraceSpanPersistenceService persistenceService,
+                               InsightServerStorageProperties storageProperties) {
         this.traceSpanCollectorService = traceSpanCollectorService;
+        this.persistenceService = persistenceService;
+        this.storageProperties = storageProperties;
     }
 
     /**
@@ -41,12 +50,14 @@ public class CollectorController {
     public ResponseEntity<Map<String, Object>> health() {
         log.debug("[Collector控制器] 健康检查请求");
 
-        return ResponseEntity.ok(Map.of(
-                "status", "UP",
-                "service", "spring-insight-server",
-                "timestamp", Instant.now(),
-                "version", "0.1.0-SNAPSHOT"
-        ));
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("status", "UP");
+        body.put("service", "spring-insight-server");
+        body.put("timestamp", Instant.now());
+        body.put("version", "0.1.0-SNAPSHOT");
+        body.put("storageMode", storageProperties.getMode());
+        body.put("storedSpans", persistenceService.getStoredSpanCount());
+        return ResponseEntity.ok(body);
     }
 
     /**

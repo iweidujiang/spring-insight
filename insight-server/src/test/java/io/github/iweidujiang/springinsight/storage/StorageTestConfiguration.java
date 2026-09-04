@@ -1,5 +1,7 @@
 package io.github.iweidujiang.springinsight.storage;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -10,11 +12,20 @@ import org.springframework.context.annotation.Bean;
 @SpringBootConfiguration
 public class StorageTestConfiguration {
 
-    /**
-     * @return 进程内 Span 存储服务
-     */
     @Bean
-    public TraceSpanPersistenceService traceSpanPersistenceService() {
-        return new TraceSpanPersistenceService();
+    public InsightServerStorageProperties insightServerStorageProperties() {
+        return new InsightServerStorageProperties();
+    }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
+
+    @Bean
+    public TraceSpanPersistenceService traceSpanPersistenceService(
+            InsightServerStorageProperties storageProperties,
+            ObjectMapper objectMapper) {
+        return new TraceSpanPersistenceService(storageProperties, objectMapper);
     }
 }

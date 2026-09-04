@@ -33,3 +33,8 @@ build/
 ### VS Code ###
 .vscode/
 .trae
+
+### insight-server 可选文件持久化 ###
+**/data/
+**/spans.json
+**/spans.json.tmp

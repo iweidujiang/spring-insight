@@ -3,6 +3,16 @@ spring:
   application:
     # 服务名：仅用于本进程标识与日志
     name: spring-insight-server
+  insight:
+    server:
+      storage:
+        # memory（默认，重启清空）| file（JSON 落盘，重启可恢复）
+        mode: memory
+        max-spans: 50000
+        # file 模式生效；相对路径相对进程工作目录
+        file-path: ./data/spans.json
+        # 写入后防抖刷盘间隔
+        flush-delay-ms: 2000
 
 server:
   # 默认端口 9966：刻意避开业务常见的 8080，减少本地冲突

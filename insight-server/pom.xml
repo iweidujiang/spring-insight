@@ -12,7 +12,7 @@
 
     <artifactId>insight-server</artifactId>
     <name>Spring Insight Server</name>
-    <description>独立监测中心：内存存储、上报/查询 API、控制台 UI（默认端口 9966）</description>
+    <description>独立监测中心：Span 存储（内存/可选文件）、上报/查询 API、控制台 UI（默认端口 9966）</description>
 
     <dependencies>
         <!-- 复用 Agent 中的 TraceSpan 等模型 -->

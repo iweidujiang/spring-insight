@@ -1,6 +1,8 @@
 package io.github.iweidujiang.springinsight.collector;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
+import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -19,18 +21,23 @@ import org.springframework.context.annotation.ComponentScan;
 })
 public class CollectorTestConfiguration {
 
-    /**
-     * @return 内存 Span 存储
-     */
     @Bean
-    public TraceSpanPersistenceService traceSpanPersistenceService() {
-        return new TraceSpanPersistenceService();
+    public InsightServerStorageProperties insightServerStorageProperties() {
+        return new InsightServerStorageProperties();
     }
 
-    /**
-     * @param persistence 存储依赖
-     * @return 收集业务服务
-     */
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
+
+    @Bean
+    public TraceSpanPersistenceService traceSpanPersistenceService(
+            InsightServerStorageProperties storageProperties,
+            ObjectMapper objectMapper) {
+        return new TraceSpanPersistenceService(storageProperties, objectMapper);
+    }
+
     @Bean
     public TraceSpanCollectorService traceSpanCollectorService(TraceSpanPersistenceService persistence) {
         return new TraceSpanCollectorService(persistence);
