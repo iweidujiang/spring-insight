@@ -5,7 +5,9 @@
         <h2 class="page-title mb-1">
           <i class="fa fa-project-diagram me-2"></i>服务拓扑图
         </h2>
-        <p class="page-description mb-0">箭头表示调用方向：源服务 → 目标服务；边上标注为调用次数</p>
+        <p class="page-description mb-0">
+          箭头：调用方 → 被调用方；点击节点/边可下钻到该服务的链路列表
+        </p>
       </div>
       <span class="badge bg-info">
         <i class="fa fa-clock me-1"></i>{{ currentTime }}
@@ -49,6 +51,7 @@
             <i class="fa fa-project-diagram me-2"></i>服务依赖拓扑
           </h5>
           <div class="d-flex gap-2 align-items-center">
+            <span class="si-topo-legend"><i class="fa fa-hand-pointer-o me-1"></i>点击节点/边查看链路</span>
             <span class="si-topo-legend"><i class="fa fa-long-arrow-right"></i> 调用方向</span>
             <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshTopology">
               <i class="fa fa-refresh"></i> 重绘
@@ -93,9 +96,14 @@
                     {{ dep.avgDuration || 0 }}
                   </td>
                   <td>
-                    <button class="btn btn-sm btn-outline-primary" type="button" @click="viewDependencyDetails(dep)">
-                      <i class="fa fa-stream"></i> 相关链路
-                    </button>
+                    <div class="d-flex gap-1 flex-wrap">
+                      <button class="btn btn-sm btn-outline-primary" type="button" @click="goServiceTraces(dep.sourceService)" title="查看调用方链路">
+                        源
+                      </button>
+                      <button class="btn btn-sm btn-outline-secondary" type="button" @click="goServiceTraces(dep.targetService)" title="查看被调用方链路">
+                        目标
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 <tr v-if="dependencies.length === 0">
@@ -118,7 +126,7 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { ApiService } from '../services/ApiService'
-import { buildTopologyOption } from '../utils/topologyGraph'
+import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 
 const router = useRouter()
 const loading = ref(true)
@@ -134,10 +142,27 @@ const updateCurrentTime = () => {
   currentTime.value = new Date().toTimeString().split(' ')[0]
 }
 
+const goServiceTraces = (serviceName: string) => {
+  if (!serviceName) return
+  router.push({ path: '/traces', query: { service: serviceName, hours: String(hours.value) } })
+}
+
+const bindTopologyClick = () => {
+  if (!topologyChart) return
+  topologyChart.off('click')
+  topologyChart.on('click', (params: any) => {
+    const hit = resolveTopologyClick(params)
+    if (hit?.service) {
+      goServiceTraces(hit.service)
+    }
+  })
+}
+
 const initChart = () => {
   if (!chartEl.value) return
   topologyChart = echarts.init(chartEl.value)
   topologyChart.setOption(buildTopologyOption([]))
+  bindTopologyClick()
 }
 
 const updateChart = () => {
@@ -153,14 +178,8 @@ const refreshTopology = () => {
 
 const fitToScreen = () => {
   if (!topologyChart) return
-  // circular 布局下重新套用 option 并缩放到合适比例
   topologyChart.setOption(buildTopologyOption(dependencies.value), { notMerge: true })
   topologyChart.resize()
-}
-
-const viewDependencyDetails = (dep: any) => {
-  // 跳到链路页并按源服务筛选，便于查看该调用链相关 Span
-  router.push({ path: '/traces', query: { service: dep.sourceService } })
 }
 
 const downloadTopology = () => {

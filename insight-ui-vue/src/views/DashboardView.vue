@@ -149,7 +149,7 @@
               <h6 class="si-dashboard__panel-title mb-0">
                 <i class="fa fa-project-diagram me-2"></i>主视图 · 服务依赖拓扑
               </h6>
-              <p class="si-dashboard__panel-desc mb-0">箭头指向被调用方 · 最近 24 小时</p>
+              <p class="si-dashboard__panel-desc mb-0">箭头指向被调用方 · 点击节点/边可下钻链路 · 最近 24 小时</p>
             </div>
             <div class="d-flex align-items-center gap-2">
               <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTopology">
@@ -192,7 +192,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { ApiService } from '../services/ApiService'
-import { buildTopologyOption } from '../utils/topologyGraph'
+import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { formatDuration } from '../utils/traceTimeline'
 
 const router = useRouter()
@@ -282,6 +282,12 @@ const initCharts = () => {
   if (topologyChartDom) {
     topologyChart = echarts.init(topologyChartDom)
     topologyChart.setOption(buildTopologyOption([], { compact: false }))
+    topologyChart.on('click', (params: any) => {
+      const hit = resolveTopologyClick(params)
+      if (hit?.service) {
+        goTraces({ service: hit.service })
+      }
+    })
   }
 
   const serviceRankChartDom = document.getElementById('service-rank-chart')

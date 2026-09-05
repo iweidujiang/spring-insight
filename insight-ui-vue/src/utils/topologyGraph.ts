@@ -86,9 +86,9 @@ export function buildTopologyOption(
         if (params.dataType === 'edge' || params.data?.source != null) {
           const d = params.data
           const avg = d.avgDuration != null ? `<br/>平均耗时: ${d.avgDuration} ms` : ''
-          return `<div style="font-weight:700">${d.source} → ${d.target}</div>调用: ${d.value} 次${avg}<br/><span style="opacity:.75">箭头指向被调用方</span>`
+          return `<div style="font-weight:700">${d.source} → ${d.target}</div>调用: ${d.value} 次${avg}<br/><span style="opacity:.75">点击边：查看调用方链路</span>`
         }
-        return `<div style="font-weight:700">${params.data.name}</div>关联调用: ${params.data.value}`
+        return `<div style="font-weight:700">${params.data.name}</div>关联调用: ${params.data.value}<br/><span style="opacity:.75">点击节点：查看该服务链路</span>`
       }
     },
     graphic: empty
@@ -113,6 +113,7 @@ export function buildTopologyOption(
       data: nodes,
       links,
       roam: true,
+      cursor: 'pointer',
       scaleLimit: { min: 0.45, max: 2.5 },
       zoom: 0.92,
       center: ['50%', '50%'],
@@ -125,4 +126,20 @@ export function buildTopologyOption(
       }
     }]
   }
+}
+
+/** 解析拓扑图点击：节点 → 该服务；边 → 调用方（source） */
+export function resolveTopologyClick(params: any): { kind: 'node' | 'edge'; service: string; peer?: string } | null {
+  if (!params) return null
+  const isEdge = params.dataType === 'edge'
+    || (params.data && params.data.source != null && params.data.target != null)
+  if (isEdge) {
+    const source = String(params.data?.source || '')
+    const target = String(params.data?.target || '')
+    if (!source) return null
+    return { kind: 'edge', service: source, peer: target || undefined }
+  }
+  const name = String(params.name || params.data?.name || '')
+  if (!name) return null
+  return { kind: 'node', service: name }
 }
