@@ -43,7 +43,7 @@
 
 | 能力 | 说明 | 成熟度 |
 |------|------|--------|
-| HTTP / Feign 调用采集 | Agent 采 Span，批量报到 Server；success 与 HTTP 状态对齐；线程池可透传 Trace | 能用，WebFlux 下 Feign 仍弱 |
+| HTTP / Feign / WebClient / Gateway 采集 | Agent 采 Span，批量报到 Server；success 与 HTTP 状态对齐；线程池可透传 Trace；WebFlux 入口走 Reactor Context；WebClient/Gateway 出站带 remoteService | 能用，持续补齐 |
 | 服务依赖拓扑 | 看谁调用了谁（带箭头和次数）；点击节点/边可下钻链路 | 基础可用 |
 | 链路列表 / Trace 详情 | 按 Trace 聚合列表（可搜/筛）；详情页瀑布时间线 + Span tags/错误 | 持续打磨中 |
 | 错误率粗看 | 有错误调用时统计一下 | 很简陋 |
@@ -220,10 +220,12 @@ spring:
 ## 以后可能想做的（画饼，随时可能变）
 
 - [x] 可选文件持久化（默认仍内存；`mode=file` 落盘）  
+- [x] WebFlux Reactor Context + Gateway / WebClient 出站 CLIENT Span  
 - [ ] 发到 Maven Central，少一步本地 install  
 - [ ] 与 Prometheus / Micrometer 的轻量联动（连接池等指标）  
+- [ ] **Boot 2.7 / Java 8 兼容线**（单独规划，不阻塞当前 Boot 3.5 / JDK 21）：`spring.factories` 双轨装配、`javax.servlet` 适配、低版本编译产物或多模块 classifier；落地前保持主线只支持 Boot 3  
 
-排期就不写死了，以免变成空头支票。
+排期就不写死了，以免变成空头支票。当前主线仍是 **Spring Boot 3.5 + JDK 21**。
 
 ---
 

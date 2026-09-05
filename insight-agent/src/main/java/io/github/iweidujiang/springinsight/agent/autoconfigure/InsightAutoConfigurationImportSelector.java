@@ -81,6 +81,10 @@ public class InsightAutoConfigurationImportSelector implements DeferredImportSel
                 beanClassLoader != null ? beanClassLoader : ClassUtils.getDefaultClassLoader())) {
             imports.add(InsightGatewayAutoConfiguration.class.getName());
         }
+        if (ClassUtils.isPresent("org.springframework.web.reactive.function.client.WebClient",
+                beanClassLoader != null ? beanClassLoader : ClassUtils.getDefaultClassLoader())) {
+            imports.add(InsightWebClientAutoConfiguration.class.getName());
+        }
 
         // 仅当业务仍依赖 all-in-one starter 时导入；纯 agent-starter 场景跳过
         if (InsightWebStackDetect.isPresent(SPRING_INSIGHT_ALL_IN_ONE, beanClassLoader)) {

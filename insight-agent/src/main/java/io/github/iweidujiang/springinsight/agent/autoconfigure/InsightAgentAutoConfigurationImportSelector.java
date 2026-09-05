@@ -69,6 +69,10 @@ public class InsightAgentAutoConfigurationImportSelector
                 beanClassLoader != null ? beanClassLoader : ClassUtils.getDefaultClassLoader())) {
             imports.add(InsightGatewayAutoConfiguration.class.getName());
         }
+        if (ClassUtils.isPresent("org.springframework.web.reactive.function.client.WebClient",
+                beanClassLoader != null ? beanClassLoader : ClassUtils.getDefaultClassLoader())) {
+            imports.add(InsightWebClientAutoConfiguration.class.getName());
+        }
         return imports.toArray(String[]::new);
     }
 
