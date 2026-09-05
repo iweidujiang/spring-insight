@@ -46,6 +46,8 @@
               <option :value="12">12小时</option>
               <option :value="24">24小时</option>
               <option :value="72">72小时</option>
+              <option :value="168">7天</option>
+              <option :value="0">全部已存</option>
             </select>
           </div>
           <div class="col-lg-2 col-md-4 col-sm-6">
@@ -243,7 +245,7 @@ const applyRouteQuery = () => {
   syncingFromRoute = true
   const q = route.query
   selectedService.value = typeof q.service === 'string' ? q.service : ''
-  hours.value = Number(q.hours) > 0 ? Number(q.hours) : 24
+  hours.value = q.hours != null && String(q.hours) !== '' ? Number(q.hours) : 24
   limit.value = Number(q.limit) > 0 ? Number(q.limit) : 50
   minDurationMs.value = Number(q.minDurationMs) > 0 ? Number(q.minDurationMs) : 0
   if (typeof q.status === 'string' && (q.status === 'error' || q.status === 'ok' || q.status === 'all')) {

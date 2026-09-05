@@ -94,9 +94,10 @@ public class CollectorApiController {
      * 获取服务统计
      */
     @GetMapping("/services/stats")
-    public ResponseEntity<?> getServiceStats() {
+    public ResponseEntity<?> getServiceStats(
+            @RequestParam(value = "hours", defaultValue = "0") int hours) {
         try {
-            var stats = traceSpanPersistenceService.getSpanCountByService();
+            var stats = traceSpanPersistenceService.getSpanCountByService(hours);
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             log.error("获取服务统计失败", e);

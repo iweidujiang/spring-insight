@@ -90,8 +90,8 @@ export class ApiService {
     return rows.map(normalizeDependency)
   }
 
-  static async getServiceStats(): Promise<any[]> {
-    const rows = await requestWithDefault<any[]>('/services/stats', [])
+  static async getServiceStats(hours: number = 0): Promise<any[]> {
+    const rows = await requestWithDefault<any[]>(`/services/stats?hours=${hours}`, [])
     return rows.map(normalizeServiceStat)
   }
 

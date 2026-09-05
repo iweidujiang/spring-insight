@@ -31,6 +31,8 @@
               <option :value="12">最近 12 小时</option>
               <option :value="24">最近 24 小时</option>
               <option :value="72">最近 72 小时</option>
+              <option :value="168">最近 7 天</option>
+              <option :value="0">全部已存</option>
             </select>
           </div>
           <div class="si-err-hint" title="仅列出存在错误调用的服务">

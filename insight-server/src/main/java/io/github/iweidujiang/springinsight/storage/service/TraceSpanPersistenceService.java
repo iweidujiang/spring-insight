@@ -136,7 +136,7 @@ public class TraceSpanPersistenceService {
     }
 
     public List<TraceSpan> getRecentSpans(int lastHours, int limit) {
-        long sinceTime = Instant.now().minus(lastHours, ChronoUnit.HOURS).toEpochMilli();
+        long sinceTime = sinceEpochMillis(lastHours);
         synchronized (lock) {
             return spans.stream()
                     .filter(s -> n(s.getStartTime()) >= sinceTime)
@@ -159,7 +159,7 @@ public class TraceSpanPersistenceService {
      */
     public List<Map<String, Object>> getRecentTraceSummaries(
             int lastHours, int limit, String serviceName, String status, String query, long minDurationMs) {
-        long sinceTime = Instant.now().minus(lastHours, ChronoUnit.HOURS).toEpochMilli();
+        long sinceTime = sinceEpochMillis(lastHours);
         String svc = serviceName != null ? serviceName.trim() : "";
         String st = status != null ? status.trim().toLowerCase() : "all";
         String q = query != null ? query.trim().toLowerCase() : "";
@@ -292,7 +292,7 @@ public class TraceSpanPersistenceService {
     }
 
     public List<Map<String, Object>> getServiceDependencies(int lastHours) {
-        long sinceTime = Instant.now().minus(lastHours, ChronoUnit.HOURS).toEpochMilli();
+        long sinceTime = sinceEpochMillis(lastHours);
         synchronized (lock) {
             record Key(String src, String tgt) {}
             Map<Key, long[]> agg = new HashMap<>();
@@ -328,9 +328,22 @@ public class TraceSpanPersistenceService {
     }
 
     public List<Map<String, Object>> getSpanCountByService() {
+        return getSpanCountByService(0);
+    }
+
+    /**
+     * 按服务统计 Span 数。
+     *
+     * @param lastHours 时间窗口小时数；{@code <= 0} 表示不限时间（全部已存 Span）
+     */
+    public List<Map<String, Object>> getSpanCountByService(int lastHours) {
+        long sinceTime = sinceEpochMillis(lastHours);
         synchronized (lock) {
             Map<String, Long> counts = new HashMap<>();
             for (TraceSpan s : spans) {
+                if (n(s.getStartTime()) < sinceTime) {
+                    continue;
+                }
                 String name = s.getServiceName();
                 if (name == null || name.isBlank()) {
                     continue;
@@ -350,7 +363,7 @@ public class TraceSpanPersistenceService {
     }
 
     public List<Map<String, Object>> findHighErrorServices(int lastHours) {
-        long sinceTime = Instant.now().minus(lastHours, ChronoUnit.HOURS).toEpochMilli();
+        long sinceTime = sinceEpochMillis(lastHours);
         synchronized (lock) {
             Map<String, long[]> agg = new HashMap<>();
             for (TraceSpan s : spans) {
@@ -395,7 +408,7 @@ public class TraceSpanPersistenceService {
      * @param limit     返回条数上限（按 p95 降序截断）
      */
     public List<Map<String, Object>> getServiceLatencySummaries(int lastHours, int limit) {
-        long sinceTime = Instant.now().minus(lastHours, ChronoUnit.HOURS).toEpochMilli();
+        long sinceTime = sinceEpochMillis(lastHours);
         int max = Math.max(1, limit);
 
         record Acc(List<Long> durations, long errorCount) {}
@@ -586,6 +599,16 @@ public class TraceSpanPersistenceService {
             return true;
         }
         return Boolean.FALSE.equals(s.getSuccess());
+    }
+
+    /**
+     * @param lastHours 窗口小时数；{@code <= 0} 表示不限时间
+     */
+    private static long sinceEpochMillis(int lastHours) {
+        if (lastHours <= 0) {
+            return 0L;
+        }
+        return Instant.now().minus(lastHours, ChronoUnit.HOURS).toEpochMilli();
     }
 
     private static long n(Long v) {

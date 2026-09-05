@@ -97,7 +97,7 @@ export function buildTopologyOption(
           left: 'center',
           top: 'center',
           style: {
-            text: '暂无依赖拓扑\n产生跨服务调用后将显示（箭头：调用方 → 被调用方）',
+            text: '暂无依赖拓扑\n请扩大时间范围，或产生跨服务调用后查看\n（箭头：调用方 → 被调用方）',
             fill: '#6b7f76',
             fontSize: 13,
             textAlign: 'center',

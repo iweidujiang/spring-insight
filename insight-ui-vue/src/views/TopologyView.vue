@@ -25,6 +25,8 @@
               <option :value="12">最近 12 小时</option>
               <option :value="24">最近 24 小时</option>
               <option :value="72">最近 72 小时</option>
+              <option :value="168">最近 7 天</option>
+              <option :value="0">全部已存</option>
             </select>
           </div>
           <div class="d-flex flex-wrap gap-2 ms-auto">
@@ -131,7 +133,7 @@ import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGrap
 const router = useRouter()
 const loading = ref(true)
 const currentTime = ref('')
-const hours = ref(24)
+const hours = ref(72)
 const dependencies = ref<any[]>([])
 const chartEl = ref<HTMLElement | null>(null)
 

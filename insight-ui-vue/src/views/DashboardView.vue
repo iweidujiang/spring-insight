@@ -16,6 +16,15 @@
         </span>
       </div>
       <div class="si-dashboard__actions">
+        <label class="si-dashboard__hours visually-hidden" for="dashboard-hours">时间范围</label>
+        <select id="dashboard-hours" class="form-select form-select-sm si-dashboard__hours" v-model.number="hours" @change="loadData">
+          <option :value="1">近 1 小时</option>
+          <option :value="6">近 6 小时</option>
+          <option :value="24">近 24 小时</option>
+          <option :value="72">近 72 小时</option>
+          <option :value="168">近 7 天</option>
+          <option :value="0">全部已存</option>
+        </select>
         <button class="btn btn-primary btn-sm si-dashboard__btn" @click="loadData" :disabled="loading">
           <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
         </button>
@@ -206,6 +215,7 @@ import { formatDuration } from '../utils/traceTimeline'
 const router = useRouter()
 
 const loading = ref(true)
+const hours = ref(72)
 const currentTime = ref('')
 const services = ref<string[]>([])
 const dependencies = ref<any[]>([])
@@ -408,12 +418,13 @@ const refreshServiceRankChart = () => {
 const loadData = async () => {
   try {
     loading.value = true
+    const h = hours.value
     const [serviceNames, serviceDeps, serviceStatsData, latencyData, errorAnalysisData, collectorStatsData] = await Promise.all([
       ApiService.getServiceNames(),
-      ApiService.getServiceDependencies(24),
-      ApiService.getServiceStats(),
-      ApiService.getServiceLatency(24, 20),
-      ApiService.getErrorAnalysis(24),
+      ApiService.getServiceDependencies(h),
+      ApiService.getServiceStats(h),
+      ApiService.getServiceLatency(h, 20),
+      ApiService.getErrorAnalysis(h),
       ApiService.getCollectorStats()
     ])
     services.value = serviceNames
@@ -536,6 +547,15 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   justify-self: end;
+}
+
+.si-dashboard__hours {
+  width: auto;
+  min-width: 7.5rem;
+  font-size: 0.8rem;
+  border-color: rgba(20, 83, 45, 0.2);
+  background: #fffcfa;
+  color: #15241f;
 }
 
 .si-dashboard__btn {

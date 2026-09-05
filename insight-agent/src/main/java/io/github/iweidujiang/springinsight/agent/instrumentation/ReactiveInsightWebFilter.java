@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.agent.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
+import io.github.iweidujiang.springinsight.agent.context.ReactiveTraceHolder;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import lombok.RequiredArgsConstructor;
@@ -20,14 +21,16 @@ import java.net.InetSocketAddress;
 import java.util.Optional;
 
 /**
- * WebFlux / Gateway 入口 HTTP 追踪（不使用 ThreadLocal {@code TraceContext}，避免线程切换导致上下文丢失）。
+ * WebFlux / Gateway 入口 HTTP 追踪：Span 挂在 exchange 属性与 Reactor Context，
+ * 避免 ThreadLocal 在事件循环线程切换时丢失。
  */
 @Slf4j
 @RequiredArgsConstructor
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class ReactiveInsightWebFilter implements WebFilter {
 
-    static final String SPAN_EXCHANGE_ATTR = ReactiveInsightWebFilter.class.getName() + ".span";
+    /** Gateway 出站 Filter 等读取入口 SERVER Span 用 */
+    public static final String SPAN_EXCHANGE_ATTR = ReactiveInsightWebFilter.class.getName() + ".span";
 
     private final SpanReportingListener spanReportingListener;
     private final InsightProperties insightProperties;
@@ -71,7 +74,8 @@ public class ReactiveInsightWebFilter implements WebFilter {
                     if (signal != SignalType.ON_ERROR) {
                         finalizeSpan(exchange, null);
                     }
-                });
+                })
+                .contextWrite(ctx -> ReactiveTraceHolder.write(ctx, span));
     }
 
     private void finalizeSpan(ServerWebExchange exchange, Throwable error) {

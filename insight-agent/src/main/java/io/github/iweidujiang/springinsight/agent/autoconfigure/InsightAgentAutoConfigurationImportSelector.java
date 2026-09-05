@@ -65,6 +65,10 @@ public class InsightAgentAutoConfigurationImportSelector
         }
         // WebFlux 配置类自身带 @ConditionalOnWebApplication(REACTIVE)，Servlet 栈上不会生效
         imports.add(InsightWebFluxAutoConfiguration.class.getName());
+        if (ClassUtils.isPresent("org.springframework.cloud.gateway.filter.GlobalFilter",
+                beanClassLoader != null ? beanClassLoader : ClassUtils.getDefaultClassLoader())) {
+            imports.add(InsightGatewayAutoConfiguration.class.getName());
+        }
         return imports.toArray(String[]::new);
     }
 
