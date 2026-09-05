@@ -227,7 +227,7 @@ onUnmounted(() => {
 
 <style scoped>
 .si-topo-page {
-  min-height: calc(100vh - 5.5rem);
+  min-height: calc(100dvh - 2rem);
 }
 
 .si-topo-layout {

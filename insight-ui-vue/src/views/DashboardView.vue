@@ -69,8 +69,8 @@
         </div>
       </section>
 
-      <!-- 诊断：慢服务 / 错服务 → 一键进已筛 Trace -->
-      <section class="si-dashboard__diag" aria-label="慢请求与错误服务">
+      <!-- 诊断：慢服务 + 热点依赖（常有数据，可下钻） -->
+      <section class="si-dashboard__diag" aria-label="慢请求与热点依赖">
         <div class="si-dashboard__diag-panel">
           <div class="si-dashboard__diag-head">
             <span><i class="fa fa-tachometer me-2"></i>慢服务 Top（按 p95）</span>
@@ -78,7 +78,7 @@
           </div>
           <div v-if="slowServices.length === 0" class="si-dashboard__diag-empty">暂无延迟数据</div>
           <div v-else class="table-responsive si-dashboard__diag-scroll">
-            <table class="table table-hover table-sm mb-0">
+            <table class="table table-hover mb-0 si-dashboard__diag-table">
               <thead class="table-light">
                 <tr>
                   <th>服务</th>
@@ -94,7 +94,7 @@
                   class="si-dashboard__diag-row"
                   @click="goServiceSlow(row)"
                 >
-                  <td class="text-truncate" style="max-width: 9rem" :title="row.serviceName">{{ row.serviceName }}</td>
+                  <td class="text-truncate" style="max-width: 11rem" :title="row.serviceName">{{ row.serviceName }}</td>
                   <td>{{ formatMs(row.p50Ms) }}</td>
                   <td :class="row.p95Ms >= 1000 ? 'text-danger fw-bold' : row.p95Ms >= 500 ? 'text-warning' : ''">
                     {{ formatMs(row.p95Ms) }}
@@ -108,35 +108,43 @@
 
         <div class="si-dashboard__diag-panel">
           <div class="si-dashboard__diag-head">
-            <span><i class="fa fa-exclamation-triangle me-2"></i>错服务 Top</span>
-            <button type="button" class="btn btn-sm btn-outline-danger py-0" @click="goErrors">错误分析</button>
+            <span><i class="fa fa-exchange me-2"></i>热点依赖 Top</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goTopology">完整拓扑</button>
           </div>
-          <div v-if="!errorAnalysis || errorAnalysis.length === 0" class="si-dashboard__diag-empty">最近窗口无异常服务</div>
+          <div v-if="hotDependencies.length === 0" class="si-dashboard__diag-empty">暂无跨服务调用</div>
           <div v-else class="table-responsive si-dashboard__diag-scroll">
-            <table class="table table-hover table-sm mb-0">
+            <table class="table table-hover mb-0 si-dashboard__diag-table">
               <thead class="table-light">
                 <tr>
-                  <th>服务</th>
                   <th>调用</th>
-                  <th>错误</th>
-                  <th>错误率</th>
+                  <th>次数</th>
+                  <th>均耗时</th>
                 </tr>
               </thead>
               <tbody>
                 <tr
-                  v-for="error in errorAnalysis.slice(0, 8)"
-                  :key="'err-' + error.serviceName"
+                  v-for="(dep, idx) in hotDependencies"
+                  :key="'hot-' + dep.sourceService + '-' + dep.targetService + '-' + idx"
                   class="si-dashboard__diag-row"
-                  :class="{ 'table-danger': error.errorRate > 10, 'table-warning': error.errorRate <= 10 && error.errorRate > 5 }"
-                  @click="goServiceErrors(error.serviceName)"
+                  @click="goHotDependency(dep)"
                 >
-                  <td class="text-truncate" style="max-width: 9rem" :title="error.serviceName">{{ error.serviceName }}</td>
-                  <td>{{ error.totalCalls }}</td>
-                  <td>{{ error.errorCalls }}</td>
-                  <td>{{ error.errorRate.toFixed(1) }}%</td>
+                  <td class="si-dashboard__dep-cell" :title="`${dep.sourceService} → ${dep.targetService}`">
+                    <span class="si-dashboard__dep-src">{{ dep.sourceService }}</span>
+                    <i class="fa fa-long-arrow-right si-dashboard__dep-arrow"></i>
+                    <span class="si-dashboard__dep-tgt">{{ dep.targetService }}</span>
+                  </td>
+                  <td>{{ dep.callCount }}</td>
+                  <td :class="(dep.avgDuration || 0) > 500 ? 'text-warning' : ''">
+                    {{ formatMs(dep.avgDuration || 0) }}
+                  </td>
                 </tr>
               </tbody>
             </table>
+          </div>
+          <div v-if="errorAnalysis && errorAnalysis.length > 0" class="si-dashboard__diag-foot">
+            <button type="button" class="btn btn-sm btn-outline-danger py-0" @click="goErrors">
+              {{ errorAnalysis.length }} 个异常服务 · 去错误分析
+            </button>
           </div>
         </div>
       </section>
@@ -217,6 +225,12 @@ const slowServices = computed(() =>
     .slice(0, 8)
 )
 
+const hotDependencies = computed(() =>
+  [...dependencies.value]
+    .sort((a, b) => (b.callCount || 0) - (a.callCount || 0))
+    .slice(0, 8)
+)
+
 const formatMs = (ms: number) => formatDuration(Number(ms) || 0)
 
 const stats = computed(() => [
@@ -273,8 +287,9 @@ const goServiceSlow = (row: { serviceName: string; p50Ms?: number }) => {
   goTraces({ service: row.serviceName, minDurationMs: String(minDur) })
 }
 
-const goServiceErrors = (serviceName: string) => {
-  goTraces({ service: serviceName, status: 'error' })
+const goHotDependency = (dep: { sourceService: string; targetService?: string }) => {
+  if (!dep?.sourceService) return
+  goTraces({ service: dep.sourceService })
 }
 
 const initCharts = () => {
@@ -728,8 +743,8 @@ onUnmounted(() => {
   flex-shrink: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.55rem;
-  max-height: 9.5rem;
+  gap: 0.65rem;
+  max-height: 13.5rem;
 }
 
 @media (max-width: 991px) {
@@ -756,8 +771,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.35rem 0.7rem;
-  font-size: 0.75rem;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--si-ink);
   background: rgba(15, 118, 110, 0.05);
@@ -765,24 +780,62 @@ onUnmounted(() => {
 }
 
 .si-dashboard__diag-empty {
-  padding: 0.85rem 0.75rem;
-  font-size: 0.78rem;
+  padding: 1.1rem 0.85rem;
+  font-size: 0.95rem;
   color: var(--si-muted);
   text-align: center;
 }
 
 .si-dashboard__diag-scroll {
   overflow-y: auto;
-  max-height: 7.25rem;
+  max-height: 10rem;
 }
 
-.si-dashboard__diag-scroll :deep(th),
-.si-dashboard__diag-scroll :deep(td) {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.72rem;
+.si-dashboard__diag-table :deep(th),
+.si-dashboard__diag-table :deep(td) {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.92rem;
+  vertical-align: middle;
+}
+
+.si-dashboard__diag-table :deep(th) {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--si-muted);
 }
 
 .si-dashboard__diag-row {
   cursor: pointer;
+}
+
+.si-dashboard__dep-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 16rem;
+  font-size: 0.9rem;
+}
+
+.si-dashboard__dep-src,
+.si-dashboard__dep-tgt {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 6.5rem;
+}
+
+.si-dashboard__dep-arrow {
+  flex: 0 0 auto;
+  color: var(--si-teal);
+  font-size: 0.85rem;
+}
+
+.si-dashboard__diag-foot {
+  flex-shrink: 0;
+  padding: 0.4rem 0.75rem 0.55rem;
+  border-top: 1px dashed rgba(20, 83, 45, 0.12);
+  text-align: right;
 }
 </style>

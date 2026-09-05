@@ -2,7 +2,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
 :root {
-  --si-nav-offset: 4.5rem;
+  --si-nav-offset: 0px;
+  --si-sidebar-width: 13.75rem;
 
   /* 纸面与墨色 */
   --si-paper: #f2f5f3;
@@ -53,7 +54,8 @@ body {
     linear-gradient(180deg, #f7f9f7 0%, var(--si-paper) 45%, var(--si-paper-deep) 100%);
   background-attachment: fixed;
   font-family: var(--font-body);
-  padding-top: 70px;
+  padding-top: 0;
+  margin: 0;
   color: var(--si-ink);
   line-height: 1.6;
   position: relative;
@@ -75,95 +77,189 @@ body::before {
 }
 
 #app,
-main.container-fluid {
+.si-shell {
   position: relative;
   z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  align-items: stretch;
 }
 
-main.si-main-dashboard {
-  margin-top: 0 !important;
-  padding-top: 0.5rem !important;
-  padding-bottom: 0.5rem !important;
-  height: calc(100dvh - var(--si-nav-offset, 4.5rem));
-  max-height: calc(100vh - var(--si-nav-offset, 4.5rem));
+.si-sidebar {
+  position: sticky;
+  top: 0;
+  flex: 0 0 var(--si-sidebar-width);
+  width: var(--si-sidebar-width);
+  height: 100dvh;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.1rem 0.85rem 1rem;
+  background: rgba(255, 252, 250, 0.94);
+  border-right: 1px solid var(--card-border);
+  box-shadow: 4px 0 24px rgba(21, 36, 31, 0.04);
+  backdrop-filter: blur(12px);
+  z-index: 40;
+}
+
+.si-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.55rem 1rem;
+  text-decoration: none;
+  color: var(--si-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
+  margin-bottom: 0.55rem;
+}
+
+.si-sidebar__brand i {
+  color: var(--si-teal);
+  font-size: 1.15rem;
+}
+
+.si-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.si-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--si-ink-soft);
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.si-sidebar__link i {
+  width: 1.15rem;
+  text-align: center;
+  color: var(--si-muted);
+}
+
+.si-sidebar__link:hover {
+  background: rgba(15, 118, 110, 0.08);
+  color: var(--si-ink);
+}
+
+.si-sidebar__link:hover i,
+.si-sidebar__link.active i {
+  color: var(--si-teal);
+}
+
+.si-sidebar__link.active {
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--si-teal);
+  box-shadow: inset 3px 0 0 var(--si-teal);
+}
+
+.si-sidebar__foot {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(20, 83, 45, 0.1);
+}
+
+.si-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 100dvh;
+  padding: 1rem 1.15rem 1.25rem;
+}
+
+.si-main--dashboard {
+  height: 100dvh;
+  max-height: 100vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
 }
 
-main.si-main-dashboard > * {
+.si-main--dashboard > * {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-/* 导航：浅底 + 墨青品牌 */
-.navbar,
-.si-navbar {
-  background: rgba(255, 252, 250, 0.92) !important;
-  border-bottom: 1px solid var(--card-border);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 24px rgba(21, 36, 31, 0.05);
-  backdrop-filter: blur(12px);
-  padding: 0.75rem 1rem;
+.si-main--page {
+  padding-top: 1.15rem;
 }
 
-.si-navbar .navbar-brand {
-  font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--si-ink) !important;
+.si-nav-toggle,
+.si-nav-backdrop {
+  display: none;
 }
 
-.navbar-brand {
-  font-weight: 700;
-  font-size: 1.25rem;
-  color: var(--si-ink) !important;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+@media (max-width: 991px) {
+  .si-shell {
+    display: block;
+  }
 
-.navbar-brand i {
-  font-size: 1.35rem;
-  color: var(--si-teal);
-}
+  .si-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 60;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: rgba(255, 252, 250, 0.96);
+    color: var(--si-ink);
+    box-shadow: var(--box-shadow);
+  }
 
-.navbar-dark .navbar-toggler {
-  border-color: rgba(21, 36, 31, 0.2);
-}
+  .si-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: rgba(21, 36, 31, 0.28);
+  }
 
-.navbar-dark .navbar-toggler-icon {
-  filter: invert(1) brightness(0.25);
-}
+  .si-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    transform: translateX(-105%);
+    transition: transform 0.2s ease;
+    z-index: 50;
+    box-shadow: 8px 0 32px rgba(21, 36, 31, 0.12);
+  }
 
-.nav-link {
-  color: var(--si-ink-soft) !important;
-  font-weight: 600;
-  transition: var(--transition);
-  position: relative;
-  padding: 0.5rem 1rem !important;
-}
+  .si-shell--nav-open .si-sidebar {
+    transform: translateX(0);
+  }
 
-.nav-link:hover {
-  color: var(--si-teal) !important;
-}
+  .si-main {
+    min-height: 100dvh;
+    padding-top: 3.5rem;
+  }
 
-.nav-link.active {
-  color: var(--si-teal) !important;
-  font-weight: 700;
-}
-
-.nav-link.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 70%;
-  height: 2px;
-  background: var(--si-teal);
-  border-radius: 2px;
+  .si-main--dashboard {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
 }
 
 /* 卡片 */
@@ -414,9 +510,6 @@ main.si-main-dashboard > * {
 }
 
 @media (max-width: 768px) {
-  body { padding-top: 60px; }
-  .navbar { padding: 0.5rem 1rem; }
-  .navbar-brand { font-size: 1.1rem; }
   .page-title { font-size: 1.55rem; }
   .page-description { font-size: 0.98rem; }
   .chart-container { height: 300px; padding: 1rem; }

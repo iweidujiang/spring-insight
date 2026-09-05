@@ -1,59 +1,44 @@
 <template>
-  <div id="app">
-    <!-- 导航栏 -->
-    <nav class="navbar navbar-expand-lg si-navbar fixed-top">
-      <div class="container-fluid">
-        <router-link class="navbar-brand" to="/">
-          <i class="fa fa-chart-network me-2"></i>Spring Insight
-        </router-link>
-        
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav me-auto">
-            <li class="nav-item">
-              <router-link class="nav-link" :class="{ active: $route.path === '/' }" to="/">
-                <i class="fa fa-tachometer-alt me-1"></i>仪表盘
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="nav-link" :class="{ active: $route.path === '/topology' }" to="/topology">
-                <i class="fa fa-project-diagram me-1"></i>拓扑图
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="nav-link" :class="{ active: $route.path === '/traces' || $route.path.startsWith('/traces/') }" to="/traces">
-                <i class="fa fa-stream me-1"></i>链路追踪
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="nav-link" :class="{ active: $route.path === '/error-analysis' }" to="/error-analysis">
-                <i class="fa fa-exclamation-triangle me-1"></i>错误分析
-              </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="nav-link" :class="{ active: $route.path === '/about' }" to="/about">
-                <i class="fa fa-info-circle me-1"></i>关于
-              </router-link>
-            </li>
-          </ul>
-          
-          <!-- 通知组件 -->
-          <div class="navbar-nav ms-auto">
-            <li class="nav-item">
-              <NotificationComponent />
-            </li>
-          </div>
-        </div>
-      </div>
-    </nav>
+  <div id="app" class="si-shell" :class="{ 'si-shell--nav-open': navOpen }">
+    <button
+      type="button"
+      class="si-nav-toggle"
+      aria-label="打开或关闭导航"
+      @click="navOpen = !navOpen"
+    >
+      <i class="fa" :class="navOpen ? 'fa-times' : 'fa-bars'"></i>
+    </button>
 
-    <!-- 主内容区域：仪表盘单屏大屏，其余页保留上边距 -->
+    <div v-if="navOpen" class="si-nav-backdrop" @click="navOpen = false"></div>
+
+    <aside class="si-sidebar" aria-label="主导航">
+      <router-link class="si-sidebar__brand" to="/" @click="closeNav">
+        <i class="fa fa-chart-line"></i>
+        <span>Spring Insight</span>
+      </router-link>
+
+      <nav class="si-sidebar__nav">
+        <router-link
+          v-for="item in navItems"
+          :key="item.to"
+          class="si-sidebar__link"
+          :class="{ active: isActive(item) }"
+          :to="item.to"
+          @click="closeNav"
+        >
+          <i class="fa" :class="item.icon"></i>
+          <span>{{ item.label }}</span>
+        </router-link>
+      </nav>
+
+      <div class="si-sidebar__foot">
+        <NotificationComponent />
+      </div>
+    </aside>
+
     <main
-      class="container-fluid"
-      :class="$route.path === '/' ? 'si-main-dashboard' : 'mt-4 pt-5'"
+      class="si-main"
+      :class="$route.path === '/' ? 'si-main--dashboard' : 'si-main--page'"
     >
       <router-view />
     </main>
@@ -61,9 +46,30 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import NotificationComponent from './components/NotificationComponent.vue'
-</script>
 
-<style scoped>
-/* 组件特定样式 */
-</style>
+const route = useRoute()
+const navOpen = ref(false)
+
+const navItems = [
+  { to: '/', label: '仪表盘', icon: 'fa-tachometer-alt', match: (p: string) => p === '/' },
+  { to: '/topology', label: '拓扑图', icon: 'fa-project-diagram', match: (p: string) => p === '/topology' },
+  { to: '/traces', label: '链路追踪', icon: 'fa-stream', match: (p: string) => p === '/traces' || p.startsWith('/traces/') },
+  { to: '/error-analysis', label: '错误分析', icon: 'fa-exclamation-triangle', match: (p: string) => p === '/error-analysis' },
+  { to: '/about', label: '关于', icon: 'fa-info-circle', match: (p: string) => p === '/about' }
+]
+
+const isActive = (item: (typeof navItems)[number]) => item.match(route.path)
+const closeNav = () => {
+  navOpen.value = false
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    navOpen.value = false
+  }
+)
+</script>
