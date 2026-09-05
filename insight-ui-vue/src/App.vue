@@ -1,5 +1,5 @@
 <template>
-  <div id="app" class="si-shell" :class="{ 'si-shell--nav-open': navOpen }">
+  <div class="si-shell" :class="{ 'si-shell--nav-open': navOpen }">
     <button
       type="button"
       class="si-nav-toggle"

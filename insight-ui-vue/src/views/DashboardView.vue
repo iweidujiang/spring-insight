@@ -459,6 +459,8 @@ onUnmounted(() => {
 <style scoped>
 .si-dashboard {
   flex: 1;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   height: 100%;
   display: flex;
@@ -469,6 +471,8 @@ onUnmounted(() => {
 
 .si-dashboard__content {
   flex: 1;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
