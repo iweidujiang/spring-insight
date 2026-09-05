@@ -56,7 +56,13 @@ public class SpanReportingListener {
 
         if (!span.isFinished()) {
             log.warn("[Span监听器] 尝试上报未完成的Span: spanId={}，将强制结束", span.getSpanId());
-            span.finish();
+            if ("ERROR".equalsIgnoreCase(span.getStatusCode()) || Boolean.FALSE.equals(span.getSuccess())) {
+                span.finish(
+                        span.getErrorCode() != null ? span.getErrorCode() : "UNFINISHED",
+                        span.getErrorMessage());
+            } else {
+                span.finish();
+            }
         }
 
         // 异步上报Span

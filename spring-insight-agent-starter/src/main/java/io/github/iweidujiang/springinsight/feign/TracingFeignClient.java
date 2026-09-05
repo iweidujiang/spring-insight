@@ -81,9 +81,13 @@ public class TracingFeignClient implements Client {
 
         try {
             Response response = delegate.execute(request, options);
-            clientSpan.addTag("http.status_code", String.valueOf(response.status()));
-            clientSpan.setSuccess(response.status() < 400);
-            clientSpan.finish();
+            int status = response.status();
+            clientSpan.addTag("http.status_code", String.valueOf(status));
+            if (status >= 400) {
+                clientSpan.finish("HTTP_" + status, "HTTP Status: " + status);
+            } else {
+                clientSpan.finish();
+            }
             listener.reportSpan(TraceSpan.snapshot(clientSpan));
             return response;
         } catch (IOException e) {

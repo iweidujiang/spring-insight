@@ -61,6 +61,12 @@ public class InsightProperties {
     private boolean httpTracingEnabled = true;
 
     /**
+     * 是否把 Trace 上下文透传到 {@code @Async} / {@link org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor} 工作线程。
+     * <p>默认 true；若与其它 TaskDecorator 冲突可关闭。</p>
+     */
+    private boolean contextPropagationEnabled = true;
+
+    /**
      * 不创建 HTTP Span 的路径模式
      */
     private String[] excludePatterns = {

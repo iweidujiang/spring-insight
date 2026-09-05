@@ -72,6 +72,7 @@ public class InsightAutoConfigurationImportSelector implements DeferredImportSel
 
         List<String> imports = new ArrayList<>();
         imports.add(InsightBeanConfiguration.class.getName());
+        imports.add(InsightAsyncAutoConfiguration.class.getName());
         if (shouldImportServletWebInsight()) {
             imports.add(INSIGHT_SERVLET_WEB_CONFIGURATION);
         }

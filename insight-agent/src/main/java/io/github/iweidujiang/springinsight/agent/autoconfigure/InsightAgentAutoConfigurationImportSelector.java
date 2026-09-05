@@ -59,6 +59,7 @@ public class InsightAgentAutoConfigurationImportSelector
         List<String> imports = new ArrayList<>();
         // 核心 Bean：异步上报、监听器、JVM、DB 切面、Http Sink 等
         imports.add(InsightBeanConfiguration.class.getName());
+        imports.add(InsightAsyncAutoConfiguration.class.getName());
         if (shouldImportServlet()) {
             imports.add(INSIGHT_SERVLET_WEB_CONFIGURATION);
         }

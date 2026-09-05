@@ -131,14 +131,16 @@ public class TraceSpan {
             this.statusCode = "ERROR";
             this.errorCode = errorCode;
             this.errorMessage = errorMessage;
+            this.success = false;
         } else {
             this.statusCode = "OK";
+            this.success = true;
         }
 
         this.finished = true;
 
-        log.debug("结束当前链路追踪: traceId={}, spanId={}, duration={}ms, status={}",
-                traceId, spanId, durationMs, statusCode);
+        log.debug("结束当前链路追踪: traceId={}, spanId={}, duration={}ms, status={}, success={}",
+                traceId, spanId, durationMs, statusCode, success);
     }
 
     /**

@@ -186,4 +186,60 @@ public class TraceContext {
             }
         }
     }
+
+    /**
+     * 捕获当前线程 Trace 栈快照（Span 引用共享，便于子线程挂到同一父 Span）。
+     */
+    public static Snapshot capture() {
+        Deque<TraceSpan> stack = SPAN_STACK.get();
+        if (stack == null || stack.isEmpty()) {
+            return Snapshot.EMPTY;
+        }
+        return new Snapshot(new ArrayDeque<>(stack));
+    }
+
+    /**
+     * 安装快照到当前线程；传入空快照则清除。
+     */
+    public static void install(Snapshot snapshot) {
+        if (snapshot == null || snapshot.isEmpty()) {
+            SPAN_STACK.remove();
+            return;
+        }
+        SPAN_STACK.set(new ArrayDeque<>(snapshot.spans()));
+    }
+
+    /**
+     * 在指定 Trace 快照下执行任务，结束后恢复原上下文。
+     */
+    public static void runWith(Snapshot snapshot, Runnable task) {
+        Snapshot previous = capture();
+        try {
+            install(snapshot);
+            task.run();
+        } finally {
+            install(previous);
+        }
+    }
+
+    /**
+     * Trace 栈不可变快照（提交线程捕获，工作线程安装）。
+     */
+    public static final class Snapshot {
+        static final Snapshot EMPTY = new Snapshot(new ArrayDeque<>());
+
+        private final Deque<TraceSpan> spans;
+
+        private Snapshot(Deque<TraceSpan> spans) {
+            this.spans = spans;
+        }
+
+        boolean isEmpty() {
+            return spans == null || spans.isEmpty();
+        }
+
+        Deque<TraceSpan> spans() {
+            return spans;
+        }
+    }
 }

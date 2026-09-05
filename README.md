@@ -43,7 +43,7 @@
 
 | 能力 | 说明 | 成熟度 |
 |------|------|--------|
-| HTTP / Feign 调用采集 | Agent 采 Span，批量报到 Server | 能用，边界情况仍在补 |
+| HTTP / Feign 调用采集 | Agent 采 Span，批量报到 Server；success 与 HTTP 状态对齐；线程池可透传 Trace | 能用，WebFlux 下 Feign 仍弱 |
 | 服务依赖拓扑 | 看谁调用了谁（带箭头和次数） | 基础可用 |
 | 链路列表 / Trace 详情 | 按 Trace 聚合列表（可搜/筛）；详情页瀑布时间线 + Span tags/错误 | 持续打磨中 |
 | 错误率粗看 | 有错误调用时统计一下 | 很简陋 |
@@ -200,6 +200,7 @@ spring:
     server-url: http://localhost:9966
     sample-rate: 1.0
     http-tracing-enabled: true
+    context-propagation-enabled: true  # @Async / 线程池透传 Trace；冲突时可关
     diagnostic-logs: false   # 排查上报问题时可临时打开
 ```
 
