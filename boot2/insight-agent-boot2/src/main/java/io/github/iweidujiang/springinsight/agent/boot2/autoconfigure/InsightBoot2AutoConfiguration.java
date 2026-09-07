@@ -1,10 +1,10 @@
 /**
- * InsightBoot2AutoConfiguration?Boot2 ?????spring.factories??????? HTTP ???
+ * InsightBoot2AutoConfiguration：Boot2 线自动装配入口（spring.factories），含 MVC HTTP 埋点。
  *
- * @since?2026-09-07
- * @author???? ???????
+ * @since：2026-09-07
+ * @author：苏渡苗 公众号：苏渡苗
  *
- * GitHub?https://github.com/iweidujiang
+ * GitHub：https://github.com/iweidujiang
  */
 package io.github.iweidujiang.springinsight.agent.boot2.autoconfigure;
 
@@ -39,22 +39,22 @@ public class InsightBoot2AutoConfiguration {
     private final InsightBoot2Properties properties;
 
     /**
-     * ???????????
+     * 解析服务名并打印启动就绪日志。
      *
-     * @param properties  Insight ??
+     * @param properties  Insight 配置
      * @param environment Spring Environment
      */
     public InsightBoot2AutoConfiguration(InsightBoot2Properties properties, Environment environment) {
         this.properties = properties;
         properties.resolveServiceNameFromEnvironment(environment);
         properties.validate();
-        log.info("[Boot2-Config] Spring Insight Boot2 Agent ready: serviceName={}, serverUrl={}",
+        log.info("[Boot2配置] Spring Insight Boot2 Agent 已就绪: serviceName={}, serverUrl={}",
                 properties.getServiceName(),
-                properties.hasServerUrl() ? properties.normalizeServerUrl() : "(none)");
+                properties.hasServerUrl() ? properties.normalizeServerUrl() : "(未配置)");
     }
 
     /**
-     * HTTP ???? Sink???? server-url??
+     * HTTP 批量上报 Sink（配置了 server-url 时启用）。
      *
      * @param objectMapper Jackson
      * @return Sink
@@ -64,16 +64,16 @@ public class InsightBoot2AutoConfiguration {
     @ConditionalOnProperty(prefix = "spring.insight", name = "server-url")
     public InsightBatchSink httpInsightBatchSink(ObjectMapper objectMapper) {
         if (!StringUtils.hasText(properties.normalizeServerUrl())) {
-            throw new IllegalStateException("spring.insight.server-url ???????");
+            throw new IllegalStateException("spring.insight.server-url 不能为空");
         }
         return new HttpInsightBatchSink(properties, objectMapper);
     }
 
     /**
-     * ??????
+     * 异步 Span 上报器。
      *
-     * @param batchSinkProvider Sink ???
-     * @return ? start ????
+     * @param batchSinkProvider Sink Provider
+     * @return 已 start 的上报器
      */
     @Bean(destroyMethod = "stop")
     @ConditionalOnMissingBean
@@ -84,10 +84,10 @@ public class InsightBoot2AutoConfiguration {
     }
 
     /**
-     * Span ??????
+     * Span 上报门面。
      *
-     * @param asyncSpanReporter ?????
-     * @return ???
+     * @param asyncSpanReporter 异步上报器
+     * @return 监听器
      */
     @Bean
     @ConditionalOnMissingBean
@@ -96,7 +96,7 @@ public class InsightBoot2AutoConfiguration {
     }
 
     /**
-     * MVC ??????Servlet Web ????
+     * MVC HTTP 埋点（仅 Servlet Web 应用）。
      */
     @Configuration
     @ConditionalOnWebApplication
@@ -110,8 +110,8 @@ public class InsightBoot2AutoConfiguration {
         private final ObjectProvider<HttpRequestInterceptor> interceptorProvider;
 
         /**
-         * @param properties           ??
-         * @param interceptorProvider  ??????????? WebMvcConfigurer ????
+         * @param properties          配置
+         * @param interceptorProvider 拦截器（避免 WebMvcConfigurer 循环依赖）
          */
         MvcTracingConfiguration(InsightBoot2Properties properties,
                                 ObjectProvider<HttpRequestInterceptor> interceptorProvider) {
@@ -120,11 +120,11 @@ public class InsightBoot2AutoConfiguration {
         }
 
         /**
-         * HTTP ????? Bean?
+         * HTTP 追踪拦截器 Bean。
          *
-         * @param spanReportingListener ????
-         * @param props                 ??
-         * @return ???
+         * @param spanReportingListener 上报入口
+         * @param props                 配置
+         * @return 拦截器
          */
         @Bean
         @ConditionalOnMissingBean
@@ -134,9 +134,9 @@ public class InsightBoot2AutoConfiguration {
         }
 
         /**
-         * ?????? Spring MVC?
+         * 注册拦截器到 Spring MVC。
          *
-         * @param registry ??????
+         * @param registry 拦截器注册表
          */
         @Override
         public void addInterceptors(InterceptorRegistry registry) {
@@ -145,7 +145,7 @@ public class InsightBoot2AutoConfiguration {
                 registry.addInterceptor(interceptor)
                         .addPathPatterns("/**")
                         .excludePathPatterns(properties.resolveExcludePatterns());
-                log.info("[Boot2-MVC] HTTP tracing interceptor registered");
+                log.info("[Boot2-MVC] HTTP 追踪拦截器已注册");
             }
         }
     }

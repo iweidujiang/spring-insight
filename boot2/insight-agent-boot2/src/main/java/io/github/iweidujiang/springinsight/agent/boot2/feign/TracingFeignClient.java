@@ -1,10 +1,10 @@
 /**
- * Feign Client decorator: create CLIENT Span with remoteService for topology edges.
+ * Feign Client 装饰器：创建带 remoteService 的 CLIENT Span，供拓扑画边。
  *
- * @since?2026-09-07
- * @author???? ???????
+ * @since：2026-09-07
+ * @author：苏渡苗 公众号：苏渡苗
  *
- * GitHub?https://github.com/iweidujiang
+ * GitHub：https://github.com/iweidujiang
  */
 package io.github.iweidujiang.springinsight.agent.boot2.feign;
 
@@ -22,21 +22,24 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Optional;
 
+/**
+ * 包装 Feign {@link Client}，在存在父 SERVER Span 时上报 CLIENT 子 Span。
+ */
 public class TracingFeignClient implements Client {
 
-    /** Wrapped Feign Client */
+    /** 被包装的原始 Feign Client */
     private final Client delegate;
 
-    /** Insight properties (lazy) */
+    /** Insight 配置（延迟获取） */
     private final ObjectProvider<InsightBoot2Properties> insightProperties;
 
-    /** Span reporter (lazy) */
+    /** Span 上报入口（延迟获取） */
     private final ObjectProvider<SpanReportingListener> spanReportingListener;
 
     /**
-     * @param delegate              original Client
-     * @param insightProperties     config provider
-     * @param spanReportingListener reporter provider
+     * @param delegate              原始 Client
+     * @param insightProperties     配置 Provider
+     * @param spanReportingListener 上报 Provider
      */
     public TracingFeignClient(Client delegate,
                               ObjectProvider<InsightBoot2Properties> insightProperties,
@@ -47,12 +50,12 @@ public class TracingFeignClient implements Client {
     }
 
     /**
-     * Execute Feign call; when parent SERVER span exists, report a CLIENT child span.
+     * 执行 Feign 调用；存在父 SERVER Span 时上报 CLIENT 子 Span。
      *
-     * @param request Feign request
-     * @param options timeouts
-     * @return downstream response
-     * @throws IOException on IO failure
+     * @param request Feign 请求
+     * @param options 超时等选项
+     * @return 下游响应
+     * @throws IOException IO 失败时抛出
      */
     @Override
     public Response execute(Request request, Options options) throws IOException {
@@ -68,7 +71,7 @@ public class TracingFeignClient implements Client {
         }
 
         String url = request.url();
-        // Prefer @FeignClient name so url=http://127.0.0.1 still maps to service id on topology
+        // 优先 @FeignClient name，url 直连 IP 时拓扑仍显示服务名
         String remote = resolveRemoteService(request);
         String path = safePath(url);
         TraceSpan parent = parentOpt.get();
@@ -99,10 +102,10 @@ public class TracingFeignClient implements Client {
     }
 
     /**
-     * Resolve remote service id: Feign Target name first, then URL host.
+     * 解析下游服务标识：优先 Feign Target 名，其次 URL host。
      *
-     * @param request Feign request
-     * @return service name or host
+     * @param request Feign 请求
+     * @return 服务名或 host
      */
     static String resolveRemoteService(Request request) {
         if (request == null) {
@@ -116,16 +119,16 @@ public class TracingFeignClient implements Client {
                 }
             }
         } catch (Exception ignored) {
-            // fall through to URL host
+            // 回退到 URL host
         }
         return resolveRemoteServiceFromUrl(request.url());
     }
 
     /**
-     * Resolve host from URL (tests / fallback).
+     * 从 URL 解析 host（单测 / 回退）。
      *
-     * @param url request URL
-     * @return host or unknown
+     * @param url 请求 URL
+     * @return host 或 unknown
      */
     static String resolveRemoteServiceFromUrl(String url) {
         try {
@@ -140,20 +143,20 @@ public class TracingFeignClient implements Client {
     }
 
     /**
-     * Backward-compatible helper for unit tests.
+     * 兼容旧单测入口：按 URL 解析 remoteService。
      *
-     * @param url request URL
-     * @return host or unknown
+     * @param url 请求 URL
+     * @return host 或 unknown
      */
     static String resolveRemoteService(String url) {
         return resolveRemoteServiceFromUrl(url);
     }
 
     /**
-     * Extract path from URL.
+     * 从 URL 提取 path。
      *
-     * @param url request URL
-     * @return path or /
+     * @param url 请求 URL
+     * @return path，失败时为 /
      */
     static String safePath(String url) {
         try {
@@ -165,10 +168,10 @@ public class TracingFeignClient implements Client {
     }
 
     /**
-     * Compact operation label: host + path + optional query.
+     * 压缩操作名：host + path + 可选 query。
      *
-     * @param url request URL
-     * @return short label
+     * @param url 请求 URL
+     * @return 短标签
      */
     static String compactOp(String url) {
         try {

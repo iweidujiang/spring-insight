@@ -1,10 +1,10 @@
 /**
- * HttpRequestInterceptor?Spring MVC ?? SERVER Span?javax.servlet??
+ * HttpRequestInterceptor：Spring MVC 入站 SERVER Span（javax.servlet）。
  *
- * @since?2026-09-07
- * @author???? ???????
+ * @since：2026-09-07
+ * @author：苏渡苗 公众号：苏渡苗
  *
- * GitHub?https://github.com/iweidujiang
+ * GitHub：https://github.com/iweidujiang
  */
 package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 
@@ -25,15 +25,15 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(HttpRequestInterceptor.class);
 
-    /** ??????? SERVER Span */
+    /** Request 属性：本次 SERVER Span */
     private static final String TRACE_SPAN_ATTR = "X-Insight-Boot2-Span";
 
     private final SpanReportingListener spanReportingListener;
     private final InsightBoot2Properties insightProperties;
 
     /**
-     * @param spanReportingListener ????
-     * @param insightProperties     ??
+     * @param spanReportingListener 上报入口
+     * @param insightProperties     配置
      */
     public HttpRequestInterceptor(SpanReportingListener spanReportingListener,
                                   InsightBoot2Properties insightProperties) {
@@ -42,12 +42,12 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * ??????? SERVER Span ??? TraceContext?
+     * 请求开始：创建 SERVER Span 并压入 TraceContext。
      *
-     * @param request  ??
-     * @param response ??
-     * @param handler  ???
-     * @return ?? true?????
+     * @param request  请求
+     * @param response 响应
+     * @param handler  处理器
+     * @return 始终 true，不拦截请求
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -62,32 +62,32 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
                 .addTag("http.client_ip", clientIp(request));
         request.setAttribute(TRACE_SPAN_ATTR, span);
         if (insightProperties.isDiagnosticLogs()) {
-            log.info("[Boot2-HTTP] start: traceId={}, {}", span.getTraceId(), operationName);
+            log.info("[Boot2-HTTP] 开始: traceId={}, {}", span.getTraceId(), operationName);
         }
         return true;
     }
 
     /**
-     * ??????????????????
+     * 控制器执行完毕；结束逻辑放在 afterCompletion。
      *
-     * @param request      ??
-     * @param response     ??
-     * @param handler      ???
-     * @param modelAndView ????
+     * @param request      请求
+     * @param response     响应
+     * @param handler      处理器
+     * @param modelAndView 视图模型
      */
     @Override
     public void postHandle(HttpServletRequest request, HttpServletResponse response,
                            Object handler, ModelAndView modelAndView) {
-        // ????????? afterCompletion
+        // 结束逻辑统一放在 afterCompletion
     }
 
     /**
-     * ??????? Span?????? ThreadLocal?
+     * 请求结束：结束 Span、上报并清理 ThreadLocal。
      *
-     * @param request  ??
-     * @param response ??
-     * @param handler  ???
-     * @param ex       ???????? null
+     * @param request  请求
+     * @param response 响应
+     * @param handler  处理器
+     * @param ex       异常，无异常时为 null
      */
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
@@ -115,10 +115,10 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * ????? IP??? X-Forwarded-For??
+     * 解析客户端 IP（优先 X-Forwarded-For）。
      *
-     * @param request ??
-     * @return IP ?????????
+     * @param request 请求
+     * @return IP 字符串，解析失败时为空串
      */
     private static String clientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");

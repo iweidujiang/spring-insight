@@ -1,10 +1,10 @@
 /**
- * AsyncSpanReporter??????????? InsightBatchSink?
+ * AsyncSpanReporter：异步队列批量将 Span 写入 InsightBatchSink。
  *
- * @since?2026-09-07
- * @author???? ???????
+ * @since：2026-09-07
+ * @author：苏渡苗 公众号：苏渡苗
  *
- * GitHub?https://github.com/iweidujiang
+ * GitHub：https://github.com/iweidujiang
  */
 package io.github.iweidujiang.springinsight.agent.boot2.collector;
 
@@ -37,8 +37,8 @@ public class AsyncSpanReporter {
     private Thread flushThread;
 
     /**
-     * @param serviceName        ????????
-     * @param batchSinkProvider  Sink ????
+     * @param serviceName       当前服务名
+     * @param batchSinkProvider Sink Provider
      */
     public AsyncSpanReporter(String serviceName, ObjectProvider<InsightBatchSink> batchSinkProvider) {
         this.serviceName = serviceName;
@@ -46,7 +46,7 @@ public class AsyncSpanReporter {
     }
 
     /**
-     * ?????????
+     * 启动后台刷写线程。
      */
     public void start() {
         if (running.compareAndSet(false, true)) {
@@ -58,12 +58,12 @@ public class AsyncSpanReporter {
             }, "spring-insight-boot2-reporter");
             flushThread.setDaemon(true);
             flushThread.start();
-            log.info("[Boot2-Reporter] started: serviceName={}", serviceName);
+            log.info("[Boot2上报] 已启动: serviceName={}", serviceName);
         }
     }
 
     /**
-     * ????????????
+     * 停止线程并刷完队列中剩余 Span。
      */
     public void stop() {
         if (!running.compareAndSet(true, false)) {
@@ -78,25 +78,25 @@ public class AsyncSpanReporter {
             }
         }
         flushRemaining();
-        log.info("[Boot2-Reporter] stopped");
+        log.info("[Boot2上报] 已停止");
     }
 
     /**
-     * ???? Span ???
+     * 将已结束 Span 入队。
      *
-     * @param span ?? Span
-     * @return ??????
+     * @param span 待上报 Span
+     * @return 是否入队成功
      */
     public boolean report(TraceSpan span) {
         if (span == null || !running.get()) {
             return false;
         }
         try {
-            // snapshot????????????????
+            // snapshot：避免异步线程读到热路径上的后续修改
             TraceSpan copy = TraceSpan.snapshot(span);
             boolean ok = queue.offer(copy, OFFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (!ok) {
-                log.warn("[Boot2-Reporter] queue full, drop spanId={}", span.getSpanId());
+                log.warn("[Boot2上报] 队列已满，丢弃 spanId={}", span.getSpanId());
             }
             return ok;
         } catch (InterruptedException e) {
@@ -106,7 +106,7 @@ public class AsyncSpanReporter {
     }
 
     /**
-     * ??????????????
+     * 定时/达批从队列取出并刷写。
      */
     private void flushLoop() {
         while (running.get()) {
@@ -124,13 +124,13 @@ public class AsyncSpanReporter {
                 Thread.currentThread().interrupt();
                 break;
             } catch (Exception e) {
-                log.warn("[Boot2-Reporter] flush loop error: {}", e.getMessage());
+                log.warn("[Boot2上报] 刷写循环异常: {}", e.getMessage());
             }
         }
     }
 
     /**
-     * ????????
+     * 刷完队列中剩余数据。
      */
     private void flushRemaining() {
         List<TraceSpan> batch = new ArrayList<TraceSpan>();
@@ -141,20 +141,20 @@ public class AsyncSpanReporter {
     }
 
     /**
-     * ?? Sink ?????
+     * 通过 Sink 写入一批 Span。
      *
-     * @param batch ?? Span
+     * @param batch 本批 Span
      */
     private void flushBatch(List<TraceSpan> batch) {
         InsightBatchSink sink = batchSinkProvider.getIfAvailable();
         if (sink == null) {
-            log.warn("[Boot2-Reporter] no InsightBatchSink, drop {} spans", batch.size());
+            log.warn("[Boot2上报] 未找到 InsightBatchSink，丢弃 {} 条 Span", batch.size());
             return;
         }
         try {
             sink.acceptTraceSpans(batch);
         } catch (Exception e) {
-            log.warn("[Boot2-Reporter] sink write failed: size={}, error={}", batch.size(), e.getMessage());
+            log.warn("[Boot2上报] Sink 写入失败: size={}, error={}", batch.size(), e.getMessage());
         }
     }
 }

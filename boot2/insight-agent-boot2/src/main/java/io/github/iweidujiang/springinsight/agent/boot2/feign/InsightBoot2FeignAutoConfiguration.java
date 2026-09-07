@@ -1,5 +1,5 @@
 /**
- * Boot2 Feign 出站追踪：通过 Capability 包装 Client（兼容 Feign 子上下文），上报 CLIENT Span。
+ * Boot2 Feign 出站追踪：注册公开 Capability，兼容 Feign 子上下文与 url 直连。
  *
  * @since：2026-09-07
  * @author：苏渡苇 公众号：苏渡苇
@@ -26,7 +26,7 @@ import org.springframework.context.annotation.Configuration;
 public class InsightBoot2FeignAutoConfiguration {
 
     /**
-     * Feign Capability：在构建每个 FeignClient 时 enrich Client，避免仅包装父容器 Bean 却未进入子上下文的问题。
+     * 注册公开 Capability Bean；Spring Cloud OpenFeign 会继承到每个 Feign 子上下文。
      *
      * @param insightProperties     配置
      * @param spanReportingListener 上报入口
@@ -34,22 +34,8 @@ public class InsightBoot2FeignAutoConfiguration {
      */
     @Bean
     public Capability insightBoot2FeignCapability(
-            final ObjectProvider<InsightBoot2Properties> insightProperties,
-            final ObjectProvider<SpanReportingListener> spanReportingListener) {
-        return new Capability() {
-            /**
-             * 包装底层 Client；已包装则跳过，防止重复套娃。
-             *
-             * @param client 原 Client（可能是 Default 或 LoadBalancer）
-             * @return TracingFeignClient
-             */
-            @Override
-            public Client enrich(Client client) {
-                if (client instanceof TracingFeignClient) {
-                    return client;
-                }
-                return new TracingFeignClient(client, insightProperties, spanReportingListener);
-            }
-        };
+            ObjectProvider<InsightBoot2Properties> insightProperties,
+            ObjectProvider<SpanReportingListener> spanReportingListener) {
+        return new InsightBoot2FeignCapability(insightProperties, spanReportingListener);
     }
 }

@@ -1,10 +1,10 @@
 /**
- * HttpInsightBatchSink?? HttpURLConnection POST ? insight-server??? Java 8??
+ * HttpInsightBatchSink：用 HttpURLConnection POST 上报到 insight-server（兼容 Java 8）。
  *
- * @since?2026-09-07
- * @author???? ???????
+ * @since：2026-09-07
+ * @author：苏渡苗 公众号：苏渡苗
  *
- * GitHub?https://github.com/iweidujiang
+ * GitHub：https://github.com/iweidujiang
  */
 package io.github.iweidujiang.springinsight.agent.boot2.sink;
 
@@ -25,18 +25,18 @@ public class HttpInsightBatchSink implements InsightBatchSink {
 
     private static final Logger log = LoggerFactory.getLogger(HttpInsightBatchSink.class);
 
-    /** Server ?????? */
+    /** Server 相对路径：批量上报 */
     private static final String SPANS_BATCH_PATH = "/api/v1/spans/batch";
     private static final int CONNECT_TIMEOUT_MS = 3000;
     private static final int READ_TIMEOUT_MS = 5000;
 
     private final InsightBoot2Properties properties;
     private final ObjectMapper objectMapper;
-    /** ???? URL?????? */
+    /** 完整上报 URL（构造时缓存） */
     private final String spansBatchUrl;
 
     /**
-     * @param properties   Insight ????? server-url?
+     * @param properties   Insight 配置（须含 server-url）
      * @param objectMapper Jackson
      */
     public HttpInsightBatchSink(InsightBoot2Properties properties, ObjectMapper objectMapper) {
@@ -44,16 +44,16 @@ public class HttpInsightBatchSink implements InsightBatchSink {
         this.objectMapper = objectMapper;
         String base = properties.normalizeServerUrl();
         if (base.isEmpty()) {
-            throw new IllegalArgumentException("spring.insight.server-url ????");
+            throw new IllegalArgumentException("spring.insight.server-url 不能为空");
         }
         this.spansBatchUrl = base + SPANS_BATCH_PATH;
-        log.info("[Boot2-HTTP] sink enabled, target={}", this.spansBatchUrl);
+        log.info("[HTTP上报-Boot2] 已启用，目标={}", this.spansBatchUrl);
     }
 
     /**
-     * ??? Span POST ? insight-server???????????
+     * 将批量 Span POST 到 insight-server；失败仅打日志不抛异常。
      *
-     * @param spans ?? Span
+     * @param spans 待上报 Span
      */
     @Override
     public void acceptTraceSpans(List<TraceSpan> spans) {
@@ -85,12 +85,12 @@ public class HttpInsightBatchSink implements InsightBatchSink {
             }
             int status = conn.getResponseCode();
             if (status >= 200 && status < 300) {
-                log.debug("[Boot2-HTTP] batch ok: size={}, status={}", spans.size(), status);
+                log.debug("[HTTP上报-Boot2] 批量成功: size={}, status={}", spans.size(), status);
             } else {
-                log.warn("[Boot2-HTTP] batch failed: size={}, status={}", spans.size(), status);
+                log.warn("[HTTP上报-Boot2] 批量失败: size={}, status={}", spans.size(), status);
             }
         } catch (Exception e) {
-            log.warn("[Boot2-HTTP] batch error: size={}, error={}", spans.size(), e.getMessage());
+            log.warn("[HTTP上报-Boot2] 批量异常: size={}, error={}", spans.size(), e.getMessage());
         } finally {
             if (conn != null) {
                 conn.disconnect();
@@ -99,9 +99,9 @@ public class HttpInsightBatchSink implements InsightBatchSink {
     }
 
     /**
-     * ?????????????? localhost:server.port?
+     * 解析服务实例标识；未配置时回退 localhost:server.port。
      *
-     * @return ?????
+     * @return 实例标识串
      */
     private String resolveServiceInstance() {
         String si = properties.getServiceInstance();
