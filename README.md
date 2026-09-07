@@ -231,8 +231,8 @@ spring:
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
-| B0 | 独立父 POM（Boot 2.7.x + Java 8）、`spring.factories` 装配骨架 | 进行中 |
-| B1 | 核心：`TraceSpan` / `TraceContext` / HTTP 入口 / `HttpInsightBatchSink`（`javax.servlet`） | 待做 |
+| B0 | 独立父 POM（Boot 2.7.x + Java 8）、`spring.factories` 装配骨架 | 完成 |
+| B1 | 核心：`TraceSpan` / `TraceContext` / HTTP 入口 / `HttpInsightBatchSink`（`javax.servlet`，Java8 用 HttpURLConnection） | 完成 |
 | B2 | Feign CLIENT + `remoteService` 拓扑边 | 待做 |
 | B3 | 发布坐标 `spring-insight-agent-starter-boot2`；样例 Boot 2.7 冒烟 | 待做 |
 | B4 | （可选）WebFlux/WebClient；Micrometer 桥（Boot 2 版） | 后置 |
