@@ -22,4 +22,17 @@ mvn -DskipTests install
 
 ## 阶段
 
-见仓库根 README「Boot 2.7 / Java 8 分期」。当前为 **B0 骨架**（`spring.factories` + 配置占位）。
+见仓库根 README「Boot 2.7 / Java 8 分期」。
+
+- **B0** 骨架：已完成  
+- **B1** 核心采集：TraceSpan / TraceContext / Async 上报 / HttpURLConnection Sink / javax MVC 拦截 — **已完成**
+
+业务侧最小配置：
+
+```yaml
+spring:
+  application:
+    name: my-boot2-app
+  insight:
+    server-url: http://localhost:9966
+```
