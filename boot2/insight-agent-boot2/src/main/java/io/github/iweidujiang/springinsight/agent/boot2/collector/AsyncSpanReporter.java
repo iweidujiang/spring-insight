@@ -58,7 +58,7 @@ public class AsyncSpanReporter {
             }, "spring-insight-boot2-reporter");
             flushThread.setDaemon(true);
             flushThread.start();
-            log.info("[????-Boot2] ???: serviceName={}", serviceName);
+            log.info("[Boot2-Reporter] started: serviceName={}", serviceName);
         }
     }
 
@@ -78,7 +78,7 @@ public class AsyncSpanReporter {
             }
         }
         flushRemaining();
-        log.info("[????-Boot2] ???");
+        log.info("[Boot2-Reporter] stopped");
     }
 
     /**
@@ -96,7 +96,7 @@ public class AsyncSpanReporter {
             TraceSpan copy = TraceSpan.snapshot(span);
             boolean ok = queue.offer(copy, OFFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (!ok) {
-                log.warn("[????-Boot2] ??????? spanId={}", span.getSpanId());
+                log.warn("[Boot2-Reporter] queue full, drop spanId={}", span.getSpanId());
             }
             return ok;
         } catch (InterruptedException e) {
@@ -124,7 +124,7 @@ public class AsyncSpanReporter {
                 Thread.currentThread().interrupt();
                 break;
             } catch (Exception e) {
-                log.warn("[????-Boot2] ??????: {}", e.getMessage());
+                log.warn("[Boot2-Reporter] flush loop error: {}", e.getMessage());
             }
         }
     }
@@ -148,13 +148,13 @@ public class AsyncSpanReporter {
     private void flushBatch(List<TraceSpan> batch) {
         InsightBatchSink sink = batchSinkProvider.getIfAvailable();
         if (sink == null) {
-            log.warn("[????-Boot2] ? InsightBatchSink??? {} ?", batch.size());
+            log.warn("[Boot2-Reporter] no InsightBatchSink, drop {} spans", batch.size());
             return;
         }
         try {
             sink.acceptTraceSpans(batch);
         } catch (Exception e) {
-            log.warn("[????-Boot2] Sink ????: size={}, error={}", batch.size(), e.getMessage());
+            log.warn("[Boot2-Reporter] sink write failed: size={}, error={}", batch.size(), e.getMessage());
         }
     }
 }

@@ -47,7 +47,7 @@ public class HttpInsightBatchSink implements InsightBatchSink {
             throw new IllegalArgumentException("spring.insight.server-url ????");
         }
         this.spansBatchUrl = base + SPANS_BATCH_PATH;
-        log.info("[HTTP??-Boot2] ??????={}", this.spansBatchUrl);
+        log.info("[Boot2-HTTP] sink enabled, target={}", this.spansBatchUrl);
     }
 
     /**
@@ -85,12 +85,12 @@ public class HttpInsightBatchSink implements InsightBatchSink {
             }
             int status = conn.getResponseCode();
             if (status >= 200 && status < 300) {
-                log.debug("[HTTP??-Boot2] ??: size={}, status={}", spans.size(), status);
+                log.debug("[Boot2-HTTP] batch ok: size={}, status={}", spans.size(), status);
             } else {
-                log.warn("[HTTP??-Boot2] ??: size={}, status={}", spans.size(), status);
+                log.warn("[Boot2-HTTP] batch failed: size={}, status={}", spans.size(), status);
             }
         } catch (Exception e) {
-            log.warn("[HTTP??-Boot2] ??: size={}, error={}", spans.size(), e.getMessage());
+            log.warn("[Boot2-HTTP] batch error: size={}, error={}", spans.size(), e.getMessage());
         } finally {
             if (conn != null) {
                 conn.disconnect();

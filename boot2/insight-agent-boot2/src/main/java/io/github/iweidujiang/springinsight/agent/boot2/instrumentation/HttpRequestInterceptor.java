@@ -62,7 +62,7 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
                 .addTag("http.client_ip", clientIp(request));
         request.setAttribute(TRACE_SPAN_ATTR, span);
         if (insightProperties.isDiagnosticLogs()) {
-            log.info("[HTTP??-Boot2] ??: traceId={}, {}", span.getTraceId(), operationName);
+            log.info("[Boot2-HTTP] start: traceId={}, {}", span.getTraceId(), operationName);
         }
         return true;
     }

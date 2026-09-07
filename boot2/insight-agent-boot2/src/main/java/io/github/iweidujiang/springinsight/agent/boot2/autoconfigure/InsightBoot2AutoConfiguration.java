@@ -48,7 +48,7 @@ public class InsightBoot2AutoConfiguration {
         this.properties = properties;
         properties.resolveServiceNameFromEnvironment(environment);
         properties.validate();
-        log.info("[Boot2??] Spring Insight Boot2 Agent ??: serviceName={}, serverUrl={}",
+        log.info("[Boot2-Config] Spring Insight Boot2 Agent ready: serviceName={}, serverUrl={}",
                 properties.getServiceName(),
                 properties.hasServerUrl() ? properties.normalizeServerUrl() : "(none)");
     }
@@ -145,7 +145,7 @@ public class InsightBoot2AutoConfiguration {
                 registry.addInterceptor(interceptor)
                         .addPathPatterns("/**")
                         .excludePathPatterns(properties.resolveExcludePatterns());
-                log.info("[Boot2??] HTTP ??????");
+                log.info("[Boot2-MVC] HTTP tracing interceptor registered");
             }
         }
     }

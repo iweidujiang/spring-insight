@@ -42,7 +42,7 @@ public class SpanReportingListener {
         }
         boolean ok = asyncSpanReporter.report(span);
         if (!ok) {
-            log.warn("[Span??-Boot2] ?????: spanId={}", span.getSpanId());
+            log.warn("[Boot2-Listener] report rejected: spanId={}", span.getSpanId());
         }
     }
 

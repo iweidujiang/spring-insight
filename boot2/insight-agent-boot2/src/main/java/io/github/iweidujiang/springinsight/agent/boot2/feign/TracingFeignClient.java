@@ -1,5 +1,5 @@
 /**
- * Feign Client ?????????? CLIENT Span???? remoteService ??????
+ * Feign Client decorator: create CLIENT Span with remoteService for topology edges.
  *
  * @since?2026-09-07
  * @author???? ???????
@@ -24,19 +24,19 @@ import java.util.Optional;
 
 public class TracingFeignClient implements Client {
 
-    /** ?????? Feign Client */
+    /** Wrapped Feign Client */
     private final Client delegate;
 
-    /** Insight ???????? */
+    /** Insight properties (lazy) */
     private final ObjectProvider<InsightBoot2Properties> insightProperties;
 
-    /** Span ?????????? */
+    /** Span reporter (lazy) */
     private final ObjectProvider<SpanReportingListener> spanReportingListener;
 
     /**
-     * @param delegate              ?? Client
-     * @param insightProperties     ?????
-     * @param spanReportingListener ????????
+     * @param delegate              original Client
+     * @param insightProperties     config provider
+     * @param spanReportingListener reporter provider
      */
     public TracingFeignClient(Client delegate,
                               ObjectProvider<InsightBoot2Properties> insightProperties,
@@ -47,12 +47,12 @@ public class TracingFeignClient implements Client {
     }
 
     /**
-     * ?? Feign ?????? Span ??? HTTP ?????? CLIENT Span ????
+     * Execute Feign call; when parent SERVER span exists, report a CLIENT child span.
      *
-     * @param request Feign ??
-     * @param options ?????
-     * @return ????
-     * @throws IOException ????????????
+     * @param request Feign request
+     * @param options timeouts
+     * @return downstream response
+     * @throws IOException on IO failure
      */
     @Override
     public Response execute(Request request, Options options) throws IOException {
@@ -68,8 +68,8 @@ public class TracingFeignClient implements Client {
         }
 
         String url = request.url();
-        // remoteService???????? URL host
-        String remote = resolveRemoteService(url);
+        // Prefer @FeignClient name so url=http://127.0.0.1 still maps to service id on topology
+        String remote = resolveRemoteService(request);
         String path = safePath(url);
         TraceSpan parent = parentOpt.get();
         TraceSpan clientSpan = new TraceSpan(parent.getTraceId(), parent.getSpanId());
@@ -99,28 +99,61 @@ public class TracingFeignClient implements Client {
     }
 
     /**
-     * ??? URL ?????????host??
+     * Resolve remote service id: Feign Target name first, then URL host.
      *
-     * @param url Feign ?? URL
-     * @return host???????? {@code unknown}
+     * @param request Feign request
+     * @return service name or host
      */
-    static String resolveRemoteService(String url) {
+    static String resolveRemoteService(Request request) {
+        if (request == null) {
+            return "unknown";
+        }
+        try {
+            if (request.requestTemplate() != null && request.requestTemplate().feignTarget() != null) {
+                String name = request.requestTemplate().feignTarget().name();
+                if (name != null && !name.trim().isEmpty()) {
+                    return name.trim();
+                }
+            }
+        } catch (Exception ignored) {
+            // fall through to URL host
+        }
+        return resolveRemoteServiceFromUrl(request.url());
+    }
+
+    /**
+     * Resolve host from URL (tests / fallback).
+     *
+     * @param url request URL
+     * @return host or unknown
+     */
+    static String resolveRemoteServiceFromUrl(String url) {
         try {
             URI u = URI.create(url);
             if (u.getHost() != null && !u.getHost().isEmpty()) {
                 return u.getHost();
             }
         } catch (Exception ignored) {
-            // ?????? unknown
+            // ignore
         }
         return "unknown";
     }
 
     /**
-     * ?? URL path?
+     * Backward-compatible helper for unit tests.
      *
-     * @param url Feign URL
-     * @return path??? {@code /}
+     * @param url request URL
+     * @return host or unknown
+     */
+    static String resolveRemoteService(String url) {
+        return resolveRemoteServiceFromUrl(url);
+    }
+
+    /**
+     * Extract path from URL.
+     *
+     * @param url request URL
+     * @return path or /
      */
     static String safePath(String url) {
         try {
@@ -132,10 +165,10 @@ public class TracingFeignClient implements Client {
     }
 
     /**
-     * ??????host + path + ?? query?
+     * Compact operation label: host + path + optional query.
      *
-     * @param url Feign URL
-     * @return ??????
+     * @param url request URL
+     * @return short label
      */
     static String compactOp(String url) {
         try {
