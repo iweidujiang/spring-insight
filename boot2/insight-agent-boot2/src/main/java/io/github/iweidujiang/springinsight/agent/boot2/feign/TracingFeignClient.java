@@ -2,7 +2,7 @@
  * Feign Client 装饰器：创建带 remoteService 的 CLIENT Span，供拓扑画边。
  *
  * @since：2026-09-07
- * @author：苏渡苗 公众号：苏渡苗
+ * @author：苏渡苇 公众号：苏渡苇
  *
  * GitHub：https://github.com/iweidujiang
  */

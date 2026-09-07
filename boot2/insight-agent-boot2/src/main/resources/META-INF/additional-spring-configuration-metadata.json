@@ -41,6 +41,13 @@
       "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
     },
     {
+      "name": "spring.insight.micrometer-enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否将 Span/上报队列桥接到宿主 MeterRegistry（无 Micrometer 或无 Registry 时自动跳过）。",
+      "defaultValue": true,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
       "name": "spring.insight.diagnostic-logs",
       "type": "java.lang.Boolean",
       "description": "是否打印请求级诊断日志（默认关闭，避免刷屏）。",

@@ -1,3 +1,4 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
 io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2AutoConfiguration,\
-io.github.iweidujiang.springinsight.agent.boot2.feign.InsightBoot2FeignAutoConfiguration
+io.github.iweidujiang.springinsight.agent.boot2.feign.InsightBoot2FeignAutoConfiguration,\
+io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2MicrometerAutoConfiguration

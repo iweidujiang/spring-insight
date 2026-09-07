@@ -236,7 +236,7 @@ spring:
 | B1 | 核心：`TraceSpan` / `TraceContext` / HTTP 入口 / `HttpInsightBatchSink`（`javax.servlet`，Java8 用 HttpURLConnection） | 完成 |
 | B2 | Feign CLIENT + `remoteService` 拓扑边；配套 `spring-insight-boot2-demo` | 完成 |
 | B3 | 固化坐标 `spring-insight-agent-starter-boot2`；配置元数据；Boot 2.7 demo 冒烟脚本 | 完成 |
-| B4 | （可选）WebFlux/WebClient；Micrometer 桥（Boot 2 版） | 后置 |
+| B4 | Micrometer 桥（Boot2，指标名与主线对齐）；WebFlux/WebClient 仍后置 | Micrometer 完成 |
 
 原则：主线 `0.1.0-SNAPSHOT` 继续 Boot 3.5 + JDK 21；兼容线单独版本/artifact，避免一套源码硬拧双版本。
 

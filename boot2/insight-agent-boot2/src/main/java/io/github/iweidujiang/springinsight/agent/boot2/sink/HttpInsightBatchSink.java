@@ -1,11 +1,3 @@
-/**
- * HttpInsightBatchSink：用 HttpURLConnection POST 上报到 insight-server（兼容 Java 8）。
- *
- * @since：2026-09-07
- * @author：苏渡苗 公众号：苏渡苗
- *
- * GitHub：https://github.com/iweidujiang
- */
 package io.github.iweidujiang.springinsight.agent.boot2.sink;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,6 +13,14 @@ import java.net.URL;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * HttpInsightBatchSink：用 HttpURLConnection POST 上报到 insight-server（兼容 Java 8）。
+ *
+ * @since 2026-09-07
+ * @author 苏渡苇 公众号：苏渡苇
+ *
+ * GitHub：https://github.com/iweidujiang
+ */
 public class HttpInsightBatchSink implements InsightBatchSink {
 
     private static final Logger log = LoggerFactory.getLogger(HttpInsightBatchSink.class);

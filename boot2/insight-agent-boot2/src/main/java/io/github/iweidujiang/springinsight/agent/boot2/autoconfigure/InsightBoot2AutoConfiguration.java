@@ -1,11 +1,3 @@
-/**
- * InsightBoot2AutoConfiguration：Boot2 线自动装配入口（spring.factories），含 MVC HTTP 埋点。
- *
- * @since：2026-09-07
- * @author：苏渡苗 公众号：苏渡苗
- *
- * GitHub：https://github.com/iweidujiang
- */
 package io.github.iweidujiang.springinsight.agent.boot2.autoconfigure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +21,14 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * InsightBoot2AutoConfiguration：Boot2 线自动装配入口（spring.factories），含 MVC HTTP 埋点。
+ *
+ * @since 2026-09-07
+ * @author 苏渡苇 公众号：苏渡苇
+ *
+ * GitHub：https://github.com/iweidujiang
+ */
 @Configuration
 @EnableConfigurationProperties(InsightBoot2Properties.class)
 @ConditionalOnProperty(prefix = "spring.insight", name = "enabled", havingValue = "true", matchIfMissing = true)
@@ -91,8 +91,9 @@ public class InsightBoot2AutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public SpanReportingListener spanReportingListener(AsyncSpanReporter asyncSpanReporter) {
-        return new SpanReportingListener(asyncSpanReporter);
+    public SpanReportingListener spanReportingListener(AsyncSpanReporter asyncSpanReporter,
+                                                       ObjectProvider<io.github.iweidujiang.springinsight.agent.boot2.micrometer.InsightMicrometerBridge> micrometerBridge) {
+        return new SpanReportingListener(asyncSpanReporter, micrometerBridge);
     }
 
     /**

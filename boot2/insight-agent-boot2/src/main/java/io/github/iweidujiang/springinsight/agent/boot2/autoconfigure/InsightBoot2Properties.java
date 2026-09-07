@@ -24,6 +24,8 @@ public class InsightBoot2Properties {
     private String serviceName;
     private String serviceInstance;
     private boolean httpTracingEnabled = true;
+    /** 是否桥接宿主 MeterRegistry（无 Micrometer/无 MeterRegistry 时自动跳过） */
+    private boolean micrometerEnabled = true;
     private boolean diagnosticLogs = false;
     private String[] excludePatterns = new String[]{
             "/actuator/**",
@@ -70,6 +72,20 @@ public class InsightBoot2Properties {
 
     public void setHttpTracingEnabled(boolean httpTracingEnabled) {
         this.httpTracingEnabled = httpTracingEnabled;
+    }
+
+    /**
+     * @return 是否启用 Micrometer 联动
+     */
+    public boolean isMicrometerEnabled() {
+        return micrometerEnabled;
+    }
+
+    /**
+     * @param micrometerEnabled 是否启用 Micrometer 联动
+     */
+    public void setMicrometerEnabled(boolean micrometerEnabled) {
+        this.micrometerEnabled = micrometerEnabled;
     }
 
     public boolean isDiagnosticLogs() {

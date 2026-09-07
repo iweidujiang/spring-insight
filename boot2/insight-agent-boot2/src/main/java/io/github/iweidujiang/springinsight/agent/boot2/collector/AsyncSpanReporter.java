@@ -1,11 +1,3 @@
-/**
- * AsyncSpanReporter：异步队列批量将 Span 写入 InsightBatchSink。
- *
- * @since：2026-09-07
- * @author：苏渡苗 公众号：苏渡苗
- *
- * GitHub：https://github.com/iweidujiang
- */
 package io.github.iweidujiang.springinsight.agent.boot2.collector;
 
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
@@ -21,6 +13,14 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * AsyncSpanReporter：异步队列批量将 Span 写入 InsightBatchSink。
+ *
+ * @since 2026-09-07
+ * @author  公众号：苏渡苇
+ *
+ * GitHub https://github.com/iweidujiang
+ */
 public class AsyncSpanReporter {
 
     private static final Logger log = LoggerFactory.getLogger(AsyncSpanReporter.class);
@@ -79,6 +79,10 @@ public class AsyncSpanReporter {
         }
         flushRemaining();
         log.info("[Boot2上报] 已停止");
+    }
+
+    public int getQueueSize() {
+        return queue.size();
     }
 
     /**

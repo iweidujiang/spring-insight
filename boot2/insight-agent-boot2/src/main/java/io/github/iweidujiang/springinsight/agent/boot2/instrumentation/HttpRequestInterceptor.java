@@ -1,11 +1,3 @@
-/**
- * HttpRequestInterceptor：Spring MVC 入站 SERVER Span（javax.servlet）。
- *
- * @since：2026-09-07
- * @author：苏渡苗 公众号：苏渡苗
- *
- * GitHub：https://github.com/iweidujiang
- */
 package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
@@ -21,6 +13,14 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.Optional;
 
+/**
+ * HttpRequestInterceptor：Spring MVC 入站 SERVER Span（javax.servlet）。
+ *
+ * @since 2026-09-07
+ * @author 苏渡苇 公众号：苏渡苇
+ *
+ * GitHub：https://github.com/iweidujiang
+ */
 public class HttpRequestInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(HttpRequestInterceptor.class);
