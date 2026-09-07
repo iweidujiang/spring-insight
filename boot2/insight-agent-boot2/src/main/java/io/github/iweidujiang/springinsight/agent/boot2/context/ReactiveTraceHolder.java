@@ -10,7 +10,7 @@ import java.util.Optional;
  * WebFlux 侧 Trace 载体：存在 Reactor Context，跨事件循环线程仍可取到父 Span。
  *
  * @since 2026-09-07
- * @author 公众号：苏渡苗 GitHub：https://github.com/iweidujiang
+ * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
  */
 public final class ReactiveTraceHolder {
 

@@ -14,7 +14,7 @@ import org.springframework.web.reactive.function.client.WebClient;
  * Boot2 WebClient 出站 CLIENT Span：对 Spring 管理的 WebClient.Builder 注入 Filter。
  *
  * @since 2026-09-07
- * @author 公众号：苏渡苗 GitHub：https://github.com/iweidujiang
+ * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
  */
 @Configuration
 @ConditionalOnClass({WebClient.class, WebClientCustomizer.class})

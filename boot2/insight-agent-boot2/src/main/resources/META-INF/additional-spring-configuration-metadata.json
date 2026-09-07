@@ -36,7 +36,7 @@
     {
       "name": "spring.insight.http-tracing-enabled",
       "type": "java.lang.Boolean",
-      "description": "是否启用 Servlet MVC HTTP SERVER Span。",
+      "description": "是否启用 HTTP 追踪（Servlet MVC / WebFlux SERVER、WebClient / Gateway CLIENT）。",
       "defaultValue": true,
       "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
     },

@@ -23,7 +23,7 @@ import java.util.function.Function;
  * WebClient 出站 CLIENT Span：填充 remoteService 供拓扑；父 Span 优先 Reactor Context，其次 ThreadLocal。
  *
  * @since 2026-09-07
- * @author 公众号：苏渡苗 GitHub：https://github.com/iweidujiang
+ * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
  */
 public class InsightWebClientExchangeFilter implements ExchangeFilterFunction {
 

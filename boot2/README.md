@@ -42,11 +42,11 @@ spring:
 | `spring.insight.enabled` | `true` | 总开关 |
 | `spring.insight.server-url` | — | insight-server 根地址 |
 | `spring.insight.service-name` | 回退 `spring.application.name` | 上报服务名 |
-| `spring.insight.http-tracing-enabled` | `true` | MVC SERVER Span |
+| `spring.insight.http-tracing-enabled` | `true` | MVC / WebFlux SERVER；WebClient / Gateway CLIENT |
 | `spring.insight.micrometer-enabled` | `true` | 桥接宿主 MeterRegistry（需 classpath 有 Micrometer 且存在 Bean） |
 | `spring.insight.diagnostic-logs` | `false` | 请求级诊断日志 |
 
-能力摘要：Servlet MVC SERVER Span、OpenFeign CLIENT Span（`remoteService` 优先 `@FeignClient` name）、HttpURLConnection 批量上报、可选 Micrometer（`spring.insight.*`）、WebFlux 入口 SERVER Span、WebClient 出站 CLIENT Span。
+能力摘要：Servlet MVC SERVER Span、OpenFeign CLIENT Span（`remoteService` 优先 `@FeignClient` name）、HttpURLConnection 批量上报、可选 Micrometer（`spring.insight.*`）、WebFlux 入口 SERVER Span、WebClient 出站 CLIENT Span、Spring Cloud Gateway 出站 CLIENT Span（`remoteService` 优先 `lb://` 服务名）。
 
 ## 阶段
 
@@ -56,7 +56,8 @@ spring:
 | B1 | 核心采集（javax + HttpURLConnection） | 完成 |
 | B2 | Feign CLIENT + demo | 完成 |
 | B3 | Starter 坐标固化 + Boot2.7 冒烟 | 完成 |
-| **B4** | Micrometer 桥 + WebFlux/WebClient | **完成** |
+| B4 | Micrometer 桥 + WebFlux/WebClient | 完成 |
+| **B5** | Gateway 出站 CLIENT Span（`remoteService`） | **完成** |
 
 ## 冒烟演示
 

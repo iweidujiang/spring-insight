@@ -26,7 +26,7 @@ import java.util.Optional;
  * WebFlux 入口 HTTP 追踪：Span 挂在 exchange 属性与 Reactor Context，避免 ThreadLocal 丢失。
  *
  * @since 2026-09-07
- * @author 公众号：苏渡苗 GitHub：https://github.com/iweidujiang
+ * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
  */
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class ReactiveInsightWebFilter implements WebFilter {

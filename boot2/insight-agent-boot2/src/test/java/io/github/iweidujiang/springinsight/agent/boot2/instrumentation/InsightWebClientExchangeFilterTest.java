@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * InsightWebClientExchangeFilter 单测：remoteService / compactOp。
  *
  * @since 2026-09-07
- * @author 公众号：苏渡苗 GitHub：https://github.com/iweidujiang
+ * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
  */
 public class InsightWebClientExchangeFilterTest {
 

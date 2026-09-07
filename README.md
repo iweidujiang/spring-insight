@@ -226,7 +226,7 @@ spring:
 - [x] WebFlux Reactor Context + Gateway / WebClient 出站 CLIENT Span  
 - [x] 与 Prometheus / Micrometer 的轻量联动（Span 耗时 + 上报队列；连接池仍走 Actuator）  
 - [ ] 发到 Maven Central，少一步本地 install  
-- [x] **Boot 2.7 / Java 8 兼容线**（B0–B3 已完成，与主线并行；**insight-server 仍只支持 Boot 3**；详见 [`boot2/README.md`](boot2/README.md)）
+- [x] **Boot 2.7 / Java 8 兼容线**（B0–B5 已完成，与主线并行；**insight-server 仍只支持 Boot 3**；详见 [`boot2/README.md`](boot2/README.md)）
 
 #### Boot 2.7 / Java 8 分期（`boot2/` 独立工程，不进主 reactor）
 
@@ -237,6 +237,7 @@ spring:
 | B2 | Feign CLIENT + `remoteService` 拓扑边；配套 `spring-insight-boot2-demo` | 完成 |
 | B3 | 固化坐标 `spring-insight-agent-starter-boot2`；配置元数据；Boot 2.7 demo 冒烟脚本 | 完成 |
 | B4 | Micrometer 桥；WebFlux 入口 + WebClient 出站 CLIENT Span（Boot2） | 完成 |
+| B5 | Gateway 出站 CLIENT Span（`remoteService` / `lb://`） | 完成 |
 
 原则：主线 `0.1.0-SNAPSHOT` 继续 Boot 3.5 + JDK 21；兼容线单独版本/artifact，避免一套源码硬拧双版本。
 
