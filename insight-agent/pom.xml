@@ -54,6 +54,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Micrometer：optional，宿主引入 actuator/prometheus 时联动；不强制传递 -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- AOP 支持（用于无侵入埋点） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

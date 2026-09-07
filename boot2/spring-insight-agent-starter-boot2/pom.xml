@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.iweidujiang</groupId>
+        <artifactId>spring-insight-boot2-parent</artifactId>
+        <version>0.1.0-boot2-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>spring-insight-agent-starter-boot2</artifactId>
+    <name>Spring Insight Agent Starter (Boot2)</name>
+    <description>Boot 2.7 业务侧依赖此 Starter</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.github.iweidujiang</groupId>
+            <artifactId>insight-agent-boot2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+    </dependencies>
+</project>

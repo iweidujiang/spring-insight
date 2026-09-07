@@ -67,6 +67,12 @@ public class InsightProperties {
     private boolean contextPropagationEnabled = true;
 
     /**
+     * 是否将 Span / 上报队列指标桥接到宿主 {@code MeterRegistry}（Actuator / Prometheus）。
+     * <p>仅当 classpath 存在 Micrometer 且容器中有 MeterRegistry 时生效；默认 true。</p>
+     */
+    private boolean micrometerEnabled = true;
+
+    /**
      * 不创建 HTTP Span 的路径模式
      */
     private String[] excludePatterns = {

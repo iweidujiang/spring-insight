@@ -1,12 +1,13 @@
 package io.github.iweidujiang.springinsight.agent.listener;
 
 import io.github.iweidujiang.springinsight.agent.collector.AsyncSpanReporter;
+import io.github.iweidujiang.springinsight.agent.micrometer.InsightMicrometerBridge;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -23,13 +24,19 @@ import java.util.concurrent.atomic.AtomicLong;
  * └───────────────────────────────────────────────
  */
 @Slf4j
-@RequiredArgsConstructor
 public class SpanReportingListener {
     private final AsyncSpanReporter asyncSpanReporter;
+    private final ObjectProvider<InsightMicrometerBridge> micrometerBridge;
 
     // 上报统计
     private final AtomicLong totalReportedSpans = new AtomicLong(0);
     private final AtomicLong lastReportTime = new AtomicLong(System.currentTimeMillis());
+
+    public SpanReportingListener(AsyncSpanReporter asyncSpanReporter,
+                                 ObjectProvider<InsightMicrometerBridge> micrometerBridge) {
+        this.asyncSpanReporter = asyncSpanReporter;
+        this.micrometerBridge = micrometerBridge;
+    }
 
     /**
      * 初始化监听器
@@ -67,6 +74,10 @@ public class SpanReportingListener {
 
         // 异步上报Span
         boolean success = asyncSpanReporter.report(span);
+        InsightMicrometerBridge bridge = micrometerBridge.getIfAvailable();
+        if (bridge != null) {
+            bridge.recordSpan(span, success);
+        }
 
         if (success) {
             long count = totalReportedSpans.incrementAndGet();

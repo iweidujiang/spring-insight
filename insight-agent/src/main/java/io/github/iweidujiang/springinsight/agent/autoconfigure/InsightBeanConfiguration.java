@@ -6,6 +6,7 @@ import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsReporter;
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.instrumentation.DbCallAspect;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
+import io.github.iweidujiang.springinsight.agent.micrometer.InsightMicrometerBridge;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.agent.sink.HttpInsightBatchSink;
 import io.github.iweidujiang.springinsight.agent.sink.InsightBatchSink;
@@ -108,9 +109,10 @@ public class InsightBeanConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    public SpanReportingListener spanReportingListener(AsyncSpanReporter asyncSpanReporter) {
+    public SpanReportingListener spanReportingListener(AsyncSpanReporter asyncSpanReporter,
+                                                       ObjectProvider<InsightMicrometerBridge> micrometerBridge) {
         log.info("[Bean配置] Span报告监听器初始化完成");
-        return new SpanReportingListener(asyncSpanReporter);
+        return new SpanReportingListener(asyncSpanReporter, micrometerBridge);
     }
 
     /**

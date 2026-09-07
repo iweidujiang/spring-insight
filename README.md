@@ -44,6 +44,7 @@
 | 能力 | 说明 | 成熟度 |
 |------|------|--------|
 | HTTP / Feign / WebClient / Gateway 采集 | Agent 采 Span，批量报到 Server；success 与 HTTP 状态对齐；线程池可透传 Trace；WebFlux 入口走 Reactor Context；WebClient/Gateway 出站带 remoteService | 能用，持续补齐 |
+| Micrometer 轻联动 | 宿主有 MeterRegistry 时导出 `spring.insight.*`（Span Timer / 上报队列）；连接池等仍走 Actuator | 基础可用 |
 | 服务依赖拓扑 | 看谁调用了谁（带箭头和次数）；点击节点/边可下钻链路 | 基础可用 |
 | 链路列表 / Trace 详情 | 按 Trace 聚合列表（可搜/筛）；详情页瀑布时间线 + Span tags/错误 | 持续打磨中 |
 | 错误率粗看 | 有错误调用时统计一下 | 很简陋 |
@@ -201,6 +202,7 @@ spring:
     sample-rate: 1.0
     http-tracing-enabled: true
     context-propagation-enabled: true  # @Async / 线程池透传 Trace；冲突时可关
+    micrometer-enabled: true           # 有 MeterRegistry 时导出 spring.insight.*；可关
     diagnostic-logs: false   # 排查上报问题时可临时打开
 ```
 
@@ -221,11 +223,46 @@ spring:
 
 - [x] 可选文件持久化（默认仍内存；`mode=file` 落盘）  
 - [x] WebFlux Reactor Context + Gateway / WebClient 出站 CLIENT Span  
+- [x] 与 Prometheus / Micrometer 的轻量联动（Span 耗时 + 上报队列；连接池仍走 Actuator）  
 - [ ] 发到 Maven Central，少一步本地 install  
-- [ ] 与 Prometheus / Micrometer 的轻量联动（连接池等指标）  
-- [ ] **Boot 2.7 / Java 8 兼容线**（单独规划，不阻塞当前 Boot 3.5 / JDK 21）：`spring.factories` 双轨装配、`javax.servlet` 适配、低版本编译产物或多模块 classifier；落地前保持主线只支持 Boot 3  
+- [ ] **Boot 2.7 / Java 8 兼容线**（进行中，与主线并行；**insight-server 仍只支持 Boot 3**）
+
+#### Boot 2.7 / Java 8 分期（`boot2/` 独立工程，不进主 reactor）
+
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| B0 | 独立父 POM（Boot 2.7.x + Java 8）、`spring.factories` 装配骨架 | 进行中 |
+| B1 | 核心：`TraceSpan` / `TraceContext` / HTTP 入口 / `HttpInsightBatchSink`（`javax.servlet`） | 待做 |
+| B2 | Feign CLIENT + `remoteService` 拓扑边 | 待做 |
+| B3 | 发布坐标 `spring-insight-agent-starter-boot2`；样例 Boot 2.7 冒烟 | 待做 |
+| B4 | （可选）WebFlux/WebClient；Micrometer 桥（Boot 2 版） | 后置 |
+
+原则：主线 `0.1.0-SNAPSHOT` 继续 Boot 3.5 + JDK 21；兼容线单独版本/artifact，避免一套源码硬拧双版本。
 
 排期就不写死了，以免变成空头支票。当前主线仍是 **Spring Boot 3.5 + JDK 21**。
+
+### 与 Prometheus / Micrometer 怎么分工
+
+| 关注点 | 建议 |
+|--------|------|
+| 链路、拓扑、跨服务调用 | **Spring Insight**（Span → insight-server） |
+| JVM / 连接池 / HTTP 服务端 QPS | **Spring Boot Actuator + Micrometer/Prometheus** |
+| Insight 自身健康 | 可选：宿主启用 Actuator 后刮取 `spring.insight.*`（`micrometer-enabled`，默认开） |
+
+业务侧示例（已有 Actuator 时无需额外依赖，agent 已 optional 编译 Micrometer）：
+
+```yaml
+spring:
+  insight:
+    micrometer-enabled: true   # 默认 true；无 MeterRegistry 时自动跳过
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+```
+
+常见指标名：`spring.insight.span`（Timer，含 `span.kind` / `remote.service` / `success`）、`spring.insight.spans.accepted`、`spring.insight.reporter.queue.size`。
 
 ---
 
