@@ -2,15 +2,12 @@
 
 独立于主仓 `spring-insight-parent`（Boot 3.5 / JDK 21）。**insight-server 仍只用主线构建。**
 
-## 构建
+## 业务侧坐标（B3 固化）
 
-```bash
-# 建议 JDK 8 或 11
-cd boot2
-mvn -DskipTests install
-```
-
-坐标（业务侧）：
+| GAV | 说明 |
+|-----|------|
+| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.1.0-boot2-SNAPSHOT` | **业务请只依赖这个** |
+| `io.github.iweidujiang:insight-agent-boot2:0.1.0-boot2-SNAPSHOT` | 采集核心（Starter 传递依赖，一般不用直接引） |
 
 ```xml
 <dependency>
@@ -20,15 +17,17 @@ mvn -DskipTests install
 </dependency>
 ```
 
-## 阶段
+> 尚未发 Maven Central：需先本地 `install`。与主线 `0.1.0-SNAPSHOT` **版本号不同**，避免坐标冲突。
 
-见仓库根 README「Boot 2.7 / Java 8 分期」。
+## 构建
 
-- **B0** 骨架：已完成  
-- **B1** 核心采集：已完成  
-- **B2** Feign CLIENT + remoteService：已完成；演示工程见同级目录 `spring-insight-boot2-demo`
+```bash
+# 建议 JDK 8 或 11（也可用更高 JDK 交叉编译到 1.8）
+cd boot2
+mvn -DskipTests install
+```
 
-业务侧最小配置：
+## 最小配置
 
 ```yaml
 spring:
@@ -37,3 +36,43 @@ spring:
   insight:
     server-url: http://localhost:9966
 ```
+
+| 配置项 | 默认 | 说明 |
+|--------|------|------|
+| `spring.insight.enabled` | `true` | 总开关 |
+| `spring.insight.server-url` | — | insight-server 根地址 |
+| `spring.insight.service-name` | 回退 `spring.application.name` | 上报服务名 |
+| `spring.insight.http-tracing-enabled` | `true` | MVC SERVER Span |
+| `spring.insight.diagnostic-logs` | `false` | 请求级诊断日志 |
+
+能力摘要：Servlet MVC SERVER Span、OpenFeign CLIENT Span（`remoteService` 优先 `@FeignClient` name）、HttpURLConnection 批量上报。
+
+## 阶段
+
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| B0 | 独立父 POM、`spring.factories` 骨架 | 完成 |
+| B1 | 核心采集（javax + HttpURLConnection） | 完成 |
+| B2 | Feign CLIENT + demo | 完成 |
+| **B3** | **Starter 坐标固化 + Boot2.7 冒烟** | **完成** |
+| B4 | （可选）WebFlux / Micrometer Boot2 版 | 后置 |
+
+## 冒烟演示
+
+同级工程：`spring-insight-boot2-demo`（路径示例：`D:\a-github-project\spring-insight-boot2-demo`）。
+
+```bash
+# 1) install 本兼容线
+cd D:\a-github-project\spring-insight\boot2 && mvn -DskipTests install
+
+# 2) 启动主线 insight-server:9966（另开终端）
+java -jar D:\a-github-project\spring-insight\insight-server\target\insight-server-0.1.0-SNAPSHOT.jar
+
+# 3) 启动 demo，并冒烟
+cd D:\a-github-project\spring-insight-boot2-demo
+.\scripts\smoke-check.ps1
+# 起 provider / consumer 后：
+.\scripts\smoke-check.ps1 -HitEndpoints
+```
+
+期望控制台 http://localhost:9966/ 出现 `boot2-demo-consumer → boot2-demo-provider` 拓扑边。

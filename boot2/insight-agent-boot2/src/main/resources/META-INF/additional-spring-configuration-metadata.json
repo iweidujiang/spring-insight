@@ -1,0 +1,58 @@
+{
+  "groups": [
+    {
+      "name": "spring.insight",
+      "type": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties",
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties",
+      "description": "Spring Insight Boot2 Agent 配置（上报到 insight-server）。"
+    }
+  ],
+  "properties": [
+    {
+      "name": "spring.insight.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 Boot2 Agent。",
+      "defaultValue": true,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
+      "name": "spring.insight.server-url",
+      "type": "java.lang.String",
+      "description": "insight-server 根地址，例如 http://localhost:9966。配置后启用 HTTP 批量上报。",
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
+      "name": "spring.insight.service-name",
+      "type": "java.lang.String",
+      "description": "服务名；为空时回退 spring.application.name。",
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
+      "name": "spring.insight.service-instance",
+      "type": "java.lang.String",
+      "description": "服务实例标识；为空时回退 localhost:server.port。",
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
+      "name": "spring.insight.http-tracing-enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 Servlet MVC HTTP SERVER Span。",
+      "defaultValue": true,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
+      "name": "spring.insight.diagnostic-logs",
+      "type": "java.lang.Boolean",
+      "description": "是否打印请求级诊断日志（默认关闭，避免刷屏）。",
+      "defaultValue": false,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
+      "name": "spring.insight.exclude-patterns",
+      "type": "java.lang.String[]",
+      "description": "HTTP 追踪排除路径（Ant 风格）。",
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    }
+  ],
+  "hints": []
+}

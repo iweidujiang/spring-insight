@@ -29,10 +29,11 @@
 
 | Maven 模块（GAV 摘要） | 角色 |
 |------|------|
-| `io.github.iweidujiang:spring-insight-parent:0.1.0-SNAPSHOT` | 父 POM |
+| `io.github.iweidujiang:spring-insight-parent:0.1.0-SNAPSHOT` | 父 POM（主线 Boot 3.5 / JDK 21） |
 | `io.github.iweidujiang:insight-agent:0.1.0-SNAPSHOT` | 采集核心 |
-| `io.github.iweidujiang:spring-insight-agent-starter:0.1.0-SNAPSHOT` | **业务侧请依赖这个** |
+| `io.github.iweidujiang:spring-insight-agent-starter:0.1.0-SNAPSHOT` | **Boot 3 业务侧请依赖这个** |
 | `io.github.iweidujiang:insight-server:0.1.0-SNAPSHOT` | 监测中心可执行包 |
+| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.1.0-boot2-SNAPSHOT` | **Boot 2.7 / Java 8 业务侧请依赖这个**（见 `boot2/`） |
 
 ---
 
@@ -225,7 +226,7 @@ spring:
 - [x] WebFlux Reactor Context + Gateway / WebClient 出站 CLIENT Span  
 - [x] 与 Prometheus / Micrometer 的轻量联动（Span 耗时 + 上报队列；连接池仍走 Actuator）  
 - [ ] 发到 Maven Central，少一步本地 install  
-- [ ] **Boot 2.7 / Java 8 兼容线**（进行中，与主线并行；**insight-server 仍只支持 Boot 3**）
+- [x] **Boot 2.7 / Java 8 兼容线**（B0–B3 已完成，与主线并行；**insight-server 仍只支持 Boot 3**；详见 [`boot2/README.md`](boot2/README.md)）
 
 #### Boot 2.7 / Java 8 分期（`boot2/` 独立工程，不进主 reactor）
 
@@ -234,7 +235,7 @@ spring:
 | B0 | 独立父 POM（Boot 2.7.x + Java 8）、`spring.factories` 装配骨架 | 完成 |
 | B1 | 核心：`TraceSpan` / `TraceContext` / HTTP 入口 / `HttpInsightBatchSink`（`javax.servlet`，Java8 用 HttpURLConnection） | 完成 |
 | B2 | Feign CLIENT + `remoteService` 拓扑边；配套 `spring-insight-boot2-demo` | 完成 |
-| B3 | 发布坐标 `spring-insight-agent-starter-boot2`；样例 Boot 2.7 冒烟 | 待做 |
+| B3 | 固化坐标 `spring-insight-agent-starter-boot2`；配置元数据；Boot 2.7 demo 冒烟脚本 | 完成 |
 | B4 | （可选）WebFlux/WebClient；Micrometer 桥（Boot 2 版） | 后置 |
 
 原则：主线 `0.1.0-SNAPSHOT` 继续 Boot 3.5 + JDK 21；兼容线单独版本/artifact，避免一套源码硬拧双版本。
