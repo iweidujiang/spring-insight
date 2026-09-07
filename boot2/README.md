@@ -46,7 +46,7 @@ spring:
 | `spring.insight.micrometer-enabled` | `true` | 桥接宿主 MeterRegistry（需 classpath 有 Micrometer 且存在 Bean） |
 | `spring.insight.diagnostic-logs` | `false` | 请求级诊断日志 |
 
-能力摘要：Servlet MVC SERVER Span、OpenFeign CLIENT Span（`remoteService` 优先 `@FeignClient` name）、HttpURLConnection 批量上报、可选 Micrometer（`spring.insight.*`）。
+能力摘要：Servlet MVC SERVER Span、OpenFeign CLIENT Span（`remoteService` 优先 `@FeignClient` name）、HttpURLConnection 批量上报、可选 Micrometer（`spring.insight.*`）、WebFlux 入口 SERVER Span、WebClient 出站 CLIENT Span。
 
 ## 阶段
 
@@ -56,7 +56,7 @@ spring:
 | B1 | 核心采集（javax + HttpURLConnection） | 完成 |
 | B2 | Feign CLIENT + demo | 完成 |
 | B3 | Starter 坐标固化 + Boot2.7 冒烟 | 完成 |
-| **B4** | Micrometer 桥（Boot2）；WebFlux/WebClient 仍后置 | **Micrometer 完成** |
+| **B4** | Micrometer 桥 + WebFlux/WebClient | **完成** |
 
 ## 冒烟演示
 
