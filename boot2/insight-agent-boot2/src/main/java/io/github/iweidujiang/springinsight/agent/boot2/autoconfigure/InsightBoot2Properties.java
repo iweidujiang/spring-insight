@@ -1,6 +1,4 @@
-/*
- * Copyright (c) 2026, 苏渡苇. All rights reserved.
- *
+/**
  * InsightBoot2Properties：Boot2 线 spring.insight.* 配置。
  *
  * @since：2026-09-07

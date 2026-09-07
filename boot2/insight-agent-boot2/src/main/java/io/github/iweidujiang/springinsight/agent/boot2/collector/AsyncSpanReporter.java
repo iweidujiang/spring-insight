@@ -1,18 +1,17 @@
-/*
- * Copyright (c) 2026, 苏渡苇. All rights reserved.
+/**
+ * AsyncSpanReporter??????????? InsightBatchSink?
  *
- * AsyncSpanReporter：内存队列异步批量刷到 InsightBatchSink。
+ * @since?2026-09-07
+ * @author???? ???????
  *
- * @since：2026-09-07
- * @author：苏渡苇 公众号：苏渡苇
- *
- * GitHub：https://github.com/iweidujiang
+ * GitHub?https://github.com/iweidujiang
  */
 package io.github.iweidujiang.springinsight.agent.boot2.collector;
 
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
 import io.github.iweidujiang.springinsight.agent.boot2.sink.InsightBatchSink;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.ArrayList;
@@ -22,8 +21,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-@Slf4j
 public class AsyncSpanReporter {
+
+    private static final Logger log = LoggerFactory.getLogger(AsyncSpanReporter.class);
 
     private static final int QUEUE_CAPACITY = 10000;
     private static final int BATCH_SIZE = 200;
@@ -36,11 +36,18 @@ public class AsyncSpanReporter {
     private final String serviceName;
     private Thread flushThread;
 
+    /**
+     * @param serviceName        ????????
+     * @param batchSinkProvider  Sink ????
+     */
     public AsyncSpanReporter(String serviceName, ObjectProvider<InsightBatchSink> batchSinkProvider) {
         this.serviceName = serviceName;
         this.batchSinkProvider = batchSinkProvider;
     }
 
+    /**
+     * ?????????
+     */
     public void start() {
         if (running.compareAndSet(false, true)) {
             flushThread = new Thread(new Runnable() {
@@ -51,10 +58,13 @@ public class AsyncSpanReporter {
             }, "spring-insight-boot2-reporter");
             flushThread.setDaemon(true);
             flushThread.start();
-            log.info("[异步上报-Boot2] 已启动: serviceName={}", serviceName);
+            log.info("[????-Boot2] ???: serviceName={}", serviceName);
         }
     }
 
+    /**
+     * ????????????
+     */
     public void stop() {
         if (!running.compareAndSet(true, false)) {
             return;
@@ -68,18 +78,25 @@ public class AsyncSpanReporter {
             }
         }
         flushRemaining();
-        log.info("[异步上报-Boot2] 已停止");
+        log.info("[????-Boot2] ???");
     }
 
+    /**
+     * ???? Span ???
+     *
+     * @param span ?? Span
+     * @return ??????
+     */
     public boolean report(TraceSpan span) {
         if (span == null || !running.get()) {
             return false;
         }
         try {
+            // snapshot????????????????
             TraceSpan copy = TraceSpan.snapshot(span);
             boolean ok = queue.offer(copy, OFFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (!ok) {
-                log.warn("[异步上报-Boot2] 队列已满，丢弃 spanId={}", span.getSpanId());
+                log.warn("[????-Boot2] ??????? spanId={}", span.getSpanId());
             }
             return ok;
         } catch (InterruptedException e) {
@@ -88,6 +105,9 @@ public class AsyncSpanReporter {
         }
     }
 
+    /**
+     * ??????????????
+     */
     private void flushLoop() {
         while (running.get()) {
             try {
@@ -104,11 +124,14 @@ public class AsyncSpanReporter {
                 Thread.currentThread().interrupt();
                 break;
             } catch (Exception e) {
-                log.warn("[异步上报-Boot2] 刷盘循环异常: {}", e.getMessage());
+                log.warn("[????-Boot2] ??????: {}", e.getMessage());
             }
         }
     }
 
+    /**
+     * ????????
+     */
     private void flushRemaining() {
         List<TraceSpan> batch = new ArrayList<TraceSpan>();
         queue.drainTo(batch);
@@ -117,16 +140,21 @@ public class AsyncSpanReporter {
         }
     }
 
+    /**
+     * ?? Sink ?????
+     *
+     * @param batch ?? Span
+     */
     private void flushBatch(List<TraceSpan> batch) {
         InsightBatchSink sink = batchSinkProvider.getIfAvailable();
         if (sink == null) {
-            log.warn("[异步上报-Boot2] 无 InsightBatchSink，丢弃 {} 条", batch.size());
+            log.warn("[????-Boot2] ? InsightBatchSink??? {} ?", batch.size());
             return;
         }
         try {
             sink.acceptTraceSpans(batch);
         } catch (Exception e) {
-            log.warn("[异步上报-Boot2] Sink 写出失败: size={}, error={}", batch.size(), e.getMessage());
+            log.warn("[????-Boot2] Sink ????: size={}, error={}", batch.size(), e.getMessage());
         }
     }
 }

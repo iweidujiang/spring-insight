@@ -25,7 +25,8 @@ mvn -DskipTests install
 见仓库根 README「Boot 2.7 / Java 8 分期」。
 
 - **B0** 骨架：已完成  
-- **B1** 核心采集：TraceSpan / TraceContext / Async 上报 / HttpURLConnection Sink / javax MVC 拦截 — **已完成**
+- **B1** 核心采集：已完成  
+- **B2** Feign CLIENT + remoteService：已完成；演示工程见同级目录 `spring-insight-boot2-demo`
 
 业务侧最小配置：
 

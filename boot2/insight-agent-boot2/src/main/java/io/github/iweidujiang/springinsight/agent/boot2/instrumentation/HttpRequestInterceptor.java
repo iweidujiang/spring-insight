@@ -1,12 +1,10 @@
-/*
- * Copyright (c) 2026, 苏渡苇. All rights reserved.
+/**
+ * HttpRequestInterceptor?Spring MVC ?? SERVER Span?javax.servlet??
  *
- * HttpRequestInterceptor：Spring MVC 入口 SERVER Span（javax.servlet）。
+ * @since?2026-09-07
+ * @author???? ???????
  *
- * @since：2026-09-07
- * @author：苏渡苇 公众号：苏渡苇
- *
- * GitHub：https://github.com/iweidujiang
+ * GitHub?https://github.com/iweidujiang
  */
 package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 
@@ -14,7 +12,8 @@ import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot
 import io.github.iweidujiang.springinsight.agent.boot2.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -22,20 +21,34 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.Optional;
 
-@Slf4j
 public class HttpRequestInterceptor implements HandlerInterceptor {
 
+    private static final Logger log = LoggerFactory.getLogger(HttpRequestInterceptor.class);
+
+    /** ??????? SERVER Span */
     private static final String TRACE_SPAN_ATTR = "X-Insight-Boot2-Span";
 
     private final SpanReportingListener spanReportingListener;
     private final InsightBoot2Properties insightProperties;
 
+    /**
+     * @param spanReportingListener ????
+     * @param insightProperties     ??
+     */
     public HttpRequestInterceptor(SpanReportingListener spanReportingListener,
                                   InsightBoot2Properties insightProperties) {
         this.spanReportingListener = spanReportingListener;
         this.insightProperties = insightProperties;
     }
 
+    /**
+     * ??????? SERVER Span ??? TraceContext?
+     *
+     * @param request  ??
+     * @param response ??
+     * @param handler  ???
+     * @return ?? true?????
+     */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String operationName = request.getMethod() + " " + request.getRequestURI();
@@ -49,17 +62,33 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
                 .addTag("http.client_ip", clientIp(request));
         request.setAttribute(TRACE_SPAN_ATTR, span);
         if (insightProperties.isDiagnosticLogs()) {
-            log.info("[HTTP拦截-Boot2] 开始: traceId={}, {}", span.getTraceId(), operationName);
+            log.info("[HTTP??-Boot2] ??: traceId={}, {}", span.getTraceId(), operationName);
         }
         return true;
     }
 
+    /**
+     * ??????????????????
+     *
+     * @param request      ??
+     * @param response     ??
+     * @param handler      ???
+     * @param modelAndView ????
+     */
     @Override
     public void postHandle(HttpServletRequest request, HttpServletResponse response,
                            Object handler, ModelAndView modelAndView) {
-        // no-op
+        // ????????? afterCompletion
     }
 
+    /**
+     * ??????? Span?????? ThreadLocal?
+     *
+     * @param request  ??
+     * @param response ??
+     * @param handler  ???
+     * @param ex       ???????? null
+     */
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception ex) {
@@ -85,6 +114,12 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
         TraceContext.clear();
     }
 
+    /**
+     * ????? IP??? X-Forwarded-For??
+     *
+     * @param request ??
+     * @return IP ?????????
+     */
     private static String clientIp(HttpServletRequest request) {
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {

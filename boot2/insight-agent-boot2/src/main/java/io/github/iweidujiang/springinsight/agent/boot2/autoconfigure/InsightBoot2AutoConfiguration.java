@@ -1,12 +1,10 @@
-/*
- * Copyright (c) 2026, 苏渡苇. All rights reserved.
+/**
+ * InsightBoot2AutoConfiguration?Boot2 ?????spring.factories??????? HTTP ???
  *
- * InsightBoot2AutoConfiguration：Boot2 自动装配（spring.factories）；注册上报、HTTP 拦截。
+ * @since?2026-09-07
+ * @author???? ???????
  *
- * @since：2026-09-07
- * @author：苏渡苇 公众号：苏渡苇
- *
- * GitHub：https://github.com/iweidujiang
+ * GitHub?https://github.com/iweidujiang
  */
 package io.github.iweidujiang.springinsight.agent.boot2.autoconfigure;
 
@@ -16,7 +14,8 @@ import io.github.iweidujiang.springinsight.agent.boot2.instrumentation.HttpReque
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.boot2.sink.HttpInsightBatchSink;
 import io.github.iweidujiang.springinsight.agent.boot2.sink.InsightBatchSink;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -30,33 +29,52 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-@Slf4j
 @Configuration
 @EnableConfigurationProperties(InsightBoot2Properties.class)
 @ConditionalOnProperty(prefix = "spring.insight", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class InsightBoot2AutoConfiguration {
 
+    private static final Logger log = LoggerFactory.getLogger(InsightBoot2AutoConfiguration.class);
+
     private final InsightBoot2Properties properties;
 
+    /**
+     * ???????????
+     *
+     * @param properties  Insight ??
+     * @param environment Spring Environment
+     */
     public InsightBoot2AutoConfiguration(InsightBoot2Properties properties, Environment environment) {
         this.properties = properties;
         properties.resolveServiceNameFromEnvironment(environment);
         properties.validate();
-        log.info("[Boot2装配] Spring Insight Boot2 Agent 就绪: serviceName={}, serverUrl={}",
+        log.info("[Boot2??] Spring Insight Boot2 Agent ??: serviceName={}, serverUrl={}",
                 properties.getServiceName(),
                 properties.hasServerUrl() ? properties.normalizeServerUrl() : "(none)");
     }
 
+    /**
+     * HTTP ???? Sink???? server-url??
+     *
+     * @param objectMapper Jackson
+     * @return Sink
+     */
     @Bean
     @ConditionalOnMissingBean(InsightBatchSink.class)
     @ConditionalOnProperty(prefix = "spring.insight", name = "server-url")
     public InsightBatchSink httpInsightBatchSink(ObjectMapper objectMapper) {
         if (!StringUtils.hasText(properties.normalizeServerUrl())) {
-            throw new IllegalStateException("spring.insight.server-url 已声明但值为空");
+            throw new IllegalStateException("spring.insight.server-url ???????");
         }
         return new HttpInsightBatchSink(properties, objectMapper);
     }
 
+    /**
+     * ??????
+     *
+     * @param batchSinkProvider Sink ???
+     * @return ? start ????
+     */
     @Bean(destroyMethod = "stop")
     @ConditionalOnMissingBean
     public AsyncSpanReporter asyncSpanReporter(ObjectProvider<InsightBatchSink> batchSinkProvider) {
@@ -65,27 +83,49 @@ public class InsightBoot2AutoConfiguration {
         return reporter;
     }
 
+    /**
+     * Span ??????
+     *
+     * @param asyncSpanReporter ?????
+     * @return ???
+     */
     @Bean
     @ConditionalOnMissingBean
     public SpanReportingListener spanReportingListener(AsyncSpanReporter asyncSpanReporter) {
         return new SpanReportingListener(asyncSpanReporter);
     }
 
+    /**
+     * MVC ??????Servlet Web ????
+     */
     @Configuration
     @ConditionalOnWebApplication
     @ConditionalOnClass(WebMvcConfigurer.class)
     @ConditionalOnProperty(prefix = "spring.insight", name = "http-tracing-enabled", havingValue = "true", matchIfMissing = true)
     static class MvcTracingConfiguration implements WebMvcConfigurer {
 
+        private static final Logger log = LoggerFactory.getLogger(MvcTracingConfiguration.class);
+
         private final InsightBoot2Properties properties;
         private final ObjectProvider<HttpRequestInterceptor> interceptorProvider;
 
+        /**
+         * @param properties           ??
+         * @param interceptorProvider  ??????????? WebMvcConfigurer ????
+         */
         MvcTracingConfiguration(InsightBoot2Properties properties,
                                 ObjectProvider<HttpRequestInterceptor> interceptorProvider) {
             this.properties = properties;
             this.interceptorProvider = interceptorProvider;
         }
 
+        /**
+         * HTTP ????? Bean?
+         *
+         * @param spanReportingListener ????
+         * @param props                 ??
+         * @return ???
+         */
         @Bean
         @ConditionalOnMissingBean
         public HttpRequestInterceptor httpRequestInterceptor(SpanReportingListener spanReportingListener,
@@ -93,6 +133,11 @@ public class InsightBoot2AutoConfiguration {
             return new HttpRequestInterceptor(spanReportingListener, props);
         }
 
+        /**
+         * ?????? Spring MVC?
+         *
+         * @param registry ??????
+         */
         @Override
         public void addInterceptors(InterceptorRegistry registry) {
             HttpRequestInterceptor interceptor = interceptorProvider.getIfAvailable();
@@ -100,7 +145,7 @@ public class InsightBoot2AutoConfiguration {
                 registry.addInterceptor(interceptor)
                         .addPathPatterns("/**")
                         .excludePathPatterns(properties.resolveExcludePatterns());
-                log.info("[Boot2装配] HTTP 拦截器已注册");
+                log.info("[Boot2??] HTTP ??????");
             }
         }
     }

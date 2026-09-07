@@ -1,30 +1,38 @@
-/*
- * Copyright (c) 2026, 苏渡苇. All rights reserved.
+/**
+ * SpanReportingListener?????? Span ?????????
  *
- * SpanReportingListener：接收已结束 Span 并交给异步上报器。
+ * @since?2026-09-07
+ * @author???? ???????
  *
- * @since：2026-09-07
- * @author：苏渡苇 公众号：苏渡苇
- *
- * GitHub：https://github.com/iweidujiang
+ * GitHub?https://github.com/iweidujiang
  */
 package io.github.iweidujiang.springinsight.agent.boot2.listener;
 
 import io.github.iweidujiang.springinsight.agent.boot2.collector.AsyncSpanReporter;
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.PreDestroy;
 
-@Slf4j
 public class SpanReportingListener {
+
+    private static final Logger log = LoggerFactory.getLogger(SpanReportingListener.class);
 
     private final AsyncSpanReporter asyncSpanReporter;
 
+    /**
+     * @param asyncSpanReporter ?????
+     */
     public SpanReportingListener(AsyncSpanReporter asyncSpanReporter) {
         this.asyncSpanReporter = asyncSpanReporter;
     }
 
+    /**
+     * ??????? Span?
+     *
+     * @param span ?? null????
+     */
     public void reportSpan(TraceSpan span) {
         if (span == null) {
             return;
@@ -34,10 +42,13 @@ public class SpanReportingListener {
         }
         boolean ok = asyncSpanReporter.report(span);
         if (!ok) {
-            log.warn("[Span监听-Boot2] 上报未接受: spanId={}", span.getSpanId());
+            log.warn("[Span??-Boot2] ?????: spanId={}", span.getSpanId());
         }
     }
 
+    /**
+     * ????????????
+     */
     @PreDestroy
     public void destroy() {
         asyncSpanReporter.stop();
