@@ -135,10 +135,15 @@ const loading = ref(true)
 const currentTime = ref('')
 const hours = ref(72)
 const dependencies = ref<any[]>([])
+const serviceNames = ref<string[]>([])
 const chartEl = ref<HTMLElement | null>(null)
 
 let topologyChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
+
+const topologyOpts = () => ({
+  standaloneServices: serviceNames.value
+})
 
 const updateCurrentTime = () => {
   currentTime.value = new Date().toTimeString().split(' ')[0]
@@ -163,13 +168,13 @@ const bindTopologyClick = () => {
 const initChart = () => {
   if (!chartEl.value) return
   topologyChart = echarts.init(chartEl.value)
-  topologyChart.setOption(buildTopologyOption([]))
+  topologyChart.setOption(buildTopologyOption([], topologyOpts()))
   bindTopologyClick()
 }
 
 const updateChart = () => {
   if (!topologyChart) return
-  topologyChart.setOption(buildTopologyOption(dependencies.value), { notMerge: true })
+  topologyChart.setOption(buildTopologyOption(dependencies.value, topologyOpts()), { notMerge: true })
   nextTick(() => topologyChart?.resize())
 }
 
@@ -180,7 +185,7 @@ const refreshTopology = () => {
 
 const fitToScreen = () => {
   if (!topologyChart) return
-  topologyChart.setOption(buildTopologyOption(dependencies.value), { notMerge: true })
+  topologyChart.setOption(buildTopologyOption(dependencies.value, topologyOpts()), { notMerge: true })
   topologyChart.resize()
 }
 
@@ -198,7 +203,12 @@ const downloadTopology = () => {
 const loadData = async () => {
   try {
     loading.value = true
-    dependencies.value = await ApiService.getServiceDependencies(hours.value)
+    const [deps, names] = await Promise.all([
+      ApiService.getServiceDependencies(hours.value),
+      ApiService.getServiceNames()
+    ])
+    dependencies.value = deps
+    serviceNames.value = names
     updateChart()
   } catch (error) {
     console.error('加载拓扑数据失败:', error)

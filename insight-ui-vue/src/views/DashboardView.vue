@@ -117,11 +117,20 @@
 
         <div class="si-dashboard__diag-panel">
           <div class="si-dashboard__diag-head">
-            <span><i class="fa fa-exchange me-2"></i>热点依赖 Top</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goTopology">完整拓扑</button>
+            <span>
+              <i class="fa me-2" :class="hasDependencies ? 'fa-exchange' : 'fa-heartbeat'"></i>
+              {{ hasDependencies ? '热点依赖 Top' : '服务健康快照' }}
+            </span>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary py-0"
+              @click="hasDependencies ? goTopology() : goSlowTraces()"
+            >
+              {{ hasDependencies ? '完整拓扑' : '看慢链路' }}
+            </button>
           </div>
-          <div v-if="hotDependencies.length === 0" class="si-dashboard__diag-empty">暂无跨服务调用</div>
-          <div v-else class="table-responsive si-dashboard__diag-scroll">
+
+          <div v-if="hasDependencies" class="table-responsive si-dashboard__diag-scroll">
             <table class="table table-hover mb-0 si-dashboard__diag-table">
               <thead class="table-light">
                 <tr>
@@ -150,6 +159,42 @@
               </tbody>
             </table>
           </div>
+
+          <div v-else-if="healthSnapshot.length > 0" class="table-responsive si-dashboard__diag-scroll">
+            <table class="table table-hover mb-0 si-dashboard__diag-table">
+              <thead class="table-light">
+                <tr>
+                  <th>服务</th>
+                  <th>均耗时</th>
+                  <th>p95</th>
+                  <th>错误</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in healthSnapshot"
+                  :key="'health-' + row.serviceName"
+                  class="si-dashboard__diag-row"
+                  @click="goServiceSlow(row)"
+                >
+                  <td class="text-truncate" style="max-width: 9rem" :title="row.serviceName">{{ row.serviceName }}</td>
+                  <td>{{ formatMs(row.avgMs) }}</td>
+                  <td :class="row.p95Ms >= 1000 ? 'text-danger fw-bold' : row.p95Ms >= 500 ? 'text-warning' : ''">
+                    {{ formatMs(row.p95Ms) }}
+                  </td>
+                  <td :class="(row.errorCount || 0) > 0 ? 'text-danger' : 'text-muted'">
+                    {{ row.errorCount || 0 }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-else class="si-dashboard__diag-empty si-dashboard__diag-empty--rich">
+            <p class="mb-1">已接入监控，但本窗口暂无延迟样本</p>
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="hours = 0; loadData()">扩大到全部已存</button>
+          </div>
+
           <div v-if="errorAnalysis && errorAnalysis.length > 0" class="si-dashboard__diag-foot">
             <button type="button" class="btn btn-sm btn-outline-danger py-0" @click="goErrors">
               {{ errorAnalysis.length }} 个异常服务 · 去错误分析
@@ -164,9 +209,13 @@
           <div class="si-dashboard__chart-head">
             <div>
               <h6 class="si-dashboard__panel-title mb-0">
-                <i class="fa fa-project-diagram me-2"></i>主视图 · 服务依赖拓扑
+                <i class="fa fa-project-diagram me-2"></i>
+                {{ hasDependencies ? '主视图 · 服务依赖拓扑' : '主视图 · 单应用总览' }}
               </h6>
-              <p class="si-dashboard__panel-desc mb-0">箭头指向被调用方 · 点击节点/边可下钻链路 · 最近 24 小时</p>
+              <p class="si-dashboard__panel-desc mb-0">
+                <template v-if="hasDependencies">箭头指向被调用方 · 点击节点/边可下钻链路 · {{ hoursLabel }}</template>
+                <template v-else>已监控 {{ services.length }} 个服务 · 暂无跨服务边 · {{ hoursLabel }}</template>
+              </p>
             </div>
             <div class="d-flex align-items-center gap-2">
               <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTopology">
@@ -177,7 +226,52 @@
               </button>
             </div>
           </div>
-          <div id="topology-chart" class="si-dashboard__chart-canvas"></div>
+
+          <div class="si-dashboard__hero-body" :class="{ 'si-dashboard__hero-body--solo': !hasDependencies && services.length > 0 }">
+            <div id="topology-chart" class="si-dashboard__chart-canvas"></div>
+
+            <div v-if="!hasDependencies && services.length > 0" class="si-dashboard__solo">
+              <div class="si-dashboard__solo-card">
+                <h6 class="si-dashboard__solo-title"><i class="fa fa-lightbulb me-1"></i>让拓扑更有价值</h6>
+                <ul class="si-dashboard__solo-tips">
+                  <li>业务侧用 OpenFeign / WebClient / Gateway 出站时，Agent 会写入 <code>remoteService</code></li>
+                  <li>上报后此处会出现「调用方 → 被调用方」边，可点击下钻</li>
+                  <li>单应用场景仍可用慢服务、请求排名与最近链路定位问题</li>
+                </ul>
+                <div class="si-dashboard__solo-actions">
+                  <button type="button" class="btn btn-sm btn-primary" @click="goTraces()">查看链路</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" @click="hours = 0; loadData()">扩大时间范围</button>
+                </div>
+              </div>
+
+              <div class="si-dashboard__solo-card si-dashboard__solo-card--traces">
+                <div class="si-dashboard__solo-traces-head">
+                  <h6 class="si-dashboard__solo-title mb-0"><i class="fa fa-stream me-1"></i>最近链路</h6>
+                  <button type="button" class="btn btn-sm btn-link py-0" @click="goTraces()">全部</button>
+                </div>
+                <div v-if="recentTraces.length === 0" class="si-dashboard__diag-empty py-3">暂无最近链路</div>
+                <ul v-else class="si-dashboard__solo-traces">
+                  <li
+                    v-for="tr in recentTraces"
+                    :key="tr.traceId"
+                    class="si-dashboard__solo-trace"
+                    @click="goTraceDetail(tr.traceId)"
+                  >
+                    <div class="si-dashboard__solo-trace-main">
+                      <span class="si-dashboard__solo-trace-op" :title="tr.operationName">{{ tr.operationName || tr.endpoint || tr.traceId }}</span>
+                      <span class="badge" :class="tr.hasError || tr.statusCode === 'ERROR' ? 'bg-danger' : 'bg-success'">
+                        {{ tr.hasError || tr.statusCode === 'ERROR' ? '失败' : '成功' }}
+                      </span>
+                    </div>
+                    <div class="si-dashboard__solo-trace-meta">
+                      <span>{{ tr.serviceName || '—' }}</span>
+                      <span>{{ formatMs(tr.durationMs || 0) }}</span>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
 
         <aside class="si-dashboard__rail">
@@ -224,14 +318,31 @@ const serviceLatency = ref<any[]>([])
 const errorAnalysis = ref<any[]>([])
 const collectorStats = ref<any>({})
 const totalSpans = ref(0)
+const recentTraces = ref<any[]>([])
 
 let topologyChart: echarts.ECharts | null = null
 let serviceRankChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
 
+const hasDependencies = computed(() => dependencies.value.length > 0)
+
+const hoursLabel = computed(() => {
+  const h = hours.value
+  if (h === 0) return '全部已存'
+  if (h === 1) return '近 1 小时'
+  if (h === 168) return '近 7 天'
+  return `近 ${h} 小时`
+})
+
 const slowServices = computed(() =>
   [...serviceLatency.value]
     .sort((a, b) => (b.p95Ms || 0) - (a.p95Ms || 0))
+    .slice(0, 8)
+)
+
+const healthSnapshot = computed(() =>
+  [...serviceLatency.value]
+    .sort((a, b) => (b.spanCount || 0) - (a.spanCount || 0))
     .slice(0, 8)
 )
 
@@ -289,6 +400,10 @@ const onKpiClick = (to: string) => {
 const goTopology = () => router.push('/topology')
 const goTraces = (query: Record<string, string> = {}) => router.push({ path: '/traces', query })
 const goErrors = () => router.push('/error-analysis')
+const goTraceDetail = (traceId: string) => {
+  if (!traceId) return
+  router.push({ name: 'trace-detail', params: { traceId } })
+}
 
 const goSlowTraces = () => goTraces({ minDurationMs: '500' })
 
@@ -379,7 +494,18 @@ const initCharts = () => {
 
 const updateCharts = () => {
   if (topologyChart) {
-    topologyChart.setOption(buildTopologyOption(dependencies.value, { compact: false }), { notMerge: true })
+    const spanByService: Record<string, number> = {}
+    serviceStats.value.forEach((s: any) => {
+      if (s.serviceName) spanByService[s.serviceName] = s.totalSpans || 1
+    })
+    topologyChart.setOption(
+      buildTopologyOption(dependencies.value, {
+        compact: !hasDependencies.value && services.value.length > 0,
+        standaloneServices: services.value,
+        spanByService
+      }),
+      { notMerge: true }
+    )
   }
 
   if (serviceRankChart) {
@@ -419,13 +545,14 @@ const loadData = async () => {
   try {
     loading.value = true
     const h = hours.value
-    const [serviceNames, serviceDeps, serviceStatsData, latencyData, errorAnalysisData, collectorStatsData] = await Promise.all([
+    const [serviceNames, serviceDeps, serviceStatsData, latencyData, errorAnalysisData, collectorStatsData, recent] = await Promise.all([
       ApiService.getServiceNames(),
       ApiService.getServiceDependencies(h),
       ApiService.getServiceStats(h),
       ApiService.getServiceLatency(h, 20),
       ApiService.getErrorAnalysis(h),
-      ApiService.getCollectorStats()
+      ApiService.getCollectorStats(),
+      ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 8 })
     ])
     services.value = serviceNames
     dependencies.value = serviceDeps
@@ -433,6 +560,7 @@ const loadData = async () => {
     serviceLatency.value = latencyData
     errorAnalysis.value = errorAnalysisData
     collectorStats.value = collectorStatsData
+    recentTraces.value = Array.isArray(recent) ? recent : []
     totalSpans.value = serviceStatsData.reduce((sum: number, s: any) => sum + (s.totalSpans || 0), 0)
     updateCharts()
   } catch (error) {
@@ -810,6 +938,13 @@ onUnmounted(() => {
   text-align: center;
 }
 
+.si-dashboard__diag-empty--rich {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+
 .si-dashboard__diag-scroll {
   overflow-y: auto;
   max-height: 10rem;
@@ -861,5 +996,133 @@ onUnmounted(() => {
   padding: 0.4rem 0.75rem 0.55rem;
   border-top: 1px dashed rgba(20, 83, 45, 0.12);
   text-align: right;
+}
+
+.si-dashboard__hero-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.si-dashboard__hero-body--solo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 42%);
+  gap: 0.65rem;
+  align-items: stretch;
+}
+
+.si-dashboard__hero-body--solo .si-dashboard__chart-canvas {
+  min-height: 12rem;
+}
+
+.si-dashboard__solo {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  overflow: hidden;
+}
+
+.si-dashboard__solo-card {
+  border: 1px solid rgba(20, 83, 45, 0.12);
+  border-radius: 10px;
+  background: rgba(15, 118, 110, 0.04);
+  padding: 0.7rem 0.8rem;
+}
+
+.si-dashboard__solo-card--traces {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--card-bg);
+  overflow: hidden;
+}
+
+.si-dashboard__solo-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--si-ink);
+}
+
+.si-dashboard__solo-tips {
+  margin: 0 0 0.65rem;
+  padding-left: 1.1rem;
+  font-size: 0.75rem;
+  color: var(--si-ink-soft);
+  line-height: 1.55;
+}
+
+.si-dashboard__solo-tips code {
+  font-size: 0.7rem;
+  color: var(--si-teal);
+}
+
+.si-dashboard__solo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.si-dashboard__solo-traces-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+  flex-shrink: 0;
+}
+
+.si-dashboard__solo-traces {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.si-dashboard__solo-trace {
+  padding: 0.45rem 0.35rem;
+  border-bottom: 1px solid rgba(20, 83, 45, 0.08);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.si-dashboard__solo-trace:hover {
+  background: rgba(15, 118, 110, 0.06);
+}
+
+.si-dashboard__solo-trace-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.si-dashboard__solo-trace-op {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--si-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.si-dashboard__solo-trace-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  color: var(--si-muted);
+}
+
+@media (max-width: 991px) {
+  .si-dashboard__hero-body--solo {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

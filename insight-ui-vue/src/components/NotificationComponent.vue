@@ -1,49 +1,67 @@
 <template>
-  <div class="notification-container">
-    <!-- 通知按钮 -->
-    <button class="notification-button" @click="toggleNotifications">
+  <div class="notification-container" ref="containerRef">
+    <button
+      ref="buttonRef"
+      type="button"
+      class="notification-button"
+      :aria-expanded="showNotifications"
+      aria-label="打开通知中心"
+      @click.stop="toggleNotifications"
+    >
       <i class="fa fa-bell"></i>
-      <span v-if="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
+      <span v-if="unreadCount > 0" class="notification-badge">{{ badgeText }}</span>
     </button>
 
-    <!-- 通知面板 -->
-    <div v-if="showNotifications" class="notification-panel">
-      <div class="notification-header">
-        <h5>通知中心</h5>
-        <button class="btn btn-sm btn-outline-secondary" @click="markAllAsRead" v-if="unreadCount > 0">
-          全部已读
-        </button>
-      </div>
-      <div class="notification-list">
-        <div v-if="notifications.length === 0" class="notification-empty">
-          <i class="fa fa-bell-slash"></i>
-          <p>暂无通知</p>
+    <Teleport to="body">
+      <div
+        v-if="showNotifications"
+        class="notification-panel"
+        :style="panelStyle"
+        role="dialog"
+        aria-label="通知中心"
+        @click.stop
+      >
+        <div class="notification-header">
+          <h5>通知中心</h5>
+          <button
+            v-if="unreadCount > 0"
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            @click="markAllAsRead"
+          >
+            全部已读
+          </button>
         </div>
-        <div
-          v-for="notification in notifications"
-          :key="notification.id"
-          class="notification-item"
-          :class="{ 'unread': !notification.read }"
-          @click="markAsRead(notification.id)"
-        >
-          <div class="notification-icon" :class="notification.type">
-            <i :class="notification.icon"></i>
+        <div class="notification-list">
+          <div v-if="notifications.length === 0" class="notification-empty">
+            <i class="fa fa-bell-slash"></i>
+            <p>暂无通知</p>
           </div>
-          <div class="notification-content">
-            <h6 class="notification-title">{{ notification.title }}</h6>
-            <p class="notification-message">{{ notification.message }}</p>
-            <span class="notification-time">{{ formatTime(notification.timestamp) }}</span>
+          <div
+            v-for="notification in notifications"
+            :key="notification.id"
+            class="notification-item"
+            :class="{ unread: !notification.read }"
+            @click="markAsRead(notification.id)"
+          >
+            <div class="notification-icon" :class="notification.type">
+              <i class="fa" :class="notification.icon"></i>
+            </div>
+            <div class="notification-content">
+              <h6 class="notification-title">{{ notification.title }}</h6>
+              <p class="notification-message">{{ notification.message }}</p>
+              <span class="notification-time">{{ formatTime(notification.timestamp) }}</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, type CSSProperties } from 'vue'
 
-// 通知类型定义
 interface Notification {
   id: string
   title: string
@@ -54,119 +72,110 @@ interface Notification {
   read: boolean
 }
 
-// 响应式数据
 const showNotifications = ref(false)
 const notifications = ref<Notification[]>([])
+const buttonRef = ref<HTMLButtonElement | null>(null)
+const containerRef = ref<HTMLElement | null>(null)
+const panelStyle = ref<CSSProperties>({})
 
-// 计算属性：未读通知数量
-const unreadCount = computed(() => {
-  return notifications.value.filter(n => !n.read).length
-})
+const unreadCount = computed(() => notifications.value.filter((n) => !n.read).length)
+const badgeText = computed(() => (unreadCount.value > 99 ? '99+' : String(unreadCount.value)))
 
-// 切换通知面板显示
-const toggleNotifications = () => {
-  showNotifications.value = !showNotifications.value
-}
-
-// 标记通知为已读
-const markAsRead = (id: string) => {
-  const notification = notifications.value.find(n => n.id === id)
-  if (notification) {
-    notification.read = true
+const updatePanelPosition = () => {
+  const btn = buttonRef.value
+  if (!btn) return
+  const rect = btn.getBoundingClientRect()
+  const panelWidth = Math.min(350, window.innerWidth - 16)
+  const gap = 8
+  // 从按钮上方展开，避免落在视口外被「挡住」
+  let left = rect.left
+  if (left + panelWidth > window.innerWidth - 8) {
+    left = Math.max(8, window.innerWidth - panelWidth - 8)
+  }
+  panelStyle.value = {
+    position: 'fixed',
+    left: `${left}px`,
+    bottom: `${window.innerHeight - rect.top + gap}px`,
+    width: `${panelWidth}px`,
+    zIndex: 5000
   }
 }
 
-// 标记所有通知为已读
+const toggleNotifications = async () => {
+  showNotifications.value = !showNotifications.value
+  if (showNotifications.value) {
+    await nextTick()
+    updatePanelPosition()
+  }
+}
+
+const closeNotifications = () => {
+  showNotifications.value = false
+}
+
+const markAsRead = (id: string) => {
+  const notification = notifications.value.find((n) => n.id === id)
+  if (notification) notification.read = true
+}
+
 const markAllAsRead = () => {
-  notifications.value.forEach(notification => {
-    notification.read = true
+  notifications.value.forEach((n) => {
+    n.read = true
   })
 }
 
-// 格式化时间
-const formatTime = (timestamp: number) => {
-  const date = new Date(timestamp)
-  return date.toLocaleString('zh-CN')
-}
+const formatTime = (timestamp: number) => new Date(timestamp).toLocaleString('zh-CN')
 
-// 添加通知
 const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
   const newNotification: Notification = {
     ...notification,
-    id: `notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `notification-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     timestamp: Date.now(),
     read: false
   }
   notifications.value.unshift(newNotification)
-  
-  // 限制通知数量
   if (notifications.value.length > 50) {
     notifications.value = notifications.value.slice(0, 50)
   }
 }
 
-// 模拟告警通知
-const simulateAlerts = () => {
-  const alertTypes = [
-    {
-      title: '服务异常',
-      message: '用户服务 (user-service) 错误率超过 10%，请及时处理',
-      type: 'error' as const,
-      icon: 'fa-exclamation-circle'
-    },
-    {
-      title: '性能警告',
-      message: '订单服务 (order-service) 平均响应时间超过 200ms',
-      type: 'warning' as const,
-      icon: 'fa-exclamation-triangle'
-    },
-    {
-      title: '服务恢复',
-      message: '用户服务 (user-service) 已恢复正常运行',
-      type: 'success' as const,
-      icon: 'fa-check-circle'
-    },
-    {
-      title: '系统通知',
-      message: 'Spring Insight 已更新到最新版本',
-      type: 'info' as const,
-      icon: 'fa-info-circle'
-    }
-  ]
-  
-  // 随机添加一个告警
-  const randomAlert = alertTypes[Math.floor(Math.random() * alertTypes.length)]
-  addNotification(randomAlert)
+const onDocPointerDown = (event: MouseEvent | TouchEvent) => {
+  if (!showNotifications.value) return
+  const target = event.target as Node | null
+  if (!target) return
+  if (containerRef.value?.contains(target)) return
+  const panel = document.querySelector('.notification-panel')
+  if (panel?.contains(target)) return
+  closeNotifications()
 }
 
-// 模拟实时告警
-let alertInterval: number | null = null
+const onKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') closeNotifications()
+}
 
-// 组件挂载时初始化
 onMounted(() => {
-  // 添加一些初始通知
   addNotification({
-    title: '系统启动',
-    message: 'Spring Insight 监控系统已成功启动',
-    type: 'success',
-    icon: 'fa-check-circle'
+    title: '系统就绪',
+    message: 'Spring Insight 已启动。有异常服务或慢请求时，可在错误分析与链路页下钻。',
+    type: 'info',
+    icon: 'fa-info-circle'
   })
-  
-  // 每30秒模拟一个告警
-  alertInterval = window.setInterval(simulateAlerts, 30000)
+  document.addEventListener('mousedown', onDocPointerDown)
+  document.addEventListener('touchstart', onDocPointerDown)
+  window.addEventListener('keydown', onKeydown)
+  window.addEventListener('resize', updatePanelPosition)
+  window.addEventListener('scroll', updatePanelPosition, true)
 })
 
-// 组件卸载时清理
 onUnmounted(() => {
-  if (alertInterval) {
-    clearInterval(alertInterval)
-  }
+  document.removeEventListener('mousedown', onDocPointerDown)
+  document.removeEventListener('touchstart', onDocPointerDown)
+  window.removeEventListener('keydown', onKeydown)
+  window.removeEventListener('resize', updatePanelPosition)
+  window.removeEventListener('scroll', updatePanelPosition, true)
 })
 
-// 暴露方法
-defineExpose({
-  addNotification
-})
+defineExpose({ addNotification })
 </script>
 
 <style scoped>
@@ -178,17 +187,17 @@ defineExpose({
   position: relative;
   background: none;
   border: none;
-  font-size: 1.25rem;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.15rem;
+  color: var(--si-ink-soft, #3d524a);
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 50%;
-  transition: all 0.3s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .notification-button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
+  background-color: rgba(15, 118, 110, 0.1);
+  color: var(--si-teal, #0f766e);
 }
 
 .notification-badge {
@@ -197,42 +206,45 @@ defineExpose({
   right: 0;
   background-color: #ef4444;
   color: white;
-  font-size: 0.75rem;
-  font-weight: bold;
-  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
   border-radius: 9999px;
-  min-width: 1.5rem;
+  min-width: 1.35rem;
   text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  line-height: 1.2;
 }
+</style>
 
+<style>
+/* Teleport 到 body，需非 scoped */
 .notification-panel {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  width: 350px;
-  max-height: 400px;
-  background: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  z-index: 1000;
-  margin-top: 0.5rem;
+  max-height: min(400px, calc(100vh - 1.5rem));
+  background: #fffcfa;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(20, 83, 45, 0.14);
+  box-shadow: 0 16px 40px rgba(21, 36, 31, 0.18);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .notification-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
+  background-color: rgba(15, 118, 110, 0.05);
+  flex-shrink: 0;
 }
 
 .notification-header h5 {
   margin: 0;
-  font-weight: 600;
-  color: #1e293b;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #15241f;
 }
 
 .notification-list {
@@ -251,24 +263,24 @@ defineExpose({
 
 .notification-empty i {
   font-size: 2rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .notification-item {
   display: flex;
-  padding: 1rem;
+  padding: 0.85rem 1rem;
   border-bottom: 1px solid #f1f5f9;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease;
 }
 
 .notification-item:hover {
-  background-color: #f8fafc;
+  background-color: rgba(15, 118, 110, 0.05);
 }
 
 .notification-item.unread {
   background-color: #f0f9ff;
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid #0f766e;
 }
 
 .notification-icon {
@@ -278,7 +290,7 @@ defineExpose({
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  margin-right: 1rem;
+  margin-right: 0.85rem;
   flex-shrink: 0;
 }
 
@@ -303,7 +315,7 @@ defineExpose({
 }
 
 .notification-icon i {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
 }
 
 .notification-content {
@@ -312,14 +324,14 @@ defineExpose({
 }
 
 .notification-title {
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 0.2rem;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #1e293b;
 }
 
 .notification-message {
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.4rem;
   font-size: 0.75rem;
   color: #64748b;
   line-height: 1.4;
@@ -328,19 +340,5 @@ defineExpose({
 .notification-time {
   font-size: 0.6875rem;
   color: #94a3b8;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .notification-panel {
-    width: 300px;
-  }
-}
-
-@media (max-width: 480px) {
-  .notification-panel {
-    width: 280px;
-    right: -20px;
-  }
 }
 </style>

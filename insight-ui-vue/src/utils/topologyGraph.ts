@@ -16,7 +16,7 @@ const NODE_COLORS = [
 /** 构建带箭头的服务依赖图（circular 布局，避免 force 把节点挤出视口） */
 export function buildTopologyOption(
   dependencies: ServiceDependency[],
-  opts: { compact?: boolean } = {}
+  opts: { compact?: boolean; standaloneServices?: string[]; spanByService?: Record<string, number> } = {}
 ): EChartsOption {
   const compact = opts.compact === true
   const callCounts = new Map<string, number>()
@@ -50,6 +50,13 @@ export function buildTopologyOption(
     })
   })
 
+  // 无跨服务边时，仍展示已上报的单服务节点，避免主视图大片空白
+  const spanBy = opts.spanByService || {}
+  ;(opts.standaloneServices || []).forEach((name) => {
+    if (!name || callCounts.has(name)) return
+    callCounts.set(name, spanBy[name] || 1)
+  })
+
   const nodes = Array.from(callCounts.entries()).map(([name, value], index) => ({
     name,
     value,
@@ -73,6 +80,7 @@ export function buildTopologyOption(
   }))
 
   const empty = nodes.length === 0
+  const solo = !empty && links.length === 0
 
   return {
     backgroundColor: 'transparent',
@@ -88,7 +96,8 @@ export function buildTopologyOption(
           const avg = d.avgDuration != null ? `<br/>平均耗时: ${d.avgDuration} ms` : ''
           return `<div style="font-weight:700">${d.source} → ${d.target}</div>调用: ${d.value} 次${avg}<br/><span style="opacity:.75">点击边：查看调用方链路</span>`
         }
-        return `<div style="font-weight:700">${params.data.name}</div>关联调用: ${params.data.value}<br/><span style="opacity:.75">点击节点：查看该服务链路</span>`
+        const spanHint = solo ? '本机 Span' : '关联调用'
+        return `<div style="font-weight:700">${params.data.name}</div>${spanHint}: ${params.data.value}<br/><span style="opacity:.75">点击节点：查看该服务链路</span>`
       }
     },
     graphic: empty
@@ -97,14 +106,26 @@ export function buildTopologyOption(
           left: 'center',
           top: 'center',
           style: {
-            text: '暂无依赖拓扑\n请扩大时间范围，或产生跨服务调用后查看\n（箭头：调用方 → 被调用方）',
+            text: '暂无服务数据\n请确认 Agent 已上报，或扩大时间范围',
             fill: '#6b7f76',
             fontSize: 13,
             textAlign: 'center',
             lineHeight: 22
           }
         }]
-      : [],
+      : solo
+        ? [{
+            type: 'text',
+            left: 'center',
+            top: compact ? 8 : 12,
+            style: {
+              text: '当前为单应用监控（暂无跨服务调用边）· 点击节点可下钻链路',
+              fill: '#6b7f76',
+              fontSize: 12,
+              textAlign: 'center'
+            }
+          }]
+        : [],
     animationDurationUpdate: 800,
     series: [{
       type: 'graph',
@@ -115,8 +136,8 @@ export function buildTopologyOption(
       roam: true,
       cursor: 'pointer',
       scaleLimit: { min: 0.45, max: 2.5 },
-      zoom: 0.92,
-      center: ['50%', '50%'],
+      zoom: solo ? 0.75 : 0.92,
+      center: ['50%', solo ? '54%' : '50%'],
       edgeSymbol: ['none', 'arrow'],
       edgeSymbolSize: [0, compact ? 10 : 14],
       emphasis: {
