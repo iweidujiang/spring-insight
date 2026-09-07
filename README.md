@@ -39,6 +39,7 @@
 
 ## 它现在能做什么
 
+<img width="2327" height="516" alt="局部截取_20260907_210948" src="https://github.com/user-attachments/assets/5ddd8b7d-880f-4ffc-b2cb-59b0fdf6f53c" />
 
 
 
@@ -66,27 +67,18 @@
 
 ### 仪表盘
 
-<img width="2558" height="1255" alt="局部截取_20260904_182526" src="https://github.com/user-attachments/assets/5d0d53b4-5654-4632-b675-7b31a9f26969" />
-
-
+<img width="2328" height="1251" alt="局部截取_20260907_210738" src="https://github.com/user-attachments/assets/9855277a-4790-4697-bca8-082ae1dbec31" />
 
 
 
 ### 服务拓扑
 
-<img width="2524" height="1158" alt="局部截取_20260904_182613" src="https://github.com/user-attachments/assets/3742cc8b-f369-441b-9371-87d320db7c8f" />
-
-
-
-
+<img width="2313" height="1232" alt="局部截取_20260907_210519" src="https://github.com/user-attachments/assets/7a95aed7-9491-4cc0-b4fe-ccc00b1dab8c" />
 
 ### 链路追踪
 
-<img width="2533" height="750" alt="局部截取_20260904_182635" src="https://github.com/user-attachments/assets/6b60fcb8-ff84-4645-bf7b-b08e2306fa97" />
-
-
-<img width="2521" height="1177" alt="局部截取_20260904_193044" src="https://github.com/user-attachments/assets/f7fda1bb-6d6b-4364-b566-1a4c838dbf37" />
-
+<img width="2317" height="717" alt="局部截取_20260907_210813" src="https://github.com/user-attachments/assets/f1dedae5-f44f-4089-a6b3-fbad85f172d7" />
+<img width="2341" height="1211" alt="局部截取_20260907_210850" src="https://github.com/user-attachments/assets/65b01e60-4225-48b7-8d45-e84fc37835d4" />
 
 
 
@@ -182,11 +174,9 @@ Demo 把 Insight 当成**第三方依赖**使用：自己 `mvn install` 好 Insi
 | `insight-agent` | 采集核心（`…:insight-agent:0.1.0-SNAPSHOT`） |
 | `spring-insight-agent-starter` | **业务侧请依赖这个**（`…:spring-insight-agent-starter:0.1.0-SNAPSHOT`） |
 | `insight-server` | 监测中心可执行包（`insight-server-0.1.0-SNAPSHOT.jar`） |
-| `insight-ui-vue` | 前端源码（非 Maven 模块）；构建结果拷进 server 的 `static/` |
+| `insight-ui-vue` | 前端；构建结果会放进 server 的 `static/` |
 
-架构：
 
-<img width="1215" height="1009" alt="局部截取_20260824_152022" src="https://github.com/user-attachments/assets/b9910396-714c-4147-bd57-801a85e94021" />
 
 
 
@@ -226,7 +216,7 @@ spring:
 - [x] WebFlux Reactor Context + Gateway / WebClient 出站 CLIENT Span  
 - [x] 与 Prometheus / Micrometer 的轻量联动（Span 耗时 + 上报队列；连接池仍走 Actuator）  
 - [ ] 发到 Maven Central，少一步本地 install  
-- [x] **Boot 2.7 / Java 8 兼容线**（B0–B5 已完成，与主线并行；**insight-server 仍只支持 Boot 3**；详见 [`boot2/README.md`](boot2/README.md)）
+- [x] 兼容 **Boot 2.7 / Java 8 ** 
 
 #### Boot 2.7 / Java 8 分期（`boot2/` 独立工程，不进主 reactor）
 
@@ -239,7 +229,7 @@ spring:
 | B4 | Micrometer 桥；WebFlux 入口 + WebClient 出站 CLIENT Span（Boot2） | 完成 |
 | B5 | Gateway 出站 CLIENT Span（`remoteService` / `lb://`） | 完成 |
 
-原则：主线 `0.1.0-SNAPSHOT` 继续 Boot 3.5 + JDK 21；兼容线单独版本/artifact，避免一套源码硬拧双版本。
+原则：主线 `0.1.0-SNAPSHOT` 继续 Boot 3.5 + JDK 21；兼容线单独版本/artifact 。
 
 排期就不写死了，以免变成空头支票。当前主线仍是 **Spring Boot 3.5 + JDK 21**。
 
