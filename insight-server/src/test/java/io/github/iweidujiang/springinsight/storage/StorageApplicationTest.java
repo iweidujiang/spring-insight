@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.storage;
 
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
+import io.github.iweidujiang.springinsight.testsupport.StorageTestConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

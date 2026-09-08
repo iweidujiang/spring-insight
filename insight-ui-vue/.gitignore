@@ -7,7 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-package-lock.json
+# package-lock.json 纳入版本库，供 CI npm ci / 缓存使用
 
 node_modules
 dist

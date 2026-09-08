@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.collector;
 
+import io.github.iweidujiang.springinsight.testsupport.CollectorTestConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 

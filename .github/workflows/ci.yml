@@ -1,3 +1,8 @@
+# Spring Insight 持续集成
+# - 主线：JDK 21 全量 verify（含将 UI 打进 insight-server）
+# - Boot2：独立工程 verify
+# - 前端：单独校验 insight-ui-vue 可构建
+
 name: CI
 
 on:
@@ -8,52 +13,59 @@ on:
 
 jobs:
   mainline:
-    name: Mainline (JDK 21)
+    name: 主线（JDK 21）
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: 检出代码
+        uses: actions/checkout@v4
+      - name: 安装 JDK 21
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Build & verify (UI bundled into server)
+      - name: 构建并验证（自动打包控制台 UI）
         run: mvn -B -ntp verify
-      - name: Assert UI assets in server classes
+      - name: 检查 jar 内是否含控制台静态资源
         run: |
           test -f insight-server/target/classes/static/index.html
           grep -q '/assets/index-' insight-server/target/classes/static/index.html
 
   boot2:
-    name: Boot2 agent (JDK 11)
+    name: Boot2 兼容线（JDK 11）
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: boot2
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: 检出代码
+        uses: actions/checkout@v4
+      - name: 安装 JDK 11
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "11"
           cache: maven
-      - name: Build & test Boot2 line
+      - name: 构建并测试 Boot2
         run: mvn -B -ntp verify
 
   ui-source:
-    name: UI source build
+    name: 前端源码构建
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: insight-ui-vue
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: 检出代码
+        uses: actions/checkout@v4
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # 使用 Node 22，避免 Actions 对 Node 20 的弃用限制
+          node-version: "22"
           cache: npm
           cache-dependency-path: insight-ui-vue/package-lock.json
-      - name: npm ci && build
+      - name: 安装依赖并构建前端
         run: |
           npm ci
           npm run build
