@@ -143,7 +143,7 @@ public class InsightBeanConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true", matchIfMissing = false)
     public JvmMetricsCollector jvmMetricsCollector() {
         String serviceInstance = properties.getServiceInstance();
         if (serviceInstance == null || serviceInstance.trim().isEmpty()) {
@@ -172,7 +172,7 @@ public class InsightBeanConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true", matchIfMissing = false)
     public JvmMetricsReporter jvmMetricsReporter(JvmMetricsCollector jvmMetricsCollector, AsyncSpanReporter asyncSpanReporter) {
         JvmMetricsReporter reporter = new JvmMetricsReporter(
                 jvmMetricsCollector,
@@ -188,7 +188,7 @@ public class InsightBeanConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
-    @ConditionalOnProperty(prefix = "spring.insight.db-metrics", name = "enabled", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "spring.insight.db-metrics", name = "enabled", havingValue = "true", matchIfMissing = false)
     public DbCallAspect dbCallAspect(SpanReportingListener spanReportingListener) {
         String serviceInstance = properties.getServiceInstance();
         if (serviceInstance == null || serviceInstance.trim().isEmpty()) {

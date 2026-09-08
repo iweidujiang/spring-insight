@@ -1,0 +1,26 @@
+{
+  "groups": [
+    {
+      "name": "spring.insight.jvm-metrics",
+      "type": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightJvmMetricsProperties",
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightJvmMetricsProperties",
+      "description": "JVM 指标采集（实验；默认关闭，因 Server 暂无专用存储/UI）。"
+    }
+  ],
+  "properties": [
+    {
+      "name": "spring.insight.jvm-metrics.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 JVM 指标采集与上报。默认 false。",
+      "defaultValue": false,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightJvmMetricsProperties"
+    },
+    {
+      "name": "spring.insight.db-metrics.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 JDBC 调用 Aspect。默认 false（普通 Spring AOP 对 java.sql.* 往往无效）。",
+      "defaultValue": false
+    }
+  ],
+  "hints": []
+}

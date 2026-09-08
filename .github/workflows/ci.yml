@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  mainline:
+    name: Mainline (JDK 21)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Build & verify (UI bundled into server)
+        run: mvn -B -ntp verify
+      - name: Assert UI assets in server classes
+        run: |
+          test -f insight-server/target/classes/static/index.html
+          grep -q '/assets/index-' insight-server/target/classes/static/index.html
+
+  boot2:
+    name: Boot2 agent (JDK 11)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: boot2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+      - name: Build & test Boot2 line
+        run: mvn -B -ntp verify
+
+  ui-source:
+    name: UI source build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: insight-ui-vue
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: insight-ui-vue/package-lock.json
+      - name: npm ci && build
+        run: |
+          npm ci
+          npm run build

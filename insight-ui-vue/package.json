@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:server": "vite build --outDir ../insight-server/target/classes/static --emptyOutDir",
     "preview": "vite preview"
   },
   "dependencies": {

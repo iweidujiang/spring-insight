@@ -59,7 +59,16 @@
 - **尚未发布到 Maven Central**：需要自己 `mvn install` 到本地仓库  
 - 不是 OpenTelemetry / SkyWalking 的替代品  
 - 没有告警、没有多租户、没有鉴权完善的生产方案  
+- **JVM 指标 / JDBC Aspect 默认关闭**（Server 暂无 JVM 落库 UI；普通 AOP 难以稳定拦 `java.sql.*`）。需要时显式：
 
+```yaml
+spring:
+  insight:
+    jvm-metrics:
+      enabled: true   # 实验：上报后 Server 仍可能仅 debug 丢弃
+    db-metrics:
+      enabled: true   # 实验：请自行验证是否采到 DB Span
+```
 ---
 
 ## 长什么样
@@ -93,7 +102,7 @@
 
 ## 怎么跑起来
 
-环境：**JDK 21**、Maven 3.9+。
+环境：**JDK 21**、Maven 3.9+；打包 `insight-server` 时默认还会拉 Node/npm 构建控制台 UI（见下）。
 
 ### 1. 安装到本地仓库
 
@@ -103,6 +112,10 @@
 cd spring-insight
 mvn clean install -DskipTests
 ```
+
+> **UI 与 jar 同源**：`insight-server` 在 `prepare-package` 阶段会自动 `npm ci && npm run build:server`，把前端打进 jar。  
+> 改了 `insight-ui-vue` 后请重新 `mvn -pl insight-server -am package`（或完整 `install`），**不要**只重启旧 jar 指望见新界面。  
+> 无 Node / 离线构建可加 `-Dskip.ui=true`，此时沿用仓库里已提交的 `insight-server/src/main/resources/static`。
 
 
 ### 2. 启动监测中心

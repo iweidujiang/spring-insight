@@ -2,6 +2,7 @@ ARG MAVEN_IMAGE=maven:3.9.9-eclipse-temurin-21
 FROM ${MAVEN_IMAGE} AS builder
 WORKDIR /workspace
 
+# 需要 insight-ui-vue；prepare-package 会下载 Node 并构建控制台进 jar
 COPY . .
 
 RUN mvn -B -ntp -pl insight-server -am clean package -DskipTests

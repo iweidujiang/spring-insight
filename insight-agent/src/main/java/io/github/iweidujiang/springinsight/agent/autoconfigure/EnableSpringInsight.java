@@ -54,12 +54,14 @@ public @interface EnableSpringInsight {
     boolean httpTracingEnabled() default true;
 
     /**
-     * 是否启用 JVM 指标监控（映射到 {@code spring.insight.jvm-metrics.enabled}）
+     * 是否启用 JVM 指标监控（映射到 {@code spring.insight.jvm-metrics.enabled}）。
+     * 默认关闭：Server 暂无 JVM 专用存储/UI。
      */
-    boolean jvmMetricsEnabled() default true;
+    boolean jvmMetricsEnabled() default false;
 
     /**
-     * 是否启用数据库调用监控（映射到 {@code spring.insight.db-metrics.enabled}）
+     * 是否启用数据库调用监控（映射到 {@code spring.insight.db-metrics.enabled}）。
+     * 默认关闭：普通 Spring AOP 难以稳定拦截 {@code java.sql.*}，需显式评估后再开。
      */
-    boolean dbMetricsEnabled() default true;
+    boolean dbMetricsEnabled() default false;
 }

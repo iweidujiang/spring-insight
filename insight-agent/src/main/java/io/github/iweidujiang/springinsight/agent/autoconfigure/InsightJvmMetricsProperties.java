@@ -10,9 +10,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "spring.insight.jvm-metrics")
 public class InsightJvmMetricsProperties {
     /**
-     * 是否启用JVM指标收集
+     * 是否启用JVM指标收集。默认关闭：Server 尚无 JVM 落库/展示，开启只会空耗上报。
      */
-    private boolean enabled = true;
+    private boolean enabled = false;
     
     /**
      * JVM指标上报间隔（毫秒）
