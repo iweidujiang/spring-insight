@@ -5,7 +5,7 @@
       type="button"
       class="notification-button"
       :aria-expanded="showNotifications"
-      aria-label="打开通知中心"
+      aria-label="打开状态摘要"
       @click.stop="toggleNotifications"
     >
       <i class="fa fa-bell"></i>
@@ -18,11 +18,14 @@
         class="notification-panel"
         :style="panelStyle"
         role="dialog"
-        aria-label="通知中心"
+        aria-label="状态摘要"
         @click.stop
       >
         <div class="notification-header">
-          <h5>通知中心</h5>
+          <div>
+            <h5>状态摘要</h5>
+            <p class="notification-header-desc">基于 Server 实时统计，非模拟告警</p>
+          </div>
           <button
             v-if="unreadCount > 0"
             type="button"
@@ -33,16 +36,20 @@
           </button>
         </div>
         <div class="notification-list">
-          <div v-if="notifications.length === 0" class="notification-empty">
-            <i class="fa fa-bell-slash"></i>
-            <p>暂无通知</p>
+          <div v-if="loading && notifications.length === 0" class="notification-empty">
+            <i class="fa fa-spinner fa-spin"></i>
+            <p>加载中…</p>
+          </div>
+          <div v-else-if="notifications.length === 0" class="notification-empty">
+            <i class="fa fa-check-circle"></i>
+            <p>暂无需要关注的事项</p>
           </div>
           <div
             v-for="notification in notifications"
             :key="notification.id"
             class="notification-item"
             :class="{ unread: !notification.read }"
-            @click="markAsRead(notification.id)"
+            @click="onItemClick(notification)"
           >
             <div class="notification-icon" :class="notification.type">
               <i class="fa" :class="notification.icon"></i>
@@ -54,6 +61,9 @@
             </div>
           </div>
         </div>
+        <div class="notification-footer">
+          完整告警规则（阈值/Webhook）将在后续版本提供；此处只反映已采集到的错误与上报成功率。
+        </div>
       </div>
     </Teleport>
   </div>
@@ -61,6 +71,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, type CSSProperties } from 'vue'
+import { useRouter } from 'vue-router'
+import { ApiService } from '../services/ApiService'
 
 interface Notification {
   id: string
@@ -70,16 +82,43 @@ interface Notification {
   icon: string
   timestamp: number
   read: boolean
+  route?: string
 }
 
+const READ_KEY = 'si.notify.read.v1'
+const POLL_MS = 60_000
+
+const router = useRouter()
 const showNotifications = ref(false)
 const notifications = ref<Notification[]>([])
+const loading = ref(false)
 const buttonRef = ref<HTMLButtonElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
 const panelStyle = ref<CSSProperties>({})
 
+let pollTimer: number | null = null
+
 const unreadCount = computed(() => notifications.value.filter((n) => !n.read).length)
 const badgeText = computed(() => (unreadCount.value > 99 ? '99+' : String(unreadCount.value)))
+
+const loadReadIds = (): Set<string> => {
+  try {
+    const raw = localStorage.getItem(READ_KEY)
+    if (!raw) return new Set()
+    const arr = JSON.parse(raw)
+    return new Set(Array.isArray(arr) ? arr.map(String) : [])
+  } catch {
+    return new Set()
+  }
+}
+
+const saveReadIds = (ids: Set<string>) => {
+  try {
+    localStorage.setItem(READ_KEY, JSON.stringify([...ids]))
+  } catch {
+    /* ignore quota */
+  }
+}
 
 const updatePanelPosition = () => {
   const btn = buttonRef.value
@@ -87,7 +126,6 @@ const updatePanelPosition = () => {
   const rect = btn.getBoundingClientRect()
   const panelWidth = Math.min(350, window.innerWidth - 16)
   const gap = 8
-  // 从按钮上方展开，避免落在视口外被「挡住」
   let left = rect.left
   if (left + panelWidth > window.innerWidth - 8) {
     left = Math.max(8, window.innerWidth - panelWidth - 8)
@@ -106,6 +144,7 @@ const toggleNotifications = async () => {
   if (showNotifications.value) {
     await nextTick()
     updatePanelPosition()
+    void refreshFromServer()
   }
 }
 
@@ -115,27 +154,105 @@ const closeNotifications = () => {
 
 const markAsRead = (id: string) => {
   const notification = notifications.value.find((n) => n.id === id)
-  if (notification) notification.read = true
+  if (!notification || notification.read) return
+  notification.read = true
+  const ids = loadReadIds()
+  ids.add(id)
+  saveReadIds(ids)
 }
 
 const markAllAsRead = () => {
+  const ids = loadReadIds()
   notifications.value.forEach((n) => {
     n.read = true
+    ids.add(n.id)
   })
+  saveReadIds(ids)
+}
+
+const onItemClick = (notification: Notification) => {
+  markAsRead(notification.id)
+  if (notification.route) {
+    closeNotifications()
+    void router.push(notification.route)
+  }
 }
 
 const formatTime = (timestamp: number) => new Date(timestamp).toLocaleString('zh-CN')
 
-const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
-  const newNotification: Notification = {
-    ...notification,
-    id: `notification-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    timestamp: Date.now(),
-    read: false
+/**
+ * 仅根据 Server 真实统计生成条目；无数据则列表为空（不造假告警）。
+ */
+const buildFromStats = (stats: any, errorRows: any[]): Notification[] => {
+  const now = Date.now()
+  const items: Notification[] = []
+  const errorCount = Array.isArray(errorRows) ? errorRows.length : 0
+  const failedSpans = Number(stats?.totalFailedSpans ?? stats?.total_failed_spans ?? 0)
+  const receivedSpans = Number(stats?.totalReceivedSpans ?? stats?.total_received_spans ?? 0)
+  const successRate = Number(stats?.successRate ?? stats?.success_rate ?? 100)
+
+  if (errorCount > 0) {
+    const names = errorRows
+      .slice(0, 3)
+      .map((r) => r.serviceName || r.service_name || '?')
+      .filter(Boolean)
+    const more = errorCount > 3 ? ` 等 ${errorCount} 个` : ''
+    items.push({
+      id: 'fact-error-services',
+      title: '存在异常服务',
+      message: `${errorCount} 个服务在近 24h 有错误调用：${names.join('、')}${more}。点击查看错误分析。`,
+      type: 'error',
+      icon: 'fa-exclamation-circle',
+      timestamp: now,
+      read: false,
+      route: '/error-analysis'
+    })
   }
-  notifications.value.unshift(newNotification)
-  if (notifications.value.length > 50) {
-    notifications.value = notifications.value.slice(0, 50)
+
+  if (receivedSpans > 0 && successRate < 90) {
+    items.push({
+      id: 'fact-collector-success-rate',
+      title: '上报成功率偏低',
+      message: `Collector 成功率约 ${successRate.toFixed(1)}%（接收 ${receivedSpans} 条 Span）。请检查 Agent 上报与 Server 日志。`,
+      type: 'warning',
+      icon: 'fa-exclamation-triangle',
+      timestamp: now,
+      read: false,
+      route: '/'
+    })
+  } else if (failedSpans > 0) {
+    items.push({
+      id: 'fact-collector-failed-spans',
+      title: '存在失败 Span',
+      message: `Collector 累计失败 Span：${failedSpans}。可在仪表盘查看 Collector 条与链路筛选。`,
+      type: 'warning',
+      icon: 'fa-exclamation-triangle',
+      timestamp: now,
+      read: false,
+      route: '/traces'
+    })
+  }
+
+  return items
+}
+
+const refreshFromServer = async () => {
+  loading.value = true
+  try {
+    const [stats, errorRows] = await Promise.all([
+      ApiService.getCollectorStats(),
+      ApiService.getErrorAnalysis(24)
+    ])
+    const readIds = loadReadIds()
+    const next = buildFromStats(stats, errorRows).map((n) => ({
+      ...n,
+      read: readIds.has(n.id)
+    }))
+    notifications.value = next
+  } catch (e) {
+    console.error('刷新状态摘要失败:', e)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -154,12 +271,10 @@ const onKeydown = (event: KeyboardEvent) => {
 }
 
 onMounted(() => {
-  addNotification({
-    title: '系统就绪',
-    message: 'Spring Insight 已启动。有异常服务或慢请求时，可在错误分析与链路页下钻。',
-    type: 'info',
-    icon: 'fa-info-circle'
-  })
+  void refreshFromServer()
+  pollTimer = window.setInterval(() => {
+    void refreshFromServer()
+  }, POLL_MS)
   document.addEventListener('mousedown', onDocPointerDown)
   document.addEventListener('touchstart', onDocPointerDown)
   window.addEventListener('keydown', onKeydown)
@@ -168,14 +283,13 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (pollTimer != null) clearInterval(pollTimer)
   document.removeEventListener('mousedown', onDocPointerDown)
   document.removeEventListener('touchstart', onDocPointerDown)
   window.removeEventListener('keydown', onKeydown)
   window.removeEventListener('resize', updatePanelPosition)
   window.removeEventListener('scroll', updatePanelPosition, true)
 })
-
-defineExpose({ addNotification })
 </script>
 
 <style scoped>
@@ -218,9 +332,8 @@ defineExpose({ addNotification })
 </style>
 
 <style>
-/* Teleport 到 body，需非 scoped */
 .notification-panel {
-  max-height: min(400px, calc(100vh - 1.5rem));
+  max-height: min(420px, calc(100vh - 1.5rem));
   background: #fffcfa;
   border-radius: 0.65rem;
   border: 1px solid rgba(20, 83, 45, 0.14);
@@ -233,7 +346,8 @@ defineExpose({ addNotification })
 .notification-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 0.75rem;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid rgba(20, 83, 45, 0.1);
   background-color: rgba(15, 118, 110, 0.05);
@@ -247,9 +361,17 @@ defineExpose({ addNotification })
   color: #15241f;
 }
 
+.notification-header-desc {
+  margin: 0.2rem 0 0;
+  font-size: 0.7rem;
+  color: #6b7f76;
+  font-weight: 500;
+}
+
 .notification-list {
-  max-height: 320px;
+  max-height: 280px;
   overflow-y: auto;
+  flex: 1;
 }
 
 .notification-empty {
@@ -257,13 +379,14 @@ defineExpose({ addNotification })
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 2rem 1rem;
   color: #94a3b8;
 }
 
 .notification-empty i {
   font-size: 2rem;
   margin-bottom: 0.75rem;
+  color: #0f766e;
 }
 
 .notification-item {
@@ -340,5 +463,15 @@ defineExpose({ addNotification })
 .notification-time {
   font-size: 0.6875rem;
   color: #94a3b8;
+}
+
+.notification-footer {
+  flex-shrink: 0;
+  padding: 0.65rem 1rem;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: #6b7f76;
+  background: rgba(15, 118, 110, 0.04);
+  border-top: 1px solid rgba(20, 83, 45, 0.1);
 }
 </style>
