@@ -17,7 +17,7 @@
 </dependency>
 ```
 
-> 尚未发 Maven Central：需先本地 `install`。与主线 `0.1.0-SNAPSHOT` **版本号不同**，避免坐标冲突。
+> 尚未发 Maven Central：需先本地 `install`。与主线正式版 `0.1.0` **版本号不同**，避免坐标冲突。
 
 ## 构建
 
@@ -68,7 +68,7 @@ spring:
 cd D:\a-github-project\spring-insight\boot2 && mvn -DskipTests install
 
 # 2) 启动主线 insight-server:9966（另开终端）
-java -jar D:\a-github-project\spring-insight\insight-server\target\insight-server-0.1.0-SNAPSHOT.jar
+java -jar D:\a-github-project\spring-insight\insight-server\target\insight-server-0.1.0.jar
 
 # 3) 启动 demo，并冒烟
 cd D:\a-github-project\spring-insight-boot2-demo

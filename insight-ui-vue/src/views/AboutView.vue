@@ -18,7 +18,7 @@
           <h5 class="card-title"><i class="fa fa-cube me-2"></i>项目信息</h5>
           <dl class="si-about__dl">
             <div><dt>项目名称</dt><dd>Spring Insight</dd></div>
-            <div><dt>版本</dt><dd>0.1.0-SNAPSHOT</dd></div>
+            <div><dt>版本</dt><dd>0.1.0</dd></div>
             <div><dt>描述</dt><dd>面向 Spring 微服务的轻量分布式监测中心（Agent + Server）</dd></div>
             <div>
               <dt>技术栈</dt>
