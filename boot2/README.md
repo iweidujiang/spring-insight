@@ -2,22 +2,26 @@
 
 独立于主仓 `spring-insight-parent`（Boot 3.5 / JDK 21）。**insight-server 仍只用主线构建。**
 
-## 业务侧坐标（B3 固化）
+## 业务侧坐标
 
 | GAV | 说明 |
 |-----|------|
-| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.1.0-boot2-SNAPSHOT` | **业务请只依赖这个** |
-| `io.github.iweidujiang:insight-agent-boot2:0.1.0-boot2-SNAPSHOT` | 采集核心（Starter 传递依赖，一般不用直接引） |
+| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.1.0-boot2` | **业务请只依赖这个**（Maven Central） |
+| `io.github.iweidujiang:insight-agent-boot2:0.1.0-boot2` | 采集核心（Starter 传递依赖，一般不用直接引） |
+| `io.github.iweidujiang:spring-insight-boot2-parent:0.1.0-boot2` | 本兼容线父 POM |
 
 ```xml
 <dependency>
   <groupId>io.github.iweidujiang</groupId>
   <artifactId>spring-insight-agent-starter-boot2</artifactId>
-  <version>0.1.0-boot2-SNAPSHOT</version>
+  <version>0.1.0-boot2</version>
 </dependency>
 ```
 
-> 尚未发 Maven Central：需先本地 `install`。与主线正式版 `0.1.0` **版本号不同**，避免坐标冲突。
+> 正式版 **`0.1.0-boot2`** 目标发 Maven Central（与主线正式版 `0.1.0` **版本号不同**，避免坐标冲突）。若 Central / 镜像尚未同步，可在本目录 `mvn -DskipTests install`。  
+> 监测中心请用主线已发布的 `insight-server:0.1.0`，或本地构建主线 `insight-server-0.1.1-SNAPSHOT.jar`。
+
+发布操作见仓库 `docs/dev_docs/release-0.1.0-boot2-freeze.md`。
 
 ## 构建
 
@@ -25,6 +29,13 @@
 # 建议 JDK 8 或 11（也可用更高 JDK 交叉编译到 1.8）
 cd boot2
 mvn -DskipTests install
+```
+
+发布干跑（须在 `boot2/` 下；PowerShell 给 `-D` 加引号）：
+
+```powershell
+cd boot2
+mvn -Prelease clean verify "-DskipTests" "-Dgpg.skip=true"
 ```
 
 ## 最小配置
@@ -58,6 +69,7 @@ spring:
 | B3 | Starter 坐标固化 + Boot2.7 冒烟 | 完成 |
 | B4 | Micrometer 桥 + WebFlux/WebClient | 完成 |
 | **B5** | Gateway 出站 CLIENT Span（`remoteService`） | **完成** |
+| Central | `0.1.0-boot2` 发 Maven Central | 冻结中 |
 
 ## 冒烟演示
 
@@ -68,6 +80,7 @@ spring:
 cd D:\a-github-project\spring-insight\boot2 && mvn -DskipTests install
 
 # 2) 启动主线 insight-server:9966（另开终端）
+#    优先用已发布主线包，或本地：
 java -jar D:\a-github-project\spring-insight\insight-server\target\insight-server-0.1.1-SNAPSHOT.jar
 
 # 3) 启动 demo，并冒烟

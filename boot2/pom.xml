@@ -6,15 +6,50 @@
 
     <!--
       Boot 2.7 / Java 8 兼容线：独立父工程，不挂到主仓库 spring-insight-parent（JDK 21 enforcer）。
-      构建：cd boot2 && mvn -DskipTests install
-      需要本机 JDK 8+（建议 8 或 11）编译；与主线 Boot3 agent 并行演进。
+      日常构建：cd boot2 && mvn -DskipTests install（建议 JDK 8 或 11）
+      发布 Central：cd boot2 && mvn -Prelease clean deploy "-DskipTests"
+      PowerShell 下带点号的 -D 属性须加引号（如 "-Dgpg.skip=true"）。
     -->
     <groupId>io.github.iweidujiang</groupId>
     <artifactId>spring-insight-boot2-parent</artifactId>
-    <version>0.1.0-boot2-SNAPSHOT</version>
+    <version>0.1.0-boot2</version>
     <packaging>pom</packaging>
     <name>Spring Insight Boot2 Parent</name>
     <description>Spring Insight Agent 兼容线：Spring Boot 2.7 + Java 8</description>
+    <url>https://github.com/iweidujiang/spring-insight</url>
+    <inceptionYear>2026</inceptionYear>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>iweidujiang</id>
+            <name>苏渡苇</name>
+            <url>https://github.com/iweidujiang</url>
+            <roles>
+                <role>owner</role>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/iweidujiang/spring-insight.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/iweidujiang/spring-insight.git</developerConnection>
+        <url>https://github.com/iweidujiang/spring-insight</url>
+        <tag>v0.1.0-boot2</tag>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/iweidujiang/spring-insight/issues</url>
+    </issueManagement>
 
     <modules>
         <module>insight-agent-boot2</module>
@@ -26,8 +61,13 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>2.7.18</spring-boot.version>
         <lombok.version>1.18.30</lombok.version>
+        <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+        <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
+        <maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
+        <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -78,6 +118,34 @@
                         </annotationProcessorPaths>
                     </configuration>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${maven-source-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${maven-javadoc-plugin.version}</version>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <encoding>UTF-8</encoding>
+                        <charset>UTF-8</charset>
+                        <docencoding>UTF-8</docencoding>
+                        <doclint>none</doclint>
+                        <failOnError>true</failOnError>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>${maven-gpg-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>${central-publishing-maven-plugin.version}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -109,4 +177,72 @@
             </plugin>
         </plugins>
     </build>
+
+    <!--
+      发布到 Maven Central（必须在 boot2/ 目录执行，勿在仓库根目录跑本 profile）：
+        1) 版本为非 SNAPSHOT（如 0.1.0-boot2）
+        2) ~/.m2/settings.xml 配置 server id=central 的 Portal Token
+        3) 本机 GPG 可用（可用 "-Dgpg.skip=true" 仅验证 sources/javadoc）
+        4) mvn -Prelease clean deploy "-DskipTests"
+      日常开发不要开 -Prelease，以免每次签名。
+    -->
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <!-- CI/无密钥：-Dgpg.skip=true；正式 deploy 勿跳过 -->
+                                    <!-- 勿默认 loopback：Windows 上无 gpg.passphrase 时会一直挂起等 stdin -->
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>false</autoPublish>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

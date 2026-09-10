@@ -56,7 +56,7 @@ public class TraceBatchReport {
      * 上报元数据。
      */
     public static class Metadata {
-        private String sdkVersion = "spring-insight/0.1.0-boot2-SNAPSHOT";
+        private String sdkVersion = "spring-insight/0.1.0-boot2";
         private String protocolVersion = "1.0";
         private String clientType = "java-agent-boot2";
         private String environment = "default";

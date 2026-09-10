@@ -35,7 +35,7 @@
 | `io.github.iweidujiang:insight-agent:0.1.0` | 采集核心 |
 | `io.github.iweidujiang:spring-insight-agent-starter:0.1.0` | **Boot 3 业务侧请依赖这个** |
 | `io.github.iweidujiang:insight-server:0.1.0` | 监测中心可执行包 |
-| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.1.0-boot2-SNAPSHOT` | **Boot 2.7 / Java 8 业务侧请依赖这个**（见 `boot2/`） |
+| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.1.0-boot2` | **Boot 2.7 / Java 8 业务侧请依赖这个**（见 `boot2/`） |
 
 ---
 
@@ -58,7 +58,7 @@
 **当前还没有做的**：
 
 - 默认仍是**内存存储**（重启清空）；可选打开 JSON 文件落盘，见下方「可选：Span 落盘」  
-- 主线正式版 **`0.1.0`** 已发 Maven Central；开发中为 `0.1.1-SNAPSHOT`；Boot2 线见 `boot2/`（版本号独立）  
+- 主线正式版 **`0.1.0`** 已发 Maven Central；开发中为 `0.1.1-SNAPSHOT`；Boot2 正式版 **`0.1.0-boot2`**（见 `boot2/`，版本号独立）  
 - 不是 OpenTelemetry / SkyWalking 的替代品  
 - 没有告警、没有多租户、没有鉴权完善的生产方案  
 - **JVM 指标 / JDBC Aspect 默认关闭**（Server 暂无 JVM 落库 UI；普通 AOP 难以稳定拦 `java.sql.*`）。需要时显式：
