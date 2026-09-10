@@ -17,8 +17,6 @@
 
 最新已发布：**`0.1.0`**（[Maven Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.1.0)）。业务侧请优先用正式版坐标；本仓库当前开发版本为 **`0.1.1-SNAPSHOT`**（需本地 `mvn clean install`）。
 
-发布说明与已知局限见仓库 `docs/dev_docs/release-versioning-plan.md`。
-
 业务侧依赖示例：
 
 ```xml
@@ -58,7 +56,7 @@
 **当前还没有做的**：
 
 - 默认仍是**内存存储**（重启清空）；可选打开 JSON 文件落盘，见下方「可选：Span 落盘」  
-- 主线正式版 **`0.1.0`** 已发 Maven Central；开发中为 `0.1.1-SNAPSHOT`；Boot2 正式版 **`0.1.0-boot2`**（见 `boot2/`，版本号独立）  
+- 主线正式版 **`0.1.0`** 已发 Maven Central；开发中为 `0.1.1-SNAPSHOT`；Boot2 正式版 **`0.1.0-boot2`** 已发 Central（见 `boot2/`，开发中 `0.1.1-boot2-SNAPSHOT`）  
 - 不是 OpenTelemetry / SkyWalking 的替代品  
 - 没有告警、没有多租户、没有鉴权完善的生产方案  
 - **JVM 指标 / JDBC Aspect 默认关闭**（Server 暂无 JVM 落库 UI；普通 AOP 难以稳定拦 `java.sql.*`）。需要时显式：

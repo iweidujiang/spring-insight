@@ -18,10 +18,10 @@
 </dependency>
 ```
 
-> 正式版 **`0.1.0-boot2`** 目标发 Maven Central（与主线正式版 `0.1.0` **版本号不同**，避免坐标冲突）。若 Central / 镜像尚未同步，可在本目录 `mvn -DskipTests install`。  
+> 最新已发布：**`0.1.0-boot2`**（[Maven Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter-boot2/0.1.0-boot2)）。业务侧请用正式版坐标；本目录开发版本为 **`0.1.1-boot2-SNAPSHOT`**（需本地 `mvn -DskipTests install`）。与主线正式版 `0.1.0` **版本号不同**，避免坐标冲突。  
 > 监测中心请用主线已发布的 `insight-server:0.1.0`，或本地构建主线 `insight-server-0.1.1-SNAPSHOT.jar`。
 
-发布操作见仓库 `docs/dev_docs/release-0.1.0-boot2-freeze.md`。
+发布说明见仓库 `docs/dev_docs/release-0.1.0-boot2-freeze.md`。
 
 ## 构建
 
@@ -69,7 +69,7 @@ spring:
 | B3 | Starter 坐标固化 + Boot2.7 冒烟 | 完成 |
 | B4 | Micrometer 桥 + WebFlux/WebClient | 完成 |
 | **B5** | Gateway 出站 CLIENT Span（`remoteService`） | **完成** |
-| Central | `0.1.0-boot2` 发 Maven Central | 冻结中 |
+| Central | `0.1.0-boot2` 发 Maven Central | **已发布** |
 
 ## 冒烟演示
 
