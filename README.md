@@ -64,7 +64,8 @@ spring:
 
 ## 它能做什么
 
-<img width="2327" height="516" alt="局部截取_20260907_210948" src="https://github.com/user-attachments/assets/5ddd8b7d-880f-4ffc-b2cb-59b0fdf6f53c" />
+<img width="2341" height="530" alt="局部截取_20260910_151357" src="https://github.com/user-attachments/assets/80bbebee-1397-4ebd-abcf-d09d598f0a16" />
+
 
 | 能力 | 说明 |
 |------|------|
@@ -81,20 +82,22 @@ spring:
 
 ### 仪表盘
 
-<img width="2328" height="1251" alt="局部截取_20260907_210738" src="https://github.com/user-attachments/assets/9855277a-4790-4697-bca8-082ae1dbec31" />
+<img width="2341" height="1248" alt="局部截取_20260910_151425" src="https://github.com/user-attachments/assets/5d121a96-3dce-4911-b972-2bf7927e946c" />
+
 
 ### 服务拓扑
-
-<img width="2313" height="1232" alt="局部截取_20260907_210519" src="https://github.com/user-attachments/assets/7a95aed7-9491-4cc0-b4fe-ccc00b1dab8c" />
+<img width="2328" height="1228" alt="局部截取_20260910_151452" src="https://github.com/user-attachments/assets/2e6ba9d2-4bbf-4e67-91ce-93ab89b1a18c" />
 
 ### 链路追踪
+<img width="2325" height="717" alt="局部截取_20260910_151551" src="https://github.com/user-attachments/assets/83af472c-0919-49e9-bd5d-fcb635a8abd4" />
 
-<img width="2317" height="717" alt="局部截取_20260907_210813" src="https://github.com/user-attachments/assets/f1fedae5-f44f-4089-a6b3-fbad85f172d7" />
-<img width="2341" height="1211" alt="局部截取_20260907_210850" src="https://github.com/user-attachments/assets/65b01e60-4225-48b7-8d45-e84fc37835d4" />
+<img width="2298" height="1192" alt="局部截取_20260910_151611" src="https://github.com/user-attachments/assets/8768b3d3-c13a-48f2-8b2a-ced7fc13080d" />
+
 
 ### 错误分析
 
-<img width="2544" height="625" alt="局部截取_20260904_182715" src="https://github.com/user-attachments/assets/69243f02-13c7-4aee-bc0f-04de7721d373" />
+<img width="2324" height="967" alt="局部截取_20260910_151633" src="https://github.com/user-attachments/assets/7e019fd9-0520-4e1d-b01e-8d0627b4434a" />
+
 
 ---
 
