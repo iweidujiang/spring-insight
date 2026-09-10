@@ -54,7 +54,7 @@ public class CollectorController {
         body.put("status", "UP");
         body.put("service", "spring-insight-server");
         body.put("timestamp", Instant.now());
-        body.put("version", "0.1.0");
+        body.put("version", "0.1.1-SNAPSHOT");
         body.put("storageMode", storageProperties.getMode());
         body.put("storedSpans", persistenceService.getStoredSpanCount());
         return ResponseEntity.ok(body);
@@ -155,7 +155,7 @@ public class CollectorController {
     public ResponseEntity<Map<String, Object>> getServerInfo() {
         return ResponseEntity.ok(Map.of(
                 "service", "spring-insight-server",
-                "version", "0.1.0",
+                "version", "0.1.1-SNAPSHOT",
                 "startupTime", Instant.now(),
                 "status", "running",
                 "endpoints", Map.of(

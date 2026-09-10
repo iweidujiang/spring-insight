@@ -5,7 +5,7 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.9-brightgreen)](https://spring.io/projects/spring-boot)
 [![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](https://github.com/iweidujiang/spring-insight)
 
-一个还在摸索中的、面向 **Spring Boot / Spring Cloud** 微服务的轻量监测小工具。当前正式版本为 **`0.1.0`**（主线 Boot 3.5 / JDK 21）。
+一个还在摸索中的、面向 **Spring Boot / Spring Cloud** 微服务的轻量监测小工具。最新已发布版本为 **`0.1.0`**（Maven Central；主线 Boot 3.5 / JDK 21）。仓库开发中版本为 **`0.1.1-SNAPSHOT`**。
 
 我重新学习了一下其他类似的 APM 工具，重新认识了一下这个项目，有点惭愧——说实话，它谈不上「可观测性平台」，目前只是：**业务侧加一个 Starter 埋点上报，旁边单独跑一个 `insight-server` 看拓扑和链路**。能力有限，界面也还粗糙，先能用、能改，再慢慢补。
 
@@ -15,7 +15,9 @@
 
 ## 版本说明
 
-当前正式版本为 **`0.1.0`**。业务侧请优先从 **Maven Central** 拉取坐标；若 Central 尚未同步到你所用镜像，可临时在本仓库 `mvn clean install`。
+最新已发布：**`0.1.0`**（[Maven Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.1.0)）。业务侧请优先用正式版坐标；本仓库当前开发版本为 **`0.1.1-SNAPSHOT`**（需本地 `mvn clean install`）。
+
+发布说明与已知局限见仓库 `docs/dev_docs/release-versioning-plan.md`。
 
 业务侧依赖示例：
 
@@ -56,7 +58,7 @@
 **当前还没有做的**：
 
 - 默认仍是**内存存储**（重启清空）；可选打开 JSON 文件落盘，见下方「可选：Span 落盘」  
-- 主线 **`0.1.0`** 目标发 Maven Central；Boot2 线见 `boot2/`（版本号独立）  
+- 主线正式版 **`0.1.0`** 已发 Maven Central；开发中为 `0.1.1-SNAPSHOT`；Boot2 线见 `boot2/`（版本号独立）  
 - 不是 OpenTelemetry / SkyWalking 的替代品  
 - 没有告警、没有多租户、没有鉴权完善的生产方案  
 - **JVM 指标 / JDBC Aspect 默认关闭**（Server 暂无 JVM 落库 UI；普通 AOP 难以稳定拦 `java.sql.*`）。需要时显式：
@@ -119,7 +121,7 @@ mvn clean install -DskipTests
 ### 2. 启动监测中心
 
 ```bash
-java -jar insight-server/target/insight-server-0.1.0.jar
+java -jar insight-server/target/insight-server-0.1.1-SNAPSHOT.jar
 ```
 
 浏览器打开：<http://localhost:9966/>
@@ -184,7 +186,7 @@ Demo 把 Insight 当成**第三方依赖**使用：自己 `mvn install` 好 Insi
 |------|------|
 | `insight-agent` | 采集核心（`…:insight-agent:0.1.0`） |
 | `spring-insight-agent-starter` | **业务侧请依赖这个**（`…:spring-insight-agent-starter:0.1.0`） |
-| `insight-server` | 监测中心可执行包（`insight-server-0.1.0.jar`） |
+| `insight-server` | 监测中心可执行包（开发构建：`insight-server-0.1.1-SNAPSHOT.jar`；已发布：`0.1.0`） |
 | `insight-ui-vue` | 前端；构建结果会放进 server 的 `static/` |
 
 
@@ -240,7 +242,7 @@ spring:
 | B4 | Micrometer 桥；WebFlux 入口 + WebClient 出站 CLIENT Span（Boot2） | 完成 |
 | B5 | Gateway 出站 CLIENT Span（`remoteService` / `lb://`） | 完成 |
 
-原则：主线 `0.1.0` 为 Boot 3.5 + JDK 21 正式版；兼容线单独版本/artifact 。
+原则：主线已发布 `0.1.0`（Boot 3.5 + JDK 21）；仓库继续 `0.1.1-SNAPSHOT`；兼容线单独版本/artifact。
 
 排期就不写死了，以免变成空头支票。当前主线仍是 **Spring Boot 3.5 + JDK 21**。
 

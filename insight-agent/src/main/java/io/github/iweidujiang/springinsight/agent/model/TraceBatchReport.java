@@ -79,7 +79,7 @@ public class TraceBatchReport {
     @Data
     public static class Metadata {
         /** SDK版本 */
-        private String sdkVersion = "spring-insight/0.1.0";
+        private String sdkVersion = "spring-insight/0.1.1-SNAPSHOT";
 
         /** 上报协议版本 */
         private String protocolVersion = "1.0";

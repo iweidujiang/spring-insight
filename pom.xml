@@ -7,7 +7,7 @@
 
     <groupId>io.github.iweidujiang</groupId>
     <artifactId>spring-insight-parent</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1-SNAPSHOT</version>
 
     <packaging>pom</packaging>
     <name>Spring Insight</name>
@@ -39,7 +39,7 @@
         <connection>scm:git:https://github.com/iweidujiang/spring-insight.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/iweidujiang/spring-insight.git</developerConnection>
         <url>https://github.com/iweidujiang/spring-insight</url>
-        <tag>v0.1.0</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <issueManagement>
@@ -197,7 +197,7 @@
         1) 版本改为非 SNAPSHOT（如 0.1.0）
         2) ~/.m2/settings.xml 配置 server id=central 的 Portal Token
         3) 本机 GPG 可用（可用 -Dgpg.skip=true 仅验证 sources/javadoc）
-        4) mvn -Prelease clean deploy -Dskip.ui=true
+        4) mvn -Prelease clean deploy "-Dskip.ui=true"  (PowerShell 须给 -Dskip.ui 加引号)
       日常开发不要开 -Prelease，以免每次签名。
     -->
     <profiles>
@@ -241,10 +241,9 @@
                                 </goals>
                                 <configuration>
                                     <!-- CI/无密钥：-Dgpg.skip=true；正式 deploy 勿跳过 -->
-                                    <gpgArguments>
-                                        <arg>--pinentry-mode</arg>
-                                        <arg>loopback</arg>
-                                    </gpgArguments>
+                                    <!-- 勿默认 loopback：Windows 上无 gpg.passphrase 时会一直挂起等 stdin。
+                                         本地用 Kleopatra/pinentry 弹窗即可；CI 可加：
+                                         -Dgpg.passphrase=... 且另配 loopback -->
                                 </configuration>
                             </execution>
                         </executions>

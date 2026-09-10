@@ -68,7 +68,7 @@ spring:
 cd D:\a-github-project\spring-insight\boot2 && mvn -DskipTests install
 
 # 2) 启动主线 insight-server:9966（另开终端）
-java -jar D:\a-github-project\spring-insight\insight-server\target\insight-server-0.1.0.jar
+java -jar D:\a-github-project\spring-insight\insight-server\target\insight-server-0.1.1-SNAPSHOT.jar
 
 # 3) 启动 demo，并冒烟
 cd D:\a-github-project\spring-insight-boot2-demo
