@@ -1,0 +1,14 @@
+# 加速 docker build（上下文为仓库根目录）
+.git
+.github
+.idea
+.vscode
+.cursor
+**/target
+boot2/**/target
+insight-ui-vue/node_modules
+insight-ui-vue/dist
+docs
+*.md
+!README.md
+.DS_Store

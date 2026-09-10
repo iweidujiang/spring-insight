@@ -19,7 +19,8 @@
 ```
 
 > 最新已发布：**`0.1.0-boot2`**（[Maven Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter-boot2/0.1.0-boot2)）。业务侧请用正式版坐标；本目录开发版本为 **`0.1.1-boot2-SNAPSHOT`**（需本地 `mvn -DskipTests install`）。与主线正式版 `0.1.0` **版本号不同**，避免坐标冲突。  
-> 监测中心请用主线已发布的 `insight-server:0.1.0`，或本地构建主线 `insight-server-0.1.1-SNAPSHOT.jar`。
+> 监测中心请用 **Docker**（推荐）：`docker run -p 9966:9966 ghcr.io/iweidujiang/spring-insight-server:0.1.0`，或本仓库根目录 `docker compose up -d`。  
+> 也可使用主线已发布的 `insight-server:0.1.0` jar，或本地 `insight-server-0.1.1-SNAPSHOT.jar`。
 
 发布说明见仓库 `docs/dev_docs/release-0.1.0-boot2-freeze.md`。
 
@@ -79,9 +80,10 @@ spring:
 # 1) install 本兼容线
 cd D:\a-github-project\spring-insight\boot2 && mvn -DskipTests install
 
-# 2) 启动主线 insight-server:9966（另开终端）
-#    优先用已发布主线包，或本地：
-java -jar D:\a-github-project\spring-insight\insight-server\target\insight-server-0.1.1-SNAPSHOT.jar
+# 2) 启动主线 insight-server:9966（另开终端；推荐 Docker）
+docker run --rm -p 9966:9966 ghcr.io/iweidujiang/spring-insight-server:0.1.0
+# 或本地 jar：
+# java -jar D:\a-github-project\spring-insight\insight-server\target\insight-server-0.1.1-SNAPSHOT.jar
 
 # 3) 启动 demo，并冒烟
 cd D:\a-github-project\spring-insight-boot2-demo

@@ -102,34 +102,41 @@ spring:
 
 ## 怎么跑起来
 
-环境：**JDK 21**、Maven 3.9+；打包 `insight-server` 时默认还会拉 Node/npm 构建控制台 UI（见下）。
+业务侧：**JDK 21** + 从 Maven Central 拉 Starter。监测中心：**推荐 Docker**（不必本机再 `java -jar`）。
 
-### 1. 获取依赖 / 构建监测中心
+### 1. 启动监测中心（推荐 Docker）
 
-**业务侧（推荐）**：直接依赖 Central 坐标（见上文），无需克隆本仓库。
+**方式 A — 一行（GHCR 镜像）**
 
-**开发本仓库 / 跑 insight-server**：
+```bash
+docker run --rm -p 9966:9966 \
+  -e SPRING_INSIGHT_SERVER_STORAGE_MODE=file \
+  -e SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH=/data/spans.json \
+  -v spring-insight-data:/data \
+  ghcr.io/iweidujiang/spring-insight-server:0.1.0
+```
+
+**方式 B — 本仓库 Compose（同样默认拉 GHCR）**
 
 ```bash
 cd spring-insight
-# 主线需 JDK 21
-mvn clean install -DskipTests
-```
-
-### 2. 启动监测中心
-
-```bash
-java -jar insight-server/target/insight-server-0.1.1-SNAPSHOT.jar
+docker compose up -d
 ```
 
 浏览器打开：<http://localhost:9966/>
 
+> 镜像由 GitHub Actions 在推送主线 tag（如 `v0.1.0`）或手动 workflow **Publish Server Image** 时推到 GHCR。  
+> 若尚未拉取到 `0.1.0` 镜像，可先本地构建：  
+> `docker build -f insight-server/Dockerfile -t ghcr.io/iweidujiang/spring-insight-server:local .`  
+> 再设 `INSIGHT_SERVER_IMAGE=ghcr.io/iweidujiang/spring-insight-server:local` 后 `docker compose up -d`。
+
 #### 可选：Span 落盘（重启可恢复）
 
-默认 `memory`，进程一关数据就没了。需要跨重启保留时，改成 `file`：
+Compose / 上面的 `docker run` 已默认 `file` + 数据卷。纯内存可把 `SPRING_INSIGHT_SERVER_STORAGE_MODE` 改成 `memory`。
+
+等价配置（`java -jar` 或挂载外部 yml 时）：
 
 ```yaml
-# application.yml 或同名外部配置
 spring:
   insight:
     server:
@@ -140,12 +147,22 @@ spring:
         flush-delay-ms: 2000
 ```
 
-也可启动参数：`--spring.insight.server.storage.mode=file`。  
-目录会自动创建，一般**不必**手工 `mkdir`；文件在 **insight-server 进程工作目录**下的 `./data/spans.json`（Docker 里可挂卷到固定路径）。  
-这是 **Server 单点配置**，与业务微服务无关——微服务不要配这个属性。  
-健康检查 `GET /api/v1/health` 会带上 `storageMode` 与 `storedSpans`。
+也可：`--spring.insight.server.storage.mode=file`。  
+目录会自动创建；Docker 里建议挂卷到 `/data`。  
+这是 **Server 单点配置**，业务微服务不要配。  
+健康检查：`GET /api/v1/health`（含 `storageMode`、`storedSpans`）。
 
-### 3. 业务服务接入
+#### 备选：本机 `java -jar`
+
+```bash
+cd spring-insight
+mvn clean install -DskipTests   # 主线需 JDK 21；会构建 UI 进 server jar
+java -jar insight-server/target/insight-server-0.1.1-SNAPSHOT.jar
+```
+
+### 2. 业务服务接入
+
+**业务侧（推荐）**：直接依赖 Central 坐标，无需克隆本仓库。
 
 ```xml
 <dependency>
@@ -163,13 +180,16 @@ spring:
     server-url: http://localhost:9966
 ```
 
-
 造几笔跨服务调用后，等几秒（Agent 异步批量上报），再刷控制台。
 
-### 演示工程
+#### 开发期：让业务应用顺带拉起 Server（可选）
+
+Spring Boot 3.1+ 可加依赖 `spring-boot-docker-compose`，在业务工程放一份指向 Insight 的 compose（或复用本仓库 `compose.yaml` 片段），本地 `bootRun` 时自动起容器——类似起 Zipkin 的体验。生产仍建议单独部署监测中心。
+
+### 3. 演示工程
 
 另有独立仓库 [spring-insight-sca-demo](https://github.com/iweidujiang/spring-insight-sca-demo)（Nacos + 几个微服务）。  
-Demo 把 Insight 当成**第三方依赖**使用：自己 `mvn install` 好 Insight，再按 Demo 的 README / `.env` 启动即可。
+Demo 把 Insight 当成**第三方依赖**使用；监测中心也可改为上述 GHCR 镜像，而不必再挂本地 jar。
 
 ---
 
@@ -177,15 +197,16 @@ Demo 把 Insight 当成**第三方依赖**使用：自己 `mvn install` 好 Insi
 
 ```text
 业务微服务 × N  ──依赖──►  spring-insight-agent-starter（埋点、上报）
-独立进程 × 1    ────────►  insight-server :9966（存一点数据 + API + 控制台）
+独立进程 × 1    ────────►  insight-server :9966（Docker / jar；存数据 + API + 控制台）
 ```
 
 | 模块 | 角色 |
 |------|------|
 | `insight-agent` | 采集核心（`…:insight-agent:0.1.0`） |
 | `spring-insight-agent-starter` | **业务侧请依赖这个**（`…:spring-insight-agent-starter:0.1.0`） |
-| `insight-server` | 监测中心可执行包（开发构建：`insight-server-0.1.1-SNAPSHOT.jar`；已发布：`0.1.0`） |
-| `insight-ui-vue` | 前端；构建结果会放进 server 的 `static/` |
+| `insight-server` | 监测中心（镜像 `ghcr.io/iweidujiang/spring-insight-server`；或本地 jar） |
+| `insight-ui-vue` | 前端；构建结果会放进 server 的 `static/` / 镜像 |
+| `compose.yaml` | 一键起监测中心（默认拉 GHCR） |
 
 
 

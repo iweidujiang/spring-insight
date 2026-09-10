@@ -1,0 +1,76 @@
+# 将 insight-server 发布到 GitHub Container Registry (GHCR)
+# 镜像：ghcr.io/<owner>/spring-insight-server
+#
+# 触发：
+#   - 推送主线版本 tag：v1.2.3（不含 -boot2）
+#   - 手动 workflow_dispatch（可填镜像 tag）
+#
+# 仓库需允许 GitHub Actions 写 packages（默认 GITHUB_TOKEN 对 GHCR 通常可用）。
+
+name: Publish Server Image
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "镜像 tag（如 0.1.0 或 edge）"
+        required: true
+        default: "edge"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker:
+    name: 构建并推送 GHCR
+    runs-on: ubuntu-latest
+    # 跳过 Boot2 专用 tag（无独立 server）
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && !contains(github.ref_name, 'boot2'))
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 解析镜像 tag
+        id: meta
+        shell: bash
+        run: |
+          OWNER_LC="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          IMAGE="ghcr.io/${OWNER_LC}/spring-insight-server"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.image_tag }}"
+            echo "tags=${IMAGE}:${TAG}" >> "$GITHUB_OUTPUT"
+          else
+            VER="${GITHUB_REF_NAME#v}"
+            echo "tags=${IMAGE}:${VER},${IMAGE}:latest" >> "$GITHUB_OUTPUT"
+          fi
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 设置 Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 构建并推送
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: insight-server/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=Spring Insight Server
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

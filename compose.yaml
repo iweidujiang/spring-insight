@@ -1,0 +1,33 @@
+# Spring Insight Server — 一键起监测中心（Docker 首选）
+#
+# 用法：
+#   docker compose up -d
+# 浏览器：http://localhost:9966/
+#
+# 默认拉取 GHCR 已发布镜像；本地改代码时可改为 build（见下方注释）。
+
+name: spring-insight
+
+services:
+  insight-server:
+    image: ${INSIGHT_SERVER_IMAGE:-ghcr.io/iweidujiang/spring-insight-server:0.1.0}
+    # 本地从源码构建时改为：
+    # build:
+    #   context: .
+    #   dockerfile: insight-server/Dockerfile
+    # image: spring-insight-server:local
+    container_name: spring-insight-server
+    ports:
+      - "${INSIGHT_HOST_PORT:-9966}:9966"
+    environment:
+      # file = JSON 落盘（重启可恢复）；改 memory 则仅内存
+      SPRING_INSIGHT_SERVER_STORAGE_MODE: ${INSIGHT_STORAGE_MODE:-file}
+      SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH: /data/spans.json
+      SPRING_INSIGHT_SERVER_STORAGE_FLUSH_DELAY_MS: "2000"
+      JAVA_OPTS: ${JAVA_OPTS:-}
+    volumes:
+      - insight-spans:/data
+    restart: unless-stopped
+
+volumes:
+  insight-spans:
