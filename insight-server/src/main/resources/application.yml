@@ -1,24 +1,25 @@
 # Spring Insight Server —— 独立监测中心
 spring:
   application:
-    # 服务名：仅用于本进程标识与日志
     name: spring-insight-server
   insight:
     server:
       storage:
-        # memory（默认，重启清空）| file（JSON 落盘，重启可恢复）
+        # memory（默认，重启清空）| file（JSON 落盘）| sqlite（DB 落盘，需显式开启）
         mode: memory
         max-spans: 50000
-        # file 模式生效；相对路径相对进程工作目录
         file-path: ./data/spans.json
-        # 写入后防抖刷盘间隔
         flush-delay-ms: 2000
+        retention:
+          # 0 = 不按时间裁；例如 72 表示只保留最近 72 小时
+          max-age-hours: 0
+          vacuum-interval-ms: 60000
+        sqlite:
+          path: ./data/insight.db
 
 server:
-  # 默认端口 9966：刻意避开业务常见的 8080，减少本地冲突
   port: 9966
 
-# 可选：打开时便于排查上报/查询问题
 logging:
   level:
     io.github.iweidujiang.springinsight: INFO

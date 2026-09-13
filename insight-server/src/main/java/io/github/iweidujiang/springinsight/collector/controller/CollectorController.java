@@ -3,7 +3,6 @@ package io.github.iweidujiang.springinsight.collector.controller;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.collector.model.CollectorRequest;
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
-import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -33,14 +32,11 @@ public class CollectorController {
 
     private final TraceSpanCollectorService traceSpanCollectorService;
     private final TraceSpanPersistenceService persistenceService;
-    private final InsightServerStorageProperties storageProperties;
 
     public CollectorController(TraceSpanCollectorService traceSpanCollectorService,
-                               TraceSpanPersistenceService persistenceService,
-                               InsightServerStorageProperties storageProperties) {
+                               TraceSpanPersistenceService persistenceService) {
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.persistenceService = persistenceService;
-        this.storageProperties = storageProperties;
     }
 
     /**
@@ -55,7 +51,7 @@ public class CollectorController {
         body.put("service", "spring-insight-server");
         body.put("timestamp", Instant.now());
         body.put("version", "0.1.1-SNAPSHOT");
-        body.put("storageMode", storageProperties.getMode());
+        body.put("storageMode", persistenceService.getStorageMode());
         body.put("storedSpans", persistenceService.getStoredSpanCount());
         return ResponseEntity.ok(body);
     }

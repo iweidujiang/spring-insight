@@ -136,16 +136,19 @@ spring:
 
 - **Docker / Compose** 默认 `file` 落盘并挂卷，重启可保留 Span。
 - 仅内存：将 `SPRING_INSIGHT_SERVER_STORAGE_MODE` 设为 `memory`。
+- **SQLite（0.2 开发中）**：`SPRING_INSIGHT_SERVER_STORAGE_MODE=sqlite`，库文件默认 `/data/insight.db`（需挂卷）。
+- 按时间保留（可选）：`SPRING_INSIGHT_SERVER_STORAGE_RETENTION_MAX_AGE_HOURS=72`。
 - 本机 jar（需 JDK 21 + 先构建仓库）：
 
 ```bash
 mvn clean install -DskipTests
 java -jar insight-server/target/insight-server-0.1.1-SNAPSHOT.jar
 # 可选：--spring.insight.server.storage.mode=file
+# 可选：--spring.insight.server.storage.mode=sqlite
 ```
 
 存储只在 **Server** 侧配置，业务微服务不要配 `spring.insight.server.storage.*`。  
-健康检查：`GET /api/v1/health`。
+健康检查：`GET /api/v1/health`（含 `storageMode`、`storedSpans`）。
 
 演示工程：[spring-insight-sca-demo](https://github.com/iweidujiang/spring-insight-sca-demo)（Nacos + 若干微服务）。
 

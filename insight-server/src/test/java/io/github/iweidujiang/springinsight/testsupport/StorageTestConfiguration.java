@@ -2,7 +2,9 @@ package io.github.iweidujiang.springinsight.testsupport;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
+import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.context.annotation.Bean;
 
@@ -33,13 +35,19 @@ public class StorageTestConfiguration {
 
     /**
      * @param storageProperties 存储配置
-     * @param objectMapper      JSON
-     * @return 持久化服务
+     * @return 内存 SpanStore
      */
     @Bean
-    public TraceSpanPersistenceService traceSpanPersistenceService(
-            InsightServerStorageProperties storageProperties,
-            ObjectMapper objectMapper) {
-        return new TraceSpanPersistenceService(storageProperties, objectMapper);
+    public SpanStore spanStore(InsightServerStorageProperties storageProperties) {
+        return new InMemorySpanStore(storageProperties, "memory");
+    }
+
+    /**
+     * @param spanStore 存储 SPI
+     * @return 持久化门面
+     */
+    @Bean
+    public TraceSpanPersistenceService traceSpanPersistenceService(SpanStore spanStore) {
+        return new TraceSpanPersistenceService(spanStore);
     }
 }

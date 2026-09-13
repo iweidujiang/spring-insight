@@ -12,7 +12,7 @@
 
     <artifactId>insight-server</artifactId>
     <name>Spring Insight Server</name>
-    <description>独立监测中心：Span 存储（内存/可选文件）、上报/查询 API、控制台 UI（默认端口 9966）</description>
+    <description>独立监测中心：Span 存储（memory/file/sqlite）、上报/查询 API、控制台 UI（默认端口 9966）</description>
 
     <properties>
         <!-- 设为 true 可跳过前端构建，沿用 src/main/resources/static 中已提交的资源 -->
@@ -41,6 +41,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- sqlite 存储模式 -->
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.46.1.3</version>
         </dependency>
 
         <dependency>

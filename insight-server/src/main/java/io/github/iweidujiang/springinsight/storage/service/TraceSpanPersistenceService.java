@@ -1,86 +1,40 @@
 package io.github.iweidujiang.springinsight.storage.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
-import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
+import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StopWatch;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
- * 链路 Span 存储：默认进程内内存；可选 JSON 文件持久化（重启可恢复）。
+ * 链路 Span 门面：委托 {@link SpanStore} 读写，并在内存快照上做聚合查询。
+ *
+ * @since 2026-09-13
+ * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class TraceSpanPersistenceService {
 
-    private final InsightServerStorageProperties storageProperties;
-    private final ObjectMapper objectMapper;
+    private final SpanStore spanStore;
 
-    private final Object lock = new Object();
-    private final List<TraceSpan> spans = new ArrayList<>();
-    private final AtomicBoolean dirty = new AtomicBoolean(false);
-
-    private ScheduledExecutorService flushScheduler;
-    private ScheduledFuture<?> pendingFlush;
-
-    @PostConstruct
-    void init() {
-        if (storageProperties.isFileMode()) {
-            loadFromFile();
-            flushScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-                Thread t = new Thread(r, "insight-span-flush");
-                t.setDaemon(true);
-                return t;
-            });
-            log.info("[存储] 模式=file，路径={}，maxSpans={}，已加载 {} 条",
-                    storageProperties.getFilePath(), storageProperties.getMaxSpans(), size());
-        } else {
-            log.info("[存储] 模式=memory，maxSpans={}（重启将清空）", storageProperties.getMaxSpans());
-        }
-    }
-
-    @PreDestroy
-    void shutdown() {
-        if (!storageProperties.isFileMode()) {
-            return;
-        }
-        cancelPendingFlush();
-        flushToFileNow(true);
-        if (flushScheduler != null) {
-            flushScheduler.shutdown();
-            try {
-                flushScheduler.awaitTermination(5, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
+    /**
+     * 写入单条 Span。
+     *
+     * @param span 可为空（忽略）
+     */
     public void saveTraceSpan(TraceSpan span) {
         if (span == null) {
             return;
@@ -88,74 +42,51 @@ public class TraceSpanPersistenceService {
         saveTraceSpans(List.of(span));
     }
 
+    /**
+     * 批量写入 Span。
+     *
+     * @param batch 批次
+     */
     public void saveTraceSpans(List<TraceSpan> batch) {
         if (batch == null || batch.isEmpty()) {
             log.debug("[存储] Span 列表为空，跳过");
             return;
         }
-
         StopWatch sw = new StopWatch();
         sw.start();
-        int added = 0;
-        synchronized (lock) {
-            for (TraceSpan span : batch) {
-                if (span == null || span.getTraceId() == null || span.getSpanId() == null) {
-                    continue;
-                }
-                spans.add(TraceSpan.snapshot(span));
-                added++;
-            }
-            evictIfNeeded();
-        }
+        int added = spanStore.saveAll(batch);
         sw.stop();
-        log.info("[存储] 写入 {} 条 Span，耗时={}ms，当前持有={}", added, sw.getTotalTimeMillis(), size());
-        if (storageProperties.isFileMode() && added > 0) {
-            scheduleFlush();
-        }
-    }
-
-    private void evictIfNeeded() {
-        int max = Math.max(1, storageProperties.getMaxSpans());
-        while (spans.size() > max) {
-            spans.removeFirst();
-        }
-    }
-
-    private int size() {
-        return spans.size();
-    }
-
-    public List<TraceSpan> getTraceById(String traceId) {
-        synchronized (lock) {
-            return spans.stream()
-                    .filter(s -> traceId.equals(s.getTraceId()))
-                    .sorted(Comparator.comparing(s -> n(s.getStartTime())))
-                    .map(TraceSpan::snapshot)
-                    .collect(Collectors.toList());
-        }
-    }
-
-    public List<TraceSpan> getRecentSpans(int lastHours, int limit) {
-        long sinceTime = sinceEpochMillis(lastHours);
-        synchronized (lock) {
-            return spans.stream()
-                    .filter(s -> n(s.getStartTime()) >= sinceTime)
-                    .sorted(Comparator.comparing((TraceSpan s) -> n(s.getStartTime())).reversed())
-                    .limit(limit)
-                    .map(TraceSpan::snapshot)
-                    .collect(Collectors.toList());
-        }
+        log.info("[存储] 写入 {} 条 Span（mode={}），耗时={}ms，当前持有={}",
+                added, spanStore.mode(), sw.getTotalTimeMillis(), spanStore.size());
     }
 
     /**
-     * 按 Trace ID 聚合的最近链路摘要（一行 = 一次请求），供链路列表页使用。
+     * @param traceId Trace ID
+     * @return 该 Trace 的 Span 列表
+     */
+    public List<TraceSpan> getTraceById(String traceId) {
+        return spanStore.findByTraceId(traceId);
+    }
+
+    /**
+     * @param lastHours 时间窗口
+     * @param limit     条数
+     * @return 最近 Span
+     */
+    public List<TraceSpan> getRecentSpans(int lastHours, int limit) {
+        return spanStore.findRecent(lastHours, limit);
+    }
+
+    /**
+     * 按 Trace ID 聚合的最近链路摘要（一行 = 一次请求）。
      *
      * @param lastHours     时间窗口（小时）
      * @param limit         最多返回几条 Trace
-     * @param serviceName   可选：仅包含该服务参与过的 Trace
-     * @param status        {@code all}|{@code error}|{@code ok}
-     * @param query         可选：Trace ID / 操作名模糊匹配（忽略大小写）
-     * @param minDurationMs 可选：总耗时下限（毫秒），用于找慢请求
+     * @param serviceName   可选服务过滤
+     * @param status        all|error|ok
+     * @param query         可选模糊匹配
+     * @param minDurationMs 耗时下限
+     * @return 摘要行
      */
     public List<Map<String, Object>> getRecentTraceSummaries(
             int lastHours, int limit, String serviceName, String status, String query, long minDurationMs) {
@@ -178,54 +109,52 @@ public class TraceSpanPersistenceService {
         ) {}
 
         Map<String, Acc> byTrace = new LinkedHashMap<>();
-        synchronized (lock) {
-            for (TraceSpan s : spans) {
-                if (s == null || s.getTraceId() == null || s.getTraceId().isBlank()) {
-                    continue;
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (s == null || s.getTraceId() == null || s.getTraceId().isBlank()) {
+                continue;
+            }
+            long start = n(s.getStartTime());
+            if (start < sinceTime) {
+                continue;
+            }
+            long end = n(s.getEndTime());
+            if (end <= 0) {
+                end = start + n(s.getDurationMs());
+            }
+            Acc acc = byTrace.get(s.getTraceId());
+            if (acc == null) {
+                java.util.LinkedHashSet<String> services = new java.util.LinkedHashSet<>();
+                if (s.getServiceName() != null && !s.getServiceName().isBlank()) {
+                    services.add(s.getServiceName());
                 }
-                long start = n(s.getStartTime());
-                if (start < sinceTime) {
-                    continue;
+                boolean root = s.getParentSpanId() == null || s.getParentSpanId().isBlank();
+                byTrace.put(s.getTraceId(), new Acc(
+                        s.getTraceId(),
+                        start,
+                        Math.max(start, end),
+                        1,
+                        isError(s),
+                        root ? s.getServiceName() : null,
+                        root ? s.getOperationName() : null,
+                        services
+                ));
+            } else {
+                boolean root = s.getParentSpanId() == null || s.getParentSpanId().isBlank();
+                if (s.getServiceName() != null && !s.getServiceName().isBlank()) {
+                    acc.services().add(s.getServiceName());
                 }
-                long end = n(s.getEndTime());
-                if (end <= 0) {
-                    end = start + n(s.getDurationMs());
-                }
-                Acc acc = byTrace.get(s.getTraceId());
-                if (acc == null) {
-                    java.util.LinkedHashSet<String> services = new java.util.LinkedHashSet<>();
-                    if (s.getServiceName() != null && !s.getServiceName().isBlank()) {
-                        services.add(s.getServiceName());
-                    }
-                    boolean root = s.getParentSpanId() == null || s.getParentSpanId().isBlank();
-                    byTrace.put(s.getTraceId(), new Acc(
-                            s.getTraceId(),
-                            start,
-                            Math.max(start, end),
-                            1,
-                            isError(s),
-                            root ? s.getServiceName() : null,
-                            root ? s.getOperationName() : null,
-                            services
-                    ));
-                } else {
-                    boolean root = s.getParentSpanId() == null || s.getParentSpanId().isBlank();
-                    if (s.getServiceName() != null && !s.getServiceName().isBlank()) {
-                        acc.services().add(s.getServiceName());
-                    }
-                    byTrace.put(s.getTraceId(), new Acc(
-                            acc.traceId(),
-                            Math.min(acc.minStart(), start),
-                            Math.max(acc.maxEnd(), Math.max(start, end)),
-                            acc.spanCount() + 1,
-                            acc.hasError() || isError(s),
-                            root && (acc.rootService() == null || acc.rootService().isBlank())
-                                    ? s.getServiceName() : acc.rootService(),
-                            root && (acc.rootOperation() == null || acc.rootOperation().isBlank())
-                                    ? s.getOperationName() : acc.rootOperation(),
-                            acc.services()
-                    ));
-                }
+                byTrace.put(s.getTraceId(), new Acc(
+                        acc.traceId(),
+                        Math.min(acc.minStart(), start),
+                        Math.max(acc.maxEnd(), Math.max(start, end)),
+                        acc.spanCount() + 1,
+                        acc.hasError() || isError(s),
+                        root && (acc.rootService() == null || acc.rootService().isBlank())
+                                ? s.getServiceName() : acc.rootService(),
+                        root && (acc.rootOperation() == null || acc.rootOperation().isBlank())
+                                ? s.getOperationName() : acc.rootOperation(),
+                        acc.services()
+                ));
             }
         }
 
@@ -279,133 +208,137 @@ public class TraceSpanPersistenceService {
         return out;
     }
 
+    /**
+     * @return 去重后的服务名列表
+     */
     public List<String> getAllServiceNames() {
-        synchronized (lock) {
-            return spans.stream()
-                    .map(TraceSpan::getServiceName)
-                    .filter(Objects::nonNull)
-                    .filter(n -> !n.isBlank())
-                    .distinct()
-                    .sorted()
-                    .collect(Collectors.toList());
-        }
+        return spanStore.snapshot().stream()
+                .map(TraceSpan::getServiceName)
+                .filter(Objects::nonNull)
+                .filter(n -> !n.isBlank())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
     }
 
+    /**
+     * @param lastHours 时间窗口
+     * @return 依赖边汇总
+     */
     public List<Map<String, Object>> getServiceDependencies(int lastHours) {
         long sinceTime = sinceEpochMillis(lastHours);
-        synchronized (lock) {
-            record Key(String src, String tgt) {}
-            Map<Key, long[]> agg = new HashMap<>();
-            for (TraceSpan s : spans) {
-                if (n(s.getStartTime()) < sinceTime) {
-                    continue;
-                }
-                String remote = s.getRemoteService();
-                if (remote == null || remote.isBlank()) {
-                    continue;
-                }
-                String src = s.getServiceName() != null ? s.getServiceName() : "";
-                Key k = new Key(src, remote);
-                long[] a = agg.computeIfAbsent(k, x -> new long[]{0L, 0L});
-                a[0]++;
-                a[1] += n(s.getDurationMs());
+        record Key(String src, String tgt) {}
+        Map<Key, long[]> agg = new HashMap<>();
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (n(s.getStartTime()) < sinceTime) {
+                continue;
             }
-            List<Map<String, Object>> out = new ArrayList<>();
-            for (Map.Entry<Key, long[]> e : agg.entrySet()) {
-                long cnt = e.getValue()[0];
-                if (cnt <= 0) {
-                    continue;
-                }
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("source_service", e.getKey().src());
-                row.put("target_service", e.getKey().tgt());
-                row.put("call_count", cnt);
-                row.put("avg_duration", (double) e.getValue()[1] / (double) cnt);
-                out.add(row);
+            String remote = s.getRemoteService();
+            if (remote == null || remote.isBlank()) {
+                continue;
             }
-            return out;
+            String src = s.getServiceName() != null ? s.getServiceName() : "";
+            Key k = new Key(src, remote);
+            long[] a = agg.computeIfAbsent(k, x -> new long[]{0L, 0L});
+            a[0]++;
+            a[1] += n(s.getDurationMs());
         }
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map.Entry<Key, long[]> e : agg.entrySet()) {
+            long cnt = e.getValue()[0];
+            if (cnt <= 0) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("source_service", e.getKey().src());
+            row.put("target_service", e.getKey().tgt());
+            row.put("call_count", cnt);
+            row.put("avg_duration", (double) e.getValue()[1] / (double) cnt);
+            out.add(row);
+        }
+        return out;
     }
 
+    /**
+     * @return 全量按服务计数
+     */
     public List<Map<String, Object>> getSpanCountByService() {
         return getSpanCountByService(0);
     }
 
     /**
-     * 按服务统计 Span 数。
-     *
-     * @param lastHours 时间窗口小时数；{@code <= 0} 表示不限时间（全部已存 Span）
+     * @param lastHours 时间窗口；{@code <=0} 不限
+     * @return 按服务 Span 数
      */
     public List<Map<String, Object>> getSpanCountByService(int lastHours) {
         long sinceTime = sinceEpochMillis(lastHours);
-        synchronized (lock) {
-            Map<String, Long> counts = new HashMap<>();
-            for (TraceSpan s : spans) {
-                if (n(s.getStartTime()) < sinceTime) {
-                    continue;
-                }
-                String name = s.getServiceName();
-                if (name == null || name.isBlank()) {
-                    continue;
-                }
-                counts.merge(name, 1L, Long::sum);
+        Map<String, Long> counts = new HashMap<>();
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (n(s.getStartTime()) < sinceTime) {
+                continue;
             }
-            return counts.entrySet().stream()
-                    .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
-                    .map(e -> {
-                        Map<String, Object> row = new LinkedHashMap<>();
-                        row.put("service_name", e.getKey());
-                        row.put("span_count", e.getValue());
-                        return row;
-                    })
-                    .collect(Collectors.toList());
+            String name = s.getServiceName();
+            if (name == null || name.isBlank()) {
+                continue;
+            }
+            counts.merge(name, 1L, Long::sum);
         }
-    }
-
-    public List<Map<String, Object>> findHighErrorServices(int lastHours) {
-        long sinceTime = sinceEpochMillis(lastHours);
-        synchronized (lock) {
-            Map<String, long[]> agg = new HashMap<>();
-            for (TraceSpan s : spans) {
-                if (n(s.getStartTime()) < sinceTime) {
-                    continue;
-                }
-                String name = s.getServiceName();
-                if (name == null || name.isBlank()) {
-                    continue;
-                }
-                long[] a = agg.computeIfAbsent(name, x -> new long[]{0L, 0L});
-                a[0]++;
-                if (isError(s)) {
-                    a[1]++;
-                }
-            }
-            List<Map<String, Object>> out = new ArrayList<>();
-            for (Map.Entry<String, long[]> e : agg.entrySet()) {
-                long total = e.getValue()[0];
-                long err = e.getValue()[1];
-                if (err <= 0) {
-                    continue;
-                }
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("service_name", e.getKey());
-                row.put("total_calls", total);
-                row.put("error_calls", err);
-                row.put("error_rate", Math.round((err * 10000.0 / total)) / 100.0);
-                out.add(row);
-            }
-            out.sort((a, b) -> Double.compare(
-                    ((Number) b.get("error_rate")).doubleValue(),
-                    ((Number) a.get("error_rate")).doubleValue()));
-            return out;
-        }
+        return counts.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
+                .map(e -> {
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("service_name", e.getKey());
+                    row.put("span_count", e.getValue());
+                    return row;
+                })
+                .collect(Collectors.toList());
     }
 
     /**
-     * 按服务汇总延迟与错误率（基于窗口内该服务的 Span 耗时）。
-     *
      * @param lastHours 时间窗口
-     * @param limit     返回条数上限（按 p95 降序截断）
+     * @return 有错误的服务分析
+     */
+    public List<Map<String, Object>> findHighErrorServices(int lastHours) {
+        long sinceTime = sinceEpochMillis(lastHours);
+        Map<String, long[]> agg = new HashMap<>();
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (n(s.getStartTime()) < sinceTime) {
+                continue;
+            }
+            String name = s.getServiceName();
+            if (name == null || name.isBlank()) {
+                continue;
+            }
+            long[] a = agg.computeIfAbsent(name, x -> new long[]{0L, 0L});
+            a[0]++;
+            if (isError(s)) {
+                a[1]++;
+            }
+        }
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map.Entry<String, long[]> e : agg.entrySet()) {
+            long total = e.getValue()[0];
+            long err = e.getValue()[1];
+            if (err <= 0) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("service_name", e.getKey());
+            row.put("total_calls", total);
+            row.put("error_calls", err);
+            row.put("error_rate", Math.round((err * 10000.0 / total)) / 100.0);
+            out.add(row);
+        }
+        out.sort((a, b) -> Double.compare(
+                ((Number) b.get("error_rate")).doubleValue(),
+                ((Number) a.get("error_rate")).doubleValue()));
+        return out;
+    }
+
+    /**
+     * @param lastHours 时间窗口
+     * @param limit     返回上限
+     * @return 延迟摘要
      */
     public List<Map<String, Object>> getServiceLatencySummaries(int lastHours, int limit) {
         long sinceTime = sinceEpochMillis(lastHours);
@@ -414,24 +347,22 @@ public class TraceSpanPersistenceService {
         record Acc(List<Long> durations, long errorCount) {}
         Map<String, Acc> byService = new HashMap<>();
 
-        synchronized (lock) {
-            for (TraceSpan s : spans) {
-                if (s == null || n(s.getStartTime()) < sinceTime) {
-                    continue;
-                }
-                String name = s.getServiceName();
-                if (name == null || name.isBlank()) {
-                    continue;
-                }
-                Acc acc = byService.computeIfAbsent(name, x -> new Acc(new ArrayList<>(), 0L));
-                long dur = n(s.getDurationMs());
-                if (dur <= 0 && s.getEndTime() != null) {
-                    dur = Math.max(0L, n(s.getEndTime()) - n(s.getStartTime()));
-                }
-                acc.durations().add(Math.max(0L, dur));
-                if (isError(s)) {
-                    byService.put(name, new Acc(acc.durations(), acc.errorCount() + 1));
-                }
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (s == null || n(s.getStartTime()) < sinceTime) {
+                continue;
+            }
+            String name = s.getServiceName();
+            if (name == null || name.isBlank()) {
+                continue;
+            }
+            Acc acc = byService.computeIfAbsent(name, x -> new Acc(new ArrayList<>(), 0L));
+            long dur = n(s.getDurationMs());
+            if (dur <= 0 && s.getEndTime() != null) {
+                dur = Math.max(0L, n(s.getEndTime()) - n(s.getStartTime()));
+            }
+            acc.durations().add(Math.max(0L, dur));
+            if (isError(s)) {
+                byService.put(name, new Acc(acc.durations(), acc.errorCount() + 1));
             }
         }
 
@@ -474,6 +405,29 @@ public class TraceSpanPersistenceService {
         return out;
     }
 
+    /**
+     * @param serviceName 服务名
+     * @param limit       条数
+     * @return 该服务最近 Span
+     */
+    public List<TraceSpan> getRecentSpansByService(String serviceName, int limit) {
+        return spanStore.findByService(serviceName, limit);
+    }
+
+    /**
+     * @return 当前持有条数
+     */
+    public int getStoredSpanCount() {
+        return spanStore.size();
+    }
+
+    /**
+     * @return 当前存储模式
+     */
+    public String getStorageMode() {
+        return spanStore.mode();
+    }
+
     private static long percentile(List<Long> sortedAsc, double p) {
         if (sortedAsc.isEmpty()) {
             return 0L;
@@ -491,108 +445,6 @@ public class TraceSpanPersistenceService {
         return Math.round(sortedAsc.get(lo) * (1 - w) + sortedAsc.get(hi) * w);
     }
 
-    public List<TraceSpan> getRecentSpansByService(String serviceName, int limit) {
-        synchronized (lock) {
-            return spans.stream()
-                    .filter(s -> serviceName.equals(s.getServiceName()))
-                    .sorted(Comparator.comparing((TraceSpan s) -> n(s.getStartTime())).reversed())
-                    .limit(limit)
-                    .map(TraceSpan::snapshot)
-                    .collect(Collectors.toList());
-        }
-    }
-
-    /** 当前持有条数（运维/健康检查可用） */
-    public int getStoredSpanCount() {
-        synchronized (lock) {
-            return spans.size();
-        }
-    }
-
-    private void scheduleFlush() {
-        dirty.set(true);
-        if (flushScheduler == null) {
-            return;
-        }
-        synchronized (this) {
-            if (pendingFlush != null && !pendingFlush.isDone()) {
-                pendingFlush.cancel(false);
-            }
-            long delay = Math.max(200L, storageProperties.getFlushDelayMs());
-            pendingFlush = flushScheduler.schedule(() -> flushToFileNow(false), delay, TimeUnit.MILLISECONDS);
-        }
-    }
-
-    private void cancelPendingFlush() {
-        synchronized (this) {
-            if (pendingFlush != null) {
-                pendingFlush.cancel(false);
-                pendingFlush = null;
-            }
-        }
-    }
-
-    private void loadFromFile() {
-        Path path = Path.of(storageProperties.getFilePath()).toAbsolutePath().normalize();
-        if (!Files.exists(path)) {
-            log.info("[存储] 持久化文件不存在，将在首次写入时创建: {}", path);
-            return;
-        }
-        try {
-            List<TraceSpan> loaded = objectMapper.readValue(path.toFile(), new TypeReference<List<TraceSpan>>() {});
-            if (loaded == null || loaded.isEmpty()) {
-                return;
-            }
-            synchronized (lock) {
-                spans.clear();
-                for (TraceSpan s : loaded) {
-                    if (s == null || s.getTraceId() == null || s.getSpanId() == null) {
-                        continue;
-                    }
-                    spans.add(TraceSpan.snapshot(s));
-                }
-                evictIfNeeded();
-            }
-            log.info("[存储] 已从文件加载 {} 条 Span ← {}", size(), path);
-        } catch (IOException e) {
-            log.error("[存储] 读取持久化文件失败: {} — {}", path, e.getMessage());
-        }
-    }
-
-    private void flushToFileNow(boolean force) {
-        if (!storageProperties.isFileMode()) {
-            return;
-        }
-        if (!force && !dirty.get()) {
-            return;
-        }
-        Path path = Path.of(storageProperties.getFilePath()).toAbsolutePath().normalize();
-        List<TraceSpan> snapshot;
-        synchronized (lock) {
-            snapshot = spans.stream().map(TraceSpan::snapshot).collect(Collectors.toList());
-        }
-        try {
-            Path parent = path.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-            Path tmp = path.resolveSibling(path.getFileName() + ".tmp");
-            objectMapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), snapshot);
-            try {
-                Files.move(tmp, path,
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING,
-                        java.nio.file.StandardCopyOption.ATOMIC_MOVE);
-            } catch (IOException atomicFailed) {
-                Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            }
-            dirty.set(false);
-            log.info("[存储] 已刷盘 {} 条 Span → {}", snapshot.size(), path);
-        } catch (IOException e) {
-            dirty.set(true);
-            log.error("[存储] 刷盘失败: {} — {}", path, e.getMessage());
-        }
-    }
-
     private static boolean isError(TraceSpan s) {
         String sc = s.getStatusCode();
         if ("ERROR".equalsIgnoreCase(sc)) {
@@ -601,9 +453,6 @@ public class TraceSpanPersistenceService {
         return Boolean.FALSE.equals(s.getSuccess());
     }
 
-    /**
-     * @param lastHours 窗口小时数；{@code <= 0} 表示不限时间
-     */
     private static long sinceEpochMillis(int lastHours) {
         if (lastHours <= 0) {
             return 0L;
