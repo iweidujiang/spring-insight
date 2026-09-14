@@ -53,6 +53,7 @@ public class CollectorController {
         body.put("version", "0.1.1-SNAPSHOT");
         body.put("storageMode", persistenceService.getStorageMode());
         body.put("storedSpans", persistenceService.getStoredSpanCount());
+        body.put("evictedSpans", persistenceService.getEvictedSpanCount());
         return ResponseEntity.ok(body);
     }
 

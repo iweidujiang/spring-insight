@@ -83,6 +83,7 @@ spring:
 | 链路列表 / Trace 详情 | 按 Trace 聚合，可搜索筛选；详情含瀑布时间线、tags、错误信息 |
 | 延迟与错误摘要 | 仪表盘慢/错 Top（含 p50/p95），可点进已筛 Trace |
 | Micrometer 联动 | 宿主有 MeterRegistry 时导出 `spring.insight.*`（Span Timer / 上报队列） |
+| 可选鉴权 / 容量可见（0.2） | Server 可选 ingest Token、控制台登录；健康/Actuator 暴露 stored/max/evicted |
 | 控制台 UI | Vue 页面内嵌在 Server / Docker 镜像中 |
 
 ---
@@ -145,8 +146,9 @@ spring:
 
 - **Docker / Compose** 默认 `file` 落盘并挂卷，重启可保留 Span。
 - 仅内存：将 `SPRING_INSIGHT_SERVER_STORAGE_MODE` 设为 `memory`。
-- **SQLite（0.2 开发中）**：`SPRING_INSIGHT_SERVER_STORAGE_MODE=sqlite`，库文件默认 `/data/insight.db`（需挂卷）。
+- **SQLite（0.2）**：`SPRING_INSIGHT_SERVER_STORAGE_MODE=sqlite`，库文件默认 `/data/insight.db`（需挂卷）。
 - 按时间保留（可选）：`SPRING_INSIGHT_SERVER_STORAGE_RETENTION_MAX_AGE_HOURS=72`。
+- **可选鉴权 / 运维**：见 [`docs/dev_docs/v0.2-ops.md`](docs/dev_docs/v0.2-ops.md)（ingest Token、UI 登录、容量指标；默认关闭）。
 - 本机 jar（需 JDK 21 + 先构建仓库）：
 
 ```bash
@@ -192,7 +194,7 @@ spring:
 Spring Insight 定位是**轻量辅助排查**，不是 OpenTelemetry / SkyWalking 的替代品：
 
 - Span 默认有条数上限；不配落盘时重启会清空（Docker 推荐挂卷 + `file`）
-- 无内置告警规则、多租户、完善鉴权等生产级运维能力
+- 无内置告警规则、多租户、OIDC 等生产级运维能力（可选 Token / 简易登录见 0.2 运维文档）
 - JVM / JDBC 采集默认关闭（实验开关，需自行验证）
 
 欢迎 Issue / PR。

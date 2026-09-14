@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * sqlite 模式：JSON 行存 + 索引，重启可恢复。
@@ -32,6 +33,8 @@ public class SqliteSpanStore implements SpanStore {
     private final ObjectMapper objectMapper;
     private final Connection connection;
     private final Object lock = new Object();
+    /** 因上限/时间裁剪累计丢弃条数 */
+    private final AtomicLong evictedTotal = new AtomicLong();
 
     /**
      * @param properties   存储配置
@@ -136,7 +139,10 @@ public class SqliteSpanStore implements SpanStore {
         try (PreparedStatement ps = connection.prepareStatement(
                 "DELETE FROM spans WHERE id IN (SELECT id FROM spans ORDER BY start_time ASC, id ASC LIMIT ?)")) {
             ps.setInt(1, overflow);
-            ps.executeUpdate();
+            int deleted = ps.executeUpdate();
+            if (deleted > 0) {
+                evictedTotal.addAndGet(deleted);
+            }
         }
     }
 
@@ -225,6 +231,11 @@ public class SqliteSpanStore implements SpanStore {
         }
     }
 
+    @Override
+    public long evictedCount() {
+        return evictedTotal.get();
+    }
+
     private int sizeUnlocked() {
         try (Statement st = connection.createStatement();
              ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM spans")) {
@@ -240,7 +251,11 @@ public class SqliteSpanStore implements SpanStore {
             try (PreparedStatement ps = connection.prepareStatement(
                     "DELETE FROM spans WHERE start_time < ?")) {
                 ps.setLong(1, cutoffEpochMs);
-                return ps.executeUpdate();
+                int deleted = ps.executeUpdate();
+                if (deleted > 0) {
+                    evictedTotal.addAndGet(deleted);
+                }
+                return deleted;
             } catch (SQLException e) {
                 throw new IllegalStateException("SQLite purge 失败: " + e.getMessage(), e);
             }

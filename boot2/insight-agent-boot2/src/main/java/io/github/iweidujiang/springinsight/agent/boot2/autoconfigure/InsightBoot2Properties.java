@@ -27,6 +27,10 @@ public class InsightBoot2Properties {
     /** 是否桥接宿主 MeterRegistry（无 Micrometer/无 MeterRegistry 时自动跳过） */
     private boolean micrometerEnabled = true;
     private boolean diagnosticLogs = false;
+    /**
+     * 上报 Token（可选）；非空则带 X-Insight-Token
+     */
+    private String ingestToken = "";
     private String[] excludePatterns = new String[]{
             "/actuator/**",
             "/health",
@@ -94,6 +98,21 @@ public class InsightBoot2Properties {
 
     public void setDiagnosticLogs(boolean diagnosticLogs) {
         this.diagnosticLogs = diagnosticLogs;
+    }
+
+    public String getIngestToken() {
+        return ingestToken;
+    }
+
+    public void setIngestToken(String ingestToken) {
+        this.ingestToken = ingestToken;
+    }
+
+    /**
+     * @return 规范化 ingest token；未配置为空串
+     */
+    public String normalizedIngestToken() {
+        return ingestToken == null ? "" : ingestToken.trim();
     }
 
     public String[] getExcludePatterns() {

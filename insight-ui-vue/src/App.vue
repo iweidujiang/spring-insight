@@ -1,5 +1,8 @@
 <template>
-  <div class="si-shell" :class="{ 'si-shell--nav-open': navOpen }">
+  <div v-if="isLoginRoute" class="si-shell si-shell--login">
+    <router-view />
+  </div>
+  <div v-else class="si-shell" :class="{ 'si-shell--nav-open': navOpen }">
     <button
       type="button"
       class="si-nav-toggle"
@@ -32,6 +35,9 @@
       </nav>
 
       <div class="si-sidebar__foot">
+        <button v-if="showLogout" type="button" class="si-sidebar__logout" @click="onLogout">
+          退出登录
+        </button>
         <NotificationComponent />
       </div>
     </aside>
@@ -46,12 +52,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import NotificationComponent from './components/NotificationComponent.vue'
+import { getUiToken, logout } from './services/AuthService'
 
 const route = useRoute()
+const router = useRouter()
 const navOpen = ref(false)
+
+const isLoginRoute = computed(() => route.path === '/login')
+const showLogout = computed(() => !!getUiToken())
 
 const navItems = [
   { to: '/', label: '仪表盘', icon: 'fa-tachometer-alt', match: (p: string) => p === '/' },
@@ -66,6 +77,11 @@ const closeNav = () => {
   navOpen.value = false
 }
 
+async function onLogout() {
+  await logout()
+  await router.push('/login')
+}
+
 watch(
   () => route.fullPath,
   () => {
@@ -73,3 +89,17 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+.si-sidebar__logout {
+  width: 100%;
+  margin-bottom: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: inherit;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+</style>

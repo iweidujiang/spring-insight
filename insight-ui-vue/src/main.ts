@@ -7,16 +7,23 @@ import TracesView from './views/TracesView.vue'
 import TraceDetailView from './views/TraceDetailView.vue'
 import ErrorAnalysisView from './views/ErrorAnalysisView.vue'
 import AboutView from './views/AboutView.vue'
+import LoginView from './views/LoginView.vue'
+import { fetchAuthStatus, getUiToken } from './services/AuthService'
 
 // 导入样式
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'font-awesome/css/font-awesome.min.css'
 import './assets/css/styles.css'
 
-// 创建路由
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    {
+      path: '/login',
+      name: 'login',
+      component: LoginView,
+      meta: { title: '登录', public: true }
+    },
     {
       path: '/',
       name: 'dashboard',
@@ -56,13 +63,35 @@ const router = createRouter({
   ]
 })
 
-// 路由守卫，设置页面标题
-router.beforeEach((to, from, next) => {
-  document.title = `Spring Insight - ${to.meta.title || '监控系统'}`
+let uiAuthEnabled: boolean | null = null
+
+async function ensureAuthStatus() {
+  if (uiAuthEnabled !== null) {
+    return uiAuthEnabled
+  }
+  try {
+    const status = await fetchAuthStatus()
+    uiAuthEnabled = status.uiAuthEnabled
+  } catch {
+    uiAuthEnabled = false
+  }
+  return uiAuthEnabled
+}
+
+router.beforeEach(async (to, _from, next) => {
+  document.title = `Spring Insight - ${String(to.meta.title || '监控系统')}`
+  if (to.meta.public) {
+    next()
+    return
+  }
+  const enabled = await ensureAuthStatus()
+  if (enabled && !getUiToken()) {
+    next({ path: '/login', query: { redirect: to.fullPath } })
+    return
+  }
   next()
 })
 
-// 创建应用
 const app = createApp(App)
 app.use(router)
 app.mount('#app')

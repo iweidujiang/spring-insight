@@ -1,4 +1,5 @@
-import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios'
+import axios, { AxiosRequestConfig, AxiosError } from 'axios'
+import { getUiToken, setUiToken } from './AuthService'
 
 export interface ApiResponse<T> {
   data: T
@@ -13,6 +14,29 @@ const apiClient = axios.create({
     'Content-Type': 'application/json'
   }
 })
+
+apiClient.interceptors.request.use((config) => {
+  const token = getUiToken()
+  if (token) {
+    config.headers = config.headers || {}
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      setUiToken('')
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+        window.location.assign(`/login?redirect=${redirect}`)
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 async function request<T>(url: string, options: AxiosRequestConfig = {}): Promise<T> {
   try {

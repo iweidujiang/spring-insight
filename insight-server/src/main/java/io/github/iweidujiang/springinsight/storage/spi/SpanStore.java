@@ -58,6 +58,15 @@ public interface SpanStore {
     int size();
 
     /**
+     * 因条数上限或时间保留策略被裁剪的累计条数（进程内计数，重启清零）。
+     *
+     * @return 累计驱逐条数
+     */
+    default long evictedCount() {
+        return 0L;
+    }
+
+    /**
      * 删除开始时间早于 cutoff 的 Span。
      *
      * @param cutoffEpochMs 截止时间戳（毫秒）

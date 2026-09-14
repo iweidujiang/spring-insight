@@ -32,7 +32,8 @@ public class ServerSpaController {
             "/traces",
             "/traces/**",
             "/error-analysis",
-            "/about"
+            "/about",
+            "/login"
     })
     public String forwardSpaRoutesToIndex() {
         // forward 保留原始 URL，仅服务端内部转到 index.html，利于 History 刷新

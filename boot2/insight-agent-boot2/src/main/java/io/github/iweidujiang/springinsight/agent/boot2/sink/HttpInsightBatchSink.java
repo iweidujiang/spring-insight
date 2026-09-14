@@ -76,6 +76,11 @@ public class HttpInsightBatchSink implements InsightBatchSink {
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setRequestProperty("Accept", "application/json");
+            // 可选 ingest Token
+            String token = properties.normalizedIngestToken();
+            if (!token.isEmpty()) {
+                conn.setRequestProperty("X-Insight-Token", token);
+            }
             OutputStream os = conn.getOutputStream();
             try {
                 os.write(body);

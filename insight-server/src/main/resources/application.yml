@@ -16,9 +16,27 @@ spring:
           vacuum-interval-ms: 60000
         sqlite:
           path: ./data/insight.db
+      security:
+        # 默认关闭：与 0.1 接入兼容。开启后 Agent 须配置 spring.insight.ingest-token
+        ingest-token-required: false
+        ingest-token: ""
+        # 控制台 UI API 简易登录（默认关）；开启后须配置 ui-password
+        ui-auth-enabled: false
+        ui-username: admin
+        ui-password: ""
+        ui-session-ttl-hours: 24
 
 server:
   port: 9966
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
 
 logging:
   level:

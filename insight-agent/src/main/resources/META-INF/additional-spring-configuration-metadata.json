@@ -9,6 +9,12 @@
   ],
   "properties": [
     {
+      "name": "spring.insight.ingest-token",
+      "type": "java.lang.String",
+      "description": "可选上报 Token；非空时 HTTP 上报携带 X-Insight-Token。",
+      "defaultValue": ""
+    },
+    {
       "name": "spring.insight.jvm-metrics.enabled",
       "type": "java.lang.Boolean",
       "description": "是否启用 JVM 指标采集与上报。默认 false。",

@@ -55,6 +55,13 @@
       "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
     },
     {
+      "name": "spring.insight.ingest-token",
+      "type": "java.lang.String",
+      "description": "可选上报 Token；非空时请求带 X-Insight-Token（须与 Server ingest-token 一致）。",
+      "defaultValue": "",
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
       "name": "spring.insight.exclude-patterns",
       "type": "java.lang.String[]",
       "description": "HTTP 追踪排除路径（Ant 风格）。",

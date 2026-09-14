@@ -9,6 +9,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -23,6 +24,8 @@ public class InMemorySpanStore implements SpanStore {
     private final String modeLabel;
     private final Object lock = new Object();
     private final List<TraceSpan> spans = new ArrayList<>();
+    /** 因上限/时间裁剪累计丢弃条数 */
+    private final AtomicLong evictedTotal = new AtomicLong();
 
     /**
      * @param properties 存储配置（maxSpans 等）
@@ -130,18 +133,32 @@ public class InMemorySpanStore implements SpanStore {
     }
 
     @Override
+    public long evictedCount() {
+        return evictedTotal.get();
+    }
+
+    @Override
     public int purgeOlderThan(long cutoffEpochMs) {
         synchronized (lock) {
             int before = spans.size();
             spans.removeIf(s -> n(s.getStartTime()) < cutoffEpochMs);
-            return before - spans.size();
+            int removed = before - spans.size();
+            if (removed > 0) {
+                evictedTotal.addAndGet(removed);
+            }
+            return removed;
         }
     }
 
     private void evictByCount() {
         int max = Math.max(1, properties.getMaxSpans());
+        int removed = 0;
         while (spans.size() > max) {
             spans.removeFirst();
+            removed++;
+        }
+        if (removed > 0) {
+            evictedTotal.addAndGet(removed);
         }
     }
 

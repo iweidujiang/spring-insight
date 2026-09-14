@@ -422,6 +422,13 @@ public class TraceSpanPersistenceService {
     }
 
     /**
+     * @return 累计因上限/保留策略裁剪的条数
+     */
+    public long getEvictedSpanCount() {
+        return spanStore.evictedCount();
+    }
+
+    /**
      * @return 当前存储模式
      */
     public String getStorageMode() {

@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.collector.controller;
 
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
+import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,11 +32,14 @@ public class CollectorApiController {
 
     private final TraceSpanPersistenceService traceSpanPersistenceService;
     private final TraceSpanCollectorService traceSpanCollectorService;
+    private final InsightServerStorageProperties storageProperties;
 
     public CollectorApiController(TraceSpanPersistenceService traceSpanPersistenceService,
-                                  TraceSpanCollectorService traceSpanCollectorService) {
+                                  TraceSpanCollectorService traceSpanCollectorService,
+                                  InsightServerStorageProperties storageProperties) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
         this.traceSpanCollectorService = traceSpanCollectorService;
+        this.storageProperties = storageProperties;
     }
 
     /**
@@ -179,8 +184,15 @@ public class CollectorApiController {
         try {
             var collectorStats = traceSpanCollectorService.getStats();
 
+            Map<String, Object> capacity = new LinkedHashMap<>();
+            capacity.put("storageMode", traceSpanPersistenceService.getStorageMode());
+            capacity.put("storedSpans", traceSpanPersistenceService.getStoredSpanCount());
+            capacity.put("maxSpans", storageProperties.getMaxSpans());
+            capacity.put("evictedSpans", traceSpanPersistenceService.getEvictedSpanCount());
+
             Map<String, Object> result = new HashMap<>();
             result.put("collectorStats", collectorStats);
+            result.put("capacity", capacity);
             result.put("timestamp", Instant.now().toString());
 
             return ResponseEntity.ok(result);

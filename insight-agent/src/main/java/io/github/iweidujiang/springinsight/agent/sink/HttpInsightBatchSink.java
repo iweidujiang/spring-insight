@@ -97,12 +97,16 @@ public class HttpInsightBatchSink implements InsightBatchSink {
 
         try {
             byte[] body = objectMapper.writeValueAsBytes(report);
-            HttpRequest request = HttpRequest.newBuilder()
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(spansBatchUrl))
                     .timeout(REQUEST_TIMEOUT)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofByteArray(body))
-                    .build();
+                    .header("Content-Type", "application/json");
+            // 可选 ingest Token：与 Server spring.insight.server.security.ingest-token 对齐
+            String token = properties.normalizedIngestToken();
+            if (!token.isEmpty()) {
+                builder.header("X-Insight-Token", token);
+            }
+            HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             int status = response.statusCode();

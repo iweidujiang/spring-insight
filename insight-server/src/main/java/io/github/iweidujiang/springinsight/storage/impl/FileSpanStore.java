@@ -91,6 +91,11 @@ public class FileSpanStore implements SpanStore {
     }
 
     @Override
+    public long evictedCount() {
+        return memory.evictedCount();
+    }
+
+    @Override
     public int purgeOlderThan(long cutoffEpochMs) {
         int removed = memory.purgeOlderThan(cutoffEpochMs);
         if (removed > 0) {

@@ -91,6 +91,19 @@ public class InsightProperties {
     private boolean diagnosticLogs = false;
 
     /**
+     * 上报到 insight-server 的共享 Token（可选）。
+     * <p>非空时请求携带 {@code X-Insight-Token}；Server 开启 ingest 鉴权后须与之匹配。</p>
+     */
+    private String ingestToken = "";
+
+    /**
+     * @return 规范化后的 ingest token；未配置返回空串
+     */
+    public String normalizedIngestToken() {
+        return ingestToken == null ? "" : ingestToken.trim();
+    }
+
+    /**
      * HTTP 追踪排除路径：配置项 + 自动追加的 UI 前缀。
      *
      * @return 排除 pattern 数组
