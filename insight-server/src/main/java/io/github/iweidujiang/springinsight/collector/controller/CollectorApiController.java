@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.collector.controller;
 
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -33,13 +34,16 @@ public class CollectorApiController {
     private final TraceSpanPersistenceService traceSpanPersistenceService;
     private final TraceSpanCollectorService traceSpanCollectorService;
     private final InsightServerStorageProperties storageProperties;
+    private final TraceContextExportService traceContextExportService;
 
     public CollectorApiController(TraceSpanPersistenceService traceSpanPersistenceService,
                                   TraceSpanCollectorService traceSpanCollectorService,
-                                  InsightServerStorageProperties storageProperties) {
+                                  InsightServerStorageProperties storageProperties,
+                                  TraceContextExportService traceContextExportService) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.storageProperties = storageProperties;
+        this.traceContextExportService = traceContextExportService;
     }
 
     /**
@@ -229,6 +233,26 @@ public class CollectorApiController {
             return ResponseEntity.ok(traceSpans);
         } catch (Exception e) {
             log.error("获取指定链路失败", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * AI 地基：导出单条 Trace 的脱敏结构化 Context（不调模型）。
+     *
+     * @param traceId Trace ID
+     * @return schemaVersion=1 的 Context JSON；不存在时 404
+     */
+    @GetMapping("/traces/{traceId}/context")
+    public ResponseEntity<?> getTraceContext(@PathVariable("traceId") String traceId) {
+        try {
+            Map<String, Object> context = traceContextExportService.buildContext(traceId);
+            if (context == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(context);
+        } catch (Exception e) {
+            log.error("导出 Trace Context 失败: traceId={}", traceId, e);
             return ResponseEntity.internalServerError().build();
         }
     }

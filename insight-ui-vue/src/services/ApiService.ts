@@ -205,6 +205,15 @@ export class ApiService {
   static async getTraceDetail(traceId: string): Promise<any[]> {
     return requestWithDefault<any[]>(`/traces/${encodeURIComponent(traceId)}`, [])
   }
+
+  /** AI 地基：单条 Trace 脱敏 Context（schemaVersion=1） */
+  static async getTraceContext(traceId: string): Promise<any | null> {
+    try {
+      return await request<any>(`/traces/${encodeURIComponent(traceId)}/context`)
+    } catch {
+      return null
+    }
+  }
 }
 
 export { apiClient }

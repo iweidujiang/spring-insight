@@ -34,6 +34,15 @@
         <button class="btn btn-outline-secondary" type="button" @click="goBack">
           <i class="fa fa-arrow-left me-1"></i>返回
         </button>
+        <button
+          class="btn btn-outline-secondary"
+          type="button"
+          @click="copyTraceContext"
+          :disabled="loading || spans.length === 0"
+          title="复制脱敏 Context JSON，可粘贴到任意 LLM"
+        >
+          <i class="fa fa-magic me-1"></i>复制 Context
+        </button>
         <button class="btn btn-primary" type="button" @click="load" :disabled="loading">
           <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
         </button>
@@ -301,6 +310,25 @@ const copyTraceId = async () => {
     }, 2000)
   } catch {
     copyHint.value = '复制失败'
+  }
+}
+
+const copyTraceContext = async () => {
+  if (!traceId.value) return
+  try {
+    const ctx = await ApiService.getTraceContext(traceId.value)
+    if (!ctx) {
+      copyHint.value = '未找到 Context（Trace 可能不存在）'
+      return
+    }
+    await navigator.clipboard.writeText(JSON.stringify(ctx, null, 2))
+    copyHint.value = '已复制 Trace Context（可粘贴到 LLM；AI 建议请以 Span 为准）'
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = window.setTimeout(() => {
+      copyHint.value = ''
+    }, 3000)
+  } catch {
+    copyHint.value = '复制 Context 失败'
   }
 }
 

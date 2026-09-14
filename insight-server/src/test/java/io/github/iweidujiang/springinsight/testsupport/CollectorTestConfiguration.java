@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
+import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
 import org.springframework.boot.SpringBootConfiguration;
@@ -55,6 +56,15 @@ public class CollectorTestConfiguration {
     @Bean
     public TraceSpanPersistenceService traceSpanPersistenceService(SpanStore spanStore) {
         return new TraceSpanPersistenceService(spanStore);
+    }
+
+    /**
+     * @param spanStore 存储 SPI
+     * @return Trace Context 导出
+     */
+    @Bean
+    public TraceContextExportService traceContextExportService(SpanStore spanStore) {
+        return new TraceContextExportService(spanStore);
     }
 
     /**
