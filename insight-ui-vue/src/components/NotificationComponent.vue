@@ -126,14 +126,17 @@ const updatePanelPosition = () => {
   const rect = btn.getBoundingClientRect()
   const panelWidth = Math.min(350, window.innerWidth - 16)
   const gap = 8
-  let left = rect.left
+  let left = rect.right - panelWidth
+  if (left < 8) {
+    left = 8
+  }
   if (left + panelWidth > window.innerWidth - 8) {
     left = Math.max(8, window.innerWidth - panelWidth - 8)
   }
   panelStyle.value = {
     position: 'fixed',
     left: `${left}px`,
-    bottom: `${window.innerHeight - rect.top + gap}px`,
+    top: `${rect.bottom + gap}px`,
     width: `${panelWidth}px`,
     zIndex: 5000
   }

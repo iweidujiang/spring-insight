@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 const UI_TOKEN_KEY = 'spring-insight-ui-token'
+const UI_USER_KEY = 'spring-insight-ui-username'
 
 const authClient = axios.create({
   baseURL: '/api/v1/auth',
@@ -21,9 +22,29 @@ export function getUiToken(): string {
 export function setUiToken(token: string) {
   if (!token) {
     localStorage.removeItem(UI_TOKEN_KEY)
+    localStorage.removeItem(UI_USER_KEY)
     return
   }
   localStorage.setItem(UI_TOKEN_KEY, token)
+}
+
+/**
+ * @returns 最近一次成功登录的用户名
+ */
+export function getUiUsername(): string {
+  return localStorage.getItem(UI_USER_KEY) || ''
+}
+
+/**
+ * @param username 登录用户名
+ */
+export function setUiUsername(username: string) {
+  const value = (username || '').trim()
+  if (!value) {
+    localStorage.removeItem(UI_USER_KEY)
+    return
+  }
+  localStorage.setItem(UI_USER_KEY, value)
 }
 
 /**
@@ -47,12 +68,14 @@ export async function login(username: string, password: string): Promise<void> {
   }
   if (data.uiAuthEnabled === false) {
     setUiToken('')
+    setUiUsername('')
     return
   }
   if (!data.token) {
     throw new Error(data?.message || '未返回 token')
   }
   setUiToken(data.token)
+  setUiUsername(username)
 }
 
 /**
@@ -68,5 +91,6 @@ export async function logout(): Promise<void> {
     }
   } finally {
     setUiToken('')
+    setUiUsername('')
   }
 }

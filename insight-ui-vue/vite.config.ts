@@ -15,7 +15,7 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api/v1/ui': {
+      '/api/v1': {
         // 本地联调默认指向 insight-server（9966）
         target: 'http://localhost:9966',
         changeOrigin: true

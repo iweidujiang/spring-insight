@@ -33,36 +33,65 @@
           <span>{{ item.label }}</span>
         </router-link>
       </nav>
-
-      <div class="si-sidebar__foot">
-        <button v-if="showLogout" type="button" class="si-sidebar__logout" @click="onLogout">
-          退出登录
-        </button>
-        <NotificationComponent />
-      </div>
     </aside>
 
-    <main
-      class="si-main"
-      :class="$route.path === '/' ? 'si-main--dashboard' : 'si-main--page'"
-    >
-      <router-view />
-    </main>
+    <div class="si-workspace">
+      <header class="si-topbar">
+        <div class="si-topbar__end">
+          <NotificationComponent />
+          <div v-if="signedIn" class="si-user" ref="userMenuRef">
+            <button
+              type="button"
+              class="si-user__trigger"
+              :aria-expanded="userMenuOpen"
+              aria-haspopup="menu"
+              @click.stop="userMenuOpen = !userMenuOpen"
+            >
+              <span class="si-user__avatar" aria-hidden="true">{{ userInitial }}</span>
+              <span class="si-user__name">{{ displayName }}</span>
+              <i class="fa fa-chevron-down si-user__caret"></i>
+            </button>
+            <div v-if="userMenuOpen" class="si-user__menu" role="menu">
+              <button type="button" role="menuitem" @click="onLogout">退出登录</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main
+        class="si-main"
+        :class="$route.path === '/' ? 'si-main--dashboard' : 'si-main--page'"
+      >
+        <router-view />
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import NotificationComponent from './components/NotificationComponent.vue'
-import { getUiToken, logout } from './services/AuthService'
+import { getUiToken, getUiUsername, logout } from './services/AuthService'
 
 const route = useRoute()
 const router = useRouter()
 const navOpen = ref(false)
+const userMenuOpen = ref(false)
+const userMenuRef = ref<HTMLElement | null>(null)
 
 const isLoginRoute = computed(() => route.path === '/login')
-const showLogout = computed(() => !!getUiToken())
+const signedIn = ref(false)
+const displayName = ref('管理员')
+const userInitial = computed(() => {
+  const name = displayName.value.trim()
+  return name ? name.slice(0, 1).toUpperCase() : 'A'
+})
+
+function refreshUser() {
+  signedIn.value = !!getUiToken()
+  displayName.value = getUiUsername() || '管理员'
+}
 
 const navItems = [
   { to: '/', label: '仪表盘', icon: 'fa-tachometer-alt', match: (p: string) => p === '/' },
@@ -78,28 +107,33 @@ const closeNav = () => {
 }
 
 async function onLogout() {
+  userMenuOpen.value = false
   await logout()
   await router.push('/login')
 }
+
+const onDocPointerDown = (event: MouseEvent) => {
+  if (!userMenuOpen.value) return
+  const target = event.target as Node | null
+  if (target && userMenuRef.value?.contains(target)) return
+  userMenuOpen.value = false
+}
+
+onMounted(() => {
+  document.addEventListener('mousedown', onDocPointerDown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', onDocPointerDown)
+})
 
 watch(
   () => route.fullPath,
   () => {
     navOpen.value = false
-  }
+    userMenuOpen.value = false
+    refreshUser()
+  },
+  { immediate: true }
 )
 </script>
-
-<style scoped>
-.si-sidebar__logout {
-  width: 100%;
-  margin-bottom: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: transparent;
-  color: inherit;
-  border-radius: 8px;
-  padding: 0.4rem 0.6rem;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-</style>
