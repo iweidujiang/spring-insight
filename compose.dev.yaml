@@ -1,0 +1,38 @@
+# 本地开发：本机 Maven 打包 + 运行镜像（默认 sqlite）
+#
+#   cd 仓库根目录
+#   mvn -pl insight-server -am package -DskipTests
+#   docker compose -f compose.dev.yaml up -d --build
+#
+# 浏览器：http://localhost:9966/
+#
+# 若必须在容器内完整编译（慢，且可能被 Central 卡住）：
+#   docker build -f insight-server/Dockerfile -t spring-insight-server:local .
+#
+# 换存储：
+#   $env:INSIGHT_STORAGE_MODE="sqlite"|"file"|"memory"
+
+name: spring-insight-dev
+
+services:
+  insight-server:
+    build:
+      context: .
+      dockerfile: insight-server/Dockerfile.runtime
+    image: spring-insight-server:local
+    container_name: spring-insight-server
+    ports:
+      - "${INSIGHT_HOST_PORT:-9966}:9966"
+    environment:
+      SPRING_INSIGHT_SERVER_STORAGE_MODE: ${INSIGHT_STORAGE_MODE:-sqlite}
+      SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH: /data/spans.json
+      SPRING_INSIGHT_SERVER_STORAGE_FLUSH_DELAY_MS: "2000"
+      SPRING_INSIGHT_SERVER_STORAGE_SQLITE_PATH: /data/insight.db
+      SPRING_INSIGHT_SERVER_STORAGE_RETENTION_MAX_AGE_HOURS: ${INSIGHT_RETENTION_HOURS:-0}
+      JAVA_OPTS: ${JAVA_OPTS:-}
+    volumes:
+      - insight-spans-dev:/data
+    restart: unless-stopped
+
+volumes:
+  insight-spans-dev:

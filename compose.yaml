@@ -20,10 +20,12 @@ services:
     ports:
       - "${INSIGHT_HOST_PORT:-9966}:9966"
     environment:
-      # file = JSON 落盘（重启可恢复）；改 memory 则仅内存
+      # memory | file | sqlite（发布版 compose 默认 file；开发见 compose.dev.yaml）
       SPRING_INSIGHT_SERVER_STORAGE_MODE: ${INSIGHT_STORAGE_MODE:-file}
       SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH: /data/spans.json
       SPRING_INSIGHT_SERVER_STORAGE_FLUSH_DELAY_MS: "2000"
+      SPRING_INSIGHT_SERVER_STORAGE_SQLITE_PATH: /data/insight.db
+      SPRING_INSIGHT_SERVER_STORAGE_RETENTION_MAX_AGE_HOURS: ${INSIGHT_RETENTION_HOURS:-0}
       JAVA_OPTS: ${JAVA_OPTS:-}
     volumes:
       - insight-spans:/data

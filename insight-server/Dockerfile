@@ -1,15 +1,18 @@
-# 构建上下文：仓库根目录
+# syntax=docker/dockerfile:1
+# 构建上下文：仓库根目录（完整源码构建，CI/发版用）
 #   docker build -f insight-server/Dockerfile -t ghcr.io/iweidujiang/spring-insight-server:local .
+# 本地联调请用 Dockerfile.runtime（本机 mvn package，避免容器内 Central 超时）
 ARG MAVEN_IMAGE=maven:3.9.9-eclipse-temurin-21
 FROM ${MAVEN_IMAGE} AS builder
 WORKDIR /workspace
 
+COPY .mvn/docker-settings.xml /root/.m2/settings.xml
 # prepare-package 会下载 Node 并构建控制台进 jar
 COPY . .
 
-RUN mvn -B -ntp -pl insight-server -am clean package -DskipTests \
-    && JAR="$(ls insight-server/target/insight-server-*.jar | grep -Ev 'sources|javadoc' | head -n 1)" \
-    && cp "$JAR" /workspace/insight-server-app.jar
+RUN --mount=type=cache,target=/root/.m2/repository \
+    mvn -B -ntp -pl insight-server -am clean package -DskipTests \
+    && cp insight-server/target/insight-server.jar /workspace/insight-server-app.jar
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
@@ -26,9 +29,10 @@ COPY --from=builder /workspace/insight-server-app.jar app.jar
 
 EXPOSE 9966
 
-# 默认内存存储；生产/演示可挂卷并设 SPRING_INSIGHT_SERVER_STORAGE_MODE=file
+# 存储由环境变量覆盖：memory | file | sqlite（见 compose / compose.dev.yaml）
 ENV JAVA_OPTS="" \
-    SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH=/data/spans.json
+    SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH=/data/spans.json \
+    SPRING_INSIGHT_SERVER_STORAGE_SQLITE_PATH=/data/insight.db
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
   CMD curl -fsS http://127.0.0.1:9966/api/v1/health >/dev/null || exit 1

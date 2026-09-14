@@ -64,6 +64,8 @@
     </dependencies>
 
     <build>
+        <!-- 固定产物名，便于 Dockerfile.runtime COPY -->
+        <finalName>insight-server</finalName>
         <plugins>
             <!--
               打包前构建 insight-ui-vue，产物覆盖 target/classes/static，保证 jar 内 UI 与源码一致。

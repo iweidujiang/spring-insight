@@ -28,10 +28,19 @@ docker run --rm -p 9966:9966 \
   ghcr.io/iweidujiang/spring-insight-server:0.1.0
 ```
 
-或使用本仓库根目录 Compose：
+或使用本仓库根目录 Compose（拉取已发布镜像）：
 
 ```bash
 docker compose up -d
+```
+
+**本地改 Server 源码联调（本机打包 + Docker 运行镜像，默认 sqlite）：**
+
+```bash
+# 仓库根目录；不要在容器里 mvn package（国内拉 Central 插件依赖容易在 repackage 失败）
+mvn -pl insight-server -am package -DskipTests
+docker compose -f compose.dev.yaml up -d --build
+# 换模式：$env:INSIGHT_STORAGE_MODE="file"（PowerShell）或 export INSIGHT_STORAGE_MODE=file
 ```
 
 浏览器打开：<http://localhost:9966/>
