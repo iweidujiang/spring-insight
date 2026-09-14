@@ -5,13 +5,13 @@
         <h2 class="page-title mb-1">
           <i class="fa fa-exclamation-triangle me-2"></i>错误分析
         </h2>
-        <p class="page-description mb-0">按时间窗口统计各服务错误调用与错误率</p>
+        <p class="page-description mb-0">按服务、HTTP 状态码与异常类聚合，可下钻到异常链路</p>
       </div>
       <div class="si-page__toolbar">
         <button class="btn btn-primary" @click="loadData" :disabled="loading">
           <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
         </button>
-        <button class="btn btn-outline-secondary" @click="downloadErrorData" :disabled="loading || errorAnalysis.length === 0">
+        <button class="btn btn-outline-secondary" @click="downloadErrorData" :disabled="loading || !hasErrors">
           <i class="fa fa-download"></i> 导出
         </button>
         <span class="badge bg-info">
@@ -35,9 +35,9 @@
               <option :value="0">全部已存</option>
             </select>
           </div>
-          <div class="si-err-hint" title="仅列出存在错误调用的服务">
+          <div class="si-err-hint" title="基于错误 Span 的 status / exception 归类">
             <i class="fa fa-info-circle me-1"></i>
-            仅展示有错误调用的服务；全部正常时显示健康状态
+            分类优先读 http.status_code，其次异常类名；可点「相关链路」下钻
           </div>
         </div>
       </div>
@@ -49,8 +49,7 @@
     </div>
 
     <div v-show="!loading" class="si-err-body">
-      <!-- 健康空态：不画空饼图，避免文字被遮挡 -->
-      <div v-if="errorAnalysis.length === 0" class="si-err-healthy">
+      <div v-if="!hasErrors" class="si-err-healthy">
         <div class="si-err-healthy__icon">
           <i class="fa fa-check-circle"></i>
         </div>
@@ -71,8 +70,16 @@
             <span class="si-err-summary__value text-danger">{{ errorAnalysis.length }}</span>
           </div>
           <div class="si-err-summary__card">
-            <span class="si-err-summary__label">错误调用合计</span>
-            <span class="si-err-summary__value">{{ totalErrorCalls }}</span>
+            <span class="si-err-summary__label">错误 Span</span>
+            <span class="si-err-summary__value">{{ totalErrorSpans }}</span>
+          </div>
+          <div class="si-err-summary__card">
+            <span class="si-err-summary__label">状态码类</span>
+            <span class="si-err-summary__value">{{ byStatusCode.length }}</span>
+          </div>
+          <div class="si-err-summary__card">
+            <span class="si-err-summary__label">异常类</span>
+            <span class="si-err-summary__value text-warning">{{ byException.length }}</span>
           </div>
           <div class="si-err-summary__card">
             <span class="si-err-summary__label">最高错误率</span>
@@ -94,10 +101,137 @@
           </div>
           <div class="chart-container si-chart-panel">
             <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
-              <h5 class="mb-0"><i class="fa fa-pie-chart me-2"></i>错误调用占比</h5>
+              <h5 class="mb-0"><i class="fa fa-pie-chart me-2"></i>错误调用占比（按服务）</h5>
             </div>
             <div class="si-chart-canvas-wrap">
               <div id="error-pie-chart" class="w-100 h-100" style="min-height: 220px"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="si-err-split">
+          <div class="card stat-card si-table-panel">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="card-title mb-0"><i class="fa fa-code me-2"></i>按 HTTP 状态码</h5>
+                <span class="badge bg-secondary">{{ byStatusCode.length }} 类</span>
+              </div>
+              <div v-if="byStatusCode.length === 0" class="text-muted small py-3">暂无 HTTP 状态类错误</div>
+              <div v-else class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>状态码</th>
+                      <th>次数</th>
+                      <th>涉及服务</th>
+                      <th>样例</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in byStatusCode" :key="'st-' + row.key">
+                      <td><span class="badge bg-danger">{{ row.label }}</span></td>
+                      <td class="text-danger fw-semibold">{{ row.count }}</td>
+                      <td>
+                        <span class="small">{{ row.services.slice(0, 3).join('、') }}</span>
+                        <span v-if="row.serviceCount > 3" class="text-muted small"> 等 {{ row.serviceCount }} 个</span>
+                      </td>
+                      <td class="si-err-sample" :title="row.sampleMessage">{{ row.sampleMessage || '—' }}</td>
+                      <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" @click="viewCategoryTraces(row.key)">
+                          <i class="fa fa-stream"></i> 链路
+                        </button>
+                        <button
+                          v-if="row.sampleTraceId"
+                          class="btn btn-sm btn-outline-secondary"
+                          @click="viewTrace(row.sampleTraceId)"
+                        >
+                          样例
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card stat-card si-table-panel">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="card-title mb-0"><i class="fa fa-bug me-2"></i>按异常类</h5>
+                <span class="badge bg-warning text-dark">{{ byException.length }} 类</span>
+              </div>
+              <div v-if="byException.length === 0" class="text-muted small py-3">暂无异常类错误</div>
+              <div v-else class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>异常</th>
+                      <th>次数</th>
+                      <th>涉及服务</th>
+                      <th>样例</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in byException" :key="'ex-' + row.key">
+                      <td><code class="si-err-ex">{{ row.label }}</code></td>
+                      <td class="text-danger fw-semibold">{{ row.count }}</td>
+                      <td>
+                        <span class="small">{{ row.services.slice(0, 3).join('、') }}</span>
+                        <span v-if="row.serviceCount > 3" class="text-muted small"> 等 {{ row.serviceCount }} 个</span>
+                      </td>
+                      <td class="si-err-sample" :title="row.sampleMessage">{{ row.sampleMessage || '—' }}</td>
+                      <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" @click="viewCategoryTraces(row.key)">
+                          <i class="fa fa-stream"></i> 链路
+                        </button>
+                        <button
+                          v-if="row.sampleTraceId"
+                          class="btn btn-sm btn-outline-secondary"
+                          @click="viewTrace(row.sampleTraceId)"
+                        >
+                          样例
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="byOther.length > 0" class="card stat-card si-table-panel">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="card-title mb-0"><i class="fa fa-question-circle me-2"></i>其它错误</h5>
+              <span class="badge bg-secondary">{{ byOther.length }} 类</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>分类</th>
+                    <th>次数</th>
+                    <th>涉及服务</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in byOther" :key="'ot-' + row.key">
+                    <td>{{ row.label }}</td>
+                    <td>{{ row.count }}</td>
+                    <td class="small">{{ row.services.join('、') || '—' }}</td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-primary" @click="viewCategoryTraces(row.key)">
+                        相关链路
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -167,15 +301,18 @@ const loading = ref(true)
 const currentTime = ref('')
 const hours = ref(24)
 const errorAnalysis = ref<any[]>([])
+const byStatusCode = ref<any[]>([])
+const byException = ref<any[]>([])
+const byOther = ref<any[]>([])
+const totalErrorSpans = ref(0)
+const exportPayload = ref<any>(null)
 
 let errorRateChart: echarts.ECharts | null = null
 let errorPieChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
 let chartsReady = false
 
-const totalErrorCalls = computed(() =>
-  errorAnalysis.value.reduce((sum, e) => sum + (e.errorCalls || 0), 0)
-)
+const hasErrors = computed(() => totalErrorSpans.value > 0 || errorAnalysis.value.length > 0)
 const maxErrorRate = computed(() => {
   if (errorAnalysis.value.length === 0) return '0.00'
   return Math.max(...errorAnalysis.value.map((e) => e.errorRate || 0)).toFixed(2)
@@ -226,86 +363,46 @@ const updateCharts = () => {
   }))
 
   errorRateChart.setOption({
-    backgroundColor: 'transparent',
-    textStyle: { color: '#6b7f76' },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      backgroundColor: 'rgba(255, 252, 250, 0.96)',
-      borderColor: 'rgba(20, 83, 45, 0.15)',
-      textStyle: { color: '#15241f' },
-      formatter: (params: any) => {
-        const data = params[0]
-        return `${data.name}<br/>错误率: ${Number(data.value).toFixed(2)}%`
-      }
-    },
-    grid: { left: 8, right: 12, bottom: 48, top: 28, containLabel: true },
+    tooltip: { trigger: 'axis' },
+    grid: { left: 48, right: 16, top: 24, bottom: 48 },
     xAxis: {
       type: 'category',
       data: serviceNames,
-      axisLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.25)' } },
-      axisLabel: { fontSize: 10, rotate: 28, color: '#6b7f76' }
+      axisLabel: { rotate: serviceNames.length > 4 ? 30 : 0, color: '#6b7f76' }
     },
     yAxis: {
       type: 'value',
       name: '%',
-      max: 100,
-      nameTextStyle: { color: '#6b7f76' },
-      splitLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.1)' } },
       axisLabel: { color: '#6b7f76' }
     },
-    series: [{
-      name: '错误率',
-      type: 'bar',
-      data: errorRates,
-      itemStyle: {
-        color: (params: any) => {
-          const v = params.value
-          if (v > 10) return '#b91c1c'
-          if (v > 5) return '#b45309'
-          return '#0d9488'
-        },
-        borderRadius: [4, 4, 0, 0]
-      },
-      label: { show: true, position: 'top', formatter: '{c}%', fontSize: 10, color: '#3d524a' }
-    }]
-  }, { notMerge: true })
+    series: [
+      {
+        type: 'bar',
+        data: errorRates,
+        itemStyle: {
+          color: (params: any) => {
+            const v = Number(params.value || 0)
+            if (v > 10) return '#b91c1c'
+            if (v > 5) return '#b45309'
+            return '#0f766e'
+          }
+        }
+      }
+    ]
+  })
 
   errorPieChart.setOption({
-    backgroundColor: 'transparent',
-    textStyle: { color: '#6b7f76' },
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c} 次 ({d}%)',
-      backgroundColor: 'rgba(255, 252, 250, 0.96)',
-      borderColor: 'rgba(20, 83, 45, 0.15)',
-      textStyle: { color: '#15241f' }
-    },
-    legend: {
-      orient: 'vertical',
-      right: 4,
-      top: 'middle',
-      type: 'scroll',
-      textStyle: { color: '#15241f', fontSize: 12 }
-    },
-    series: [{
-      name: '错误调用',
-      type: 'pie',
-      radius: ['40%', '68%'],
-      center: ['38%', '50%'],
-      avoidLabelOverlap: true,
-      itemStyle: {
-        borderRadius: 8,
-        borderColor: '#fffcfa',
-        borderWidth: 2
-      },
-      label: { show: false },
-      emphasis: {
-        label: { show: true, fontSize: 13, fontWeight: 'bold', color: '#15241f' }
-      },
-      data: pieData
-    }]
-  }, { notMerge: true })
+    tooltip: { trigger: 'item' },
+    legend: { bottom: 0, type: 'scroll' },
+    series: [
+      {
+        type: 'pie',
+        radius: ['35%', '62%'],
+        data: pieData,
+        label: { formatter: '{b}\n{d}%' }
+      }
+    ]
+  })
 }
 
 const refreshCharts = () => {
@@ -315,11 +412,24 @@ const refreshCharts = () => {
 }
 
 const viewServiceDetails = (serviceName: string) => {
-  router.push({ path: '/traces', query: { service: serviceName } })
+  router.push({ path: '/traces', query: { service: serviceName, status: 'error' } })
+}
+
+const viewCategoryTraces = (key: string) => {
+  router.push({ path: '/traces', query: { status: 'error', q: key } })
+}
+
+const viewTrace = (traceId: string) => {
+  router.push({ path: `/traces/${traceId}` })
 }
 
 const downloadErrorData = () => {
-  const dataStr = JSON.stringify(errorAnalysis.value, null, 2)
+  const dataStr = JSON.stringify(exportPayload.value || {
+    byService: errorAnalysis.value,
+    byStatusCode: byStatusCode.value,
+    byException: byException.value,
+    byOther: byOther.value
+  }, null, 2)
   const dataBlob = new Blob([dataStr], { type: 'application/json' })
   const url = URL.createObjectURL(dataBlob)
   const link = document.createElement('a')
@@ -332,7 +442,13 @@ const downloadErrorData = () => {
 const loadData = async () => {
   try {
     loading.value = true
-    errorAnalysis.value = await ApiService.getErrorAnalysis(hours.value)
+    const breakdown = await ApiService.getErrorBreakdown(hours.value)
+    errorAnalysis.value = breakdown.byService
+    byStatusCode.value = breakdown.byStatusCode
+    byException.value = breakdown.byException
+    byOther.value = breakdown.byOther
+    totalErrorSpans.value = breakdown.totalErrorSpans
+    exportPayload.value = breakdown
   } catch (error) {
     console.error('加载错误分析数据失败:', error)
   } finally {
@@ -429,11 +545,17 @@ onUnmounted(() => {
 
 .si-err-summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.65rem;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1100px) {
+  .si-err-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 575px) {
   .si-err-summary {
     grid-template-columns: 1fr;
   }
@@ -461,9 +583,38 @@ onUnmounted(() => {
 
 .si-err-summary__value {
   font-family: var(--font-display);
-  font-size: clamp(1.45rem, 2.2vw, 1.75rem);
+  font-size: clamp(1.35rem, 2vw, 1.65rem);
   font-weight: 700;
   color: var(--si-ink);
   line-height: 1.15;
+}
+
+.si-err-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 991px) {
+  .si-err-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.si-err-sample {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  color: var(--si-muted);
+}
+
+.si-err-ex {
+  font-size: 0.82rem;
+  color: #9a3412;
+  background: rgba(180, 83, 9, 0.08);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
 }
 </style>

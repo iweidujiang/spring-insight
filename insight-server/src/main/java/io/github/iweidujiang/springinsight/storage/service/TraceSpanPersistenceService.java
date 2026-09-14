@@ -10,11 +10,14 @@ import org.springframework.util.StopWatch;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -333,6 +336,109 @@ public class TraceSpanPersistenceService {
                 ((Number) b.get("error_rate")).doubleValue(),
                 ((Number) a.get("error_rate")).doubleValue()));
         return out;
+    }
+
+    /**
+     * 错误分析增强：在服务级之外，按 HTTP 状态码与异常类聚合。
+     *
+     * @param lastHours 时间窗口小时；{@code <=0} 不限
+     * @return 含 by_service / by_status_code / by_exception 的结构
+     */
+    public Map<String, Object> findErrorBreakdown(int lastHours) {
+        long sinceTime = sinceEpochMillis(lastHours);
+        List<Map<String, Object>> byService = findHighErrorServices(lastHours);
+
+        Map<String, Map<String, Object>> statusBuckets = new HashMap<>();
+        Map<String, Map<String, Object>> exceptionBuckets = new HashMap<>();
+        Map<String, Map<String, Object>> otherBuckets = new HashMap<>();
+        long totalErrorSpans = 0L;
+
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (s == null || n(s.getStartTime()) < sinceTime || !isError(s)) {
+                continue;
+            }
+            totalErrorSpans++;
+            ErrorSpanClassifier.Classification c = ErrorSpanClassifier.classify(s);
+            Map<String, Map<String, Object>> target = switch (c.kind()) {
+                case "status" -> statusBuckets;
+                case "exception" -> exceptionBuckets;
+                default -> otherBuckets;
+            };
+            accumulateErrorBucket(target, c, s);
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("hours", lastHours);
+        body.put("total_error_spans", totalErrorSpans);
+        body.put("by_service", byService);
+        body.put("by_status_code", sortBreakdownRows(statusBuckets));
+        body.put("by_exception", sortBreakdownRows(exceptionBuckets));
+        body.put("by_other", sortBreakdownRows(otherBuckets));
+        return body;
+    }
+
+    /**
+     * 累加一条错误 Span 到分类桶。
+     *
+     * @param buckets 桶表
+     * @param c       分类
+     * @param span    错误 Span
+     */
+    private static void accumulateErrorBucket(Map<String, Map<String, Object>> buckets,
+                                              ErrorSpanClassifier.Classification c,
+                                              TraceSpan span) {
+        String mapKey = c.kind() + "|" + c.key();
+        Map<String, Object> row = buckets.computeIfAbsent(mapKey, k -> {
+            Map<String, Object> init = new LinkedHashMap<>();
+            init.put("category", c.kind());
+            init.put("key", c.key());
+            init.put("label", c.label());
+            init.put("count", 0L);
+            init.put("services", new HashSet<String>());
+            init.put("sample_message", "");
+            init.put("sample_trace_id", "");
+            init.put("sample_service", "");
+            return init;
+        });
+        row.put("count", ((Number) row.get("count")).longValue() + 1L);
+        @SuppressWarnings("unchecked")
+        Set<String> services = (Set<String>) row.get("services");
+        String service = span.getServiceName() != null ? span.getServiceName() : "";
+        if (!service.isBlank()) {
+            services.add(service);
+        }
+        if (((String) row.get("sample_trace_id")).isEmpty() && span.getTraceId() != null) {
+            row.put("sample_trace_id", span.getTraceId());
+            row.put("sample_service", service);
+            String msg = span.getErrorMessage() != null ? span.getErrorMessage() : "";
+            row.put("sample_message", msg.length() > 200 ? msg.substring(0, 200) + "..." : msg);
+        }
+    }
+
+    /**
+     * @param buckets 分类桶
+     * @return 按 count 降序，并把 services 转为列表与数量
+     */
+    private static List<Map<String, Object>> sortBreakdownRows(Map<String, Map<String, Object>> buckets) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Map<String, Object> raw : buckets.values()) {
+            @SuppressWarnings("unchecked")
+            Set<String> services = (Set<String>) raw.get("services");
+            List<String> serviceList = services.stream().sorted().collect(Collectors.toList());
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("category", raw.get("category"));
+            row.put("key", raw.get("key"));
+            row.put("label", raw.get("label"));
+            row.put("count", raw.get("count"));
+            row.put("service_count", serviceList.size());
+            row.put("services", serviceList);
+            row.put("sample_message", raw.get("sample_message"));
+            row.put("sample_trace_id", raw.get("sample_trace_id"));
+            row.put("sample_service", raw.get("sample_service"));
+            rows.add(row);
+        }
+        rows.sort(Comparator.comparingLong((Map<String, Object> r) -> ((Number) r.get("count")).longValue()).reversed());
+        return rows;
     }
 
     /**

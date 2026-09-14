@@ -127,7 +127,7 @@ public class CollectorApiController {
     }
 
     /**
-     * 获取错误分析
+     * 获取错误分析（服务级，兼容仪表盘 / 通知）
      */
     @GetMapping("/errors/analysis")
     public ResponseEntity<?> getErrorAnalysis(
@@ -138,6 +138,23 @@ public class CollectorApiController {
             return ResponseEntity.ok(errors);
         } catch (Exception e) {
             log.error("获取错误分析失败", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 错误分析增强：按 HTTP 状态码 / 异常类聚合（含服务级摘要）。
+     *
+     * @param hours 时间窗口小时
+     * @return breakdown JSON
+     */
+    @GetMapping("/errors/breakdown")
+    public ResponseEntity<?> getErrorBreakdown(
+            @RequestParam(value = "hours", defaultValue = "24") int hours) {
+        try {
+            return ResponseEntity.ok(traceSpanPersistenceService.findErrorBreakdown(hours));
+        } catch (Exception e) {
+            log.error("获取错误分类失败", e);
             return ResponseEntity.internalServerError().build();
         }
     }

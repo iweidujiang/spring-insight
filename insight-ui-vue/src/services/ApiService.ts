@@ -129,6 +129,41 @@ export class ApiService {
     return rows.map(normalizeErrorRow)
   }
 
+  /** 错误分类增强：状态码 / 异常类 / 服务级 */
+  static async getErrorBreakdown(hours: number = 24): Promise<{
+    hours: number
+    totalErrorSpans: number
+    byService: any[]
+    byStatusCode: any[]
+    byException: any[]
+    byOther: any[]
+  }> {
+    const raw = await requestWithDefault<any>(`/errors/breakdown?hours=${hours}`, {})
+    const normalizeBucket = (row: any) => ({
+      category: row.category ?? '',
+      key: row.key ?? '',
+      label: row.label ?? row.key ?? '',
+      count: Number(row.count ?? 0),
+      serviceCount: Number(row.service_count ?? row.serviceCount ?? 0),
+      services: Array.isArray(row.services) ? row.services : [],
+      sampleMessage: row.sample_message ?? row.sampleMessage ?? '',
+      sampleTraceId: row.sample_trace_id ?? row.sampleTraceId ?? '',
+      sampleService: row.sample_service ?? row.sampleService ?? ''
+    })
+    return {
+      hours: Number(raw.hours ?? hours),
+      totalErrorSpans: Number(raw.total_error_spans ?? raw.totalErrorSpans ?? 0),
+      byService: Array.isArray(raw.by_service)
+        ? raw.by_service.map(normalizeErrorRow)
+        : Array.isArray(raw.byService)
+          ? raw.byService.map(normalizeErrorRow)
+          : [],
+      byStatusCode: (raw.by_status_code ?? raw.byStatusCode ?? []).map(normalizeBucket),
+      byException: (raw.by_exception ?? raw.byException ?? []).map(normalizeBucket),
+      byOther: (raw.by_other ?? raw.byOther ?? []).map(normalizeBucket)
+    }
+  }
+
   /** 返回 Collector 内部统计对象（非外层 wrapper） */
   static async getCollectorStats(): Promise<any> {
     const raw = await requestWithDefault<any>('/stats', {})
