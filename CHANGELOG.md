@@ -21,10 +21,6 @@
 | Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.2.0-boot2` |
 | Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.2.0` |
 
-### 已知限制
-- 无多租户 / OIDC
-- 无内置 LLM（见后续 0.3 AI 实验）
-- 运维细节见 `docs/dev_docs/v0.2-ops.md`（本地文档）
 
 ## [0.1.0] — 2026-09
 
