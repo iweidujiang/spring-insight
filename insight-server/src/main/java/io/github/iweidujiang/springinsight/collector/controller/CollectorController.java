@@ -3,9 +3,13 @@ package io.github.iweidujiang.springinsight.collector.controller;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.collector.model.CollectorRequest;
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
+import io.github.iweidujiang.springinsight.server.ServerVersion;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.info.BuildProperties;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,11 +36,21 @@ public class CollectorController {
 
     private final TraceSpanCollectorService traceSpanCollectorService;
     private final TraceSpanPersistenceService persistenceService;
+    private final String serverVersion;
 
+    /**
+     * @param traceSpanCollectorService 采集服务
+     * @param persistenceService        持久化门面
+     * @param environment               用于解析版本
+     * @param buildPropertiesProvider   Maven build-info（可选）
+     */
     public CollectorController(TraceSpanCollectorService traceSpanCollectorService,
-                               TraceSpanPersistenceService persistenceService) {
+                               TraceSpanPersistenceService persistenceService,
+                               Environment environment,
+                               ObjectProvider<BuildProperties> buildPropertiesProvider) {
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.persistenceService = persistenceService;
+        this.serverVersion = ServerVersion.resolve(environment, buildPropertiesProvider.getIfAvailable());
     }
 
     /**
@@ -50,7 +64,7 @@ public class CollectorController {
         body.put("status", "UP");
         body.put("service", "spring-insight-server");
         body.put("timestamp", Instant.now());
-        body.put("version", "0.1.1-SNAPSHOT");
+        body.put("version", serverVersion);
         body.put("storageMode", persistenceService.getStorageMode());
         body.put("storedSpans", persistenceService.getStoredSpanCount());
         body.put("evictedSpans", persistenceService.getEvictedSpanCount());
@@ -152,7 +166,7 @@ public class CollectorController {
     public ResponseEntity<Map<String, Object>> getServerInfo() {
         return ResponseEntity.ok(Map.of(
                 "service", "spring-insight-server",
-                "version", "0.1.1-SNAPSHOT",
+                "version", serverVersion,
                 "startupTime", Instant.now(),
                 "status", "running",
                 "endpoints", Map.of(

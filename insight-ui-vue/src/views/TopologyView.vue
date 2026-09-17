@@ -3,7 +3,7 @@
     <div class="si-page__header">
       <div>
         <h2 class="page-title mb-1">
-          <i class="fa fa-project-diagram me-2"></i>服务拓扑图
+          <i class="fa fa-sitemap me-2"></i>服务拓扑图
         </h2>
         <p class="page-description mb-0">
           箭头：调用方 → 被调用方；点击节点/边可下钻到该服务的链路列表
@@ -50,7 +50,7 @@
       <div class="chart-container si-topo-graph-card">
         <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
           <h5 class="mb-0">
-            <i class="fa fa-project-diagram me-2"></i>服务依赖拓扑
+            <i class="fa fa-sitemap me-2"></i>服务依赖拓扑
           </h5>
           <div class="d-flex gap-2 align-items-center">
             <span class="si-topo-legend"><i class="fa fa-hand-pointer-o me-1"></i>点击节点/边查看链路</span>

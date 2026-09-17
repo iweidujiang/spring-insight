@@ -59,7 +59,7 @@
         </p>
         <div class="si-err-healthy__tips">
           <span><i class="fa fa-bolt me-1"></i>可在业务侧制造失败请求后再刷新本页</span>
-          <span><i class="fa fa-stream me-1"></i>也可到「链路追踪」按状态筛选排查</span>
+          <span><i class="fa fa-list-ul me-1"></i>也可到「链路追踪」按状态筛选排查</span>
         </div>
       </div>
 
@@ -139,7 +139,7 @@
                       <td class="si-err-sample" :title="row.sampleMessage">{{ row.sampleMessage || '—' }}</td>
                       <td>
                         <button class="btn btn-sm btn-outline-primary me-1" @click="viewCategoryTraces(row.key)">
-                          <i class="fa fa-stream"></i> 链路
+                          <i class="fa fa-list-ul"></i> 链路
                         </button>
                         <button
                           v-if="row.sampleTraceId"
@@ -185,7 +185,7 @@
                       <td class="si-err-sample" :title="row.sampleMessage">{{ row.sampleMessage || '—' }}</td>
                       <td>
                         <button class="btn btn-sm btn-outline-primary me-1" @click="viewCategoryTraces(row.key)">
-                          <i class="fa fa-stream"></i> 链路
+                          <i class="fa fa-list-ul"></i> 链路
                         </button>
                         <button
                           v-if="row.sampleTraceId"
@@ -276,7 +276,7 @@
                     </td>
                     <td>
                       <button class="btn btn-sm btn-primary" @click="viewServiceDetails(error.serviceName)">
-                        <i class="fa fa-stream"></i> 相关链路
+                        <i class="fa fa-list-ul"></i> 相关链路
                       </button>
                     </td>
                   </tr>

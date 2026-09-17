@@ -18,7 +18,7 @@
           <h5 class="card-title"><i class="fa fa-cube me-2"></i>项目信息</h5>
           <dl class="si-about__dl">
             <div><dt>项目名称</dt><dd>Spring Insight</dd></div>
-            <div><dt>版本</dt><dd>0.1.1-SNAPSHOT</dd></div>
+            <div><dt>版本</dt><dd>{{ appVersion }}</dd></div>
             <div><dt>描述</dt><dd>面向 Spring 微服务的轻量分布式监测中心（Agent + Server）</dd></div>
             <div>
               <dt>技术栈</dt>
@@ -39,7 +39,8 @@
           <dl class="si-about__dl">
             <div><dt>UI</dt><dd>Vue 3 + TypeScript + Vite</dd></div>
             <div><dt>默认端口</dt><dd>9966</dd></div>
-            <div><dt>构建时间</dt><dd>{{ buildTime }}</dd></div>
+            <div><dt>存储模式</dt><dd>{{ storageMode || '—' }}</dd></div>
+            <div><dt>构建/运行</dt><dd>{{ buildTime }}</dd></div>
             <div>
               <dt>GitHub</dt>
               <dd>
@@ -75,28 +76,45 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import axios from 'axios'
 
 const currentTime = ref('')
 const buildTime = ref('')
+const appVersion = ref('…')
+const storageMode = ref('')
 let timeInterval: number | null = null
 
 const features = [
-  { title: '实时监控', desc: '汇总服务、Span 与 Collector 上报状态', icon: 'fa-tachometer-alt', color: '#0f766e' },
-  { title: '服务拓扑', desc: '可视化调用方向与依赖强度', icon: 'fa-project-diagram', color: '#15803d' },
-  { title: '链路追踪', desc: '按 Trace / Span 排查单次请求耗时', icon: 'fa-stream', color: '#0d9488' },
+  { title: '实时监控', desc: '汇总服务、Span 与 Collector 上报状态', icon: 'fa-tachometer', color: '#0f766e' },
+  { title: '服务拓扑', desc: '可视化调用方向与依赖强度', icon: 'fa-sitemap', color: '#15803d' },
+  { title: '链路追踪', desc: '按 Trace / Span 排查单次请求耗时', icon: 'fa-list-ul', color: '#0d9488' },
   { title: '错误分析', desc: '识别高错误率服务并跳转相关链路', icon: 'fa-exclamation-triangle', color: '#b91c1c' },
   { title: '独立 Server', desc: '业务侧仅依赖 Agent，监测中心进程隔离', icon: 'fa-server', color: '#b45309' },
-  { title: '性能洞察', desc: '平均耗时、调用次数等指标辅助定位瓶颈', icon: 'fa-chart-line', color: '#1d4ed8' }
+  { title: '性能洞察', desc: '平均耗时、调用次数等指标辅助定位瓶颈', icon: 'fa-line-chart', color: '#1d4ed8' }
 ]
 
 const updateCurrentTime = () => {
   currentTime.value = new Date().toTimeString().split(' ')[0]
 }
 
+/**
+ * 从 Server health 读取版本（与 jar Manifest / 配置一致，避免前端硬编码）。
+ */
+async function loadServerMeta() {
+  try {
+    const { data } = await axios.get('/api/v1/health', { timeout: 8000 })
+    appVersion.value = data?.version || 'unknown'
+    storageMode.value = data?.storageMode || ''
+  } catch {
+    appVersion.value = 'unknown'
+  }
+}
+
 onMounted(() => {
   buildTime.value = new Date().toLocaleString('zh-CN')
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
+  loadServerMeta()
 })
 
 onUnmounted(() => {

@@ -6,23 +6,23 @@
 
 | GAV | 说明 |
 |-----|------|
-| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.2.0-boot2` | **业务请只依赖这个**（Maven Central） |
-| `io.github.iweidujiang:insight-agent-boot2:0.2.0-boot2` | 采集核心（Starter 传递依赖，一般不用直接引） |
-| `io.github.iweidujiang:spring-insight-boot2-parent:0.2.0-boot2` | 本兼容线父 POM |
+| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.2.1-boot2` | **业务请只依赖这个**（Maven Central） |
+| `io.github.iweidujiang:insight-agent-boot2:0.2.1-boot2` | 采集核心（Starter 传递依赖，一般不用直接引） |
+| `io.github.iweidujiang:spring-insight-boot2-parent:0.2.1-boot2` | 本兼容线父 POM |
 
 ```xml
 <dependency>
   <groupId>io.github.iweidujiang</groupId>
   <artifactId>spring-insight-agent-starter-boot2</artifactId>
-  <version>0.2.0-boot2</version>
+  <version>0.2.1-boot2</version>
 </dependency>
 ```
 
-> 最新已发布：**`0.2.0-boot2`**（[Maven Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter-boot2/0.2.0-boot2)）。业务侧请用正式版坐标；本目录开发版本为 **`0.2.1-boot2-SNAPSHOT`**（需本地 `mvn -DskipTests install`）。与主线正式版 `0.2.0` **版本号不同**，避免坐标冲突。  
-> 监测中心请用 **Docker**（推荐）：`docker run -p 9966:9966 ghcr.io/iweidujiang/spring-insight-server:0.2.0`，或本仓库根目录 `docker compose up -d`。  
-> 也可使用主线已发布的 `insight-server:0.2.0` jar，或本地 `insight-server-0.2.0.jar`。
+> 最新已发布：**`0.2.1-boot2`**（[Maven Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter-boot2/0.2.1-boot2)）。业务侧请用正式版坐标；本目录开发版本为 **`0.2.1-boot2-SNAPSHOT`**（需本地 `mvn -DskipTests install`）。与主线正式版 `0.2.1` **版本号不同**，避免坐标冲突。  
+> 监测中心请用 **Docker**（推荐）：`docker run -p 9966:9966 ghcr.io/iweidujiang/spring-insight-server:0.2.1`，或本仓库根目录 `docker compose up -d`。  
+> 也可使用主线已发布的 `insight-server:0.2.1` jar，或本地 `insight-server-0.2.1.jar`。
 
-发布与操作步骤见仓库根目录 [`RELEASE-0.2.0.md`](../RELEASE-0.2.0.md)、[`CHANGELOG.md`](../CHANGELOG.md)。
+发布与操作步骤见仓库根目录 [`RELEASE-0.2.1.md`](../RELEASE-0.2.1.md)、[`CHANGELOG.md`](../CHANGELOG.md)。
 
 ## 构建
 
@@ -70,7 +70,7 @@ spring:
 | B3 | Starter 坐标固化 + Boot2.7 冒烟 | 完成 |
 | B4 | Micrometer 桥 + WebFlux/WebClient | 完成 |
 | **B5** | Gateway 出站 CLIENT Span（`remoteService`） | **完成** |
-| Central | `0.2.0-boot2` 发 Maven Central | **已发布** |
+| Central | `0.2.1-boot2` 发 Maven Central | **已发布** |
 
 ## 冒烟演示
 
@@ -81,9 +81,9 @@ spring:
 cd D:\a-github-project\spring-insight\boot2 && mvn -DskipTests install
 
 # 2) 启动主线 insight-server:9966（另开终端；推荐 Docker）
-docker run --rm -p 9966:9966 ghcr.io/iweidujiang/spring-insight-server:0.2.0
+docker run --rm -p 9966:9966 ghcr.io/iweidujiang/spring-insight-server:0.2.1
 # 或本地 jar：
-# java -jar D:\a-github-project\spring-insight\insight-server\target\insight-server-0.2.0.jar
+# java -jar D:\a-github-project\spring-insight\insight-server\target\insight-server-0.2.1.jar
 
 # 3) 启动 demo，并冒烟
 cd D:\a-github-project\spring-insight-boot2-demo

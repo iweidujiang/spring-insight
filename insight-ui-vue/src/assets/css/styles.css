@@ -288,6 +288,23 @@ body::before {
   color: var(--si-teal);
 }
 
+.si-user__login {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 118, 110, 0.28);
+  color: var(--si-teal);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.si-user__login:hover {
+  background: rgba(15, 118, 110, 0.08);
+  color: var(--si-forest);
+}
+
 .si-main {
   flex: 1 1 auto;
   width: 100%;

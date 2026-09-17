@@ -16,7 +16,7 @@
 
     <aside class="si-sidebar" aria-label="主导航">
       <router-link class="si-sidebar__brand" to="/" @click="closeNav">
-        <i class="fa fa-chart-line"></i>
+        <i class="fa fa-line-chart"></i>
         <span>Spring Insight</span>
       </router-link>
 
@@ -39,7 +39,7 @@
       <header class="si-topbar">
         <div class="si-topbar__end">
           <NotificationComponent />
-          <div v-if="signedIn" class="si-user" ref="userMenuRef">
+          <div v-if="showUserMenu" class="si-user" ref="userMenuRef">
             <button
               type="button"
               class="si-user__trigger"
@@ -55,6 +55,13 @@
               <button type="button" role="menuitem" @click="onLogout">退出登录</button>
             </div>
           </div>
+          <router-link
+            v-else-if="authEnabled"
+            class="si-user__login"
+            to="/login"
+          >
+            登录
+          </router-link>
         </div>
       </header>
 
@@ -72,7 +79,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import NotificationComponent from './components/NotificationComponent.vue'
-import { getUiToken, getUiUsername, logout } from './services/AuthService'
+import { fetchAuthStatus, getUiToken, getUiUsername, logout } from './services/AuthService'
 
 const route = useRoute()
 const router = useRouter()
@@ -81,22 +88,32 @@ const userMenuOpen = ref(false)
 const userMenuRef = ref<HTMLElement | null>(null)
 
 const isLoginRoute = computed(() => route.path === '/login')
+/** Server 是否开启控制台登录 */
+const authEnabled = ref(false)
 const signedIn = ref(false)
 const displayName = ref('管理员')
+const showUserMenu = computed(() => authEnabled.value && signedIn.value)
 const userInitial = computed(() => {
   const name = displayName.value.trim()
   return name ? name.slice(0, 1).toUpperCase() : 'A'
 })
 
-function refreshUser() {
+async function refreshAuthAndUser() {
+  try {
+    const status = await fetchAuthStatus()
+    authEnabled.value = !!status.uiAuthEnabled
+  } catch {
+    // 探测失败时：有本地 token 仍展示退出，避免无法登出
+    authEnabled.value = !!getUiToken()
+  }
   signedIn.value = !!getUiToken()
   displayName.value = getUiUsername() || '管理员'
 }
 
 const navItems = [
-  { to: '/', label: '仪表盘', icon: 'fa-tachometer-alt', match: (p: string) => p === '/' },
-  { to: '/topology', label: '拓扑图', icon: 'fa-project-diagram', match: (p: string) => p === '/topology' },
-  { to: '/traces', label: '链路追踪', icon: 'fa-stream', match: (p: string) => p === '/traces' || p.startsWith('/traces/') },
+  { to: '/', label: '仪表盘', icon: 'fa-tachometer', match: (p: string) => p === '/' },
+  { to: '/topology', label: '拓扑图', icon: 'fa-sitemap', match: (p: string) => p === '/topology' },
+  { to: '/traces', label: '链路追踪', icon: 'fa-list-ul', match: (p: string) => p === '/traces' || p.startsWith('/traces/') },
   { to: '/error-analysis', label: '错误分析', icon: 'fa-exclamation-triangle', match: (p: string) => p === '/error-analysis' },
   { to: '/about', label: '关于', icon: 'fa-info-circle', match: (p: string) => p === '/about' }
 ]
@@ -109,6 +126,7 @@ const closeNav = () => {
 async function onLogout() {
   userMenuOpen.value = false
   await logout()
+  signedIn.value = false
   await router.push('/login')
 }
 
@@ -119,12 +137,21 @@ const onDocPointerDown = (event: MouseEvent) => {
   userMenuOpen.value = false
 }
 
+const onStorage = (event: StorageEvent) => {
+  if (event.key === 'spring-insight-ui-token' || event.key === 'spring-insight-ui-username') {
+    refreshAuthAndUser()
+  }
+}
+
 onMounted(() => {
   document.addEventListener('mousedown', onDocPointerDown)
+  window.addEventListener('storage', onStorage)
+  refreshAuthAndUser()
 })
 
 onUnmounted(() => {
   document.removeEventListener('mousedown', onDocPointerDown)
+  window.removeEventListener('storage', onStorage)
 })
 
 watch(
@@ -132,7 +159,7 @@ watch(
   () => {
     navOpen.value = false
     userMenuOpen.value = false
-    refreshUser()
+    refreshAuthAndUser()
   },
   { immediate: true }
 )

@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.github.iweidujiang</groupId>
         <artifactId>spring-insight-parent</artifactId>
-        <version>0.2.0</version>
+        <version>0.2.1</version>
     </parent>
 
     <artifactId>insight-server</artifactId>
@@ -126,6 +126,8 @@
                     <execution>
                         <goals>
                             <goal>repackage</goal>
+                            <!-- 写入 build-info.properties，供运行时读取版本 -->
+                            <goal>build-info</goal>
                         </goals>
                     </execution>
                 </executions>

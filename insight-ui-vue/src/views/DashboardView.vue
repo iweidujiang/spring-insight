@@ -3,7 +3,7 @@
     <header class="si-dashboard__top">
       <div class="si-dashboard__title-block">
         <h2 class="si-dashboard__title">
-          <i class="fa fa-tachometer-alt me-2"></i>监控仪表盘
+          <i class="fa fa-tachometer me-2"></i>监控仪表盘
         </h2>
         <p class="si-dashboard__subtitle">总览 · 拓扑为主，排名为辅</p>
       </div>
@@ -209,7 +209,7 @@
           <div class="si-dashboard__chart-head">
             <div>
               <h6 class="si-dashboard__panel-title mb-0">
-                <i class="fa fa-project-diagram me-2"></i>
+                <i class="fa fa-sitemap me-2"></i>
                 {{ hasDependencies ? '主视图 · 服务依赖拓扑' : '主视图 · 单应用总览' }}
               </h6>
               <p class="si-dashboard__panel-desc mb-0">
@@ -232,7 +232,7 @@
 
             <div v-if="!hasDependencies && services.length > 0" class="si-dashboard__solo">
               <div class="si-dashboard__solo-card">
-                <h6 class="si-dashboard__solo-title"><i class="fa fa-lightbulb me-1"></i>让拓扑更有价值</h6>
+                <h6 class="si-dashboard__solo-title"><i class="fa fa-lightbulb-o me-1"></i>让拓扑更有价值</h6>
                 <ul class="si-dashboard__solo-tips">
                   <li>业务侧用 OpenFeign / WebClient / Gateway 出站时，Agent 会写入 <code>remoteService</code></li>
                   <li>上报后此处会出现「调用方 → 被调用方」边，可点击下钻</li>
@@ -246,7 +246,7 @@
 
               <div class="si-dashboard__solo-card si-dashboard__solo-card--traces">
                 <div class="si-dashboard__solo-traces-head">
-                  <h6 class="si-dashboard__solo-title mb-0"><i class="fa fa-stream me-1"></i>最近链路</h6>
+                  <h6 class="si-dashboard__solo-title mb-0"><i class="fa fa-list-ul me-1"></i>最近链路</h6>
                   <button type="button" class="btn btn-sm btn-link py-0" @click="goTraces()">全部</button>
                 </div>
                 <div v-if="recentTraces.length === 0" class="si-dashboard__diag-empty py-3">暂无最近链路</div>
@@ -279,7 +279,7 @@
             <div class="si-dashboard__chart-head">
               <div>
                 <h6 class="si-dashboard__panel-title mb-0">
-                  <i class="fa fa-chart-bar me-2"></i>辅栏 · 请求排名
+                  <i class="fa fa-bar-chart me-2"></i>辅栏 · 请求排名
                 </h6>
                 <p class="si-dashboard__panel-desc mb-0">按 Span 量 Top · 点击柱可筛链路</p>
               </div>
@@ -366,7 +366,7 @@ const stats = computed(() => [
   {
     title: '链路总数',
     value: `${totalSpans.value} 条`,
-    icon: 'fa-stream',
+    icon: 'fa-list-ul',
     color: 'success',
     hint: '最近上报 Span',
     to: '/traces'
@@ -374,7 +374,7 @@ const stats = computed(() => [
   {
     title: '依赖关系',
     value: `${dependencies.value.length} 条`,
-    icon: 'fa-project-diagram',
+    icon: 'fa-sitemap',
     color: 'info',
     hint: '打开拓扑图',
     to: '/topology'

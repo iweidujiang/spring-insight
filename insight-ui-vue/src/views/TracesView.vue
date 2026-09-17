@@ -3,7 +3,7 @@
     <div class="si-page__header">
       <div>
         <h2 class="page-title mb-1">
-          <i class="fa fa-stream me-2"></i>链路追踪
+          <i class="fa fa-list-ul me-2"></i>链路追踪
         </h2>
         <p class="page-description mb-0">
           一行对应一次请求（同一 Trace ID）；筛选会写入地址栏，便于分享
