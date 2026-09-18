@@ -27,19 +27,13 @@ public class InsightAlertWebhookSender {
     private final HttpClient httpClient;
 
     /**
+     * Spring 注入用唯一构造器：内部自建 {@link HttpClient}，避免多构造器导致无法装配。
+     *
      * @param objectMapper JSON 序列化
      */
     public InsightAlertWebhookSender(ObjectMapper objectMapper) {
-        this(objectMapper, HttpClient.newBuilder().connectTimeout(TIMEOUT).build());
-    }
-
-    /**
-     * @param objectMapper JSON 序列化
-     * @param httpClient   HTTP 客户端（单测可注入）
-     */
-    InsightAlertWebhookSender(ObjectMapper objectMapper, HttpClient httpClient) {
         this.objectMapper = objectMapper;
-        this.httpClient = httpClient;
+        this.httpClient = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
     }
 
     /**
