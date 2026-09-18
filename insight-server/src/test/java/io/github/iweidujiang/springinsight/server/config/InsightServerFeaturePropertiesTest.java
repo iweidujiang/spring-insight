@@ -37,7 +37,27 @@ class InsightServerFeaturePropertiesTest {
         p.setEnabled(true);
         p.setWebhookUrl(" https://example.com/hook ");
         assertTrue(p.isSendReady());
+        assertTrue(p.isWebhookSendReady());
+        assertFalse(p.isEmailSendReady());
         assertEquals("https://example.com/hook", p.normalizedWebhookUrl());
+    }
+
+    /**
+     * 仅配置 SMTP 邮件时也可发送。
+     */
+    @Test
+    void alertSendReadyWhenEmailConfigured() {
+        InsightServerAlertProperties p = new InsightServerAlertProperties();
+        p.setEnabled(true);
+        InsightServerAlertProperties.Email email = new InsightServerAlertProperties.Email();
+        email.setEnabled(true);
+        email.setHost("smtp.qq.com");
+        email.setFrom("a@qq.com");
+        email.setTo("b@qq.com, c@qq.com");
+        p.setEmail(email);
+        assertTrue(p.isEmailSendReady());
+        assertTrue(p.isSendReady());
+        assertFalse(p.isWebhookSendReady());
     }
 
     /**

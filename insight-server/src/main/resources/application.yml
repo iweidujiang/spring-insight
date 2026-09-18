@@ -25,7 +25,7 @@ spring:
         ui-username: admin
         ui-password: ""
         ui-session-ttl-hours: 24
-      # 0.3：轻量 Webhook 告警（默认关；enabled 且 webhook-url 非空后约每 60 秒扫描）
+      # 0.3：轻量告警（默认关；enabled 且 webhook 或 email 就绪后约每 60 秒扫描）
       alert:
         enabled: false
         webhook-url: ""
@@ -33,6 +33,16 @@ spring:
         threshold: 10.0
         window-minutes: 15
         cooldown-minutes: 30
+        email:
+          enabled: false
+          host: ""
+          port: 587
+          username: ""
+          password: ""
+          from: ""
+          to: ""
+          start-tls: true
+          ssl: false
       # 0.3：AI 解释 Trace（默认关）
       ai:
         enabled: false

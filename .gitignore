@@ -38,3 +38,7 @@ build/
 **/data/
 **/spans.json
 **/spans.json.tmp
+
+### 本地密钥（compose.dev 用）###
+.env
+.env.local

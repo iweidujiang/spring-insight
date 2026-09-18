@@ -91,7 +91,8 @@ class InsightAlertSchedulerTest {
         TraceSpanPersistenceService persistence = storeWithOneError();
         InsightAlertMetrics metrics = new InsightAlertMetrics(new SimpleMeterRegistry());
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
-                props, persistence, new InsightAlertWebhookSender(new ObjectMapper()), metrics);
+                props, persistence, new InsightAlertWebhookSender(new ObjectMapper()),
+                new InsightAlertEmailSender(props), metrics);
         scheduler.scan();
         scheduler.scan();
         assertEquals(2, hits.get());
@@ -108,6 +109,7 @@ class InsightAlertSchedulerTest {
                 props,
                 storeWithOneError(),
                 new InsightAlertWebhookSender(new ObjectMapper()),
+                new InsightAlertEmailSender(props),
                 lastMetrics);
     }
 

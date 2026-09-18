@@ -18,10 +18,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 定时扫描服务错误窗口，超阈值则 POST Webhook（默认关闭）。
+ * 定时扫描服务错误窗口，超阈值则推送 Webhook 和/或邮件（默认关闭）。
  * <p>
- * 数据来自 {@link TraceSpanPersistenceService#findHighErrorServicesSince(long)}，与错误分析同一聚合，不另扫存储。
- * 扫描间隔固定 60 秒（无新配置键）。
+ * 数据来自 {@link TraceSpanPersistenceService#findHighErrorServicesSince(long)}，与错误分析同一聚合。
+ * 扫描间隔固定 60 秒。任一通道成功即进入冷却。
  * </p>
  *
  * @since 2026-09-18
@@ -37,6 +37,7 @@ public class InsightAlertScheduler {
     private final InsightServerAlertProperties properties;
     private final TraceSpanPersistenceService persistenceService;
     private final InsightAlertWebhookSender webhookSender;
+    private final InsightAlertEmailSender emailSender;
     private final InsightAlertMetrics metrics;
 
     /** 服务名 → 上次成功推送的 epoch 毫秒 */
@@ -48,16 +49,19 @@ public class InsightAlertScheduler {
     /**
      * @param properties          告警配置
      * @param persistenceService  错误聚合
-     * @param webhookSender       Webhook 发送
+     * @param webhookSender       Webhook
+     * @param emailSender         邮件
      * @param metrics             结果计数
      */
     public InsightAlertScheduler(InsightServerAlertProperties properties,
                                  TraceSpanPersistenceService persistenceService,
                                  InsightAlertWebhookSender webhookSender,
+                                 InsightAlertEmailSender emailSender,
                                  InsightAlertMetrics metrics) {
         this.properties = properties;
         this.persistenceService = persistenceService;
         this.webhookSender = webhookSender;
+        this.emailSender = emailSender;
         this.metrics = metrics;
     }
 
@@ -76,9 +80,10 @@ public class InsightAlertScheduler {
             return t;
         });
         scheduler.scheduleWithFixedDelay(this::scanSafe, SCAN_INTERVAL_MS, SCAN_INTERVAL_MS, TimeUnit.MILLISECONDS);
-        log.info("[告警] 已启用：metric={}, threshold={}, windowMinutes={}, cooldownMinutes={}",
+        log.info("[告警] 已启用：metric={}, threshold={}, windowMinutes={}, cooldownMinutes={}, webhook={}, email={}",
                 properties.normalizedMetric(), properties.getThreshold(),
-                properties.getWindowMinutes(), properties.getCooldownMinutes());
+                properties.getWindowMinutes(), properties.getCooldownMinutes(),
+                properties.isWebhookSendReady(), properties.isEmailSendReady());
     }
 
     /**
@@ -103,7 +108,7 @@ public class InsightAlertScheduler {
     }
 
     /**
-     * 按窗口聚合错误，对超阈值且不在冷却期的服务发送 Webhook。
+     * 按窗口聚合错误，对超阈值且不在冷却期的服务推送已配置通道。
      */
     void scan() {
         if (!properties.isEnabled()) {
@@ -111,7 +116,7 @@ public class InsightAlertScheduler {
         }
         if (!properties.isSendReady()) {
             if (warnedNotReady.compareAndSet(false, true)) {
-                log.warn("[告警] 已启用但 webhook-url 为空，跳过发送");
+                log.warn("[告警] 已启用但未配置可用通道（webhook-url 或 email.host/from/to）");
             }
             return;
         }
@@ -141,8 +146,8 @@ public class InsightAlertScheduler {
             }
             double value = InsightAlertEvaluator.metricValue(properties, errorCalls, errorRate);
             Map<String, Object> payload = InsightAlertEvaluator.payload(properties, service, value, at);
-            boolean ok = webhookSender.post(properties.normalizedWebhookUrl(), payload);
-            if (ok) {
+            boolean delivered = deliver(payload);
+            if (delivered) {
                 lastFiredAt.put(service, now);
                 metrics.record("success");
                 log.info("[告警] 已推送: service={}, metric={}, value={}", service, properties.normalizedMetric(), value);
@@ -151,5 +156,27 @@ public class InsightAlertScheduler {
                 metrics.record("failure");
             }
         }
+    }
+
+    /**
+     * @param payload 告警体
+     * @return 任一已配置通道成功即为 true
+     */
+    private boolean deliver(Map<String, Object> payload) {
+        boolean anySuccess = false;
+        boolean attempted = false;
+        if (properties.isWebhookSendReady()) {
+            attempted = true;
+            boolean ok = webhookSender.post(properties.normalizedWebhookUrl(), payload);
+            metrics.record("webhook", ok ? "success" : "failure");
+            anySuccess = anySuccess || ok;
+        }
+        if (properties.isEmailSendReady()) {
+            attempted = true;
+            boolean ok = emailSender.send(payload);
+            metrics.record("email", ok ? "success" : "failure");
+            anySuccess = anySuccess || ok;
+        }
+        return attempted && anySuccess;
     }
 }

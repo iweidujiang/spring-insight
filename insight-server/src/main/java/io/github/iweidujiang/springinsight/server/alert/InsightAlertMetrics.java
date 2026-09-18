@@ -5,7 +5,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Component;
 
 /**
- * 告警推送结果计数：{@code spring.insight.alert.webhook{result=success|failure|cooldown}}。
+ * 告警推送结果计数：
+ * {@code spring.insight.alert.notify{channel=webhook|email|all, result=success|failure|cooldown}}。
  *
  * @since 2026-09-18
  * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
@@ -13,54 +14,63 @@ import org.springframework.stereotype.Component;
 @Component
 public class InsightAlertMetrics {
 
-    private final Counter success;
-    private final Counter failure;
-    private final Counter cooldown;
+    private final MeterRegistry registry;
 
     /**
      * @param registry 宿主 MeterRegistry（Actuator）
      */
     public InsightAlertMetrics(MeterRegistry registry) {
-        this.success = counter(registry, "success");
-        this.failure = counter(registry, "failure");
-        this.cooldown = counter(registry, "cooldown");
+        this.registry = registry;
+        // 预注册常用序列，便于 Prometheus 一开始就能 scrape 到 0
+        counter("webhook", "success");
+        counter("webhook", "failure");
+        counter("email", "success");
+        counter("email", "failure");
+        counter("all", "cooldown");
+        counter("all", "success");
+        counter("all", "failure");
     }
 
     /**
-     * 记录一次推送结果。
+     * 记录一次通道结果。
      *
-     * @param result {@code success}、{@code failure} 或 {@code cooldown}
+     * @param channel {@code webhook} / {@code email} / {@code all}
+     * @param result  {@code success} / {@code failure} / {@code cooldown}
+     */
+    public void record(String channel, String result) {
+        counter(channel, result).increment();
+    }
+
+    /**
+     * 兼容旧单测：按整轮结果记到 {@code channel=all}。
+     *
+     * @param result success / failure / cooldown
      */
     public void record(String result) {
-        if ("success".equals(result)) {
-            success.increment();
-        } else if ("failure".equals(result)) {
-            failure.increment();
-        } else if ("cooldown".equals(result)) {
-            cooldown.increment();
-        }
+        record("all", result);
     }
 
     /**
-     * @param result 结果标签
-     * @return 当前累计次数
+     * @param channel 通道
+     * @param result  结果
+     * @return 当前累计
      */
-    public double count(String result) {
-        if ("success".equals(result)) {
-            return success.count();
-        }
-        if ("failure".equals(result)) {
-            return failure.count();
-        }
-        if ("cooldown".equals(result)) {
-            return cooldown.count();
-        }
-        return 0D;
+    public double count(String channel, String result) {
+        return counter(channel, result).count();
     }
 
-    private static Counter counter(MeterRegistry registry, String result) {
-        return Counter.builder("spring.insight.alert.webhook")
-                .description("Webhook alert outcomes")
+    /**
+     * @param result 整轮结果
+     * @return {@code channel=all} 累计
+     */
+    public double count(String result) {
+        return count("all", result);
+    }
+
+    private Counter counter(String channel, String result) {
+        return Counter.builder("spring.insight.alert.notify")
+                .description("Alert notification outcomes")
+                .tag("channel", channel)
                 .tag("result", result)
                 .register(registry);
     }
