@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] — 0.3.0
+## [0.3.0] — 2026-09-18
 
 ### 亮点
 - RestTemplate / RestClient 出站 CLIENT Span（拓扑更完整；HTTP ≥400 与 IO 失败记错误）
@@ -14,9 +14,16 @@
 - 启动期 `spring.insight.server.alert.*` / `ai.*` 仍可读；控制台保存后文件覆盖启动默认
 
 ### 已知限制
-- AI 为实验能力，结论须人工核对 Span
+- AI 为实验能力，结论须人工核对 Span，不落库
 - 告警不是完整规则引擎；无多通道值班表、无密钥保险箱
 - 错误分析页「一键解读」不在本版（计划 `0.3.1`）
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| Boot3 Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.3.0` |
+| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.0-boot2` |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.3.0` |
 
 ## [0.2.1] — 2026-09-17
 

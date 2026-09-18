@@ -11,7 +11,7 @@ name: spring-insight
 
 services:
   insight-server:
-    image: ${INSIGHT_SERVER_IMAGE:-ghcr.io/iweidujiang/spring-insight-server:0.2.1}
+    image: ${INSIGHT_SERVER_IMAGE:-ghcr.io/iweidujiang/spring-insight-server:0.3.0}
     # 本地从源码构建时改为：
     # build:
     #   context: .
