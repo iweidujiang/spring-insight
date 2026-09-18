@@ -298,14 +298,23 @@ public class TraceSpanPersistenceService {
     }
 
     /**
-     * @param lastHours 时间窗口
+     * @param lastHours 时间窗口（小时）；{@code <=0} 不限
      * @return 有错误的服务分析
      */
     public List<Map<String, Object>> findHighErrorServices(int lastHours) {
-        long sinceTime = sinceEpochMillis(lastHours);
+        return findHighErrorServicesSince(sinceEpochMillis(lastHours));
+    }
+
+    /**
+     * 与 {@link #findHighErrorServices(int)} 同一趟快照聚合，供告警按分钟窗口复用。
+     *
+     * @param sinceEpochMs 含该时刻及之后的 Span；{@code <=0} 不限
+     * @return 窗口内 {@code error_calls > 0} 的服务（含 total_calls / error_rate）
+     */
+    public List<Map<String, Object>> findHighErrorServicesSince(long sinceEpochMs) {
         Map<String, long[]> agg = new HashMap<>();
         for (TraceSpan s : spanStore.snapshot()) {
-            if (n(s.getStartTime()) < sinceTime) {
+            if (n(s.getStartTime()) < sinceEpochMs) {
                 continue;
             }
             String name = s.getServiceName();

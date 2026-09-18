@@ -25,7 +25,7 @@ spring:
         ui-username: admin
         ui-password: ""
         ui-session-ttl-hours: 24
-      # 0.3：轻量 Webhook 告警（默认关）
+      # 0.3：轻量 Webhook 告警（默认关；enabled 且 webhook-url 非空后约每 60 秒扫描）
       alert:
         enabled: false
         webhook-url: ""
