@@ -43,10 +43,11 @@ spring:
           to: ""
           start-tls: true
           ssl: false
-      # 0.3：AI 解释 Trace（默认关）
+      # 0.3：AI 解释 Trace（默认关；openai-compatible，可换 DeepSeek 等）
       ai:
         enabled: false
         provider: openai-compatible
+        # DeepSeek 示例：https://api.deepseek.com/v1 + model=deepseek-chat
         base-url: https://api.openai.com/v1
         api-key: ""
         model: gpt-4o-mini

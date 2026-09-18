@@ -214,6 +214,42 @@ export class ApiService {
       return null
     }
   }
+
+  /** AI 开关与是否可调用（详情页按钮） */
+  static async getAiStatus(): Promise<{
+    enabled: boolean
+    invokeReady: boolean
+    provider: string
+    model: string
+    baseUrl: string
+  }> {
+    return requestWithDefault(`/ai/status`, {
+      enabled: false,
+      invokeReady: false,
+      provider: '',
+      model: '',
+      baseUrl: ''
+    })
+  }
+
+  /** 解释 Trace；失败时后端仍可能返回 degraded=true 的 200 */
+  static async explainTrace(traceId: string): Promise<{
+    degraded: boolean
+    markdown: string
+    message?: string
+    model?: string
+    provider?: string
+    traceId?: string
+  } | null> {
+    try {
+      return await request(`/traces/${encodeURIComponent(traceId)}/explain`, {
+        method: 'POST',
+        timeout: 60000
+      })
+    } catch {
+      return null
+    }
+  }
 }
 
 export { apiClient }

@@ -20,22 +20,26 @@ public class InsightServerAiProperties {
     private boolean enabled = false;
 
     /**
-     * Provider 标识；首期仅支持 {@code openai-compatible}
+     * Provider 标识；{@code openai-compatible} / {@code openai} / {@code deepseek} 均走 Chat Completions。
+     * <p>
+     * DeepSeek 示例：{@code base-url=https://api.deepseek.com/v1}，{@code model=deepseek-chat}。
+     * </p>
      */
     private String provider = "openai-compatible";
 
     /**
-     * OpenAI 兼容 API 根地址（含 /v1）
+     * OpenAI 兼容 API 根地址（须含 /v1，勿带 /chat/completions）。
+     * <p>DeepSeek：{@code https://api.deepseek.com/v1}；OpenAI：{@code https://api.openai.com/v1}</p>
      */
     private String baseUrl = "https://api.openai.com/v1";
 
     /**
-     * API Key；勿写入业务 Agent，仅 Server 配置
+     * API Key；勿写入业务 Agent，仅 Server 配置（可用环境变量注入）
      */
     private String apiKey = "";
 
     /**
-     * 模型名
+     * 模型名（自定义）：如 {@code gpt-4o-mini}、{@code deepseek-chat}、{@code deepseek-reasoner}
      */
     private String model = "gpt-4o-mini";
 

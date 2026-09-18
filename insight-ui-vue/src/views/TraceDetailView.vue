@@ -43,6 +43,16 @@
         >
           <i class="fa fa-magic me-1"></i>复制 Context
         </button>
+        <button
+          class="btn btn-outline-info"
+          type="button"
+          @click="runExplain"
+          :disabled="loading || explaining || spans.length === 0 || !aiStatus.invokeReady"
+          :title="aiExplainTitle"
+        >
+          <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-lightbulb-o'"></i>
+          {{ explaining ? '解释中…' : 'AI 解释' }}
+        </button>
         <button class="btn btn-primary" type="button" @click="load" :disabled="loading">
           <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
         </button>
@@ -50,6 +60,20 @@
     </div>
 
     <div v-if="copyHint" class="alert alert-success py-2 mb-3" role="status">{{ copyHint }}</div>
+    <div v-if="explainHint" class="alert alert-warning py-2 mb-3" role="status">{{ explainHint }}</div>
+
+    <div v-if="explainMarkdown" class="card stat-card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <h5 class="card-title mb-0">
+            <i class="fa fa-lightbulb-o me-2"></i>AI 解释
+            <small v-if="explainMeta" class="text-muted ms-2">{{ explainMeta }}</small>
+          </h5>
+          <button class="btn btn-sm btn-outline-secondary" type="button" @click="explainMarkdown = ''">关闭</button>
+        </div>
+        <pre class="trace-ai-markdown mb-0">{{ explainMarkdown }}</pre>
+      </div>
+    </div>
 
     <div v-if="loading" class="loading-spinner">
       <i class="fa fa-spinner fa-spin"></i>
@@ -244,8 +268,29 @@ const spans = ref<TraceSpanLike[]>([])
 const loading = ref(true)
 const selectedSpanId = ref<string | null>(null)
 const copyHint = ref('')
+const explainHint = ref('')
+const explainMarkdown = ref('')
+const explainMeta = ref('')
+const explaining = ref(false)
+const aiStatus = ref({
+  enabled: false,
+  invokeReady: false,
+  provider: '',
+  model: '',
+  baseUrl: ''
+})
 const waterfallEl = ref<HTMLElement | null>(null)
 let copyTimer: number | null = null
+
+const aiExplainTitle = computed(() => {
+  if (aiStatus.value.invokeReady) {
+    return `调用 ${aiStatus.value.provider || 'AI'} / ${aiStatus.value.model || 'model'} 解释当前 Trace`
+  }
+  if (aiStatus.value.enabled) {
+    return 'AI 已启用但未配齐 base-url / api-key（见 spring.insight.server.ai）'
+  }
+  return 'AI 未启用：请配置 spring.insight.server.ai.enabled=true 与 api-key；也可「复制 Context」'
+})
 
 const timeline = computed(() => buildTraceTimeline(spans.value))
 
@@ -332,6 +377,26 @@ const copyTraceContext = async () => {
   }
 }
 
+const runExplain = async () => {
+  if (!traceId.value || explaining.value) return
+  explaining.value = true
+  explainHint.value = ''
+  try {
+    const res = await ApiService.explainTrace(traceId.value)
+    if (!res) {
+      explainHint.value = '解释请求失败（网络或鉴权）'
+      return
+    }
+    explainMarkdown.value = res.markdown || ''
+    explainMeta.value = [res.provider, res.model].filter(Boolean).join(' · ')
+    if (res.degraded) {
+      explainHint.value = res.message || '已降级：请检查 AI 配置或复制 Context'
+    }
+  } finally {
+    explaining.value = false
+  }
+}
+
 const barTitle = (row: WaterfallRow) => {
   const flags = [
     row.isOnCriticalPath ? '关键路径' : '',
@@ -367,11 +432,33 @@ const goBack = () => {
   router.push({ path: '/traces', query: route.query })
 }
 
-watch(() => route.params.traceId, () => load())
-onMounted(() => load())
+watch(() => route.params.traceId, () => {
+  explainMarkdown.value = ''
+  explainHint.value = ''
+  load()
+})
+onMounted(async () => {
+  aiStatus.value = await ApiService.getAiStatus()
+  await load()
+})
 </script>
 
 <style scoped>
+.trace-ai-markdown {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--card-border);
+  max-height: 28rem;
+  overflow: auto;
+}
+
 .text-cyan {
   color: var(--si-teal);
 }
