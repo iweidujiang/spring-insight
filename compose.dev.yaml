@@ -1,11 +1,11 @@
-# 本地开发：本机 Maven 打包 + 运行镜像（默认 sqlite；告警/AI/鉴权按下方环境变量「全开」便于联调）
+# 本地开发：本机 Maven 打包 + 运行镜像（默认 sqlite）
 #
-#   1) 复制 .env.example 为 .env，填入邮箱授权码 / AI Key / webhook 等
-#   2) cd 仓库根目录
-#      mvn -pl insight-server -am package -DskipTests "-Dskip.ui=true"
-#      docker compose -f compose.dev.yaml --env-file .env up -d --build
+#   cd 仓库根目录
+#   mvn -pl insight-server -am package -DskipTests
+#   docker compose -f compose.dev.yaml up -d --build
 #
-# 浏览器：http://localhost:9966/  （默认 UI 账密 admin / change-me）
+# 浏览器：http://localhost:9966/
+# 告警 / AI / Token 等在控制台「设置」页配置（持久化到 /data/runtime-settings.json），无需长串环境变量。
 #
 # 换存储：$env:INSIGHT_STORAGE_MODE="sqlite"|"file"|"memory"
 
@@ -23,49 +23,11 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      # ---------- 存储 ----------
       SPRING_INSIGHT_SERVER_STORAGE_MODE: ${INSIGHT_STORAGE_MODE:-sqlite}
       SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH: /data/spans.json
       SPRING_INSIGHT_SERVER_STORAGE_FLUSH_DELAY_MS: "2000"
       SPRING_INSIGHT_SERVER_STORAGE_SQLITE_PATH: /data/insight.db
       SPRING_INSIGHT_SERVER_STORAGE_RETENTION_MAX_AGE_HOURS: ${INSIGHT_RETENTION_HOURS:-0}
-
-      # ---------- 安全（本地全开便于测登录/Token）----------
-      SPRING_INSIGHT_SERVER_SECURITY_INGEST_TOKEN_REQUIRED: "${INSIGHT_INGEST_REQUIRED:-true}"
-      SPRING_INSIGHT_SERVER_SECURITY_INGEST_TOKEN: ${INSIGHT_INGEST_TOKEN:-change-me}
-      SPRING_INSIGHT_SERVER_SECURITY_UI_AUTH_ENABLED: "${INSIGHT_UI_AUTH_ENABLED:-true}"
-      SPRING_INSIGHT_SERVER_SECURITY_UI_USERNAME: ${INSIGHT_UI_USERNAME:-admin}
-      SPRING_INSIGHT_SERVER_SECURITY_UI_PASSWORD: ${INSIGHT_UI_PASSWORD:-change-me}
-      SPRING_INSIGHT_SERVER_SECURITY_UI_SESSION_TTL_HOURS: ${INSIGHT_UI_SESSION_TTL_HOURS:-24}
-
-      # ---------- 告警（默认开；本地阈值放宽便于造数）----------
-      SPRING_INSIGHT_SERVER_ALERT_ENABLED: "${INSIGHT_ALERT_ENABLED:-true}"
-      SPRING_INSIGHT_SERVER_ALERT_WEBHOOK_URL: ${INSIGHT_ALERT_WEBHOOK_URL:-http://host.docker.internal:8080/insight-alert/webhook}
-      SPRING_INSIGHT_SERVER_ALERT_METRIC: ${INSIGHT_ALERT_METRIC:-error_count}
-      SPRING_INSIGHT_SERVER_ALERT_THRESHOLD: ${INSIGHT_ALERT_THRESHOLD:-1}
-      SPRING_INSIGHT_SERVER_ALERT_WINDOW_MINUTES: ${INSIGHT_ALERT_WINDOW_MINUTES:-15}
-      SPRING_INSIGHT_SERVER_ALERT_COOLDOWN_MINUTES: ${INSIGHT_ALERT_COOLDOWN_MINUTES:-2}
-      # 邮件：填真实 SMTP（QQ/163/Gmail 等）。未配齐 host/from/to 时不会发信，Webhook 仍可用
-      SPRING_INSIGHT_SERVER_ALERT_EMAIL_ENABLED: "${INSIGHT_ALERT_EMAIL_ENABLED:-true}"
-      SPRING_INSIGHT_SERVER_ALERT_EMAIL_HOST: ${INSIGHT_ALERT_EMAIL_HOST:-}
-      SPRING_INSIGHT_SERVER_ALERT_EMAIL_PORT: ${INSIGHT_ALERT_EMAIL_PORT:-587}
-      SPRING_INSIGHT_SERVER_ALERT_EMAIL_USERNAME: ${INSIGHT_ALERT_EMAIL_USERNAME:-}
-      SPRING_INSIGHT_SERVER_ALERT_EMAIL_PASSWORD: ${INSIGHT_ALERT_EMAIL_PASSWORD:-}
-      SPRING_INSIGHT_SERVER_ALERT_EMAIL_FROM: ${INSIGHT_ALERT_EMAIL_FROM:-}
-      SPRING_INSIGHT_SERVER_ALERT_EMAIL_TO: ${INSIGHT_ALERT_EMAIL_TO:-}
-      SPRING_INSIGHT_SERVER_ALERT_EMAIL_START_TLS: "${INSIGHT_ALERT_EMAIL_START_TLS:-true}"
-      SPRING_INSIGHT_SERVER_ALERT_EMAIL_SSL: "${INSIGHT_ALERT_EMAIL_SSL:-false}"
-
-      # ---------- AI（OpenAI 兼容；可换 DeepSeek 等，填 INSIGHT_AI_API_KEY）----------
-      SPRING_INSIGHT_SERVER_AI_ENABLED: "${INSIGHT_AI_ENABLED:-true}"
-      SPRING_INSIGHT_SERVER_AI_PROVIDER: ${INSIGHT_AI_PROVIDER:-openai-compatible}
-      SPRING_INSIGHT_SERVER_AI_BASE_URL: ${INSIGHT_AI_BASE_URL:-https://api.deepseek.com/v1}
-      SPRING_INSIGHT_SERVER_AI_API_KEY: ${INSIGHT_AI_API_KEY:-}
-      SPRING_INSIGHT_SERVER_AI_MODEL: ${INSIGHT_AI_MODEL:-deepseek-chat}
-      SPRING_INSIGHT_SERVER_AI_TIMEOUT_MS: ${INSIGHT_AI_TIMEOUT_MS:-30000}
-      SPRING_INSIGHT_SERVER_AI_MAX_INPUT_SPANS: ${INSIGHT_AI_MAX_INPUT_SPANS:-40}
-      SPRING_INSIGHT_SERVER_AI_MAX_TOKENS: ${INSIGHT_AI_MAX_TOKENS:-800}
-
       JAVA_OPTS: ${JAVA_OPTS:-}
     volumes:
       - insight-spans-dev:/data

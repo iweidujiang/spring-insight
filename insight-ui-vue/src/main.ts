@@ -6,6 +6,7 @@ import TopologyView from './views/TopologyView.vue'
 import TracesView from './views/TracesView.vue'
 import TraceDetailView from './views/TraceDetailView.vue'
 import ErrorAnalysisView from './views/ErrorAnalysisView.vue'
+import SettingsView from './views/SettingsView.vue'
 import AboutView from './views/AboutView.vue'
 import LoginView from './views/LoginView.vue'
 import { fetchAuthStatus, getUiToken } from './services/AuthService'
@@ -53,6 +54,12 @@ const router = createRouter({
       name: 'error-analysis',
       component: ErrorAnalysisView,
       meta: { title: '错误分析' }
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: SettingsView,
+      meta: { title: '设置' }
     },
     {
       path: '/about',

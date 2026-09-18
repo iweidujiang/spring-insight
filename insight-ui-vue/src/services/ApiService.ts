@@ -250,6 +250,86 @@ export class ApiService {
       return null
     }
   }
+
+  /** 控制台运行时设置（告警 / AI；密钥仅 configured 标志） */
+  static async getSettings(): Promise<RuntimeSettingsView> {
+    return request<RuntimeSettingsView>('/settings')
+  }
+
+  /** 保存并立即生效；password / apiKey 留空表示不修改 */
+  static async saveSettings(body: RuntimeSettingsSaveBody): Promise<RuntimeSettingsView> {
+    return request<RuntimeSettingsView>('/settings', {
+      method: 'PUT',
+      data: body
+    })
+  }
+}
+
+/** GET /settings 脱敏视图 */
+export interface RuntimeSettingsView {
+  settingsPath?: string
+  alert: {
+    enabled: boolean
+    webhookUrl: string
+    metric: string
+    threshold: number
+    windowMinutes: number
+    cooldownMinutes: number
+    email: {
+      enabled: boolean
+      host: string
+      port: number
+      username: string
+      passwordConfigured: boolean
+      from: string
+      to: string
+      startTls: boolean
+      ssl: boolean
+    }
+  }
+  ai: {
+    enabled: boolean
+    provider: string
+    baseUrl: string
+    apiKeyConfigured: boolean
+    model: string
+    timeoutMs: number
+    maxInputSpans: number
+    maxTokens: number
+  }
+}
+
+/** PUT /settings 请求体 */
+export interface RuntimeSettingsSaveBody {
+  alert: {
+    enabled: boolean
+    webhookUrl: string
+    metric: string
+    threshold: number
+    windowMinutes: number
+    cooldownMinutes: number
+    email: {
+      enabled: boolean
+      host: string
+      port: number
+      username: string
+      password: string
+      from: string
+      to: string
+      startTls: boolean
+      ssl: boolean
+    }
+  }
+  ai: {
+    enabled: boolean
+    provider: string
+    baseUrl: string
+    apiKey: string
+    model: string
+    timeoutMs: number
+    maxInputSpans: number
+    maxTokens: number
+  }
 }
 
 export { apiClient }

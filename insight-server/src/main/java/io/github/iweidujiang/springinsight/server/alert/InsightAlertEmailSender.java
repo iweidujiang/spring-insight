@@ -22,23 +22,15 @@ import java.util.stream.Collectors;
 @Component
 public class InsightAlertEmailSender {
 
-    private final InsightServerAlertProperties properties;
-
     /**
-     * @param properties 告警配置（含 email.*）
-     */
-    public InsightAlertEmailSender(InsightServerAlertProperties properties) {
-        this.properties = properties;
-    }
-
-    /**
-     * 发送纯文本告警邮件。
+     * 使用调用方传入的生效配置发送邮件。
      *
-     * @param payload 与 Webhook 相同的字段 Map
+     * @param properties 生效中的告警配置
+     * @param payload    与 Webhook 相同的字段 Map
      * @return 发送成功为 true
      */
-    public boolean send(Map<String, Object> payload) {
-        if (!properties.isEmailSendReady()) {
+    public boolean send(InsightServerAlertProperties properties, Map<String, Object> payload) {
+        if (properties == null || !properties.isEmailSendReady()) {
             return false;
         }
         InsightServerAlertProperties.Email email = properties.getEmail();
@@ -76,7 +68,6 @@ public class InsightAlertEmailSender {
         props.put("mail.transport.protocol", "smtp");
         boolean auth = StringUtils.hasText(email.getUsername());
         props.put("mail.smtp.auth", Boolean.toString(auth));
-        // 465 走 SSL；587 走 STARTTLS
         if (email.isSsl()) {
             props.put("mail.smtp.ssl.enable", "true");
             props.put("mail.smtp.starttls.enable", "false");

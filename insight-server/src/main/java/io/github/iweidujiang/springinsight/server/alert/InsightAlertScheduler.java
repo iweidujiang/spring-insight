@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.server.alert;
 
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
+import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -18,10 +19,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 定时扫描服务错误窗口，超阈值则推送 Webhook 和/或邮件（默认关闭）。
+ * 定时扫描服务错误窗口，超阈值则推送 Webhook 和/或邮件。
  * <p>
- * 数据来自 {@link TraceSpanPersistenceService#findHighErrorServicesSince(long)}，与错误分析同一聚合。
- * 扫描间隔固定 60 秒。任一通道成功即进入冷却。
+ * 是否启用以 {@link InsightRuntimeSettingsService#effectiveAlert()} 为准（控制台可改，无需重启）。
  * </p>
  *
  * @since 2026-09-18
@@ -34,7 +34,7 @@ public class InsightAlertScheduler {
     /** 扫描间隔；窗口与冷却仍由配置决定 */
     static final long SCAN_INTERVAL_MS = 60_000L;
 
-    private final InsightServerAlertProperties properties;
+    private final InsightRuntimeSettingsService settingsService;
     private final TraceSpanPersistenceService persistenceService;
     private final InsightAlertWebhookSender webhookSender;
     private final InsightAlertEmailSender emailSender;
@@ -47,18 +47,18 @@ public class InsightAlertScheduler {
     private ScheduledExecutorService scheduler;
 
     /**
-     * @param properties          告警配置
+     * @param settingsService     运行时设置
      * @param persistenceService  错误聚合
      * @param webhookSender       Webhook
      * @param emailSender         邮件
      * @param metrics             结果计数
      */
-    public InsightAlertScheduler(InsightServerAlertProperties properties,
+    public InsightAlertScheduler(InsightRuntimeSettingsService settingsService,
                                  TraceSpanPersistenceService persistenceService,
                                  InsightAlertWebhookSender webhookSender,
                                  InsightAlertEmailSender emailSender,
                                  InsightAlertMetrics metrics) {
-        this.properties = properties;
+        this.settingsService = settingsService;
         this.persistenceService = persistenceService;
         this.webhookSender = webhookSender;
         this.emailSender = emailSender;
@@ -66,24 +66,18 @@ public class InsightAlertScheduler {
     }
 
     /**
-     * 开关打开时启动周期扫描。
+     * 始终启动调度线程；每轮读取运行时开关。
      */
     @PostConstruct
     void start() {
-        if (!properties.isEnabled()) {
-            log.info("[告警] 未启用（spring.insight.server.alert.enabled=false）");
-            return;
-        }
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "insight-alert");
             t.setDaemon(true);
             return t;
         });
         scheduler.scheduleWithFixedDelay(this::scanSafe, SCAN_INTERVAL_MS, SCAN_INTERVAL_MS, TimeUnit.MILLISECONDS);
-        log.info("[告警] 已启用：metric={}, threshold={}, windowMinutes={}, cooldownMinutes={}, webhook={}, email={}",
-                properties.normalizedMetric(), properties.getThreshold(),
-                properties.getWindowMinutes(), properties.getCooldownMinutes(),
-                properties.isWebhookSendReady(), properties.isEmailSendReady());
+        InsightServerAlertProperties p = settingsService.effectiveAlert();
+        log.info("[告警] 调度已启动（当前 enabled={}；可在控制台「设置」页开关，无需重启）", p.isEnabled());
     }
 
     /**
@@ -111,6 +105,7 @@ public class InsightAlertScheduler {
      * 按窗口聚合错误，对超阈值且不在冷却期的服务推送已配置通道。
      */
     void scan() {
+        InsightServerAlertProperties properties = settingsService.effectiveAlert();
         if (!properties.isEnabled()) {
             return;
         }
@@ -120,6 +115,7 @@ public class InsightAlertScheduler {
             }
             return;
         }
+        warnedNotReady.set(false);
         if (!InsightAlertEvaluator.supportedMetric(properties)) {
             log.warn("[告警] 不支持的 metric={}，仅接受 error_rate / error_count", properties.normalizedMetric());
             return;
@@ -146,23 +142,23 @@ public class InsightAlertScheduler {
             }
             double value = InsightAlertEvaluator.metricValue(properties, errorCalls, errorRate);
             Map<String, Object> payload = InsightAlertEvaluator.payload(properties, service, value, at);
-            boolean delivered = deliver(payload);
+            boolean delivered = deliver(properties, payload);
             if (delivered) {
                 lastFiredAt.put(service, now);
                 metrics.record("success");
                 log.info("[告警] 已推送: service={}, metric={}, value={}", service, properties.normalizedMetric(), value);
             } else {
-                // 失败不写冷却，下一轮可重试
                 metrics.record("failure");
             }
         }
     }
 
     /**
-     * @param payload 告警体
+     * @param properties 当前生效告警配置
+     * @param payload    告警体
      * @return 任一已配置通道成功即为 true
      */
-    private boolean deliver(Map<String, Object> payload) {
+    private boolean deliver(InsightServerAlertProperties properties, Map<String, Object> payload) {
         boolean anySuccess = false;
         boolean attempted = false;
         if (properties.isWebhookSendReady()) {
@@ -173,7 +169,7 @@ public class InsightAlertScheduler {
         }
         if (properties.isEmailSendReady()) {
             attempted = true;
-            boolean ok = emailSender.send(payload);
+            boolean ok = emailSender.send(properties, payload);
             metrics.record("email", ok ? "success" : "failure");
             anySuccess = anySuccess || ok;
         }

@@ -89,6 +89,7 @@ const features = [
   { title: '服务拓扑', desc: '可视化调用方向与依赖强度', icon: 'fa-sitemap', color: '#15803d' },
   { title: '链路追踪', desc: '按 Trace / Span 排查单次请求耗时', icon: 'fa-list-ul', color: '#0d9488' },
   { title: '错误分析', desc: '识别高错误率服务并跳转相关链路', icon: 'fa-exclamation-triangle', color: '#b91c1c' },
+  { title: '控制台设置', desc: '告警 Webhook/邮件与 AI 解释在页面配置，即时生效', icon: 'fa-cog', color: '#0f766e' },
   { title: '独立 Server', desc: '业务侧仅依赖 Agent，监测中心进程隔离', icon: 'fa-server', color: '#b45309' },
   { title: '性能洞察', desc: '平均耗时、调用次数等指标辅助定位瓶颈', icon: 'fa-line-chart', color: '#1d4ed8' }
 ]

@@ -69,8 +69,8 @@ class InsightAlertEmailSenderTest {
     void sendReturnsFalseWhenNotReady() {
         InsightServerAlertProperties props = new InsightServerAlertProperties();
         props.setEnabled(true);
-        InsightAlertEmailSender sender = new InsightAlertEmailSender(props);
-        assertFalse(sender.send(Map.of("serviceName", "x")));
+        InsightAlertEmailSender sender = new InsightAlertEmailSender();
+        assertFalse(sender.send(props, Map.of("serviceName", "x")));
     }
 
     /**

@@ -115,6 +115,7 @@ const navItems = [
   { to: '/topology', label: '拓扑图', icon: 'fa-sitemap', match: (p: string) => p === '/topology' },
   { to: '/traces', label: '链路追踪', icon: 'fa-list-ul', match: (p: string) => p === '/traces' || p.startsWith('/traces/') },
   { to: '/error-analysis', label: '错误分析', icon: 'fa-exclamation-triangle', match: (p: string) => p === '/error-analysis' },
+  { to: '/settings', label: '设置', icon: 'fa-cog', match: (p: string) => p === '/settings' },
   { to: '/about', label: '关于', icon: 'fa-info-circle', match: (p: string) => p === '/about' }
 ]
 

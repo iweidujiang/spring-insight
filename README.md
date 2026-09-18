@@ -43,8 +43,8 @@ docker compose -f compose.dev.yaml up -d --build
 # 换模式：$env:INSIGHT_STORAGE_MODE="file"（PowerShell）或 export INSIGHT_STORAGE_MODE=file
 ```
 
-浏览器打开：<http://localhost:9966/>
-
+浏览器打开：<http://localhost:9966/>  
+告警 / AI / Webhook / SMTP 等在控制台侧栏 **「设置」** 页配置（写入数据目录 `runtime-settings.json`，重启不丢）；`compose.dev.yaml` 只保留端口与存储，无需长串环境变量。
 ### 2. 业务服务接入
 
 **Spring Boot 3：**
@@ -149,6 +149,7 @@ spring:
 - **SQLite（0.2）**：`SPRING_INSIGHT_SERVER_STORAGE_MODE=sqlite`，库文件默认 `/data/insight.db`（需挂卷）。
 - 按时间保留（可选）：`SPRING_INSIGHT_SERVER_STORAGE_RETENTION_MAX_AGE_HOURS=72`。
 - **可选鉴权 / 运维**：见 [`docs/dev_docs/v0.2-ops.md`](docs/dev_docs/v0.2-ops.md)（ingest Token、UI 登录、容量指标；默认关闭）。
+- **告警 / AI**：优先在控制台「设置」页开关；亦可启动期写 `spring.insight.server.alert.*` / `ai.*`（页面保存后文件覆盖启动默认）。
 - 本机 jar（需 JDK 21 + 先构建仓库）：
 
 ```bash
@@ -194,7 +195,7 @@ spring:
 Spring Insight 定位是**轻量辅助排查**，不是 OpenTelemetry / SkyWalking 的替代品：
 
 - Span 默认有条数上限；不配落盘时重启会清空（Docker 推荐挂卷 + `file`）
-- 无内置告警规则、多租户、OIDC 等生产级运维能力（可选 Token / 简易登录见 0.2 运维文档）
+- 告警为简易阈值 + Webhook/邮件；无多租户、OIDC、密钥保险箱（可选 Token / 简易登录见 0.2 运维文档）
 - JVM / JDBC 采集默认关闭（实验开关，需自行验证）
 
 欢迎 Issue / PR。

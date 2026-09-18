@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
 import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -21,6 +22,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * 告警扫描：超阈值 POST、冷却跳过、失败不冷却。
@@ -90,9 +93,11 @@ class InsightAlertSchedulerTest {
         InsightServerAlertProperties props = baseProps(port, "error_count", 1.0, 30);
         TraceSpanPersistenceService persistence = storeWithOneError();
         InsightAlertMetrics metrics = new InsightAlertMetrics(new SimpleMeterRegistry());
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAlert()).thenReturn(props);
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
-                props, persistence, new InsightAlertWebhookSender(new ObjectMapper()),
-                new InsightAlertEmailSender(props), metrics);
+                settings, persistence, new InsightAlertWebhookSender(new ObjectMapper()),
+                new InsightAlertEmailSender(), metrics);
         scheduler.scan();
         scheduler.scan();
         assertEquals(2, hits.get());
@@ -105,11 +110,13 @@ class InsightAlertSchedulerTest {
     private InsightAlertScheduler scheduler(int port, String metric, double threshold, int cooldown) {
         InsightServerAlertProperties props = baseProps(port, metric, threshold, cooldown);
         lastMetrics = new InsightAlertMetrics(new SimpleMeterRegistry());
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAlert()).thenReturn(props);
         return new InsightAlertScheduler(
-                props,
+                settings,
                 storeWithOneError(),
                 new InsightAlertWebhookSender(new ObjectMapper()),
-                new InsightAlertEmailSender(props),
+                new InsightAlertEmailSender(),
                 lastMetrics);
     }
 

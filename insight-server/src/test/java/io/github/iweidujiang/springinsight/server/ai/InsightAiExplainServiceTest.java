@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAiProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
 import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * AI 解释：截断、降级与 Chat Completions 成功路径。
@@ -142,7 +145,9 @@ class InsightAiExplainServiceTest {
     }
 
     private static InsightAiExplainService service(InsightServerAiProperties props, TraceContextExportService export) {
-        return new InsightAiExplainService(props, export, new ObjectMapper());
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAi()).thenReturn(props);
+        return new InsightAiExplainService(settings, export, new ObjectMapper());
     }
 
     private static TraceContextExportService storeWithTrace() {

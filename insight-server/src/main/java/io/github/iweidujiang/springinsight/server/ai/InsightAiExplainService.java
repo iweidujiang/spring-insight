@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.server.ai;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAiProperties;
+import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 基于 OpenAI 兼容 Chat Completions 解释 Trace（DeepSeek / OpenAI / 通义兼容模式等）。
+ * 基于 OpenAI 兼容 Chat Completions 解释 Trace（DeepSeek / OpenAI / 兼容网关等）。
+ * <p>
+ * 配置取自 {@link InsightRuntimeSettingsService#effectiveAi()}（控制台可改）。
+ * </p>
  *
  * @since 2026-09-18
  * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
@@ -30,20 +34,20 @@ public class InsightAiExplainService {
 
     private static final String DISCLAIMER = "\n\n---\n*AI 建议，请以 Span 为准。*";
 
-    private final InsightServerAiProperties properties;
+    private final InsightRuntimeSettingsService settingsService;
     private final TraceContextExportService contextExportService;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
     /**
-     * @param properties           AI 配置
+     * @param settingsService      运行时设置
      * @param contextExportService Context 导出
      * @param objectMapper         JSON
      */
-    public InsightAiExplainService(InsightServerAiProperties properties,
+    public InsightAiExplainService(InsightRuntimeSettingsService settingsService,
                                    TraceContextExportService contextExportService,
                                    ObjectMapper objectMapper) {
-        this.properties = properties;
+        this.settingsService = settingsService;
         this.contextExportService = contextExportService;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
@@ -55,6 +59,7 @@ public class InsightAiExplainService {
      * @return 状态摘要（UI 灰显按钮用）
      */
     public Map<String, Object> status() {
+        InsightServerAiProperties properties = settingsService.effectiveAi();
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("enabled", properties.isEnabled());
         body.put("invokeReady", properties.isInvokeReady());
@@ -71,6 +76,7 @@ public class InsightAiExplainService {
      * @return 响应体；Trace 不存在时返回 null
      */
     public Map<String, Object> explain(String traceId) {
+        InsightServerAiProperties properties = settingsService.effectiveAi();
         Map<String, Object> context = contextExportService.buildContext(traceId);
         if (context == null) {
             return null;
@@ -78,20 +84,23 @@ public class InsightAiExplainService {
         Map<String, Object> truncated = truncateContext(context, properties.getMaxInputSpans());
 
         if (!properties.isEnabled()) {
-            return degraded("AI 未启用（spring.insight.server.ai.enabled=false）。可先「复制 Context」粘贴到任意 LLM。",
+            return degraded(properties,
+                    "AI 未启用。请到控制台「设置」打开 AI，或「复制 Context」粘贴到任意 LLM。",
                     truncated);
         }
         if (!properties.isInvokeReady()) {
-            return degraded("AI 已启用但未配齐 base-url / api-key。请配置后重试，或「复制 Context」手动解释。",
+            return degraded(properties,
+                    "AI 已启用但未配齐 base-url / api-key。请到「设置」页填写后重试。",
                     truncated);
         }
         if (!isOpenAiCompatible(properties.getProvider())) {
-            return degraded("当前仅支持 provider=openai-compatible（可用 DeepSeek / OpenAI / 兼容网关）。",
+            return degraded(properties,
+                    "当前仅支持 provider=openai-compatible（可用 DeepSeek / OpenAI / 兼容网关）。",
                     truncated);
         }
 
         try {
-            String markdown = callChatCompletions(truncated);
+            String markdown = callChatCompletions(properties, truncated);
             Map<String, Object> ok = new LinkedHashMap<>();
             ok.put("degraded", false);
             ok.put("markdown", markdown + DISCLAIMER);
@@ -101,7 +110,8 @@ public class InsightAiExplainService {
             return ok;
         } catch (Exception e) {
             log.warn("[AI] 解释失败: traceId={}, error={}", traceId, e.getMessage());
-            return degraded("模型调用失败：" + safeMsg(e) + "。请检查 base-url/model/api-key，或「复制 Context」手动解释。",
+            return degraded(properties,
+                    "模型调用失败：" + safeMsg(e) + "。请检查「设置」中的 base-url/model/api-key。",
                     truncated);
         }
     }
@@ -122,7 +132,6 @@ public class InsightAiExplainService {
         if (spans.size() <= max) {
             return copy;
         }
-        // 优先保留错误 Span，再按原序补齐到上限
         List<Map<String, Object>> keep = new ArrayList<>(max);
         for (Object o : spans) {
             if (!(o instanceof Map<?, ?> row)) {
@@ -150,7 +159,8 @@ public class InsightAiExplainService {
         return copy;
     }
 
-    private String callChatCompletions(Map<String, Object> context) throws Exception {
+    private String callChatCompletions(InsightServerAiProperties properties, Map<String, Object> context)
+            throws Exception {
         String url = properties.normalizedBaseUrl() + "/chat/completions";
         int timeoutMs = properties.getTimeoutMs() > 0 ? properties.getTimeoutMs() : 30_000;
 
@@ -204,7 +214,9 @@ public class InsightAiExplainService {
         return content.asText().trim();
     }
 
-    private Map<String, Object> degraded(String message, Map<String, Object> context) {
+    private Map<String, Object> degraded(InsightServerAiProperties properties,
+                                         String message,
+                                         Map<String, Object> context) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("degraded", true);
         body.put("message", message);
