@@ -73,6 +73,15 @@ public class InsightAgentAutoConfigurationImportSelector
                 beanClassLoader != null ? beanClassLoader : ClassUtils.getDefaultClassLoader())) {
             imports.add(InsightWebClientAutoConfiguration.class.getName());
         }
+        ClassLoader cl = beanClassLoader != null ? beanClassLoader : ClassUtils.getDefaultClassLoader();
+        // RestTemplate / RestClient：与 WebClient 同级，不依赖 Web 应用类型
+        if (ClassUtils.isPresent("org.springframework.web.client.RestTemplate", cl)) {
+            imports.add(InsightRestTemplateAutoConfiguration.class.getName());
+        }
+        if (ClassUtils.isPresent("org.springframework.web.client.RestClient", cl)
+                && ClassUtils.isPresent("org.springframework.boot.web.client.RestClientCustomizer", cl)) {
+            imports.add(InsightRestClientAutoConfiguration.class.getName());
+        }
         return imports.toArray(String[]::new);
     }
 

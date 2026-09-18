@@ -4,4 +4,5 @@ io.github.iweidujiang.springinsight.agent.boot2.feign.InsightBoot2FeignAutoConfi
 io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2MicrometerAutoConfiguration,\
 io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2WebFluxAutoConfiguration,\
 io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2WebClientAutoConfiguration,\
+io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2RestTemplateAutoConfiguration,\
 io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2GatewayAutoConfiguration

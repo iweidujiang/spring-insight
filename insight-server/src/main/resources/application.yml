@@ -25,7 +25,7 @@ spring:
         ui-username: admin
         ui-password: ""
         ui-session-ttl-hours: 24
-      # 0.3：轻量 Webhook 告警（默认关；实现见 M2）
+      # 0.3：轻量 Webhook 告警（默认关）
       alert:
         enabled: false
         webhook-url: ""
@@ -33,7 +33,7 @@ spring:
         threshold: 10.0
         window-minutes: 15
         cooldown-minutes: 30
-      # 0.3：AI 解释 Trace（默认关；实现见 M3）
+      # 0.3：AI 解释 Trace（默认关）
       ai:
         enabled: false
         provider: openai-compatible
