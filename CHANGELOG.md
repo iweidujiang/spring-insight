@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased] — 0.3.0
+
+### 亮点
+- RestTemplate / RestClient 出站 CLIENT Span（拓扑更完整；HTTP ≥400 与 IO 失败记错误）
+- 可选 Webhook 告警，以及自定义 SMTP 邮件（错误率或错误次数阈值，默认关闭）
+- 可选「解释 Trace」AI 实验（OpenAI 兼容，含 DeepSeek；默认关闭；失败可降级为仅 Context）
+- 控制台「设置」页配置告警与 AI，写入数据目录 `runtime-settings.json`，保存后下一轮扫描或解释即生效
+
+### 兼容性
+- 未开启 alert / ai 时，与 0.2.x 默认行为一致
+- 仅用新埋点时需升级 Agent；仅用告警 / AI / 设置页时可只升级 Server 镜像
+- 启动期 `spring.insight.server.alert.*` / `ai.*` 仍可读；控制台保存后文件覆盖启动默认
+
+### 已知限制
+- AI 为实验能力，结论须人工核对 Span
+- 告警不是完整规则引擎；无多通道值班表、无密钥保险箱
+- 错误分析页「一键解读」不在本版（计划 `0.3.1`）
+
 ## [0.2.1] — 2026-09-17
 
 ### 修复

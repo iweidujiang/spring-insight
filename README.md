@@ -78,12 +78,13 @@ spring:
 
 | 能力 | 说明 |
 |------|------|
-| HTTP / Feign / WebClient / Gateway 采集 | Agent 采 Span 并批量上报；success 与 HTTP 状态对齐；线程池可透传 Trace；WebFlux 走 Reactor Context；出站带 `remoteService` |
+| HTTP / Feign / WebClient / Gateway / RestTemplate / RestClient 采集 | Agent 采 Span 并批量上报；success 与 HTTP 状态对齐；线程池可透传 Trace；WebFlux 走 Reactor Context；出站带 `remoteService` |
 | 服务依赖拓扑 | 谁调用了谁（箭头与次数）；点击节点/边可下钻链路 |
 | 链路列表 / Trace 详情 | 按 Trace 聚合，可搜索筛选；详情含瀑布时间线、tags、错误信息 |
 | 延迟与错误摘要 | 仪表盘慢/错 Top（含 p50/p95），可点进已筛 Trace |
 | Micrometer 联动 | 宿主有 MeterRegistry 时导出 `spring.insight.*`（Span Timer / 上报队列） |
 | 可选鉴权 / 容量可见（0.2） | Server 可选 ingest Token、控制台登录；健康/Actuator 暴露 stored/max/evicted |
+| 可选告警 / AI（0.3，默认关） | 控制台「设置」配 Webhook、SMTP、OpenAI 兼容模型；保存后即时生效 |
 | 控制台 UI | Vue 页面内嵌在 Server / Docker 镜像中 |
 
 ---
