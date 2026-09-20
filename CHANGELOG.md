@@ -4,6 +4,7 @@
 
 ### 0.3.3（拟定）
 - Agent 显式依赖 Jackson 2 `jackson-databind`；无容器 ObjectMapper 时自建，避免宿主为 **Spring Boot 4**（默认 Jackson 3）时 `ClassNotFoundException: ObjectMapper`
+- HTTP 上报使用内置 ObjectMapper + `JavaTimeModule`，修复 `Instant` 序列化失败导致控制台无数据
 - 文档明确：**正式支持 Boot 3.x + JDK 17+**；**暂不支持 Boot 4**
 
 ### 0.4（体验，开发中）

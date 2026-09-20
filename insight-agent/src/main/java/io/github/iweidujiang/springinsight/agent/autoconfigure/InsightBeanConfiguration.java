@@ -7,7 +7,6 @@ import io.github.iweidujiang.springinsight.agent.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.instrumentation.DbCallAspect;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.micrometer.InsightMicrometerBridge;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.agent.sink.HttpInsightBatchSink;
 import io.github.iweidujiang.springinsight.agent.sink.InsightBatchSink;
 import lombok.extern.slf4j.Slf4j;
@@ -70,23 +69,20 @@ public class InsightBeanConfiguration {
      * 应在「未配置 server-url」时才注册。
      * </p>
      * <p>
-     * 优先使用容器中的 Jackson 2 {@link ObjectMapper}；若无（例如宿主为 Boot 4 默认 Jackson 3）
-     * 则自行 {@code new ObjectMapper()}，避免条件求值/注入失败。
+     * 序列化使用 Sink 内置 ObjectMapper（含 JavaTimeModule），不注入宿主 Jackson Bean，
+     * 避免启动顺序拿到裸 mapper 导致 {@code Instant} 序列化失败。
      * </p>
      *
-     * @param objectMapperProvider 可选的 Spring 管理 ObjectMapper
      * @return 指向 Insight Server 的 {@link InsightBatchSink}
      */
     @Bean
     @ConditionalOnMissingBean(InsightBatchSink.class)
     @ConditionalOnProperty(prefix = "spring.insight", name = "server-url")
-    public InsightBatchSink httpInsightBatchSink(ObjectProvider<ObjectMapper> objectMapperProvider) {
+    public InsightBatchSink httpInsightBatchSink() {
         if (!StringUtils.hasText(properties.normalizeServerUrl())) {
             throw new IllegalStateException("spring.insight.server-url 已声明但值为空");
         }
-        // Boot 3 通常已有 ObjectMapper Bean；缺失时自建，保证上报不依赖宿主 JSON 栈版本
-        ObjectMapper objectMapper = objectMapperProvider.getIfAvailable(ObjectMapper::new);
-        return new HttpInsightBatchSink(properties, objectMapper);
+        return new HttpInsightBatchSink(properties);
     }
 
     /**

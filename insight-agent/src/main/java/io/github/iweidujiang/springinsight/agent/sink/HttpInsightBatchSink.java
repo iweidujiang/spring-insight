@@ -1,6 +1,8 @@
 package io.github.iweidujiang.springinsight.agent.sink;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.model.JvmMetric;
 import io.github.iweidujiang.springinsight.agent.model.TraceBatchReport;
@@ -40,7 +42,7 @@ public class HttpInsightBatchSink implements InsightBatchSink {
     private final InsightProperties properties;
 
     /**
-     * JSON 序列化器：将 {@link TraceBatchReport} 转为请求体
+     * JSON 序列化器：将 {@link TraceBatchReport} 转为请求体（自带 JavaTimeModule）
      */
     private final ObjectMapper objectMapper;
 
@@ -55,13 +57,21 @@ public class HttpInsightBatchSink implements InsightBatchSink {
     private final String spansBatchUrl;
 
     /**
+     * 使用内置上报专用 ObjectMapper（支持 {@link java.time.Instant} 等）。
+     *
+     * @param properties Insight 配置（须已配置非空 {@code server-url}）
+     */
+    public HttpInsightBatchSink(InsightProperties properties) {
+        this(properties, createReportingObjectMapper());
+    }
+
+    /**
      * @param properties   Insight 配置（须已配置非空 {@code server-url}）
-     * @param objectMapper Jackson 2 ObjectMapper；null 时内部新建默认实例
+     * @param objectMapper Jackson 2 ObjectMapper；null 时使用 {@link #createReportingObjectMapper()}
      */
     public HttpInsightBatchSink(InsightProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
-        // 宿主无 Spring 管理的 Jackson 2 Bean 时（如 Boot 4 默认 Jackson 3）自行创建
-        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
+        this.objectMapper = objectMapper != null ? objectMapper : createReportingObjectMapper();
         // 规范化后的根地址，例如 http://localhost:9966
         String base = properties.normalizeServerUrl();
         if (base.isEmpty()) {
@@ -72,6 +82,21 @@ public class HttpInsightBatchSink implements InsightBatchSink {
                 .connectTimeout(REQUEST_TIMEOUT)
                 .build();
         log.info("[HTTP上报] InsightBatchSink 已启用，目标={}", this.spansBatchUrl);
+    }
+
+    /**
+     * 上报专用 mapper：注册 JSR-310，Instant 写成 ISO-8601。
+     * <p>
+     * 不复用宿主 Spring ObjectMapper，避免启动顺序拿到裸 mapper，或 Boot 4 仅有 Jackson 3。
+     * </p>
+     *
+     * @return 已配置的 ObjectMapper
+     */
+    static ObjectMapper createReportingObjectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return mapper;
     }
 
     /**
