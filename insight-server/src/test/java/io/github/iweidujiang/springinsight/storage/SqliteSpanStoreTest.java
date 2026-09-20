@@ -60,7 +60,7 @@ class SqliteSpanStoreTest {
         assertEquals(1, store.size());
         List<TraceSpan> found = store.findByTraceId(traceId);
         assertEquals(1, found.size());
-        assertEquals("demo", found.getFirst().getServiceName());
+        assertEquals("demo", found.get(0).getServiceName());
     }
 
     @Test

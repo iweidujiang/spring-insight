@@ -1,7 +1,7 @@
 # 本地开发：本机先 mvn package，再只打运行镜像（不在容器里拉 Maven 依赖）
 #   mvn -pl insight-server -am package -DskipTests
 #   docker build -f insight-server/Dockerfile.runtime -t spring-insight-server:local .
-ARG JRE_IMAGE=eclipse-temurin:21-jre-alpine
+ARG JRE_IMAGE=eclipse-temurin:17-jre-alpine
 FROM ${JRE_IMAGE}
 WORKDIR /app
 

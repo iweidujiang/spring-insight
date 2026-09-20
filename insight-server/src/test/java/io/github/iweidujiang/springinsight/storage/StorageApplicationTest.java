@@ -49,7 +49,7 @@ public class StorageApplicationTest {
 
         if (!trace.isEmpty()) {
             log.info("成功获取追踪链路，包含 {} 条链路跨度", trace.size());
-            TraceSpan retrieved = trace.getFirst();
+            TraceSpan retrieved = trace.get(0);
             log.info("获取到的链路跨度详情：spanId={}, 操作名称={}, 耗时={}毫秒",
                     retrieved.getSpanId(), retrieved.getOperationName(), retrieved.getDurationMs());
         } else {

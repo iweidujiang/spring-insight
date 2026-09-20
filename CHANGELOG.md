@@ -2,10 +2,11 @@
 
 ## [Unreleased] — 0.3.3-SNAPSHOT / 0.4.0
 
-### 0.3.3（拟定）
-- Agent 显式依赖 Jackson 2 `jackson-databind`；无容器 ObjectMapper 时自建，避免宿主为 **Spring Boot 4**（默认 Jackson 3）时 `ClassNotFoundException: ObjectMapper`
-- HTTP 上报使用内置 ObjectMapper + `JavaTimeModule`，修复 `Instant` 序列化失败导致控制台无数据
-- 文档明确：**正式支持 Boot 3.x + JDK 17+**；**暂不支持 Boot 4**
+### 0.3.3（拟定） / 0.3.2 发版补充
+- **insight-server 亦可 JDK 17 运行**：Server 字节码目标改为 17；Docker 改用 `temurin:17-jre`；去掉 `List.getFirst` / `removeFirst` 等 JDK 21 API
+- Agent 显式依赖 Jackson 2；HTTP 上报内置 `JavaTimeModule`（修复 Instant 序列化）
+- 打 `v*` tag 时 Actions **自动**将 `insight-server-x.y.z.jar` 挂到 GitHub Release（无 Docker 可用 `java -jar`，需 JDK 17+）
+- 文档明确：正式支持 Boot 3.x + JDK 17+；暂不支持 Boot 4
 
 ### 0.4（体验，开发中）
 - 仪表盘 / 拓扑 / 链路页信息架构与主舞台继续迭代
@@ -13,9 +14,9 @@
 ## [0.3.2] — 2026-09-20
 
 ### 修复
-- **Boot 3 + JDK 17**：Agent / Starter 字节码目标从 Java 21 降为 **Java 17**，修复 `UnsupportedClassVersionError`（class 65 vs 61）
-- 构建仍用 JDK 21 交叉编译；`insight-server` / GHCR 镜像继续 JDK 21
-- CI 增加 Agent class major version = 61 校验
+- **Boot 3 + JDK 17**：Agent / Starter / **insight-server** 字节码目标均为 **Java 17**，修复业务侧 `UnsupportedClassVersionError`；无 Docker 时 `java -jar` 亦可用 JDK 17
+- GHCR / Release jar 基于 Java 17；JDK 21+ 业务与 Server 均可继续使用
+- CI 增加 Agent / Server class major version = 61 校验
 
 ### 兼容性
 - **须升级 Central Starter** 至 `0.3.2`（`0.3.0` / 未修复包在 JDK 17 上不可用）

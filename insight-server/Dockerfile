@@ -2,7 +2,7 @@
 # 构建上下文：仓库根目录（完整源码构建，CI/发版用）
 #   docker build -f insight-server/Dockerfile -t ghcr.io/iweidujiang/spring-insight-server:local .
 # 本地联调请用 Dockerfile.runtime（本机 mvn package，避免容器内 Central 超时）
-ARG MAVEN_IMAGE=maven:3.9.9-eclipse-temurin-21
+ARG MAVEN_IMAGE=maven:3.9.9-eclipse-temurin-17
 FROM ${MAVEN_IMAGE} AS builder
 WORKDIR /workspace
 
@@ -14,7 +14,7 @@ RUN --mount=type=cache,target=/root/.m2/repository \
     mvn -B -ntp -pl insight-server -am clean package -DskipTests \
     && cp insight-server/target/insight-server.jar /workspace/insight-server-app.jar
 
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # HEALTHCHECK 需要；镜像体积增加很少

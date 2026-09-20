@@ -99,7 +99,7 @@ class TraceContextExportServiceTest {
         Map<String, Object> ctx = exportService.buildFromSpans("tid-2", List.of(span));
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> spans = (List<Map<String, Object>>) ctx.get("spans");
-        String msg = (String) spans.getFirst().get("errorMessage");
+        String msg = (String) spans.get(0).get("errorMessage");
         assertTrue(msg.length() < 500);
         assertTrue(msg.endsWith("..."));
     }

@@ -57,9 +57,9 @@ class ErrorBreakdownServiceTest {
         List<Map<String, Object>> exceptions = (List<Map<String, Object>>) body.get("by_exception");
 
         assertEquals(1, status.size());
-        assertEquals("404", status.getFirst().get("key"));
+        assertEquals("404", status.get(0).get("key"));
         assertEquals(1, exceptions.size());
-        assertEquals("NullPointerException", exceptions.getFirst().get("key"));
+        assertEquals("NullPointerException", exceptions.get(0).get("key"));
         assertTrue(((Number) body.get("hours")).intValue() == 24
                 || body.containsKey("by_service"));
     }

@@ -1,6 +1,6 @@
 # Spring Insight — Boot 2.7 / Java 8 兼容线
 
-独立于主仓 `spring-insight-parent`（Boot 3.5；Agent 目标 JDK 17，Server/构建 JDK 21）。**insight-server 仍只用主线构建。**
+独立于主仓 `spring-insight-parent`（Boot 3.5；Agent / Server 目标 JDK 17）。**insight-server 仍只用主线构建。**
 
 ## 业务侧坐标
 

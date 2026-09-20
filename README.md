@@ -11,8 +11,8 @@
 适合中小项目、本地联调、教学演示——不想一上来就上整套 APM 时，可以先用它把「谁调了谁、慢在哪、错在哪」看清楚。
 
 - 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
-- 正式版：**`0.3.2`**（Boot 3 Agent **JDK 17+** · Server 镜像 JDK 21）· Boot 2.7 / Java 8 见 **`0.3.0-boot2`**
-- **运行时要求**：业务侧 Agent → **Spring Boot 3.x + JDK 17+**（对齐 Boot 3 基线）；监测中心 Server（Docker）→ **JDK 21**
+- 正式版：**`0.3.2`**（Boot 3 Agent / Server 均为 **JDK 17+**）· Boot 2.7 / Java 8 见 **`0.3.0-boot2`**
+- **运行时要求**：Agent 与 insight-server（Docker / `java -jar`）→ **Spring Boot 3.x + JDK 17+**（JDK 21+ 亦可）
 - **暂不支持 Spring Boot 4**（Boot 4 默认 Jackson 3 / 包名变更，后续考虑增加 boot4 版本）；请用 Boot **3.5.x** 验证。Boot 2.7 走 `boot2` 坐标
 - 问题与建议欢迎开 Issue
 
@@ -20,7 +20,9 @@
 
 ## 快速开始（两步）
 
-### 1. 启动监测中心（Docker）
+### 1. 启动监测中心
+
+**方式 A — Docker（推荐）**
 
 ```bash
 docker run --rm -p 9966:9966 \
@@ -34,6 +36,16 @@ docker run --rm -p 9966:9966 \
 
 ```bash
 docker compose up -d
+```
+
+**方式 B — 无 Docker（GitHub Release 可执行 jar）**
+
+从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-0.3.2.jar`（打 `v*` tag 时由 Actions 自动挂载），本机需 **JDK 17+**：
+
+```bash
+java -jar insight-server-0.3.2.jar
+# 落盘示例：
+# java -jar insight-server-0.3.2.jar --spring.insight.server.storage.mode=file
 ```
 
 **本地改 Server 源码联调（本机打包 + Docker 运行镜像，默认 sqlite）：**
@@ -122,6 +134,7 @@ spring:
 | `io.github.iweidujiang:insight-agent:0.3.2` | 采集核心（由 Starter 传递） |
 | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.0-boot2` | **Boot 2.7 / Java 8**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter-boot2/0.3.0-boot2)） |
 | `ghcr.io/iweidujiang/spring-insight-server:0.3.2` | **监测中心镜像（推荐）** |
+| [Release `insight-server-0.3.2.jar`](https://github.com/iweidujiang/spring-insight/releases) | **无 Docker**：JDK 17+ 下 `java -jar`（tag 推送后 Actions 自动挂载） |
 
 发版说明见 [CHANGELOG.md](CHANGELOG.md)。维护者发版步骤（Central + GHCR）见 [RELEASING.md](RELEASING.md)。
 
@@ -153,14 +166,14 @@ spring:
 - 按时间保留（可选）：`SPRING_INSIGHT_SERVER_STORAGE_RETENTION_MAX_AGE_HOURS=72`。
 - **可选鉴权 / 运维**：见 [`docs/dev_docs/v0.2-ops.md`](docs/dev_docs/v0.2-ops.md)（ingest Token、UI 登录、容量指标；默认关闭）。
 - **告警 / AI**：优先在控制台「设置」页开关；亦可启动期写 `spring.insight.server.alert.*` / `ai.*`（页面保存后文件覆盖启动默认）。
-- 本机 jar（构建需 JDK 21；业务侧接入只需 JDK 17+）：
+- 本机从源码打 jar（构建与运行均需 JDK 17+）：
 
 ```bash
 mvn clean install -DskipTests
 java -jar insight-server/target/insight-server.jar
-# 可选：--spring.insight.server.storage.mode=file
-# 可选：--spring.insight.server.storage.mode=sqlite
 ```
+
+正式发版后优先从 GitHub Release 下载 `insight-server-x.y.z.jar`，无需自行编译。
 
 存储只在 **Server** 侧配置，业务微服务不要配 `spring.insight.server.storage.*`。  
 健康检查：`GET /api/v1/health`（含 `storageMode`、`storedSpans`）。

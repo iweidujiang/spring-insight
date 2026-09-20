@@ -182,7 +182,8 @@ public class InMemorySpanStore implements SpanStore {
         int max = Math.max(1, properties.getMaxSpans());
         int removed = 0;
         while (spans.size() > max) {
-            spans.removeFirst();
+            // ArrayList：队头淘汰（FIFO）；勿用 List.removeFirst()（需 JDK 21）
+            spans.remove(0);
             removed++;
         }
         if (removed > 0) {

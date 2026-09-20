@@ -592,7 +592,7 @@ public class TraceSpanPersistenceService {
             return 0L;
         }
         if (sortedAsc.size() == 1) {
-            return sortedAsc.getFirst();
+            return sortedAsc.get(0);
         }
         double idx = p * (sortedAsc.size() - 1);
         int lo = (int) Math.floor(idx);

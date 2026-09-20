@@ -129,7 +129,7 @@ class InsightAiExplainServiceTest {
         assertTrue(Boolean.TRUE.equals(truncated.get("truncated")));
         List<Map<String, Object>> spans = (List<Map<String, Object>>) truncated.get("spans");
         assertEquals(2, spans.size());
-        assertEquals("err", spans.getFirst().get("spanId"));
+        assertEquals("err", spans.get(0).get("spanId"));
     }
 
     private static InsightServerAiProperties props(boolean enabled, String baseUrl, String key) {
