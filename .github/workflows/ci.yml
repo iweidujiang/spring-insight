@@ -32,7 +32,7 @@ jobs:
           grep -q '/assets/index-' insight-server/target/classes/static/index.html
 
   boot2:
-    name: Boot2 兼容线（JDK 11）
+    name: Boot2 （JDK 8 & 11）
     runs-on: ubuntu-latest
     defaults:
       run:
