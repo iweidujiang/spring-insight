@@ -172,6 +172,47 @@
           </p>
         </div>
       </section>
+
+      <section class="card stat-card si-settings__card si-settings__card--danger">
+        <div class="card-body">
+          <h5 class="card-title"><i class="fa fa-database me-2"></i>数据</h5>
+          <p class="text-muted small mb-3">
+            当前存储模式 <strong>{{ storage.mode || '—' }}</strong>：
+            已存 {{ storage.stored }} / 上限 {{ storage.max }}，累计裁剪 {{ storage.evicted }}。
+            清除不可恢复；按服务只删服务名精确匹配的 Span，相关 Trace 可能不完整。
+          </p>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <button type="button" class="btn btn-outline-danger btn-sm" :disabled="clearing" @click="confirmClear('all')">
+              清空全部
+            </button>
+          </div>
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-md-5">
+              <label class="form-label">早于 N 小时</label>
+              <input v-model.number="clearOlderHours" class="form-control" type="number" min="1" />
+            </div>
+            <div class="col-md-4">
+              <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="confirmClear('older_than')">
+                按时间清理
+              </button>
+            </div>
+          </div>
+          <div class="row g-2 align-items-end">
+            <div class="col-md-7">
+              <label class="form-label">服务名（精确匹配）</label>
+              <input v-model="clearServiceName" class="form-control" list="si-service-names" placeholder="例如 sca-order" />
+              <datalist id="si-service-names">
+                <option v-for="n in serviceNames" :key="n" :value="n" />
+              </datalist>
+            </div>
+            <div class="col-md-4">
+              <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="confirmClear('service')">
+                按服务清理
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -182,11 +223,16 @@ import { ApiService, type RuntimeSettingsSaveBody } from '../services/ApiService
 
 const loading = ref(true)
 const saving = ref(false)
+const clearing = ref(false)
 const message = ref('')
 const messageOk = ref(false)
 const settingsPath = ref('')
 const passwordConfigured = ref(false)
 const apiKeyConfigured = ref(false)
+const clearOlderHours = ref(24)
+const clearServiceName = ref('')
+const serviceNames = ref<string[]>([])
+const storage = reactive({ mode: '', stored: 0, max: 0, evicted: 0 })
 
 const form = reactive<RuntimeSettingsSaveBody>({
   alert: {
@@ -225,6 +271,14 @@ function showMsg(text: string, ok: boolean) {
   messageOk.value = ok
 }
 
+async function refreshStorage() {
+  const s = await ApiService.getStorageSummary()
+  storage.mode = s.mode || ''
+  storage.stored = Number(s.stored ?? 0)
+  storage.max = Number(s.max ?? 0)
+  storage.evicted = Number(s.evicted ?? 0)
+}
+
 async function load() {
   loading.value = true
   message.value = ''
@@ -258,6 +312,9 @@ async function load() {
     form.ai.maxInputSpans = Number(data.ai?.maxInputSpans ?? 40)
     form.ai.maxTokens = Number(data.ai?.maxTokens ?? 800)
     apiKeyConfigured.value = !!data.ai?.apiKeyConfigured
+
+    await refreshStorage()
+    serviceNames.value = await ApiService.getServiceNames()
   } catch (e: any) {
     showMsg(e?.message || '加载设置失败', false)
   } finally {
@@ -287,6 +344,46 @@ async function onSave() {
   }
 }
 
+async function confirmClear(scope: 'all' | 'older_than' | 'service') {
+  let tip = ''
+  if (scope === 'all') {
+    tip = `确定清空全部 ${storage.stored} 条 Span？此操作不可恢复。`
+  } else if (scope === 'older_than') {
+    if (!clearOlderHours.value || clearOlderHours.value < 1) {
+      showMsg('请填写有效的小时数', false)
+      return
+    }
+    tip = `确定删除早于 ${clearOlderHours.value} 小时的 Span？此操作不可恢复。`
+  } else {
+    const name = clearServiceName.value.trim()
+    if (!name) {
+      showMsg('请填写服务名', false)
+      return
+    }
+    tip = `确定删除服务「${name}」的全部 Span？相关 Trace 可能不完整，且不可恢复。`
+  }
+  if (!window.confirm(tip)) {
+    return
+  }
+  clearing.value = true
+  message.value = ''
+  try {
+    const result = await ApiService.clearStorage(
+      scope === 'all'
+        ? { scope: 'all' }
+        : scope === 'older_than'
+          ? { scope: 'older_than', olderThanHours: clearOlderHours.value }
+          : { scope: 'service', serviceName: clearServiceName.value.trim() }
+    )
+    await refreshStorage()
+    showMsg(`已删除 ${result.deleted} 条，剩余 ${result.remaining}。请刷新仪表盘/拓扑查看。`, true)
+  } catch (e: any) {
+    showMsg(e?.response?.data?.message || e?.message || '清理失败', false)
+  } finally {
+    clearing.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -299,6 +396,11 @@ onMounted(load)
 
 .si-settings__card .card-title {
   margin-bottom: 1rem;
+}
+
+.si-settings__card--danger {
+  border-color: rgba(185, 28, 28, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.06);
 }
 
 .si-settings__hr {

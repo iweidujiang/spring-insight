@@ -263,6 +263,71 @@ export class ApiService {
       data: body
     })
   }
+
+  /** 存储容量摘要 */
+  static async getStorageSummary(): Promise<{
+    mode: string
+    stored: number
+    max: number
+    evicted: number
+  }> {
+    return requestWithDefault('/storage/summary', {
+      mode: '',
+      stored: 0,
+      max: 0,
+      evicted: 0
+    })
+  }
+
+  /** 清除历史 Span */
+  static async clearStorage(body: {
+    scope: 'all' | 'older_than' | 'service'
+    olderThanHours?: number
+    cutoffEpochMs?: number
+    serviceName?: string
+  }): Promise<{ deleted: number; remaining: number; mode: string; scope: string }> {
+    return request('/storage/clear', { method: 'POST', data: body })
+  }
+
+  /** 错误分析一键解读 */
+  static async explainErrors(hours: number = 24): Promise<{
+    degraded: boolean
+    markdown: string
+    message?: string
+    model?: string
+    provider?: string
+    hours?: number
+  } | null> {
+    try {
+      return await request(`/errors/explain?hours=${hours}`, {
+        method: 'POST',
+        timeout: 60000
+      })
+    } catch {
+      return null
+    }
+  }
+
+  /** 拓扑边解读 */
+  static async explainDependency(source: string, target: string, hours: number = 24): Promise<{
+    degraded: boolean
+    markdown: string
+    message?: string
+  } | null> {
+    try {
+      const qs = new URLSearchParams({
+        source,
+        target,
+        hours: String(hours)
+      })
+      return await request(`/dependencies/explain?${qs.toString()}`, {
+        method: 'POST',
+        timeout: 60000
+      })
+    } catch {
+      return null
+    }
+  }
 }
 
 /** GET /settings 脱敏视图 */
