@@ -8,6 +8,7 @@ import io.github.iweidujiang.springinsight.server.config.InsightServerStoragePro
 import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
 import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
+import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -147,7 +148,14 @@ class InsightAiExplainServiceTest {
     private static InsightAiExplainService service(InsightServerAiProperties props, TraceContextExportService export) {
         InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
         when(settings.effectiveAi()).thenReturn(props);
-        return new InsightAiExplainService(settings, export, new ObjectMapper());
+        TraceSpanPersistenceService persistence = mock(TraceSpanPersistenceService.class);
+        when(persistence.findErrorBreakdown(org.mockito.ArgumentMatchers.anyInt())).thenReturn(Map.of(
+                "total_error_spans", 0,
+                "by_service", List.of(),
+                "by_status_code", List.of(),
+                "by_exception", List.of()
+        ));
+        return new InsightAiExplainService(settings, export, persistence, new InsightAiAuditLog(), new ObjectMapper());
     }
 
     private static TraceContextExportService storeWithTrace() {

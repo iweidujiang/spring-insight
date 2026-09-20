@@ -8,6 +8,15 @@
         <p class="page-description mb-0">按服务、HTTP 状态码与异常类聚合，可下钻到异常链路</p>
       </div>
       <div class="si-page__toolbar">
+        <button
+          class="btn btn-outline-primary"
+          @click="onExplainErrors"
+          :disabled="loading || explaining || !hasErrors || !aiReady"
+          :title="aiReady ? '用当前聚合摘要调用 AI' : '请先在设置中启用 AI 并配置密钥'"
+        >
+          <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
+          {{ explaining ? '解读中…' : '一键解读' }}
+        </button>
         <button class="btn btn-primary" @click="loadData" :disabled="loading">
           <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
         </button>
@@ -17,6 +26,16 @@
         <span class="badge bg-info">
           <i class="fa fa-clock me-1"></i>{{ currentTime }}
         </span>
+      </div>
+    </div>
+
+    <div v-if="explainMarkdown" class="card stat-card si-err-ai mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h5 class="card-title mb-0"><i class="fa fa-magic me-2"></i>AI 解读</h5>
+          <button type="button" class="btn btn-sm btn-link text-muted" @click="explainMarkdown = ''">关闭</button>
+        </div>
+        <pre class="si-err-ai__md mb-0">{{ explainMarkdown }}</pre>
       </div>
     </div>
 
@@ -298,6 +317,9 @@ import { ApiService } from '../services/ApiService'
 
 const router = useRouter()
 const loading = ref(true)
+const explaining = ref(false)
+const explainMarkdown = ref('')
+const aiReady = ref(false)
 const currentTime = ref('')
 const hours = ref(24)
 const errorAnalysis = ref<any[]>([])
@@ -420,7 +442,26 @@ const viewCategoryTraces = (key: string) => {
 }
 
 const viewTrace = (traceId: string) => {
-  router.push({ path: `/traces/${traceId}` })
+  router.push({ path: `/traces/${encodeURIComponent(traceId)}` })
+}
+
+async function onExplainErrors() {
+  explaining.value = true
+  try {
+    const result = await ApiService.explainErrors(Number(hours.value))
+    explainMarkdown.value = result?.markdown || result?.message || '无返回内容'
+  } finally {
+    explaining.value = false
+  }
+}
+
+async function refreshAiStatus() {
+  try {
+    const st = await ApiService.getAiStatus()
+    aiReady.value = !!st.invokeReady
+  } catch {
+    aiReady.value = false
+  }
 }
 
 const downloadErrorData = () => {
@@ -470,6 +511,7 @@ onMounted(async () => {
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
   window.addEventListener('resize', handleResize)
+  await refreshAiStatus()
   await loadData()
 })
 
@@ -616,5 +658,14 @@ onUnmounted(() => {
   background: rgba(180, 83, 9, 0.08);
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
+}
+
+.si-err-ai__md {
+  white-space: pre-wrap;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  margin: 0;
+  color: var(--si-ink);
 }
 </style>
