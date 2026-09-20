@@ -105,6 +105,15 @@
                       <button class="btn btn-sm btn-outline-secondary" type="button" @click="goServiceTraces(dep.targetService)" title="查看被调用方链路">
                         目标
                       </button>
+                      <button
+                        class="btn btn-sm btn-outline-info"
+                        type="button"
+                        :disabled="explaining"
+                        @click="explainEdge(dep.sourceService, dep.targetService)"
+                        title="AI 解释该依赖边"
+                      >
+                        <i class="fa fa-magic"></i>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -117,6 +126,16 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <div v-if="edgeExplain" class="card stat-card mt-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between">
+            <h5 class="card-title mb-2"><i class="fa fa-magic me-2"></i>边解读</h5>
+            <button type="button" class="btn btn-sm btn-link" @click="edgeExplain = ''">关闭</button>
+          </div>
+          <pre class="mb-0" style="white-space:pre-wrap;font-family:var(--font-body);font-size:0.9rem">{{ edgeExplain }}</pre>
         </div>
       </div>
     </div>
@@ -137,6 +156,8 @@ const hours = ref(72)
 const dependencies = ref<any[]>([])
 const serviceNames = ref<string[]>([])
 const chartEl = ref<HTMLElement | null>(null)
+const explaining = ref(false)
+const edgeExplain = ref('')
 
 let topologyChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
@@ -152,6 +173,16 @@ const updateCurrentTime = () => {
 const goServiceTraces = (serviceName: string) => {
   if (!serviceName) return
   router.push({ path: '/traces', query: { service: serviceName, hours: String(hours.value) } })
+}
+
+async function explainEdge(source: string, target: string) {
+  explaining.value = true
+  try {
+    const result = await ApiService.explainDependency(source, target, Number(hours.value))
+    edgeExplain.value = result?.markdown || result?.message || '无返回'
+  } finally {
+    explaining.value = false
+  }
 }
 
 const bindTopologyClick = () => {
