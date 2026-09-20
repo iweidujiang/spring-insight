@@ -21,17 +21,20 @@
       </router-link>
 
       <nav class="si-sidebar__nav">
-        <router-link
-          v-for="item in navItems"
-          :key="item.to"
-          class="si-sidebar__link"
-          :class="{ active: isActive(item) }"
-          :to="item.to"
-          @click="closeNav"
-        >
-          <i class="fa" :class="item.icon"></i>
-          <span>{{ item.label }}</span>
-        </router-link>
+        <div v-for="group in navGroups" :key="group.label" class="si-sidebar__group">
+          <p class="si-sidebar__group-label">{{ group.label }}</p>
+          <router-link
+            v-for="item in group.items"
+            :key="item.to"
+            class="si-sidebar__link"
+            :class="{ active: isActive(item) }"
+            :to="item.to"
+            @click="closeNav"
+          >
+            <i class="fa" :class="item.icon"></i>
+            <span>{{ item.label }}</span>
+          </router-link>
+        </div>
       </nav>
     </aside>
 
@@ -69,7 +72,11 @@
         class="si-main"
         :class="$route.path === '/' ? 'si-main--dashboard' : 'si-main--page'"
       >
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <transition name="si-page-fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </main>
     </div>
   </div>
@@ -110,16 +117,31 @@ async function refreshAuthAndUser() {
   displayName.value = getUiUsername() || '管理员'
 }
 
-const navItems = [
-  { to: '/', label: '仪表盘', icon: 'fa-tachometer', match: (p: string) => p === '/' },
-  { to: '/topology', label: '拓扑图', icon: 'fa-sitemap', match: (p: string) => p === '/topology' },
-  { to: '/traces', label: '链路追踪', icon: 'fa-list-ul', match: (p: string) => p === '/traces' || p.startsWith('/traces/') },
-  { to: '/error-analysis', label: '错误分析', icon: 'fa-exclamation-triangle', match: (p: string) => p === '/error-analysis' },
-  { to: '/settings', label: '设置', icon: 'fa-cog', match: (p: string) => p === '/settings' },
-  { to: '/about', label: '关于', icon: 'fa-info-circle', match: (p: string) => p === '/about' }
+const navGroups = [
+  {
+    label: '观测',
+    items: [
+      { to: '/', label: '仪表盘', icon: 'fa-tachometer', match: (p: string) => p === '/' },
+      { to: '/topology', label: '拓扑图', icon: 'fa-sitemap', match: (p: string) => p === '/topology' },
+      { to: '/traces', label: '链路追踪', icon: 'fa-list-ul', match: (p: string) => p === '/traces' || p.startsWith('/traces/') },
+      { to: '/error-analysis', label: '错误分析', icon: 'fa-exclamation-triangle', match: (p: string) => p === '/error-analysis' }
+    ]
+  },
+  {
+    label: '运维',
+    items: [
+      { to: '/settings', label: '设置', icon: 'fa-cog', match: (p: string) => p === '/settings' }
+    ]
+  },
+  {
+    label: '关于',
+    items: [
+      { to: '/about', label: '关于', icon: 'fa-info-circle', match: (p: string) => p === '/about' }
+    ]
+  }
 ]
 
-const isActive = (item: (typeof navItems)[number]) => item.match(route.path)
+const isActive = (item: { match: (p: string) => boolean }) => item.match(route.path)
 const closeNav = () => {
   navOpen.value = false
 }
