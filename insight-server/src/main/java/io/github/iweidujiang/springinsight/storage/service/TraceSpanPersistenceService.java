@@ -550,6 +550,43 @@ public class TraceSpanPersistenceService {
         return spanStore.mode();
     }
 
+    /**
+     * 清空全部 Span。
+     *
+     * @return 删除条数
+     */
+    public int clearAllSpans() {
+        int deleted = spanStore.clearAll();
+        log.info("[存储] clearAll 删除 {} 条，mode={}，剩余={}", deleted, spanStore.mode(), spanStore.size());
+        return deleted;
+    }
+
+    /**
+     * 删除开始时间早于 cutoff 的 Span。
+     *
+     * @param cutoffEpochMs 截止毫秒
+     * @return 删除条数
+     */
+    public int purgeSpansOlderThan(long cutoffEpochMs) {
+        int deleted = spanStore.purgeOlderThan(cutoffEpochMs);
+        log.info("[存储] purgeOlderThan cutoff={} 删除 {} 条，mode={}，剩余={}",
+                cutoffEpochMs, deleted, spanStore.mode(), spanStore.size());
+        return deleted;
+    }
+
+    /**
+     * 按服务名精确删除 Span。
+     *
+     * @param serviceName 服务名
+     * @return 删除条数
+     */
+    public int purgeSpansByService(String serviceName) {
+        int deleted = spanStore.purgeByService(serviceName);
+        log.info("[存储] purgeByService service={} 删除 {} 条，mode={}，剩余={}",
+                serviceName, deleted, spanStore.mode(), spanStore.size());
+        return deleted;
+    }
+
     private static long percentile(List<Long> sortedAsc, double p) {
         if (sortedAsc.isEmpty()) {
             return 0L;

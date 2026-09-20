@@ -105,6 +105,23 @@ public class FileSpanStore implements SpanStore {
     }
 
     @Override
+    public int clearAll() {
+        int removed = memory.clearAll();
+        // 清空后立即落盘，避免防抖窗口内进程退出残留旧文件
+        flushToFileNow(true);
+        return removed;
+    }
+
+    @Override
+    public int purgeByService(String serviceName) {
+        int removed = memory.purgeByService(serviceName);
+        if (removed > 0) {
+            scheduleFlush();
+        }
+        return removed;
+    }
+
+    @Override
     public void close() {
         cancelPendingFlush();
         flushToFileNow(true);

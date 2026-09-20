@@ -263,6 +263,41 @@ public class SqliteSpanStore implements SpanStore {
     }
 
     @Override
+    public int clearAll() {
+        synchronized (lock) {
+            try (Statement st = connection.createStatement()) {
+                int deleted = st.executeUpdate("DELETE FROM spans");
+                if (deleted > 0) {
+                    evictedTotal.addAndGet(deleted);
+                }
+                return deleted;
+            } catch (SQLException e) {
+                throw new IllegalStateException("SQLite clearAll 失败: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    @Override
+    public int purgeByService(String serviceName) {
+        if (serviceName == null || serviceName.isBlank()) {
+            return 0;
+        }
+        synchronized (lock) {
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "DELETE FROM spans WHERE service_name = ?")) {
+                ps.setString(1, serviceName);
+                int deleted = ps.executeUpdate();
+                if (deleted > 0) {
+                    evictedTotal.addAndGet(deleted);
+                }
+                return deleted;
+            } catch (SQLException e) {
+                throw new IllegalStateException("SQLite purgeByService 失败: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    @Override
     public void close() {
         synchronized (lock) {
             try {

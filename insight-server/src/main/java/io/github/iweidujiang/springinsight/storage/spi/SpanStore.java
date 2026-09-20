@@ -75,6 +75,21 @@ public interface SpanStore {
     int purgeOlderThan(long cutoffEpochMs);
 
     /**
+     * 清空全部 Span（file 应刷盘；sqlite 仅 DELETE，可不 VACUUM）。
+     *
+     * @return 删除条数
+     */
+    int clearAll();
+
+    /**
+     * 删除 serviceName 精确匹配的 Span（非整 Trace 级联）。
+     *
+     * @param serviceName 服务名；空则不删
+     * @return 删除条数
+     */
+    int purgeByService(String serviceName);
+
+    /**
      * 释放资源（文件刷盘、关闭 JDBC 等）。
      */
     default void close() {

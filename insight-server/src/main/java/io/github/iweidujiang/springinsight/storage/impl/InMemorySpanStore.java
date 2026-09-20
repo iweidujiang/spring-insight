@@ -150,6 +150,34 @@ public class InMemorySpanStore implements SpanStore {
         }
     }
 
+    @Override
+    public int clearAll() {
+        synchronized (lock) {
+            int removed = spans.size();
+            spans.clear();
+            if (removed > 0) {
+                evictedTotal.addAndGet(removed);
+            }
+            return removed;
+        }
+    }
+
+    @Override
+    public int purgeByService(String serviceName) {
+        if (serviceName == null || serviceName.isBlank()) {
+            return 0;
+        }
+        synchronized (lock) {
+            int before = spans.size();
+            spans.removeIf(s -> serviceName.equals(s.getServiceName()));
+            int removed = before - spans.size();
+            if (removed > 0) {
+                evictedTotal.addAndGet(removed);
+            }
+            return removed;
+        }
+    }
+
     private void evictByCount() {
         int max = Math.max(1, properties.getMaxSpans());
         int removed = 0;
