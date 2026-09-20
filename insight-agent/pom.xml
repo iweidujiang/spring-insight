@@ -25,6 +25,16 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-json</artifactId>
         </dependency>
+        <!--
+          显式锁定 Jackson 2（com.fasterxml）：上报序列化依赖 ObjectMapper。
+          Boot 3 的 starter-json 会带上；Boot 4 默认改为 Jackson 3（tools.jackson），
+          若不显式引入，宿主仅有 Boot 4 时会出现 ClassNotFoundException: ObjectMapper。
+          主线仍只正式支持 Boot 3.x；此依赖避免误用 Boot 4 时第一步即因缺类崩溃。
+        -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
 
         <!-- 配置元数据生成 -->
         <dependency>

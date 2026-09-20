@@ -56,11 +56,12 @@ public class HttpInsightBatchSink implements InsightBatchSink {
 
     /**
      * @param properties   Insight 配置（须已配置非空 {@code server-url}）
-     * @param objectMapper Spring Boot 自动配置的 Jackson ObjectMapper
+     * @param objectMapper Jackson 2 ObjectMapper；null 时内部新建默认实例
      */
     public HttpInsightBatchSink(InsightProperties properties, ObjectMapper objectMapper) {
         this.properties = properties;
-        this.objectMapper = objectMapper;
+        // 宿主无 Spring 管理的 Jackson 2 Bean 时（如 Boot 4 默认 Jackson 3）自行创建
+        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
         // 规范化后的根地址，例如 http://localhost:9966
         String base = properties.normalizeServerUrl();
         if (base.isEmpty()) {

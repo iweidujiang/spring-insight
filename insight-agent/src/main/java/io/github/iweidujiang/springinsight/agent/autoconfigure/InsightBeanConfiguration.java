@@ -69,25 +69,34 @@ public class InsightBeanConfiguration {
      * 与 embedded 进程内 Sink 互斥：有 server-url 时优先本 Bean；Starter 侧 Local Sink
      * 应在「未配置 server-url」时才注册。
      * </p>
+     * <p>
+     * 优先使用容器中的 Jackson 2 {@link ObjectMapper}；若无（例如宿主为 Boot 4 默认 Jackson 3）
+     * 则自行 {@code new ObjectMapper()}，避免条件求值/注入失败。
+     * </p>
      *
-     * @param objectMapper Spring 容器中的 Jackson 映射器
+     * @param objectMapperProvider 可选的 Spring 管理 ObjectMapper
      * @return 指向 Insight Server 的 {@link InsightBatchSink}
      */
     @Bean
     @ConditionalOnMissingBean(InsightBatchSink.class)
     @ConditionalOnProperty(prefix = "spring.insight", name = "server-url")
-    public InsightBatchSink httpInsightBatchSink(ObjectMapper objectMapper) {
+    public InsightBatchSink httpInsightBatchSink(ObjectProvider<ObjectMapper> objectMapperProvider) {
         if (!StringUtils.hasText(properties.normalizeServerUrl())) {
             throw new IllegalStateException("spring.insight.server-url 已声明但值为空");
         }
+        // Boot 3 通常已有 ObjectMapper Bean；缺失时自建，保证上报不依赖宿主 JSON 栈版本
+        ObjectMapper objectMapper = objectMapperProvider.getIfAvailable(ObjectMapper::new);
         return new HttpInsightBatchSink(properties, objectMapper);
     }
 
     /**
-     * 异步上报器 Bean
+     * 异步上报器 Bean。
+     *
+     * @param batchSinkProvider 可选批量 Sink（有 server-url 时为 HTTP Sink）
+     * @return 已 start 的异步上报器
      */
     @Bean
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(AsyncSpanReporter.class)
     public AsyncSpanReporter asyncSpanReporter(ObjectProvider<InsightBatchSink> batchSinkProvider) {
         String serviceInstance = properties.getServiceInstance();
         if (serviceInstance == null || serviceInstance.trim().isEmpty()) {
@@ -105,10 +114,14 @@ public class InsightBeanConfiguration {
     }
 
     /**
-     * Span 报告监听器 Bean
+     * Span 报告监听器 Bean。
+     *
+     * @param asyncSpanReporter 异步上报器
+     * @param micrometerBridge  可选 Micrometer 桥
+     * @return 监听器
      */
     @Bean
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(SpanReportingListener.class)
     public SpanReportingListener spanReportingListener(AsyncSpanReporter asyncSpanReporter,
                                                        ObjectProvider<InsightMicrometerBridge> micrometerBridge) {
         log.info("[Bean配置] Span报告监听器初始化完成");

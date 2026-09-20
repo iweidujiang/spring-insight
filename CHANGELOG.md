@@ -1,9 +1,13 @@
 # Changelog
 
-## [Unreleased] — 0.4.0-SNAPSHOT
+## [Unreleased] — 0.3.3-SNAPSHOT / 0.4.0
 
-### 计划
-- 仪表盘 / 拓扑 / 链路页信息架构与主舞台继续迭代（体验跃迁）
+### 0.3.3（拟定）
+- Agent 显式依赖 Jackson 2 `jackson-databind`；无容器 ObjectMapper 时自建，避免宿主为 **Spring Boot 4**（默认 Jackson 3）时 `ClassNotFoundException: ObjectMapper`
+- 文档明确：**正式支持 Boot 3.x + JDK 17+**；**暂不支持 Boot 4**
+
+### 0.4（体验，开发中）
+- 仪表盘 / 拓扑 / 链路页信息架构与主舞台继续迭代
 
 ## [0.3.2] — 2026-09-20
 

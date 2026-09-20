@@ -12,7 +12,8 @@
 
 - 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
 - 正式版：**`0.3.2`**（Boot 3 Agent **JDK 17+** · Server 镜像 JDK 21）· Boot 2.7 / Java 8 见 **`0.3.0-boot2`**
-- **运行时要求**：业务侧 Agent → **JDK 17+**（对齐 Spring Boot 3）；监测中心 Server（Docker）→ **JDK 21**
+- **运行时要求**：业务侧 Agent → **Spring Boot 3.x + JDK 17+**（对齐 Boot 3 基线）；监测中心 Server（Docker）→ **JDK 21**
+- **暂不支持 Spring Boot 4**（Boot 4 默认 Jackson 3 / 包名变更，后续考虑增加 boot4 版本）；请用 Boot **3.5.x** 验证。Boot 2.7 走 `boot2` 坐标
 - 问题与建议欢迎开 Issue
 
 ---
