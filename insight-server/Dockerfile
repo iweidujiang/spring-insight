@@ -29,7 +29,7 @@ COPY --from=builder /workspace/insight-server-app.jar app.jar
 
 EXPOSE 9966
 
-# 存储由环境变量覆盖：memory | file | sqlite（见 compose / compose.dev.yaml）
+# 存储由环境变量覆盖：memory | file | sqlite
 ENV JAVA_OPTS="" \
     SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH=/data/spans.json \
     SPRING_INSIGHT_SERVER_STORAGE_SQLITE_PATH=/data/insight.db

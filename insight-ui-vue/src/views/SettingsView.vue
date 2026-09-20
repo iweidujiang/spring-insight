@@ -6,12 +6,16 @@
           <i class="fa fa-cog me-2"></i>设置
         </h2>
         <p class="page-description mb-0">
-          告警与 AI 在监测中心配置；保存后即时生效，写入数据目录
-          <code v-if="settingsPath">{{ settingsPath }}</code>
-          <span v-else>runtime-settings.json</span>
+          {{ sectionHint }}
+          <template v-if="section !== 'data'">
+            ；保存后即时生效，写入
+            <code v-if="settingsPath">{{ settingsPath }}</code>
+            <span v-else>runtime-settings.json</span>
+          </template>
         </p>
       </div>
       <button
+        v-if="section !== 'data'"
         type="button"
         class="btn btn-primary"
         :disabled="loading || saving"
@@ -31,195 +35,229 @@
       <p class="mt-2 text-muted mb-0">加载设置…</p>
     </div>
 
-    <div v-else class="si-settings__grid">
-      <section class="card stat-card si-settings__card">
-        <div class="card-body">
-          <h5 class="card-title"><i class="fa fa-bell me-2"></i>告警</h5>
-          <div class="form-check form-switch mb-3">
-            <input id="alert-enabled" v-model="form.alert.enabled" class="form-check-input" type="checkbox" />
-            <label class="form-check-label" for="alert-enabled">启用告警扫描</label>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Webhook URL</label>
-            <input v-model="form.alert.webhookUrl" class="form-control" type="url" placeholder="https://… 或 http://host.docker.internal:…" />
-          </div>
-          <div class="row g-2 mb-3">
-            <div class="col-md-4">
-              <label class="form-label">指标</label>
-              <select v-model="form.alert.metric" class="form-control">
-                <option value="error_rate">error_rate（%）</option>
-                <option value="error_count">error_count</option>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">阈值</label>
-              <input v-model.number="form.alert.threshold" class="form-control" type="number" min="0" step="0.1" />
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">窗口（分钟）</label>
-              <input v-model.number="form.alert.windowMinutes" class="form-control" type="number" min="1" />
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">冷却（分钟）</label>
-              <input v-model.number="form.alert.cooldownMinutes" class="form-control" type="number" min="0" />
-            </div>
-          </div>
+    <div v-else class="si-settings__layout">
+      <nav class="si-settings__nav" aria-label="设置分节">
+        <button
+          v-for="item in sections"
+          :key="item.id"
+          type="button"
+          class="si-settings__nav-item"
+          :class="{
+            'is-active': section === item.id,
+            'is-danger': item.id === 'data'
+          }"
+          @click="section = item.id"
+        >
+          <i class="fa" :class="item.icon" aria-hidden="true"></i>
+          <span>{{ item.label }}</span>
+        </button>
+      </nav>
 
-          <hr class="si-settings__hr" />
-          <h6 class="mb-2"><i class="fa fa-envelope me-1"></i>邮件 SMTP</h6>
-          <div class="form-check form-switch mb-3">
-            <input id="email-enabled" v-model="form.alert.email.enabled" class="form-check-input" type="checkbox" />
-            <label class="form-check-label" for="email-enabled">启用邮件通道</label>
+      <div class="si-settings__panel">
+        <section v-show="section === 'alert'" class="card stat-card si-settings__card">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fa fa-bell me-2"></i>告警</h5>
+            <div class="form-check form-switch mb-3">
+              <input id="alert-enabled" v-model="form.alert.enabled" class="form-check-input" type="checkbox" />
+              <label class="form-check-label" for="alert-enabled">启用告警扫描</label>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Webhook URL</label>
+              <input v-model="form.alert.webhookUrl" class="form-control" type="url" placeholder="https://… 或 http://host.docker.internal:…" />
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-md-4">
+                <label class="form-label">指标</label>
+                <select v-model="form.alert.metric" class="form-control">
+                  <option value="error_rate">error_rate（%）</option>
+                  <option value="error_count">error_count</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">阈值</label>
+                <input v-model.number="form.alert.threshold" class="form-control" type="number" min="0" step="0.1" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">窗口（分钟）</label>
+                <input v-model.number="form.alert.windowMinutes" class="form-control" type="number" min="1" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">冷却（分钟）</label>
+                <input v-model.number="form.alert.cooldownMinutes" class="form-control" type="number" min="0" />
+              </div>
+            </div>
+
+            <hr class="si-settings__hr" />
+            <h6 class="mb-2"><i class="fa fa-envelope me-1"></i>邮件 SMTP</h6>
+            <div class="form-check form-switch mb-3">
+              <input id="email-enabled" v-model="form.alert.email.enabled" class="form-check-input" type="checkbox" />
+              <label class="form-check-label" for="email-enabled">启用邮件通道</label>
+            </div>
+            <div class="row g-2">
+              <div class="col-md-8">
+                <label class="form-label">SMTP Host</label>
+                <input v-model="form.alert.email.host" class="form-control" placeholder="smtp.example.com" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">端口</label>
+                <input v-model.number="form.alert.email.port" class="form-control" type="number" min="1" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">用户名</label>
+                <input v-model="form.alert.email.username" class="form-control" autocomplete="off" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">
+                  密码
+                  <span v-if="passwordConfigured" class="text-muted small">（已配置，留空不修改）</span>
+                </label>
+                <input
+                  v-model="form.alert.email.password"
+                  class="form-control"
+                  type="password"
+                  autocomplete="new-password"
+                  :placeholder="passwordConfigured ? '••••••••' : ''"
+                />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">发件人 From</label>
+                <input v-model="form.alert.email.from" class="form-control" type="email" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">收件人 To（逗号分隔）</label>
+                <input v-model="form.alert.email.to" class="form-control" />
+              </div>
+              <div class="col-md-6">
+                <div class="form-check form-switch mt-2">
+                  <input id="email-starttls" v-model="form.alert.email.startTls" class="form-check-input" type="checkbox" />
+                  <label class="form-check-label" for="email-starttls">STARTTLS</label>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-check form-switch mt-2">
+                  <input id="email-ssl" v-model="form.alert.email.ssl" class="form-check-input" type="checkbox" />
+                  <label class="form-check-label" for="email-ssl">SSL</label>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="row g-2">
-            <div class="col-md-8">
-              <label class="form-label">SMTP Host</label>
-              <input v-model="form.alert.email.host" class="form-control" placeholder="smtp.example.com" />
+        </section>
+
+        <section v-show="section === 'ai'" class="card stat-card si-settings__card">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fa fa-magic me-2"></i>AI 解释</h5>
+            <div class="form-check form-switch mb-3">
+              <input id="ai-enabled" v-model="form.ai.enabled" class="form-check-input" type="checkbox" />
+              <label class="form-check-label" for="ai-enabled">启用链路 AI 解释</label>
             </div>
-            <div class="col-md-4">
-              <label class="form-label">端口</label>
-              <input v-model.number="form.alert.email.port" class="form-control" type="number" min="1" />
+            <div class="mb-3">
+              <label class="form-label">Provider</label>
+              <input v-model="form.ai.provider" class="form-control" placeholder="openai-compatible" />
             </div>
-            <div class="col-md-6">
-              <label class="form-label">用户名</label>
-              <input v-model="form.alert.email.username" class="form-control" autocomplete="off" />
+            <div class="mb-3">
+              <label class="form-label">Base URL</label>
+              <input v-model="form.ai.baseUrl" class="form-control" placeholder="https://api.deepseek.com/v1" />
             </div>
-            <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label">Model</label>
+              <input v-model="form.ai.model" class="form-control" placeholder="deepseek-chat" />
+            </div>
+            <div class="mb-3">
               <label class="form-label">
-                密码
-                <span v-if="passwordConfigured" class="text-muted small">（已配置，留空不修改）</span>
+                API Key
+                <span v-if="apiKeyConfigured" class="text-muted small">（已配置，留空不修改）</span>
               </label>
               <input
-                v-model="form.alert.email.password"
+                v-model="form.ai.apiKey"
                 class="form-control"
                 type="password"
                 autocomplete="new-password"
-                :placeholder="passwordConfigured ? '••••••••' : ''"
+                :placeholder="apiKeyConfigured ? '••••••••' : ''"
               />
             </div>
-            <div class="col-md-6">
-              <label class="form-label">发件人 From</label>
-              <input v-model="form.alert.email.from" class="form-control" type="email" />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">收件人 To（逗号分隔）</label>
-              <input v-model="form.alert.email.to" class="form-control" />
-            </div>
-            <div class="col-md-6">
-              <div class="form-check form-switch mt-2">
-                <input id="email-starttls" v-model="form.alert.email.startTls" class="form-check-input" type="checkbox" />
-                <label class="form-check-label" for="email-starttls">STARTTLS</label>
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label">超时（ms）</label>
+                <input v-model.number="form.ai.timeoutMs" class="form-control" type="number" min="1000" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">最大输入 Span</label>
+                <input v-model.number="form.ai.maxInputSpans" class="form-control" type="number" min="1" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">maxTokens</label>
+                <input v-model.number="form.ai.maxTokens" class="form-control" type="number" min="64" />
               </div>
             </div>
-            <div class="col-md-6">
-              <div class="form-check form-switch mt-2">
-                <input id="email-ssl" v-model="form.alert.email.ssl" class="form-check-input" type="checkbox" />
-                <label class="form-check-label" for="email-ssl">SSL</label>
+            <p class="text-muted small mt-3 mb-0">
+              使用 OpenAI 兼容的 Chat Completions 接口即可对接各类大模型；API Key 仅保存在 Server 本机数据目录。
+            </p>
+          </div>
+        </section>
+
+        <section v-show="section === 'data'" class="card stat-card si-settings__card si-settings__card--danger">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fa fa-database me-2"></i>数据</h5>
+            <p class="text-muted small mb-3">
+              当前存储模式 <strong>{{ storage.mode || '—' }}</strong>：
+              已存 {{ storage.stored }} / 上限 {{ storage.max }}，累计裁剪 {{ storage.evicted }}。
+              清除不可恢复；按服务只删服务名精确匹配的 Span，相关 Trace 可能不完整。
+            </p>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+              <button type="button" class="btn btn-outline-danger btn-sm" :disabled="clearing" @click="confirmClear('all')">
+                清空全部
+              </button>
+            </div>
+            <div class="row g-2 align-items-end mb-3">
+              <div class="col-md-5">
+                <label class="form-label">早于 N 小时</label>
+                <input v-model.number="clearOlderHours" class="form-control" type="number" min="1" />
+              </div>
+              <div class="col-md-4">
+                <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="confirmClear('older_than')">
+                  按时间清理
+                </button>
+              </div>
+            </div>
+            <div class="row g-2 align-items-end">
+              <div class="col-md-7">
+                <label class="form-label">服务名（精确匹配）</label>
+                <input v-model="clearServiceName" class="form-control" list="si-service-names" placeholder="例如 sca-order" />
+                <datalist id="si-service-names">
+                  <option v-for="n in serviceNames" :key="n" :value="n" />
+                </datalist>
+              </div>
+              <div class="col-md-4">
+                <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="confirmClear('service')">
+                  按服务清理
+                </button>
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section class="card stat-card si-settings__card">
-        <div class="card-body">
-          <h5 class="card-title"><i class="fa fa-magic me-2"></i>AI 解释</h5>
-          <div class="form-check form-switch mb-3">
-            <input id="ai-enabled" v-model="form.ai.enabled" class="form-check-input" type="checkbox" />
-            <label class="form-check-label" for="ai-enabled">启用链路 AI 解释</label>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Provider</label>
-            <input v-model="form.ai.provider" class="form-control" placeholder="openai-compatible" />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Base URL</label>
-            <input v-model="form.ai.baseUrl" class="form-control" placeholder="https://api.deepseek.com/v1" />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Model</label>
-            <input v-model="form.ai.model" class="form-control" placeholder="deepseek-chat" />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">
-              API Key
-              <span v-if="apiKeyConfigured" class="text-muted small">（已配置，留空不修改）</span>
-            </label>
-            <input
-              v-model="form.ai.apiKey"
-              class="form-control"
-              type="password"
-              autocomplete="new-password"
-              :placeholder="apiKeyConfigured ? '••••••••' : ''"
-            />
-          </div>
-          <div class="row g-2">
-            <div class="col-md-4">
-              <label class="form-label">超时（ms）</label>
-              <input v-model.number="form.ai.timeoutMs" class="form-control" type="number" min="1000" />
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">最大输入 Span</label>
-              <input v-model.number="form.ai.maxInputSpans" class="form-control" type="number" min="1" />
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">maxTokens</label>
-              <input v-model.number="form.ai.maxTokens" class="form-control" type="number" min="64" />
-            </div>
-          </div>
-          <p class="text-muted small mt-3 mb-0">
-            使用 OpenAI 兼容的 Chat Completions 接口即可对接各类大模型；API Key 仅保存在 Server 本机数据目录。
-          </p>
-        </div>
-      </section>
-
-      <section class="card stat-card si-settings__card si-settings__card--danger">
-        <div class="card-body">
-          <h5 class="card-title"><i class="fa fa-database me-2"></i>数据</h5>
-          <p class="text-muted small mb-3">
-            当前存储模式 <strong>{{ storage.mode || '—' }}</strong>：
-            已存 {{ storage.stored }} / 上限 {{ storage.max }}，累计裁剪 {{ storage.evicted }}。
-            清除不可恢复；按服务只删服务名精确匹配的 Span，相关 Trace 可能不完整。
-          </p>
-          <div class="d-flex flex-wrap gap-2 mb-3">
-            <button type="button" class="btn btn-outline-danger btn-sm" :disabled="clearing" @click="confirmClear('all')">
-              清空全部
-            </button>
-          </div>
-          <div class="row g-2 align-items-end mb-3">
-            <div class="col-md-5">
-              <label class="form-label">早于 N 小时</label>
-              <input v-model.number="clearOlderHours" class="form-control" type="number" min="1" />
-            </div>
-            <div class="col-md-4">
-              <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="confirmClear('older_than')">
-                按时间清理
-              </button>
-            </div>
-          </div>
-          <div class="row g-2 align-items-end">
-            <div class="col-md-7">
-              <label class="form-label">服务名（精确匹配）</label>
-              <input v-model="clearServiceName" class="form-control" list="si-service-names" placeholder="例如 sca-order" />
-              <datalist id="si-service-names">
-                <option v-for="n in serviceNames" :key="n" :value="n" />
-              </datalist>
-            </div>
-            <div class="col-md-4">
-              <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="confirmClear('service')">
-                按服务清理
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ApiService, type RuntimeSettingsSaveBody } from '../services/ApiService'
+
+type SettingsSection = 'alert' | 'ai' | 'data'
+
+const sections: { id: SettingsSection; label: string; icon: string }[] = [
+  { id: 'alert', label: '告警', icon: 'fa-bell' },
+  { id: 'ai', label: 'AI', icon: 'fa-magic' },
+  { id: 'data', label: '数据', icon: 'fa-database' }
+]
+
+const section = ref<SettingsSection>('alert')
+const sectionHint = computed(() => {
+  if (section.value === 'alert') return '配置 Webhook / 邮件告警规则'
+  if (section.value === 'ai') return '配置 OpenAI 兼容模型，用于链路与拓扑解读'
+  return '查看存储摘要，并执行不可恢复的 Span 清理'
+})
 
 const loading = ref(true)
 const saving = ref(false)
@@ -388,10 +426,59 @@ onMounted(load)
 </script>
 
 <style scoped>
-.si-settings__grid {
+.si-settings__layout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: 10.5rem minmax(0, 1fr);
   gap: 1.25rem;
+  align-items: start;
+}
+
+.si-settings__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  background: var(--si-surface-2, #f7f9f7);
+  border: 1px solid rgba(15, 118, 110, 0.1);
+  border-radius: 0.65rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.si-settings__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--si-nav-group, #6b7f76);
+  font-size: 0.92rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.si-settings__nav-item:hover {
+  background: rgba(15, 118, 110, 0.06);
+  color: #0f766e;
+}
+
+.si-settings__nav-item.is-active {
+  background: rgba(15, 118, 110, 0.12);
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.si-settings__nav-item.is-danger.is-active {
+  background: var(--si-danger-zone, rgba(185, 28, 28, 0.06));
+  color: #b91c1c;
+}
+
+.si-settings__panel {
+  min-width: 0;
 }
 
 .si-settings__card .card-title {
@@ -400,6 +487,7 @@ onMounted(load)
 
 .si-settings__card--danger {
   border-color: rgba(185, 28, 28, 0.25);
+  background: var(--si-danger-zone, rgba(185, 28, 28, 0.06));
   box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.06);
 }
 
@@ -417,5 +505,22 @@ onMounted(load)
 .si-settings code {
   font-size: 0.8em;
   word-break: break-all;
+}
+
+@media (max-width: 768px) {
+  .si-settings__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .si-settings__nav {
+    flex-direction: row;
+    position: static;
+    overflow-x: auto;
+  }
+
+  .si-settings__nav-item {
+    flex: 1 0 auto;
+    justify-content: center;
+  }
 }
 </style>
