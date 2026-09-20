@@ -1,15 +1,34 @@
 # Changelog
 
-## [Unreleased] — 0.3.1 / 0.4.0-SNAPSHOT
+## [Unreleased] — 0.4.0-SNAPSHOT
 
-### 0.3.1（运维）
-- 设置页「数据」：清空全部 / 按时间 / 按服务清除 Span（二次确认；按服务为精确匹配）
-- `GET/POST /api/v1/ui/storage/*` 容量摘要与清除
-- 错误分析页「一键解读」（聚合摘要进 AI）
+### 计划
+- 仪表盘 / 拓扑 / 链路页信息架构与主舞台继续迭代（体验跃迁）
 
-### 0.4（体验 / AI，开发中）
-- 侧栏分组：观测 / 运维 / 关于；路由切换动效；设计 token 扩展
-- 拓扑边 AI 解读；进程内 AI 调用审计 `GET /api/v1/ui/ai/audit`
+## [0.3.1] — 2026-09-20
+
+### 亮点
+- **清除历史 Span**：设置 → 数据；支持清空全部、按时间（早于 N 小时）、按服务清理；均需二次确认
+- **存储摘要 API**：`GET /api/v1/ui/storage/summary`、`POST /api/v1/ui/storage/clear`
+- **错误分析「一键解读」**：将错误聚合摘要送入已配置的 AI（复用设置页 AI 开关）
+- **拓扑边 AI 解读**与进程内调用审计：`GET /api/v1/ui/ai/audit`
+- 控制台侧栏分组（观测 / 运维 / 关于）、路由过渡与设计 token；设置页告警 / AI / 数据分节导航
+
+### 清除语义（重要）
+- **按服务**：只删除 `serviceName` **精确匹配**的 Span；相关 Trace 可能因此不完整
+- 清除不可恢复；建议清理后刷新仪表盘 / 拓扑 / 链路列表
+
+### 兼容性
+- **无 Agent 埋点变更**；本版以 **GHCR Server 镜像**为主，可不升 Central Starter
+- 未开启 AI 时，一键解读 / 拓扑边解读不可用（与 0.3.0 一致，默认关闭）
+- Boot2 同步标签：`0.3.1-boot2`（无功能差异要求时可只升 Server）
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| Boot3 Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.3.0`（本版可不升） |
+| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.0-boot2`（本版可不升） |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.3.1` |
 
 ## [0.3.0] — 2026-09-18
 
@@ -27,7 +46,7 @@
 ### 已知限制
 - AI 为实验能力，结论须人工核对 Span，不落库
 - 告警不是完整规则引擎；无多通道值班表、无密钥保险箱
-- 错误分析页「一键解读」不在本版（计划 `0.3.1`）
+- 错误分析页「一键解读」、清除历史 Span 见后续 `0.3.1`
 
 ### 坐标 / 镜像
 | 项 | 值 |
