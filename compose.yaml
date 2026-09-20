@@ -5,7 +5,7 @@
 # 浏览器：http://localhost:9966/
 # 告警 / AI 等在控制台「设置」页配置（持久化到挂卷内 runtime-settings.json）。
 #
-# 默认拉取 GHCR 已发布镜像；本地改代码时可改为 build（见下方注释）。
+# 默认拉取 GHCR 已发布镜像；本地改代码时可改为 build
 
 name: spring-insight
 
@@ -21,7 +21,7 @@ services:
     ports:
       - "${INSIGHT_HOST_PORT:-9966}:9966"
     environment:
-      # memory | file | sqlite（发布版 compose 默认 file；开发见 compose.dev.yaml）
+      # memory | file | sqlite
       SPRING_INSIGHT_SERVER_STORAGE_MODE: ${INSIGHT_STORAGE_MODE:-file}
       SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH: /data/spans.json
       SPRING_INSIGHT_SERVER_STORAGE_FLUSH_DELAY_MS: "2000"
