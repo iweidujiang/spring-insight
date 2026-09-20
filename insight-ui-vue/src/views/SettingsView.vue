@@ -168,7 +168,7 @@
             </div>
           </div>
           <p class="text-muted small mt-3 mb-0">
-            兼容 OpenAI Chat Completions（含 DeepSeek）。密钥仅保存在 Server 数据目录，请勿提交该文件。
+            使用 OpenAI 兼容的 Chat Completions 接口即可对接各类大模型；API Key 仅保存在 Server 本机数据目录。
           </p>
         </div>
       </section>
