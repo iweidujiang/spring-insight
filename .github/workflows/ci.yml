@@ -1,5 +1,5 @@
 # Spring Insight 持续集成
-# - 主线：JDK 21 全量 verify（含将 UI 打进 insight-server）
+# - 主线：JDK 21 构建；Agent 字节码目标 17（Boot3+JDK17 可用）；Server 为 21
 # - Boot2：独立工程 verify
 # - 前端：单独校验 insight-ui-vue 可构建
 
@@ -13,7 +13,7 @@ on:
 
 jobs:
   mainline:
-    name: 主线（JDK 21）
+    name: 主线（JDK 21 构建 / Agent→17）
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码
@@ -26,6 +26,13 @@ jobs:
           cache: maven
       - name: 构建并验证（自动打包控制台 UI）
         run: mvn -B -ntp verify
+      - name: 确认 Agent 字节码为 Java 17（major 61）
+        run: |
+          CLASS=insight-agent/target/classes/io/github/iweidujiang/springinsight/agent/autoconfigure/InsightAnnotationPropertySource.class
+          test -f "$CLASS"
+          MAJOR=$(javap -verbose "$CLASS" | awk '/major version:/{print $3; exit}')
+          echo "Agent class major version=$MAJOR (expect 61)"
+          test "$MAJOR" = "61"
       - name: 检查 jar 内是否含控制台静态资源
         run: |
           test -f insight-server/target/classes/static/index.html

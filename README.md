@@ -1,17 +1,18 @@
 # Spring Insight
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Java](https://img.shields.io/badge/Java-21%2B-orange)](https://www.oracle.com/java/)
+[![Java](https://img.shields.io/badge/Agent-JDK%2017%2B-orange)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.9-brightgreen)](https://spring.io/projects/spring-boot)
-[![Version](https://img.shields.io/badge/version-0.3.0-green.svg)](https://github.com/iweidujiang/spring-insight)
-[![Maven Central](https://img.shields.io/badge/Maven%20Central-0.3.0-blue.svg)](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.0)
+[![Version](https://img.shields.io/badge/version-0.3.2-green.svg)](https://github.com/iweidujiang/spring-insight)
+[![Maven Central](https://img.shields.io/badge/Maven%20Central-0.3.2-blue.svg)](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2)
 
 面向 **Spring Boot / Spring Cloud** 的轻量监测工具：**业务侧加一个 Starter 埋点上报，旁边用 Docker 起一个 `insight-server`，就能看服务拓扑和调用链路。**
 
 适合中小项目、本地联调、教学演示——不想一上来就上整套 APM 时，可以先用它把「谁调了谁、慢在哪、错在哪」看清楚。
 
 - 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
-- 正式版：**`0.3.0`**（主线 Boot 3.5 / JDK 21）· Boot 2.7 / Java 8 见 **`0.3.0-boot2`**
+- 正式版：**`0.3.2`**（Boot 3 Agent **JDK 17+** · Server 镜像 JDK 21）· Boot 2.7 / Java 8 见 **`0.3.0-boot2`**
+- **运行时要求**：业务侧 Agent → **JDK 17+**（对齐 Spring Boot 3）；监测中心 Server（Docker）→ **JDK 21**
 - 问题与建议欢迎开 Issue
 
 ---
@@ -25,7 +26,7 @@ docker run --rm -p 9966:9966 \
   -e SPRING_INSIGHT_SERVER_STORAGE_MODE=file \
   -e SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH=/data/spans.json \
   -v spring-insight-data:/data \
-  ghcr.io/iweidujiang/spring-insight-server:0.3.0
+  ghcr.io/iweidujiang/spring-insight-server:0.3.2
 ```
 
 或使用本仓库根目录 Compose（拉取已发布镜像）：
@@ -53,7 +54,7 @@ docker compose -f compose.dev.yaml up -d --build
 <dependency>
   <groupId>io.github.iweidujiang</groupId>
   <artifactId>spring-insight-agent-starter</artifactId>
-  <version>0.3.0</version>
+  <version>0.3.2</version>
 </dependency>
 ```
 
@@ -116,12 +117,12 @@ spring:
 
 | 坐标 | 说明 |
 |------|------|
-| `io.github.iweidujiang:spring-insight-agent-starter:0.3.0` | **Boot 3 业务侧依赖这个**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.0)） |
-| `io.github.iweidujiang:insight-agent:0.3.0` | 采集核心（由 Starter 传递） |
+| `io.github.iweidujiang:spring-insight-agent-starter:0.3.2` | **Boot 3 业务侧依赖这个**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2)） |
+| `io.github.iweidujiang:insight-agent:0.3.2` | 采集核心（由 Starter 传递） |
 | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.0-boot2` | **Boot 2.7 / Java 8**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter-boot2/0.3.0-boot2)） |
-| `ghcr.io/iweidujiang/spring-insight-server:0.3.0` | **监测中心镜像（推荐）** |
+| `ghcr.io/iweidujiang/spring-insight-server:0.3.2` | **监测中心镜像（推荐）** |
 
-发版说明见 [CHANGELOG.md](CHANGELOG.md)。
+发版说明见 [CHANGELOG.md](CHANGELOG.md)。维护者发版步骤（Central + GHCR）见 [RELEASING.md](RELEASING.md)。
 
 ---
 
@@ -151,7 +152,7 @@ spring:
 - 按时间保留（可选）：`SPRING_INSIGHT_SERVER_STORAGE_RETENTION_MAX_AGE_HOURS=72`。
 - **可选鉴权 / 运维**：见 [`docs/dev_docs/v0.2-ops.md`](docs/dev_docs/v0.2-ops.md)（ingest Token、UI 登录、容量指标；默认关闭）。
 - **告警 / AI**：优先在控制台「设置」页开关；亦可启动期写 `spring.insight.server.alert.*` / `ai.*`（页面保存后文件覆盖启动默认）。
-- 本机 jar（需 JDK 21 + 先构建仓库）：
+- 本机 jar（构建需 JDK 21；业务侧接入只需 JDK 17+）：
 
 ```bash
 mvn clean install -DskipTests

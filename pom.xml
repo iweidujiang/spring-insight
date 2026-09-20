@@ -7,7 +7,7 @@
 
     <groupId>io.github.iweidujiang</groupId>
     <artifactId>spring-insight-parent</artifactId>
-    <version>0.3.1</version>
+    <version>0.3.2</version>
 
     <packaging>pom</packaging>
     <name>Spring Insight</name>
@@ -54,11 +54,14 @@
     </modules>
 
     <properties>
-        <java.version>21</java.version>
+        <!-- Agent / Starter: Boot 3 JDK 17+ -->
+        <java.version>17</java.version>
+        <!-- Server / Docker 运行时保持 JDK 21 (Docker/GHCR runtime) -->
+        <server.java.version>21</server.java.version>
         <spring-boot.version>3.5.9</spring-boot.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <lombok.version>1.18.30</lombok.version>
@@ -164,7 +167,7 @@
         </pluginManagement>
 
         <plugins>
-            <!-- 在 JDK&lt;21 时给出明确提示（避免只看到「无效的目标发行版: 21」） -->
+            <!-- 构建机用 JDK 21+：交叉编译 Agent→17，并编译 Server（21） -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
@@ -180,8 +183,10 @@
                                 <requireJavaVersion>
                                     <version>[21,)</version>
                                     <message>
-【Spring Insight 主线】当前目录是 Boot 3.5 / JDK 21 工程，请用 JDK 21+ 运行 Maven。
-若你的业务是 Spring Boot 2.7 / Java 8，请改用兼容线：进入 boot2/ 后再执行 mvn（详见 boot2/README.md）。
+【Spring Insight 主线】请用 JDK 21+ 运行 Maven（构建机）。
+业务侧 Agent 字节码目标为 Java 17，可在 Spring Boot 3 + JDK 17/21 应用中使用；
+insight-server（Docker/GHCR）运行时为 JDK 21。
+若业务是 Spring Boot 2.7 / Java 8，请进入 boot2/ 后再 mvn（详见 boot2/README.md）。
                                     </message>
                                 </requireJavaVersion>
                             </rules>

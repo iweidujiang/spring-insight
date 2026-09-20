@@ -5,6 +5,25 @@
 ### 计划
 - 仪表盘 / 拓扑 / 链路页信息架构与主舞台继续迭代（体验跃迁）
 
+## [0.3.2] — 2026-09-20
+
+### 修复
+- **Boot 3 + JDK 17**：Agent / Starter 字节码目标从 Java 21 降为 **Java 17**，修复 `UnsupportedClassVersionError`（class 65 vs 61）
+- 构建仍用 JDK 21 交叉编译；`insight-server` / GHCR 镜像继续 JDK 21
+- CI 增加 Agent class major version = 61 校验
+
+### 兼容性
+- **须升级 Central Starter** 至 `0.3.2`（`0.3.0` / 未修复包在 JDK 17 上不可用）
+- JDK 21+ 业务应用可继续使用（字节码向上兼容）
+- 本版 **不发** Boot2（无变更）；Boot2 仍用 `0.3.0-boot2`
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| Boot3 Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.3.2` |
+| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.0-boot2`（本版不升） |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.3.2` |
+
 ## [0.3.1] — 2026-09-20
 
 ### 亮点

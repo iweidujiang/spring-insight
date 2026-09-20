@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.github.iweidujiang</groupId>
         <artifactId>spring-insight-parent</artifactId>
-        <version>0.3.1</version>
+        <version>0.3.2</version>
     </parent>
 
     <artifactId>insight-server</artifactId>
@@ -15,6 +15,11 @@
     <description>独立监测中心：Span 存储（memory/file/sqlite）、上报/查询 API、控制台 UI（默认端口 9966）</description>
 
     <properties>
+        <!-- Server / Docker 运行时保持 JDK 21；Agent 模块仍继承父工程 17 -->
+        <java.version>${server.java.version}</java.version>
+        <maven.compiler.source>${server.java.version}</maven.compiler.source>
+        <maven.compiler.target>${server.java.version}</maven.compiler.target>
+        <maven.compiler.release>${server.java.version}</maven.compiler.release>
         <!-- 设为 true 可跳过前端构建，沿用 src/main/resources/static 中已提交的资源 -->
         <skip.ui>false</skip.ui>
         <frontend.maven.plugin.version>1.15.1</frontend.maven.plugin.version>
