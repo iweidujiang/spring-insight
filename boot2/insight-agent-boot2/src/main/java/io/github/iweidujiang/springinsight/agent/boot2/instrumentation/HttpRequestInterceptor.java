@@ -51,6 +51,10 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // 缺服务名时已在装配阶段关闭采集，请求路径直接放行
+        if (!insightProperties.isEnabled()) {
+            return true;
+        }
         String operationName = request.getMethod() + " " + request.getRequestURI();
         TraceSpan span = TraceContext.startSpan(operationName);
         span.setSpanKind("SERVER");

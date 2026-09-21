@@ -11,7 +11,7 @@
 适合中小项目、本地联调、教学演示——不想一上来就上整套 APM 时，可以先用它把「谁调了谁、慢在哪、错在哪」看清楚。
 
 - 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
-- 正式版：**`0.3.2`**（Boot 3 Agent / Server 均为 **JDK 17+**）· Boot 2.7 / Java 8 见 **`0.3.0-boot2`**
+- 正式版：**`0.3.2`**（Boot 3 Agent / Server 均为 **JDK 17+**）· Boot 2.7 / Java 8 仓库版本 **`0.3.2-boot2`**（Central 已发仍为 `0.3.0-boot2`，发出前请用已发布版）
 - **运行时要求**：Agent 与 insight-server（Docker / `java -jar`）→ **Spring Boot 3.x + JDK 17+**（JDK 21+ 亦可）
 - **暂不支持 Spring Boot 4**（Boot 4 默认 Jackson 3 / 包名变更，后续考虑增加 boot4 版本）；请用 Boot **3.5.x** 验证。Boot 2.7 走 `boot2` 坐标
 - 问题与建议欢迎开 Issue

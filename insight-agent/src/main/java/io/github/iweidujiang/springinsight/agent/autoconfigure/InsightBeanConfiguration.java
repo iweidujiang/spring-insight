@@ -54,12 +54,18 @@ public class InsightBeanConfiguration {
                                     Environment environment) {
         this.properties = properties;
         this.jvmMetricsProperties = jvmMetricsProperties;
-        // service-name 空时回退到 spring.application.name
+        // service-name 空时回退到 spring.application.name；仍空则只警告、不中断启动
         properties.resolveServiceNameFromEnvironment(environment);
-        properties.validate();
+        if (!properties.validate()) {
+            log.warn("[Spring Insight] 未解析到服务名，本次不采集。请配置 spring.application.name 或 spring.insight.service-name。");
+            return;
+        }
+        if (!properties.hasServerUrl()) {
+            log.warn("[Spring Insight] 未配置 spring.insight.server-url，Span 不会上报到监测中心。");
+        }
         log.info("[Bean配置] 开始初始化 Spring Insight 核心组件: serviceName={}, serverUrl={}",
                 properties.getServiceName(),
-                properties.hasServerUrl() ? properties.normalizeServerUrl() : "(embedded/none)");
+                properties.hasServerUrl() ? properties.normalizeServerUrl() : "(未配置)");
     }
 
     /**
@@ -212,7 +218,7 @@ public class InsightBeanConfiguration {
             log.warn("[Bean配置] 无法获取主机IP，使用默认值: 127.0.0.1");
         }
         
-        Integer hostPort = null;
+        int hostPort;
         try {
             hostPort = Integer.parseInt(getServerPort());
         } catch (NumberFormatException e) {

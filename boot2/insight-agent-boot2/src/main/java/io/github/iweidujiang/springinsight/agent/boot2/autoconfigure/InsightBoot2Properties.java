@@ -1,11 +1,3 @@
-/**
- * InsightBoot2Properties：Boot2 线 spring.insight.* 配置。
- *
- * @since：2026-09-07
- * @author：苏渡苇 公众号：苏渡苇
- *
- * GitHub：https://github.com/iweidujiang
- */
 package io.github.iweidujiang.springinsight.agent.boot2.autoconfigure;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -16,6 +8,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * InsightBoot2Properties：Boot2 线 spring.insight.* 配置。
+ *
+ * @since 2026-09-07
+ * @author 苏渡苇 公众号：苏渡苇
+ *
+ * GitHub：https://github.com/iweidujiang
+ */
 @ConfigurationProperties(prefix = "spring.insight")
 public class InsightBoot2Properties {
 
@@ -153,13 +153,24 @@ public class InsightBoot2Properties {
         }
     }
 
-    public void validate() {
+    /**
+     * 检查启用状态下是否已解析到服务名。
+     * <p>
+     * 须在 {@link #resolveServiceNameFromEnvironment(Environment)} 之后调用。
+     * 未解析到服务名时不抛异常，将 enabled 置为 false，由调用方打 WARN。
+     * </p>
+     *
+     * @return {@code true} 表示可以采集；{@code false} 表示已关闭或缺少服务名
+     */
+    public boolean validate() {
         if (!enabled) {
-            return;
+            return false;
         }
         if (!StringUtils.hasText(serviceName)) {
-            throw new IllegalArgumentException(
-                    "spring.insight.service-name 为空且无法从 spring.application.name 回退");
+            // 只引入 Starter、未配 service-name / application.name 时允许启动
+            this.enabled = false;
+            return false;
         }
+        return true;
     }
 }

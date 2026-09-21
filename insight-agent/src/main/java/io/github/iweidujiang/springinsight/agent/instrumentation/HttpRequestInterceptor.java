@@ -42,6 +42,10 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // 缺服务名时已在装配阶段关闭采集，请求路径直接放行
+        if (!insightProperties.isEnabled()) {
+            return true;
+        }
         if (insightProperties.isDiagnosticLogs()) {
             log.info("[HTTP拦截器] 触发: {} {}", request.getMethod(), request.getRequestURI());
         } else {

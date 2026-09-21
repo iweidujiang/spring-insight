@@ -181,16 +181,23 @@ public class InsightProperties {
     }
 
     /**
-     * 校验启用状态下的必填项。
-     * <p>须在 {@link #resolveServiceNameFromEnvironment(Environment)} 之后调用。</p>
+     * 检查启用状态下是否已解析到服务名。
+     * <p>
+     * 须在 {@link #resolveServiceNameFromEnvironment(Environment)} 之后调用。
+     * 未解析到服务名时<strong>不抛异常</strong>，将 {@link #enabled} 置为 false，由调用方打 WARN，避免未配置时拖垮宿主启动。
+     * </p>
+     *
+     * @return {@code true} 表示可以采集；{@code false} 表示已关闭或缺少服务名
      */
-    public void validate() {
+    public boolean validate() {
         if (!enabled) {
-            return;
+            return false;
         }
         if (!StringUtils.hasText(serviceName)) {
-            throw new IllegalArgumentException(
-                    "未解析到服务名：请配置 spring.application.name 或 spring.insight.service-name");
+            // 只引入 Starter、未配 service-name / application.name 时允许启动
+            this.enabled = false;
+            return false;
         }
+        return true;
     }
 }

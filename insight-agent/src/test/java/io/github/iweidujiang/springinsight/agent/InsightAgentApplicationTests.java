@@ -6,7 +6,6 @@ import org.springframework.mock.env.MockEnvironment;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -58,12 +57,13 @@ class InsightAgentApplicationTests {
     }
 
     /**
-     * 启用且无名时校验应失败。
+     * 启用且无名时不抛异常，关闭本次采集。
      */
     @Test
-    void validateFailsWhenNoServiceNameResolvable() {
+    void validateDisablesWhenNoServiceNameResolvable() {
         InsightProperties props = new InsightProperties();
         props.resolveServiceNameFromEnvironment(new MockEnvironment());
-        assertThrows(IllegalArgumentException.class, props::validate);
+        assertFalse(props.validate());
+        assertFalse(props.isEnabled());
     }
 }

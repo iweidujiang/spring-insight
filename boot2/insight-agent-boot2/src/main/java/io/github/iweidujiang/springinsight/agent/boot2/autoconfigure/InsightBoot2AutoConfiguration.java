@@ -47,7 +47,13 @@ public class InsightBoot2AutoConfiguration {
     public InsightBoot2AutoConfiguration(InsightBoot2Properties properties, Environment environment) {
         this.properties = properties;
         properties.resolveServiceNameFromEnvironment(environment);
-        properties.validate();
+        if (!properties.validate()) {
+            log.warn("[Spring Insight] 未解析到服务名，本次不采集。请配置 spring.application.name 或 spring.insight.service-name。");
+            return;
+        }
+        if (!properties.hasServerUrl()) {
+            log.warn("[Spring Insight] 未配置 spring.insight.server-url，Span 不会上报到监测中心。");
+        }
         log.info("[Boot2配置] Spring Insight Boot2 Agent 已就绪: serviceName={}, serverUrl={}",
                 properties.getServiceName(),
                 properties.hasServerUrl() ? properties.normalizeServerUrl() : "(未配置)");
@@ -142,7 +148,7 @@ public class InsightBoot2AutoConfiguration {
         @Override
         public void addInterceptors(InterceptorRegistry registry) {
             HttpRequestInterceptor interceptor = interceptorProvider.getIfAvailable();
-            if (interceptor != null && properties.isHttpTracingEnabled()) {
+            if (interceptor != null && properties.isEnabled() && properties.isHttpTracingEnabled()) {
                 registry.addInterceptor(interceptor)
                         .addPathPatterns("/**")
                         .excludePathPatterns(properties.resolveExcludePatterns());

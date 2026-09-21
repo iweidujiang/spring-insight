@@ -6,19 +6,19 @@
 
 | GAV | 说明 |
 |-----|------|
-| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.0-boot2` | **业务请只依赖这个**（Maven Central） |
-| `io.github.iweidujiang:insight-agent-boot2:0.3.0-boot2` | 采集核心（Starter 传递依赖，一般不用直接引） |
-| `io.github.iweidujiang:spring-insight-boot2-parent:0.3.0-boot2` | 本兼容线父 POM |
+| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.2-boot2` | **业务请只依赖这个**（与主线 `0.3.2` 对齐；发到 Central 后可用） |
+| `io.github.iweidujiang:insight-agent-boot2:0.3.2-boot2` | 采集核心（Starter 传递依赖，一般不用直接引） |
+| `io.github.iweidujiang:spring-insight-boot2-parent:0.3.2-boot2` | 本兼容线父 POM |
 
 ```xml
 <dependency>
   <groupId>io.github.iweidujiang</groupId>
   <artifactId>spring-insight-agent-starter-boot2</artifactId>
-  <version>0.3.0-boot2</version>
+  <version>0.3.2-boot2</version>
 </dependency>
 ```
 
-> 本版坐标：**`0.3.0-boot2`**（[Maven Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter-boot2/0.3.0-boot2)）。与主线正式版 `0.3.0` **版本号不同**，避免坐标冲突。含 RestTemplate 出站 Span（须走 `RestTemplateBuilder`）。  
+> 本仓库坐标已与主线对齐：**`0.3.2-boot2`**（artifact 仍带 `-boot2`，避免和主线 `0.3.2` 冲突）。Central 上已发布的仍是 [`0.3.0-boot2`](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter-boot2/0.3.0-boot2)，`0.3.2-boot2` 发出前请先用已发布版或本地 `mvn install`。含 RestTemplate 出站 Span（须走 `RestTemplateBuilder`）。  
 > 监测中心请用 **Docker**（推荐）：`docker run -p 9966:9966 ghcr.io/iweidujiang/spring-insight-server:0.3.0`，或本仓库根目录 `docker compose up -d`。  
 > 也可使用主线镜像对应的 jar，或本地 `insight-server/target/insight-server.jar`。
 
@@ -70,7 +70,7 @@ spring:
 | B3 | Starter 坐标固化 + Boot2.7 冒烟 | 完成 |
 | B4 | Micrometer 桥 + WebFlux/WebClient | 完成 |
 | **B5** | Gateway 出站 CLIENT Span（`remoteService`） | **完成** |
-| Central | `0.3.0-boot2`（含 RestTemplate）发 Maven Central | 本版 |
+| Central | `0.3.0-boot2` 已发；仓库版本已对齐 **`0.3.2-boot2`**（待发） | 进行中 |
 
 ## 冒烟演示
 

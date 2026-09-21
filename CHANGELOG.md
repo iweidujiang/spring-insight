@@ -3,6 +3,8 @@
 ## [Unreleased] — 0.3.3-SNAPSHOT / 0.4.0
 
 ### 0.3.3（拟定） / 0.3.2 发版补充
+- 未配置 `spring.application.name` / `spring.insight.service-name` 时不再中断启动，仅 WARN 并跳过本次采集；未配置 `server-url` 时 WARN 且不上报（Boot3 与 Boot2）
+- Boot2 仓库版本与主线对齐为 **`0.3.2-boot2`**（artifactId 仍带 `-boot2`；Central 已发仍为 `0.3.0-boot2`）
 - **insight-server 亦可 JDK 17 运行**：Server 字节码目标改为 17；Docker 改用 `temurin:17-jre`；去掉 `List.getFirst` / `removeFirst` 等 JDK 21 API
 - Agent 显式依赖 Jackson 2；HTTP 上报内置 `JavaTimeModule`（修复 Instant 序列化）
 - 打 `v*` tag 时 Actions **自动**将 `insight-server-x.y.z.jar` 挂到 GitHub Release（无 Docker 可用 `java -jar`，需 JDK 17+）
