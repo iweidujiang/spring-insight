@@ -6,7 +6,7 @@
           <i class="fa fa-list-ul me-2"></i>链路追踪
         </h2>
         <p class="page-description mb-0">
-          一行对应一次请求（同一 Trace ID）；筛选会写入地址栏，便于分享
+          一行一次请求。点整行看详情；筛选会写入地址栏，便于分享
         </p>
       </div>
       <div class="si-page__toolbar">
@@ -112,23 +112,19 @@
     <div v-else class="card stat-card si-table-panel">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
-          <h5 class="card-title mb-0">
-            <i class="fa fa-list me-2"></i>链路列表
-          </h5>
-          <span class="badge bg-primary">{{ traces.length }} 条 Trace</span>
+          <h5 class="card-title mb-0">最近请求</h5>
+          <span class="badge bg-primary">{{ traces.length }} 条</span>
         </div>
         <div class="table-responsive">
-          <table class="table table-hover mb-0">
+          <table class="table table-hover mb-0 si-trace-table">
             <thead class="table-light">
               <tr>
-                <th>Trace ID</th>
-                <th>入口服务</th>
-                <th>入口操作</th>
-                <th>Span</th>
-                <th>开始时间</th>
-                <th>总耗时</th>
+                <th>请求</th>
+                <th>耗时</th>
                 <th>状态</th>
-                <th>操作</th>
+                <th>服务</th>
+                <th>时间</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -139,39 +135,32 @@
                 :style="{ animationDelay: `${Math.min(index, 20) * 0.03}s` }"
                 @click="viewTraceDetail(trace.traceId)"
               >
-                <td class="text-truncate" style="max-width: 160px;">
-                  <code class="text-primary" :title="trace.traceId">{{ trace.traceId }}</code>
+                <td class="si-trace-op">
+                  <span class="si-trace-method" :data-method="traceMethod(trace)">{{ traceMethod(trace) || 'REQ' }}</span>
+                  <span class="si-trace-path" :title="tracePath(trace)">{{ tracePath(trace) }}</span>
+                  <span v-if="trace.serviceCount > 1" class="si-trace-extra">{{ trace.serviceCount }} 个服务</span>
                 </td>
-                <td>{{ trace.serviceName || '-' }}</td>
-                <td class="text-truncate" style="max-width: 220px;" :title="trace.operationName">
-                  {{ trace.operationName || '-' }}
-                </td>
-                <td>
-                  <span class="text-muted small">{{ trace.spanCount ?? '-' }}</span>
-                  <span v-if="trace.serviceCount > 1" class="text-muted small"> · {{ trace.serviceCount }} 服务</span>
-                </td>
-                <td>{{ formatTime(trace.startTime) }}</td>
-                <td :class="durationClass(trace.durationMs)">
-                  {{ formatDuration(Number(trace.durationMs) || 0) }}
+                <td class="si-trace-dur">
+                  <span class="si-trace-track">
+                    <i :style="{ width: durationShare(trace) + '%' }"></i>
+                  </span>
+                  <em :class="durationClass(trace.durationMs)">{{ formatDuration(Number(trace.durationMs) || 0) }}</em>
                 </td>
                 <td>
-                  <span class="badge" :class="trace.hasError || trace.statusCode === 'ERROR' ? 'bg-danger' : 'bg-success'">
-                    {{ trace.hasError || trace.statusCode === 'ERROR' ? 'ERROR' : 'OK' }}
+                  <span class="badge" :class="traceFailed(trace) ? 'bg-danger' : 'bg-success'">
+                    {{ traceFailed(trace) ? '失败' : '成功' }}
                   </span>
                 </td>
+                <td class="text-truncate si-trace-service" :title="trace.serviceName">{{ trace.serviceName || '—' }}</td>
+                <td class="si-trace-time">{{ formatTime(trace.startTime) }}</td>
                 <td @click.stop>
-                  <div class="d-flex gap-1">
-                    <button class="btn btn-sm btn-primary" @click="viewTraceDetail(trace.traceId)">
-                      <i class="fa fa-eye"></i> 查看
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary" @click="copyTraceId(trace.traceId)" title="复制 Trace ID">
-                      <i class="fa fa-copy"></i>
-                    </button>
-                  </div>
+                  <button class="btn btn-sm btn-outline-secondary" @click="copyTraceId(trace.traceId)" title="复制 Trace ID">
+                    <i class="fa fa-copy"></i>
+                  </button>
                 </td>
               </tr>
               <tr v-if="traces.length === 0">
-                <td colspan="8" class="text-center text-muted">
+                <td colspan="6" class="text-center text-muted">
                   <div class="py-4">
                     <i class="fa fa-info-circle fa-2x mb-2"></i>
                     <p class="mb-0">暂无匹配的链路</p>
@@ -223,7 +212,26 @@ const durationClass = (ms: number) => {
   const n = Number(ms) || 0
   if (n > 1000) return 'text-danger fw-bold'
   if (n > 500) return 'text-warning'
-  return 'text-success'
+  return ''
+}
+
+const traceFailed = (trace: any) => !!(trace?.hasError || trace?.statusCode === 'ERROR')
+
+const traceMethod = (trace: any) => {
+  const op = String(trace?.operationName || '')
+  const matched = /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\b/i.exec(op)
+  return matched ? matched[1].toUpperCase() : ''
+}
+
+const tracePath = (trace: any) => {
+  const op = String(trace?.operationName || trace?.traceId || '—')
+  return op.replace(/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+/i, '')
+}
+
+const durationShare = (trace: any) => {
+  const max = traces.value.reduce((n, item) => Math.max(n, Number(item?.durationMs) || 0), 0)
+  if (max <= 0) return 8
+  return Math.max(8, Math.round(((Number(trace?.durationMs) || 0) / max) * 100))
 }
 
 const updateCurrentTime = () => {
@@ -373,5 +381,83 @@ onUnmounted(() => {
 
 .si-trace-row {
   cursor: pointer;
+}
+
+.si-trace-op {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 12rem;
+  max-width: 36rem;
+}
+
+.si-trace-method {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--si-teal, #0f766e);
+}
+
+.si-trace-method[data-method="POST"],
+.si-trace-method[data-method="PUT"],
+.si-trace-method[data-method="PATCH"] {
+  color: #b45309;
+}
+
+.si-trace-method[data-method="DELETE"] {
+  color: #b91c1c;
+}
+
+.si-trace-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+  color: var(--si-ink, #15241f);
+}
+
+.si-trace-extra {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  color: var(--si-muted, #6b7f76);
+}
+
+.si-trace-dur {
+  min-width: 9rem;
+  white-space: nowrap;
+}
+
+.si-trace-track {
+  display: inline-block;
+  width: 4.5rem;
+  height: 4px;
+  margin-right: 0.45rem;
+  vertical-align: middle;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.12);
+  overflow: hidden;
+}
+
+.si-trace-track i {
+  display: block;
+  height: 100%;
+  background: #0f766e;
+}
+
+.si-trace-dur em {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.si-trace-service {
+  max-width: 8rem;
+}
+
+.si-trace-time {
+  font-size: 0.82rem;
+  color: var(--si-muted, #6b7f76);
+  white-space: nowrap;
 }
 </style>

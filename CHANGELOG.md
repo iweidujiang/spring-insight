@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] — 0.3.3-SNAPSHOT / 0.4.0
+## [Unreleased] — 0.4.0-SNAPSHOT
 
 ### 0.3.3（拟定） / 0.3.2 发版补充
 - 未配置 `spring.application.name` / `spring.insight.service-name` 时不再中断启动，仅 WARN 并跳过本次采集；未配置 `server-url` 时 WARN 且不上报
@@ -10,7 +10,8 @@
 - 文档明确：正式支持 Boot 3.x + JDK 17+；暂不支持 Boot 4
 
 ### 0.4（体验，开发中）
-- 仪表盘 / 拓扑 / 链路页信息架构与主舞台继续迭代
+- 链路列表改为请求主舞台：方法、路径和耗时条；点击整行打开详情
+- 仪表盘 / 拓扑页信息架构继续迭代
 
 ## [0.3.2] — 2026-09-20
 
