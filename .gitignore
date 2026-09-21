@@ -1,44 +1,7 @@
-
-docs
 target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
+*.class
+.idea/
 *.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-.trae
-
-### insight-server 可选文件持久化 ###
-**/data/
-**/spans.json
-**/spans.json.tmp
-
-### 本地密钥（compose.dev 用）###
-.env
-.env.local
+.classpath
+.project
+.settings/

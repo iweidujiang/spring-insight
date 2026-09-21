@@ -1,53 +1,18 @@
-# Spring Insight 持续集成
-# - 主线：JDK 17 构建与校验（Agent + Server 字节码目标均为 17）
-# - Boot2：独立工程 verify
-# - 前端：单独校验 insight-ui-vue 可构建
+# Spring Insight 持续集成（2.7.x）
+# - JDK 11 下 verify 本分支 Agent / Starter（字节码目标 Java 8）
 
 name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: ["2.7.x"]
   pull_request:
-    branches: [main, master]
+    branches: ["2.7.x"]
 
 jobs:
-  mainline:
-    name: 主线（JDK 17）
+  boot27:
+    name: Boot 2.7 Agent（JDK 11）
     runs-on: ubuntu-latest
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-      - name: 安装 JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: maven
-      - name: 构建并验证（自动打包控制台 UI）
-        run: mvn -B -ntp verify
-      - name: 确认 Agent / Server 字节码为 Java 17（major 61）
-        run: |
-          AGENT=insight-agent/target/classes/io/github/iweidujiang/springinsight/agent/autoconfigure/InsightAnnotationPropertySource.class
-          SERVER=$(find insight-server/target/classes -name '*.class' | head -n 1)
-          test -f "$AGENT"
-          test -n "$SERVER"
-          for CLASS in "$AGENT" "$SERVER"; do
-            MAJOR=$(javap -verbose "$CLASS" | awk '/major version:/{print $3; exit}')
-            echo "$(basename "$CLASS") major version=$MAJOR (expect 61)"
-            test "$MAJOR" = "61"
-          done
-      - name: 检查 jar 内是否含控制台静态资源
-        run: |
-          test -f insight-server/target/classes/static/index.html
-          grep -q '/assets/index-' insight-server/target/classes/static/index.html
-
-  boot2:
-    name: Boot2 （JDK 8 & 11）
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: boot2
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -57,26 +22,12 @@ jobs:
           distribution: temurin
           java-version: "11"
           cache: maven
-      - name: 构建并测试 Boot2
+      - name: 构建并测试
         run: mvn -B -ntp verify
-
-  ui-source:
-    name: 前端源码构建
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: insight-ui-vue
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-      - name: 安装 Node.js
-        uses: actions/setup-node@v4
-        with:
-          # 使用 Node 22，避免 Actions 对 Node 20 的弃用限制
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: insight-ui-vue/package-lock.json
-      - name: 安装依赖并构建前端
+      - name: 确认 Agent 字节码为 Java 8（major 52）
         run: |
-          npm ci
-          npm run build
+          CLASS=$(find insight-agent-boot2/target/classes -name '*.class' | head -n 1)
+          test -n "$CLASS"
+          MAJOR=$(javap -verbose "$CLASS" | awk '/major version:/{print $3; exit}')
+          echo "$(basename "$CLASS") major version=$MAJOR (expect 52)"
+          test "$MAJOR" = "52"

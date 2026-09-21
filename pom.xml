@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.github.iweidujiang</groupId>
-    <artifactId>spring-insight-parent</artifactId>
+    <artifactId>spring-insight-boot2-parent</artifactId>
     <version>0.3.2</version>
 
     <packaging>pom</packaging>
-    <name>Spring Insight</name>
-    <description>面向 Spring Boot 微服务的轻量监测：业务侧 agent-starter + 独立 insight-server</description>
+
+    <name>Spring Insight (Boot 2.7)</name>
+    <description>Spring Insight Agent：Spring Boot 2.7 + Java 8 / 11</description>
     <url>https://github.com/iweidujiang/spring-insight</url>
     <inceptionYear>2026</inceptionYear>
 
@@ -48,20 +48,17 @@
     </issueManagement>
 
     <modules>
-        <module>insight-agent</module>
-        <module>insight-server</module>
-        <module>spring-insight-agent-starter</module>
+        <module>insight-agent-boot2</module>
+        <module>spring-insight-agent-starter-boot2</module>
     </modules>
 
     <properties>
-        <!-- Agent + Server 统一目标 Java 17（Boot 3 基线；JDK 21+ 亦可运行） -->
-        <java.version>17</java.version>
-        <spring-boot.version>3.5.9</spring-boot.version>
-        <maven.compiler.source>${java.version}</maven.compiler.source>
-        <maven.compiler.target>${java.version}</maven.compiler.target>
-        <maven.compiler.release>${java.version}</maven.compiler.release>
+        <java.version>1.8</java.version>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <spring-boot.version>2.7.18</spring-boot.version>
         <lombok.version>1.18.30</lombok.version>
         <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
         <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
@@ -78,23 +75,16 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-
             <dependency>
                 <groupId>io.github.iweidujiang</groupId>
-                <artifactId>insight-agent</artifactId>
+                <artifactId>insight-agent-boot2</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.github.iweidujiang</groupId>
-                <artifactId>insight-server</artifactId>
+                <artifactId>spring-insight-agent-starter-boot2</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>io.github.iweidujiang</groupId>
-                <artifactId>spring-insight-agent-starter</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
@@ -108,16 +98,13 @@
         <pluginManagement>
             <plugins>
                 <plugin>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-maven-plugin</artifactId>
-                    <version>${spring-boot.version}</version>
-                </plugin>
-                <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.11.0</version>
                     <configuration>
-                        <release>${java.version}</release>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <encoding>UTF-8</encoding>
                         <annotationProcessorPaths>
                             <path>
                                 <groupId>org.projectlombok</groupId>
@@ -129,11 +116,6 @@
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-enforcer-plugin</artifactId>
-                    <version>3.5.0</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-source-plugin</artifactId>
                     <version>${maven-source-plugin.version}</version>
                 </plugin>
@@ -142,11 +124,10 @@
                     <artifactId>maven-javadoc-plugin</artifactId>
                     <version>${maven-javadoc-plugin.version}</version>
                     <configuration>
-                        <release>${java.version}</release>
+                        <source>${java.version}</source>
                         <encoding>UTF-8</encoding>
                         <charset>UTF-8</charset>
                         <docencoding>UTF-8</docencoding>
-                        <!-- 首发以可发布为准；后续再收紧 doclint -->
                         <doclint>none</doclint>
                         <failOnError>true</failOnError>
                     </configuration>
@@ -163,15 +144,18 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-
         <plugins>
-            <!-- 构建与运行基线：JDK 17+（交叉编译目标亦为 17） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
                 <executions>
                     <execution>
-                        <id>enforce-java-17</id>
+                        <id>enforce-java-8</id>
                         <goals>
                             <goal>enforce</goal>
                         </goals>
@@ -179,12 +163,8 @@
                         <configuration>
                             <rules>
                                 <requireJavaVersion>
-                                    <version>[17,)</version>
-                                    <message>
-【Spring Insight 主线】请用 JDK 17+ 运行 Maven。
-Agent 与 insight-server 字节码目标均为 Java 17（Boot 3 基线；JDK 21+ 亦可运行）。
-若业务是 Spring Boot 2.7 / Java 8，请进入 boot2/ 后再 mvn（详见 boot2/README.md）。
-                                    </message>
+                                    <version>[1.8,)</version>
+                                    <message>【Spring Insight 2.7.x】请使用 JDK 8+ 编译（建议 JDK 8 或 11）。</message>
                                 </requireJavaVersion>
                             </rules>
                         </configuration>
@@ -196,10 +176,10 @@ Agent 与 insight-server 字节码目标均为 Java 17（Boot 3 基线；JDK 21+
 
     <!--
       发布到 Maven Central：
-        1) 版本改为非 SNAPSHOT（如 0.1.0）
+        1) 版本为非 SNAPSHOT（如 0.3.2）
         2) ~/.m2/settings.xml 配置 server id=central 的 Portal Token
-        3) 本机 GPG 可用（可用 -Dgpg.skip=true 仅验证 sources/javadoc）
-        4) mvn -Prelease clean deploy "-Dskip.ui=true"  (PowerShell 须给 -Dskip.ui 加引号)
+        3) 本机 GPG 可用（可用 "-Dgpg.skip=true" 仅验证 sources/javadoc）
+        4) mvn -Prelease clean deploy "-DskipTests"
       日常开发不要开 -Prelease，以免每次签名。
     -->
     <profiles>
@@ -243,9 +223,7 @@ Agent 与 insight-server 字节码目标均为 Java 17（Boot 3 基线；JDK 21+
                                 </goals>
                                 <configuration>
                                     <!-- CI/无密钥：-Dgpg.skip=true；正式 deploy 勿跳过 -->
-                                    <!-- 勿默认 loopback：Windows 上无 gpg.passphrase 时会一直挂起等 stdin。
-                                         本地用 Kleopatra/pinentry 弹窗即可；CI 可加：
-                                         -Dgpg.passphrase=... 且另配 loopback -->
+                                    <!-- 勿默认 loopback：Windows 上无 gpg.passphrase 时会一直挂起等 stdin -->
                                 </configuration>
                             </execution>
                         </executions>
@@ -256,7 +234,6 @@ Agent 与 insight-server 字节码目标均为 Java 17（Boot 3 基线；JDK 21+
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
-                            <!-- 首次建议网页确认后再 Publish；熟悉后可改 true -->
                             <autoPublish>false</autoPublish>
                         </configuration>
                     </plugin>

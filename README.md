@@ -1,227 +1,92 @@
-# Spring Insight
+# Spring Insight（Spring Boot 2.7）
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Java](https://img.shields.io/badge/Agent-JDK%2017%2B-orange)](https://www.oracle.com/java/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.9-brightgreen)](https://spring.io/projects/spring-boot)
-[![Version](https://img.shields.io/badge/version-0.3.2-green.svg)](https://github.com/iweidujiang/spring-insight)
-[![Maven Central](https://img.shields.io/badge/Maven%20Central-0.3.2-blue.svg)](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2)
+面向 **Spring Boot 2.7 / Java 8+** 的轻量监测 Agent：业务侧加一个 Starter，把 Span 上报到监测中心，即可查看服务拓扑与调用链路。
 
-面向 **Spring Boot / Spring Cloud** 的轻量监测工具：**业务侧加一个 Starter 埋点上报，旁边用 Docker 起一个 `insight-server`，就能看服务拓扑和调用链路。**
-
-适合中小项目、本地联调、教学演示——不想一上来就上整套 APM 时，可以先用它把「谁调了谁、慢在哪、错在哪」看清楚。
-
-- 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
-- 正式版：**`0.3.2`**（Boot 3 Agent / Server 均为 **JDK 17+**）· Boot 2.7 / Java 8 仓库版本 **`0.3.2-boot2`**（Central 已发仍为 `0.3.0-boot2`，发出前请用已发布版）
-- **运行时要求**：Agent 与 insight-server（Docker / `java -jar`）→ **Spring Boot 3.x + JDK 17+**（JDK 21+ 亦可）
-- **暂不支持 Spring Boot 4**（Boot 4 默认 Jackson 3 / 包名变更，后续考虑增加 boot4 版本）；请用 Boot **3.5.x** 验证。Boot 2.7 走 `boot2` 坐标
-- 问题与建议欢迎开 Issue
+- 仓库分支：`2.7.x`
+- 当前版本：**`0.3.2`**
+- 监测中心（Docker / jar）请使用同仓库 **`main`** 分支发布的 `insight-server`（与本 Agent 协议兼容）
 
 ---
 
-## 快速开始（两步）
+## 快速开始
 
-### 1. 启动监测中心
-
-**方式 A — Docker（推荐）**
-
-```bash
-docker run --rm -p 9966:9966 \
-  -e SPRING_INSIGHT_SERVER_STORAGE_MODE=file \
-  -e SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH=/data/spans.json \
-  -v spring-insight-data:/data \
-  ghcr.io/iweidujiang/spring-insight-server:0.3.2
-```
-
-或使用本仓库根目录 Compose（拉取已发布镜像）：
-
-```bash
-docker compose up -d
-```
-
-**方式 B — 无 Docker（GitHub Release 可执行 jar）**
-
-从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-0.3.2.jar`（打 `v*` tag 时由 Actions 自动挂载），本机需 **JDK 17+**：
-
-```bash
-java -jar insight-server-0.3.2.jar
-# 落盘示例：
-# java -jar insight-server-0.3.2.jar --spring.insight.server.storage.mode=file
-```
-
-**本地改 Server 源码联调（本机打包 + Docker 运行镜像，默认 sqlite）：**
-
-```bash
-# 仓库根目录；不要在容器里 mvn package（国内拉 Central 插件依赖容易在 repackage 失败）
-mvn -pl insight-server -am package -DskipTests
-docker compose -f compose.dev.yaml up -d --build
-# 换模式：$env:INSIGHT_STORAGE_MODE="file"（PowerShell）或 export INSIGHT_STORAGE_MODE=file
-```
-
-浏览器打开：<http://localhost:9966/>  
-告警 / AI / Webhook / SMTP 等在控制台侧栏 **「设置」** 页配置（写入数据目录 `runtime-settings.json`，重启不丢）；`compose.dev.yaml` 只保留端口与存储，无需长串环境变量。
-### 2. 业务服务接入
-
-**Spring Boot 3：**
+### 1. 依赖
 
 ```xml
 <dependency>
   <groupId>io.github.iweidujiang</groupId>
-  <artifactId>spring-insight-agent-starter</artifactId>
+  <artifactId>spring-insight-agent-starter-boot2</artifactId>
   <version>0.3.2</version>
 </dependency>
 ```
 
+| GAV | 说明 |
+|-----|------|
+| `spring-insight-agent-starter-boot2` | **业务请只依赖这个** |
+| `insight-agent-boot2` | 采集核心（Starter 传递依赖） |
+
+> Maven Central 若尚未同步 `0.3.2`，可先用已发布的 `0.3.0-boot2`，或本分支 `mvn install` 后使用本地包。已发出的旧包版本仍带 `-boot2` 后缀，新版本起与主线数字一致。
+
+### 2. 配置
+
 ```yaml
 spring:
   application:
-    name: my-service
+    name: my-boot2-app
   insight:
     server-url: http://localhost:9966
 ```
 
-**Spring Boot 2.7 / Java 8：** 改用 `spring-insight-agent-starter-boot2:0.3.0-boot2`（详见 [`boot2/README.md`](boot2/README.md)）。
+未配置 `spring.application.name` / `spring.insight.service-name` 时不会中断启动，仅打 WARN 并跳过采集；未配置 `server-url` 时 WARN，Span 不上报。
 
-造几笔跨服务调用，等几秒（Agent 异步批量上报），刷新控制台即可。
+| 配置项 | 默认 | 说明 |
+|--------|------|------|
+| `spring.insight.enabled` | `true` | 总开关 |
+| `spring.insight.server-url` | — | 监测中心根地址 |
+| `spring.insight.service-name` | 回退 `spring.application.name` | 上报服务名 |
+| `spring.insight.http-tracing-enabled` | `true` | MVC / WebFlux SERVER；WebClient / Gateway CLIENT |
+| `spring.insight.micrometer-enabled` | `true` | 桥接宿主 MeterRegistry |
+| `spring.insight.diagnostic-logs` | `false` | 请求级诊断日志 |
 
----
-
-## 它能做什么
-
-<img width="2341" height="530" alt="局部截取_20260910_151357" src="https://github.com/user-attachments/assets/80bbebee-1397-4ebd-abcf-d09d598f0a16" />
-
-
-| 能力 | 说明 |
-|------|------|
-| HTTP / Feign / WebClient / Gateway / RestTemplate / RestClient 采集 | Agent 采 Span 并批量上报；success 与 HTTP 状态对齐；线程池可透传 Trace；WebFlux 走 Reactor Context；出站带 `remoteService` |
-| 服务依赖拓扑 | 谁调用了谁（箭头与次数）；点击节点/边可下钻链路 |
-| 链路列表 / Trace 详情 | 按 Trace 聚合，可搜索筛选；详情含瀑布时间线、tags、错误信息 |
-| 延迟与错误摘要 | 仪表盘慢/错 Top（含 p50/p95），可点进已筛 Trace |
-| Micrometer 联动 | 宿主有 MeterRegistry 时导出 `spring.insight.*`（Span Timer / 上报队列） |
-| 可选鉴权 / 容量可见（0.2） | Server 可选 ingest Token、控制台登录；健康/Actuator 暴露 stored/max/evicted |
-| 可选告警 / AI（0.3，默认关） | 控制台「设置」配 Webhook、SMTP、OpenAI 兼容模型；保存后即时生效 |
-| 控制台 UI | Vue 页面内嵌在 Server / Docker 镜像中 |
-
----
-
-## 长什么样
-
-### 仪表盘
-
-<img width="2341" height="1248" alt="局部截取_20260910_151425" src="https://github.com/user-attachments/assets/5d121a96-3dce-4911-b972-2bf7927e946c" />
-
-
-### 服务拓扑
-<img width="2328" height="1228" alt="局部截取_20260910_151452" src="https://github.com/user-attachments/assets/2e6ba9d2-4bbf-4e67-91ce-93ab89b1a18c" />
-
-### 链路追踪
-<img width="2325" height="717" alt="局部截取_20260910_151551" src="https://github.com/user-attachments/assets/83af472c-0919-49e9-bd5d-fcb635a8abd4" />
-
-<img width="2298" height="1192" alt="局部截取_20260910_151611" src="https://github.com/user-attachments/assets/8768b3d3-c13a-48f2-8b2a-ced7fc13080d" />
-
-
-### 错误分析
-
-<img width="2324" height="967" alt="局部截取_20260910_151633" src="https://github.com/user-attachments/assets/7e019fd9-0520-4e1d-b01e-8d0627b4434a" />
-
-
----
-
-## 版本与坐标
-
-| 坐标 | 说明 |
-|------|------|
-| `io.github.iweidujiang:spring-insight-agent-starter:0.3.2` | **Boot 3 业务侧依赖这个**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2)） |
-| `io.github.iweidujiang:insight-agent:0.3.2` | 采集核心（由 Starter 传递） |
-| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.0-boot2` | **Boot 2.7 / Java 8**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter-boot2/0.3.0-boot2)） |
-| `ghcr.io/iweidujiang/spring-insight-server:0.3.2` | **监测中心镜像（推荐）** |
-| [Release `insight-server-0.3.2.jar`](https://github.com/iweidujiang/spring-insight/releases) | **无 Docker**：JDK 17+ 下 `java -jar`（tag 推送后 Actions 自动挂载） |
-
-发版说明见 [CHANGELOG.md](CHANGELOG.md)。维护者发版步骤（Central + GHCR）见 [RELEASING.md](RELEASING.md)。
-
----
-
-## 架构一览
-
-```text
-业务微服务 × N  ──Starter──►  埋点、异步批量上报
-独立进程 × 1    ──Docker──►  insight-server :9966（存储 + API + 控制台）
-```
-
-| 模块 | 角色 |
-|------|------|
-| `spring-insight-agent-starter` | 业务侧依赖 |
-| `insight-agent` | 采集核心 |
-| `insight-server` | 监测中心（GHCR 镜像或本地打包） |
-| `insight-ui-vue` | 控制台前端（打进 Server） |
-| `compose.yaml` | 一键起监测中心 |
-| `boot2/` | Boot 2.7 / Java 8 兼容线 |
-
----
-
-## 存储与其它启动方式
-
-- **Docker / Compose** 默认 `file` 落盘并挂卷，重启可保留 Span。
-- 仅内存：将 `SPRING_INSIGHT_SERVER_STORAGE_MODE` 设为 `memory`。
-- **SQLite（0.2）**：`SPRING_INSIGHT_SERVER_STORAGE_MODE=sqlite`，库文件默认 `/data/insight.db`（需挂卷）。
-- 按时间保留（可选）：`SPRING_INSIGHT_SERVER_STORAGE_RETENTION_MAX_AGE_HOURS=72`。
-- **可选鉴权 / 运维**：见 [`docs/dev_docs/v0.2-ops.md`](docs/dev_docs/v0.2-ops.md)（ingest Token、UI 登录、容量指标；默认关闭）。
-- **告警 / AI**：优先在控制台「设置」页开关；亦可启动期写 `spring.insight.server.alert.*` / `ai.*`（页面保存后文件覆盖启动默认）。
-- 本机从源码打 jar（构建与运行均需 JDK 17+）：
+### 3. 启动监测中心
 
 ```bash
-mvn clean install -DskipTests
-java -jar insight-server/target/insight-server.jar
+docker run --rm -p 9966:9966 \
+  ghcr.io/iweidujiang/spring-insight-server:0.3.2
 ```
 
-正式发版后优先从 GitHub Release 下载 `insight-server-x.y.z.jar`，无需自行编译。
-
-存储只在 **Server** 侧配置，业务微服务不要配 `spring.insight.server.storage.*`。  
-健康检查：`GET /api/v1/health`（含 `storageMode`、`storedSpans`）。
-
-演示工程：[spring-insight-sca-demo](https://github.com/iweidujiang/spring-insight-sca-demo)（Nacos + 若干微服务）。
+或从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-*.jar`，JDK 17+ 执行 `java -jar`。
 
 ---
 
-## 常用配置
+## 能力
 
-```yaml
-spring:
-  insight:
-    enabled: true
-    server-url: http://localhost:9966
-    sample-rate: 1.0
-    http-tracing-enabled: true
-    context-propagation-enabled: true  # @Async / 线程池透传 Trace
-    micrometer-enabled: true           # 有 MeterRegistry 时导出 spring.insight.*
-    diagnostic-logs: false             # 排查上报时可临时打开
+Servlet MVC SERVER Span、OpenFeign CLIENT（`remoteService` 优先 `@FeignClient` name）、RestTemplate CLIENT（须 `RestTemplateBuilder`）、HttpURLConnection 批量上报、可选 Micrometer（`spring.insight.*`）、WebFlux 入口、WebClient / Gateway 出站 CLIENT。
+
+---
+
+## 构建
+
+```bash
+# 建议 JDK 8 或 11（也可用更高 JDK 交叉编译到 1.8）
+mvn -DskipTests install
 ```
 
-### 与 Prometheus / Micrometer
+发布干跑（PowerShell 给 `-D` 加引号）：
 
-| 关注点 | 建议 |
-|--------|------|
-| 链路、拓扑、跨服务调用 | **Spring Insight** |
-| JVM / 连接池 / HTTP QPS | **Actuator + Micrometer / Prometheus** |
-| Insight 自身指标 | 可选刮取 `spring.insight.*`（默认 `micrometer-enabled=true`） |
+```powershell
+mvn -Prelease clean verify "-DskipTests" "-Dgpg.skip=true"
+```
 
 ---
 
-## 适用边界
+## 冒烟演示
 
-Spring Insight 定位是**轻量辅助排查**，不是 OpenTelemetry / SkyWalking 的替代品：
+同级工程示例：`spring-insight-boot2-demo`。
 
-- Span 默认有条数上限；不配落盘时重启会清空（Docker 推荐挂卷 + `file`）
-- 告警为简易阈值 + Webhook/邮件；无多租户、OIDC、密钥保险箱（可选 Token / 简易登录见 0.2 运维文档）
-- JVM / JDBC 采集默认关闭（实验开关，需自行验证）
+```bash
+mvn -DskipTests install
+# 另开终端启动 insight-server:9966 后启动 demo，访问业务接口，刷新控制台
+```
 
-欢迎 Issue / PR。
-
----
-
-## 许可
-
-[Apache License 2.0](LICENSE)
-
----
-
-如果你也在用 Spring 微服务、觉得这方向有点意思，欢迎 Star。写得不好的地方请直接把 Issue 甩过来。
+发版说明见 [CHANGELOG.md](CHANGELOG.md)。
