@@ -33,6 +33,7 @@ build/
 ### VS Code ###
 .vscode/
 .trae
+.cursor
 
 ### insight-server 可选文件持久化 ###
 **/data/
