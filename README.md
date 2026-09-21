@@ -1,14 +1,15 @@
+<h1 align="center">
+  <img src="assets/brand/spring-insight-mark.png" alt="" width="64" align="absmiddle" />
+  Spring Insight
+</h1>
+
 <p align="center">
-  <img src="assets/brand/spring-insight-mark.png" alt="Spring Insight" width="96" />
+  <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" /></a>
+  <a href="https://www.oracle.com/java/"><img src="https://img.shields.io/badge/Agent-JDK%2017%2B-orange" alt="Java" /></a>
+  <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-3.5.9-brightgreen" alt="Spring Boot" /></a>
+  <a href="https://github.com/iweidujiang/spring-insight"><img src="https://img.shields.io/badge/version-0.3.2-green.svg" alt="Version" /></a>
+  <a href="https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2"><img src="https://img.shields.io/badge/Maven%20Central-0.3.2-blue.svg" alt="Maven Central" /></a>
 </p>
-
-# Spring Insight
-
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Java](https://img.shields.io/badge/Agent-JDK%2017%2B-orange)](https://www.oracle.com/java/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.9-brightgreen)](https://spring.io/projects/spring-boot)
-[![Version](https://img.shields.io/badge/version-0.3.2-green.svg)](https://github.com/iweidujiang/spring-insight)
-[![Maven Central](https://img.shields.io/badge/Maven%20Central-0.3.2-blue.svg)](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2)
 
 面向 **Spring Boot / Spring Cloud** 的轻量监测工具：**业务侧加一个 Starter 埋点上报，旁边用 Docker 起一个 `insight-server`，就能看服务拓扑和调用链路。**
 
