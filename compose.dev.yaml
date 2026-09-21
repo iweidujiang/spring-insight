@@ -8,6 +8,7 @@
 # 告警 / AI / Token 等在控制台「设置」页配置（持久化到 /data/runtime-settings.json），无需长串环境变量。
 #
 # 换存储：$env:INSIGHT_STORAGE_MODE="sqlite"|"file"|"memory"
+# 控制台登录默认开启（admin / insight）。关闭：$env:INSIGHT_UI_AUTH_ENABLED="false"
 
 name: spring-insight-dev
 
@@ -28,6 +29,9 @@ services:
       SPRING_INSIGHT_SERVER_STORAGE_FLUSH_DELAY_MS: "2000"
       SPRING_INSIGHT_SERVER_STORAGE_SQLITE_PATH: /data/insight.db
       SPRING_INSIGHT_SERVER_STORAGE_RETENTION_MAX_AGE_HOURS: ${INSIGHT_RETENTION_HOURS:-0}
+      SPRING_INSIGHT_SERVER_SECURITY_UI_AUTH_ENABLED: ${INSIGHT_UI_AUTH_ENABLED:-true}
+      SPRING_INSIGHT_SERVER_SECURITY_UI_USERNAME: ${INSIGHT_UI_USERNAME:-admin}
+      SPRING_INSIGHT_SERVER_SECURITY_UI_PASSWORD: ${INSIGHT_UI_PASSWORD:-insight}
       JAVA_OPTS: ${JAVA_OPTS:-}
     volumes:
       - insight-spans-dev:/data
