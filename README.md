@@ -11,9 +11,9 @@
 适合中小项目、本地联调、教学演示——不想一上来就上整套 APM 时，可以先用它把「谁调了谁、慢在哪、错在哪」看清楚。
 
 - 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
-- 正式版：**`0.3.2`**（Boot 3 Agent / Server 均为 **JDK 17+**）· Boot 2.7 / Java 8 仓库版本 **`0.3.2-boot2`**（Central 已发仍为 `0.3.0-boot2`，发出前请用已发布版）
-- **运行时要求**：Agent 与 insight-server（Docker / `java -jar`）→ **Spring Boot 3.x + JDK 17+**（JDK 21+ 亦可）
-- **暂不支持 Spring Boot 4**（Boot 4 默认 Jackson 3 / 包名变更，后续考虑增加 boot4 版本）；请用 Boot **3.5.x** 验证。Boot 2.7 走 `boot2` 坐标
+- 正式版：**`0.3.2`**（Agent 与 insight-server 均为 **JDK 17+**）
+- **运行时要求**：Spring Boot 3.x + JDK 17+（JDK 21+ 亦可）
+- **暂不支持 Spring Boot 4**（Boot 4 默认 Jackson 3 / 包名变更）；请用 Boot **3.5.x** 验证
 - 问题与建议欢迎开 Issue
 
 ---
@@ -61,8 +61,6 @@ docker compose -f compose.dev.yaml up -d --build
 告警 / AI / Webhook / SMTP 等在控制台侧栏 **「设置」** 页配置（写入数据目录 `runtime-settings.json`，重启不丢）；`compose.dev.yaml` 只保留端口与存储，无需长串环境变量。
 ### 2. 业务服务接入
 
-**Spring Boot 3：**
-
 ```xml
 <dependency>
   <groupId>io.github.iweidujiang</groupId>
@@ -78,8 +76,6 @@ spring:
   insight:
     server-url: http://localhost:9966
 ```
-
-**Spring Boot 2.7 / Java 8：** 改用 `spring-insight-agent-starter-boot2:0.3.0-boot2`（详见 [`boot2/README.md`](boot2/README.md)）。
 
 造几笔跨服务调用，等几秒（Agent 异步批量上报），刷新控制台即可。
 
@@ -130,13 +126,12 @@ spring:
 
 | 坐标 | 说明 |
 |------|------|
-| `io.github.iweidujiang:spring-insight-agent-starter:0.3.2` | **Boot 3 业务侧依赖这个**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2)） |
+| `io.github.iweidujiang:spring-insight-agent-starter:0.3.2` | **业务侧依赖这个**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2)） |
 | `io.github.iweidujiang:insight-agent:0.3.2` | 采集核心（由 Starter 传递） |
-| `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.0-boot2` | **Boot 2.7 / Java 8**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter-boot2/0.3.0-boot2)） |
 | `ghcr.io/iweidujiang/spring-insight-server:0.3.2` | **监测中心镜像（推荐）** |
 | [Release `insight-server-0.3.2.jar`](https://github.com/iweidujiang/spring-insight/releases) | **无 Docker**：JDK 17+ 下 `java -jar`（tag 推送后 Actions 自动挂载） |
 
-发版说明见 [CHANGELOG.md](CHANGELOG.md)。维护者发版步骤（Central + GHCR）见 [RELEASING.md](RELEASING.md)。
+发版说明见 [CHANGELOG.md](CHANGELOG.md)。
 
 ---
 
@@ -154,7 +149,6 @@ spring:
 | `insight-server` | 监测中心（GHCR 镜像或本地打包） |
 | `insight-ui-vue` | 控制台前端（打进 Server） |
 | `compose.yaml` | 一键起监测中心 |
-| `boot2/` | Boot 2.7 / Java 8 兼容线 |
 
 ---
 

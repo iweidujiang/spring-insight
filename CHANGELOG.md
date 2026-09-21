@@ -3,8 +3,7 @@
 ## [Unreleased] — 0.3.3-SNAPSHOT / 0.4.0
 
 ### 0.3.3（拟定） / 0.3.2 发版补充
-- 未配置 `spring.application.name` / `spring.insight.service-name` 时不再中断启动，仅 WARN 并跳过本次采集；未配置 `server-url` 时 WARN 且不上报（Boot3 与 Boot2）
-- Boot2 仓库版本与主线对齐为 **`0.3.2-boot2`**（artifactId 仍带 `-boot2`；Central 已发仍为 `0.3.0-boot2`）
+- 未配置 `spring.application.name` / `spring.insight.service-name` 时不再中断启动，仅 WARN 并跳过本次采集；未配置 `server-url` 时 WARN 且不上报
 - **insight-server 亦可 JDK 17 运行**：Server 字节码目标改为 17；Docker 改用 `temurin:17-jre`；去掉 `List.getFirst` / `removeFirst` 等 JDK 21 API
 - Agent 显式依赖 Jackson 2；HTTP 上报内置 `JavaTimeModule`（修复 Instant 序列化）
 - 打 `v*` tag 时 Actions **自动**将 `insight-server-x.y.z.jar` 挂到 GitHub Release（无 Docker 可用 `java -jar`，需 JDK 17+）
@@ -23,13 +22,11 @@
 ### 兼容性
 - **须升级 Central Starter** 至 `0.3.2`（`0.3.0` / 未修复包在 JDK 17 上不可用）
 - JDK 21+ 业务应用可继续使用（字节码向上兼容）
-- 本版 **不发** Boot2（无变更）；Boot2 仍用 `0.3.0-boot2`
 
 ### 坐标 / 镜像
 | 项 | 值 |
 |----|-----|
-| Boot3 Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.3.2` |
-| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.0-boot2`（本版不升） |
+| Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.3.2` |
 | Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.3.2` |
 
 ## [0.3.1] — 2026-09-20
@@ -48,13 +45,11 @@
 ### 兼容性
 - **无 Agent 埋点变更**；本版以 **GHCR Server 镜像**为主，可不升 Central Starter
 - 未开启 AI 时，一键解读 / 拓扑边解读不可用（与 0.3.0 一致，默认关闭）
-- Boot2 同步标签：`0.3.1-boot2`（无功能差异要求时可只升 Server）
 
 ### 坐标 / 镜像
 | 项 | 值 |
 |----|-----|
-| Boot3 Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.3.0`（本版可不升） |
-| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.0-boot2`（本版可不升） |
+| Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.3.0`（本版可不升） |
 | Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.3.1` |
 
 ## [0.3.0] — 2026-09-18
@@ -78,8 +73,7 @@
 ### 坐标 / 镜像
 | 项 | 值 |
 |----|-----|
-| Boot3 Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.3.0` |
-| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.3.0-boot2` |
+| Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.3.0` |
 | Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.3.0` |
 
 ## [0.2.1] — 2026-09-17
@@ -101,16 +95,14 @@
 ### 兼容性
 - 未开启 ingest Token 时，**0.1.x Agent 仍可上报到 0.2 Server**
 - 存储默认仍为 `memory`；换 `sqlite`/`file` 需显式配置；换 mode **不做**自动迁移
-- Boot2 同步发版：`0.2.0-boot2`（含 ingest-token 配置）
 
 ### 坐标 / 镜像
 | 项 | 值 |
 |----|-----|
-| Boot3 Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.2.0` |
-| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.2.0-boot2` |
+| Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.2.0` |
 | Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.2.0` |
 
 
 ## [0.1.0] — 2026-09
 
-首个正式可用版：Agent Starter + insight-server（GHCR）+ 拓扑 / 链路 / 控制台；Boot2 `0.1.0-boot2`。
+首个正式可用版：Agent Starter + insight-server（GHCR）+ 拓扑 / 链路 / 控制台。

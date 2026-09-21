@@ -181,9 +181,8 @@
                                 <requireJavaVersion>
                                     <version>[17,)</version>
                                     <message>
-【Spring Insight 主线】请用 JDK 17+ 运行 Maven。
-Agent 与 insight-server 字节码目标均为 Java 17（Boot 3 基线；JDK 21+ 亦可运行）。
-若业务是 Spring Boot 2.7 / Java 8，请进入 boot2/ 后再 mvn（详见 boot2/README.md）。
+【Spring Insight】请用 JDK 17+ 运行 Maven。
+Agent 与 insight-server 字节码目标均为 Java 17（Spring Boot 3 基线；JDK 21+ 亦可运行）。
                                     </message>
                                 </requireJavaVersion>
                             </rules>

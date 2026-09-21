@@ -1,4 +1,4 @@
-# 推送主线版本 tag（vX.Y.Z，不含 boot2）时：
+# 推送版本 tag（vX.Y.Z，不含 boot2）时：
 # 1) 构建 insight-server 可执行 fat jar
 # 2) 创建/更新 GitHub Release，并挂载 insight-server-X.Y.Z.jar
 #
