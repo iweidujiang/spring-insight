@@ -16,7 +16,7 @@
 
     <aside class="si-sidebar" aria-label="主导航">
       <router-link class="si-sidebar__brand" to="/" @click="closeNav">
-        <i class="fa fa-line-chart"></i>
+        <InsightMark :size="28" />
         <span>Spring Insight</span>
       </router-link>
 
@@ -85,6 +85,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import InsightMark from './components/InsightMark.vue'
 import NotificationComponent from './components/NotificationComponent.vue'
 import { fetchAuthStatus, getUiToken, getUiUsername, logout } from './services/AuthService'
 

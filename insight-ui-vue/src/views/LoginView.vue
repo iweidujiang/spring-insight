@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { login } from '../services/AuthService'
+import InsightMark from '../components/InsightMark.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -51,7 +52,10 @@ async function onSubmit() {
         <circle cx="510" cy="300" r="8" class="si-login__node" />
       </svg>
       <div class="si-login__brand-copy">
-        <p class="si-login__kicker">SPRING INSIGHT</p>
+        <div class="si-login__lockup">
+          <InsightMark :size="44" />
+          <p class="si-login__kicker">SPRING INSIGHT</p>
+        </div>
         <h1>看清每一次调用</h1>
         <p class="si-login__lead">轻量监测中心 · 服务拓扑、链路瀑布、错误与延迟，一张图里定位慢与错。</p>
         <ul class="si-login__chips">
@@ -65,7 +69,7 @@ async function onSubmit() {
     <section class="si-login__panel">
       <form class="si-login__card" @submit.prevent="onSubmit">
         <div class="si-login__card-mark">
-          <i class="fa fa-line-chart"></i>
+          <InsightMark :size="36" />
         </div>
         <h2>登录控制台</h2>
         <p class="si-login__hint">已启用鉴权，请使用管理员账号进入</p>
@@ -181,11 +185,18 @@ async function onSubmit() {
 }
 
 .si-login__kicker {
-  margin: 0 0 0.55rem;
+  margin: 0;
   letter-spacing: 0.22em;
   font-size: 0.72rem;
   font-weight: 700;
   color: #5eead4;
+}
+
+.si-login__lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
 }
 
 .si-login__brand-copy h1 {
@@ -246,10 +257,6 @@ async function onSubmit() {
   height: 2.5rem;
   display: grid;
   place-items: center;
-  border-radius: 10px;
-  background: rgba(15, 118, 110, 0.12);
-  color: #0f766e;
-  font-size: 1.1rem;
 }
 
 .si-login__card h2 {

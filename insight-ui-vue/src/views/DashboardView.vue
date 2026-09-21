@@ -5,7 +5,7 @@
         <h2 class="si-dashboard__title">
           <i class="fa fa-tachometer me-2"></i>监控仪表盘
         </h2>
-        <p class="si-dashboard__subtitle">总览 · 拓扑为主，排名为辅</p>
+        <p class="si-dashboard__subtitle">{{ isSolo ? '单应用 · 请求、延迟与错误' : '总览 · 拓扑为主，排名为辅' }}</p>
       </div>
       <div class="si-dashboard__status" v-show="!loading">
         <span v-if="!errorAnalysis || errorAnalysis.length === 0" class="si-dashboard__pill si-dashboard__pill--ok">
@@ -78,8 +78,67 @@
         </div>
       </section>
 
+      <section v-if="isSolo" class="si-app" aria-label="单应用概览">
+        <div class="si-app__head">
+          <div>
+            <p class="si-app__kicker">当前服务</p>
+            <h3 class="si-app__name">{{ soloProfile.name }}</h3>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTraces()">全部链路</button>
+        </div>
+
+        <div class="si-app__metrics">
+          <div class="si-app__metric">
+            <span>请求</span>
+            <strong>{{ soloProfile.spanCount }}</strong>
+          </div>
+          <div class="si-app__metric">
+            <span>平均</span>
+            <strong>{{ formatMs(soloProfile.avgMs) }}</strong>
+          </div>
+          <div class="si-app__metric">
+            <span>p95</span>
+            <strong :class="soloProfile.p95Ms >= 1000 ? 'text-danger' : soloProfile.p95Ms >= 500 ? 'text-warning' : ''">
+              {{ formatMs(soloProfile.p95Ms) }}
+            </strong>
+          </div>
+          <div class="si-app__metric">
+            <span>错误</span>
+            <strong :class="soloProfile.errorCount > 0 ? 'text-danger' : ''">{{ soloProfile.errorCount }}</strong>
+          </div>
+        </div>
+
+        <div class="si-app__traces">
+          <div class="si-app__traces-head">
+            <h6 class="mb-0">最近请求</h6>
+            <span class="si-app__traces-hint">{{ hoursLabel }}</span>
+          </div>
+          <div v-if="recentTraces.length === 0" class="si-dashboard__diag-empty">这个时间范围内还没有请求</div>
+          <ul v-else class="si-app__list">
+            <li
+              v-for="tr in recentTraces"
+              :key="tr.traceId"
+              class="si-app__row"
+              @click="goTraceDetail(tr.traceId)"
+            >
+              <span class="si-app__method" :data-method="traceMethod(tr)">{{ traceMethod(tr) || 'REQ' }}</span>
+              <span class="si-app__path" :title="tracePath(tr)">{{ tracePath(tr) }}</span>
+              <span class="si-app__dur">
+                <span class="si-app__track">
+                  <i class="si-app__bar" :style="{ width: durationShare(tr) + '%' }"></i>
+                </span>
+                <em>{{ formatMs(tr.durationMs || 0) }}</em>
+              </span>
+              <span class="badge" :class="traceFailed(tr) ? 'bg-danger' : 'bg-success'">
+                {{ traceFailed(tr) ? '失败' : '成功' }}
+              </span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <!-- 诊断：慢服务 + 热点依赖（常有数据，可下钻） -->
-      <section class="si-dashboard__diag" aria-label="慢请求与热点依赖">
+      <section v-if="!isSolo" class="si-dashboard__diag" aria-label="慢请求与热点依赖">
         <div class="si-dashboard__diag-panel">
           <div class="si-dashboard__diag-head">
             <span><i class="fa fa-tachometer me-2"></i>慢服务 Top（按 p95）</span>
@@ -204,7 +263,7 @@
       </section>
 
       <!-- 主体：拓扑主视图 + 排名辅栏 -->
-      <section class="si-dashboard__body">
+      <section v-if="!isSolo" class="si-dashboard__body">
         <div class="chart-container si-dashboard__panel si-dashboard__chart-topology si-dashboard__hero">
           <div class="si-dashboard__chart-head">
             <div>
@@ -325,6 +384,20 @@ let serviceRankChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
 
 const hasDependencies = computed(() => dependencies.value.length > 0)
+/** 只有一个应用、还没有调用边时，首页改看请求而不是空拓扑 */
+const isSolo = computed(() => !hasDependencies.value && services.value.length === 1)
+
+const soloProfile = computed(() => {
+  const name = services.value[0] || ''
+  const row = serviceLatency.value.find((item: any) => item.serviceName === name) || serviceLatency.value[0]
+  return {
+    name: name || row?.serviceName || '未命名服务',
+    spanCount: row?.spanCount || 0,
+    avgMs: row?.avgMs || 0,
+    p95Ms: row?.p95Ms || 0,
+    errorCount: row?.errorCount || 0
+  }
+})
 
 const hoursLabel = computed(() => {
   const h = hours.value
@@ -353,6 +426,25 @@ const hotDependencies = computed(() =>
 )
 
 const formatMs = (ms: number) => formatDuration(Number(ms) || 0)
+
+const traceFailed = (tr: any) => !!(tr?.hasError || tr?.statusCode === 'ERROR')
+
+const traceMethod = (tr: any) => {
+  const op = String(tr?.operationName || tr?.endpoint || '')
+  const matched = /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\b/i.exec(op)
+  return matched ? matched[1].toUpperCase() : ''
+}
+
+const tracePath = (tr: any) => {
+  const op = String(tr?.operationName || tr?.endpoint || tr?.traceId || '—')
+  return op.replace(/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+/i, '')
+}
+
+const durationShare = (tr: any) => {
+  const max = recentTraces.value.reduce((n, item) => Math.max(n, Number(item?.durationMs) || 0), 0)
+  if (max <= 0) return 8
+  return Math.max(8, Math.round(((Number(tr?.durationMs) || 0) / max) * 100))
+}
 
 const stats = computed(() => [
   {
@@ -417,22 +509,23 @@ const goHotDependency = (dep: { sourceService: string; targetService?: string })
   goTraces({ service: dep.sourceService })
 }
 
-const initCharts = () => {
+const mountTopologyChart = () => {
   const topologyChartDom = document.getElementById('topology-chart')
-  if (topologyChartDom) {
-    topologyChart = echarts.init(topologyChartDom)
-    topologyChart.setOption(buildTopologyOption([], { compact: false }))
-    topologyChart.on('click', (params: any) => {
-      const hit = resolveTopologyClick(params)
-      if (hit?.service) {
-        goTraces({ service: hit.service })
-      }
-    })
-  }
+  if (!topologyChartDom || topologyChart) return
+  topologyChart = echarts.init(topologyChartDom)
+  topologyChart.setOption(buildTopologyOption([], { compact: false }))
+  topologyChart.on('click', (params: any) => {
+    const hit = resolveTopologyClick(params)
+    if (hit?.service) {
+      goTraces({ service: hit.service })
+    }
+  })
+}
 
+const mountRankChart = () => {
   const serviceRankChartDom = document.getElementById('service-rank-chart')
-  if (serviceRankChartDom) {
-    serviceRankChart = echarts.init(serviceRankChartDom)
+  if (!serviceRankChartDom || serviceRankChart) return
+  serviceRankChart = echarts.init(serviceRankChartDom)
     serviceRankChart.setOption({
       backgroundColor: 'transparent',
       textStyle: { color: '#6b7f76' },
@@ -489,7 +582,6 @@ const initCharts = () => {
         goTraces({ service: name })
       }
     })
-  }
 }
 
 const updateCharts = () => {
@@ -552,7 +644,7 @@ const loadData = async () => {
       ApiService.getServiceLatency(h, 20),
       ApiService.getErrorAnalysis(h),
       ApiService.getCollectorStats(),
-      ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 8 })
+      ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 16 })
     ])
     services.value = serviceNames
     dependencies.value = serviceDeps
@@ -562,15 +654,33 @@ const loadData = async () => {
     collectorStats.value = collectorStatsData
     recentTraces.value = Array.isArray(recent) ? recent : []
     totalSpans.value = serviceStatsData.reduce((sum: number, s: any) => sum + (s.totalSpans || 0), 0)
-    updateCharts()
   } catch (error) {
     console.error('加载仪表盘数据失败:', error)
   } finally {
     loading.value = false
     await nextTick()
-    topologyChart?.resize()
-    serviceRankChart?.resize()
+    syncCharts()
   }
+}
+
+/** 单应用不挂拓扑图；有调用边时再创建，避免空画布占满首页。 */
+const syncCharts = () => {
+  if (isSolo.value) {
+    topologyChart?.dispose()
+    topologyChart = null
+    serviceRankChart?.dispose()
+    serviceRankChart = null
+    return
+  }
+  if (!topologyChart) {
+    mountTopologyChart()
+  }
+  if (!serviceRankChart) {
+    mountRankChart()
+  }
+  updateCharts()
+  topologyChart?.resize()
+  serviceRankChart?.resize()
 }
 
 const handleResize = () => {
@@ -579,8 +689,6 @@ const handleResize = () => {
 }
 
 onMounted(async () => {
-  await nextTick()
-  initCharts()
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
   window.addEventListener('resize', handleResize)
@@ -1124,5 +1232,200 @@ onUnmounted(() => {
   .si-dashboard__hero-body--solo {
     grid-template-columns: 1fr;
   }
+
+  .si-app__metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .si-app__dur {
+    display: none;
+  }
+}
+
+.si-app {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.si-app__head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.si-app__kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--si-teal);
+}
+
+.si-app__name {
+  margin: 0.15rem 0 0.25rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--si-ink);
+}
+
+.si-app__desc {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 0.88rem;
+  color: var(--si-muted);
+}
+
+.si-app__metrics {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.65rem;
+}
+
+.si-app__metric {
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--box-shadow);
+}
+
+.si-app__metric span {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--si-muted);
+}
+
+.si-app__metric strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  line-height: 1.15;
+}
+
+.si-app__traces {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+}
+
+.si-app__traces-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.95rem;
+  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
+}
+
+.si-app__traces-head h6 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--si-ink);
+}
+
+.si-app__traces-hint {
+  font-size: 0.75rem;
+  color: var(--si-muted);
+}
+
+.si-app__list {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.si-app__row {
+  display: grid;
+  grid-template-columns: 4.2rem minmax(0, 1fr) minmax(7rem, 11rem) 3.2rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.62rem 0.95rem;
+  cursor: pointer;
+}
+
+.si-app__row:hover {
+  background: rgba(15, 118, 110, 0.06);
+}
+
+.si-app__method {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--si-teal);
+}
+
+.si-app__method[data-method="POST"],
+.si-app__method[data-method="PUT"],
+.si-app__method[data-method="PATCH"] {
+  color: #b45309;
+}
+
+.si-app__method[data-method="DELETE"] {
+  color: #b91c1c;
+}
+
+.si-app__path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--si-ink);
+}
+
+.si-app__dur {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.si-app__track {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.12);
+  overflow: hidden;
+}
+
+.si-app__bar {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #0f766e;
+}
+
+.si-app__dur em {
+  flex: 0 0 auto;
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--si-ink-soft);
 }
 </style>

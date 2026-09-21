@@ -148,9 +148,9 @@ body::before {
   margin-bottom: 0.55rem;
 }
 
-.si-sidebar__brand i {
-  color: var(--si-teal);
-  font-size: 1.15rem;
+.si-sidebar__brand .si-mark {
+  flex: 0 0 auto;
+  border-radius: 7px;
 }
 
 .si-sidebar__nav {
