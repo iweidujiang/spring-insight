@@ -5,7 +5,9 @@
         <h2 class="si-dashboard__title">
           <i class="fa fa-tachometer me-2"></i>监控仪表盘
         </h2>
-        <p class="si-dashboard__subtitle">{{ isSolo ? '单应用 · 请求、延迟与错误' : '总览 · 拓扑为主，排名为辅' }}</p>
+        <p class="si-dashboard__subtitle">
+          {{ isSolo ? '单应用 · 请求、延迟与错误' : isMesh ? '多服务 · 拓扑为主' : '多服务 · 等待调用边' }}
+        </p>
       </div>
       <div class="si-dashboard__status" v-show="!loading">
         <span v-if="!errorAnalysis || errorAnalysis.length === 0" class="si-dashboard__pill si-dashboard__pill--ok">
@@ -39,9 +41,13 @@
       <span class="ms-2">加载中…</span>
     </div>
 
-    <div v-show="!loading" class="si-dashboard__content">
-      <!-- 一级：KPI 可点击跳转 -->
-      <section class="si-dashboard__kpis" aria-label="关键指标">
+    <div v-show="!loading" class="si-dashboard__content" :class="{ 'si-dashboard__content--mesh': isMesh }">
+      <!-- KPI：多服务有边时收成细条，把高度留给拓扑 -->
+      <section
+        class="si-dashboard__kpis"
+        :class="{ 'si-dashboard__kpis--compact': isMesh || isSolo }"
+        aria-label="关键指标"
+      >
         <button
           v-for="(stat, index) in stats"
           :key="index"
@@ -57,16 +63,19 @@
                   {{ stat.title }}
                 </div>
                 <div class="si-dashboard__kpi-value">{{ stat.value }}</div>
-                <div class="si-dashboard__kpi-hint">{{ stat.hint }}</div>
+                <div v-if="!isMesh && !isSolo" class="si-dashboard__kpi-hint">{{ stat.hint }}</div>
               </div>
-              <i :class="`fa ${stat.icon} si-dashboard__kpi-icon text-${stat.color}`"></i>
+              <i v-if="!isMesh" :class="`fa ${stat.icon} si-dashboard__kpi-icon text-${stat.color}`"></i>
             </div>
           </div>
         </button>
       </section>
 
-      <!-- 三级：Collector 收成一条，不与主图抢视线 -->
-      <section v-if="collectorStats" class="si-dashboard__collector-strip" aria-label="采集器状态">
+      <section
+        v-if="collectorStats && !isMesh"
+        class="si-dashboard__collector-strip"
+        aria-label="采集器状态"
+      >
         <span class="si-dashboard__collector-strip-title"><i class="fa fa-database me-1"></i>Collector</span>
         <div class="si-dashboard__collector-strip-items">
           <span><em>接收</em>{{ collectorStats.totalReceivedRequests ?? 0 }}</span>
@@ -137,89 +146,14 @@
         </div>
       </section>
 
-      <!-- 诊断：慢服务 + 热点依赖（常有数据，可下钻） -->
-      <section v-if="!isSolo" class="si-dashboard__diag" aria-label="慢请求与热点依赖">
+      <!-- 多服务尚无调用边：矮诊断条 + 提示 -->
+      <section v-if="isWaitingEdges" class="si-dashboard__diag si-dashboard__diag--slim" aria-label="服务健康">
         <div class="si-dashboard__diag-panel">
           <div class="si-dashboard__diag-head">
-            <span><i class="fa fa-tachometer me-2"></i>慢服务 Top（按 p95） <PercentileHelp /></span>
+            <span><i class="fa fa-heartbeat me-2"></i>服务健康快照</span>
             <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goSlowTraces()">看慢链路</button>
           </div>
-          <div v-if="slowServices.length === 0" class="si-dashboard__diag-empty">暂无延迟数据</div>
-          <div v-else class="table-responsive si-dashboard__diag-scroll">
-            <table class="table table-hover mb-0 si-dashboard__diag-table">
-              <thead class="table-light">
-                <tr>
-                  <th>服务</th>
-                  <th>p50</th>
-                  <th>p95</th>
-                  <th>Span</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="row in slowServices"
-                  :key="'slow-' + row.serviceName"
-                  class="si-dashboard__diag-row"
-                  @click="goServiceSlow(row)"
-                >
-                  <td class="text-truncate" style="max-width: 11rem" :title="row.serviceName">{{ row.serviceName }}</td>
-                  <td>{{ formatMs(row.p50Ms) }}</td>
-                  <td :class="row.p95Ms >= 1000 ? 'text-danger fw-bold' : row.p95Ms >= 500 ? 'text-warning' : ''">
-                    {{ formatMs(row.p95Ms) }}
-                  </td>
-                  <td class="text-muted">{{ row.spanCount }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="si-dashboard__diag-panel">
-          <div class="si-dashboard__diag-head">
-            <span>
-              <i class="fa me-2" :class="hasDependencies ? 'fa-exchange' : 'fa-heartbeat'"></i>
-              {{ hasDependencies ? '热点依赖 Top' : '服务健康快照' }}
-            </span>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary py-0"
-              @click="hasDependencies ? goTopology() : goSlowTraces()"
-            >
-              {{ hasDependencies ? '完整拓扑' : '看慢链路' }}
-            </button>
-          </div>
-
-          <div v-if="hasDependencies" class="table-responsive si-dashboard__diag-scroll">
-            <table class="table table-hover mb-0 si-dashboard__diag-table">
-              <thead class="table-light">
-                <tr>
-                  <th>调用</th>
-                  <th>次数</th>
-                  <th>均耗时</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(dep, idx) in hotDependencies"
-                  :key="'hot-' + dep.sourceService + '-' + dep.targetService + '-' + idx"
-                  class="si-dashboard__diag-row"
-                  @click="goHotDependency(dep)"
-                >
-                  <td class="si-dashboard__dep-cell" :title="`${dep.sourceService} → ${dep.targetService}`">
-                    <span class="si-dashboard__dep-src">{{ dep.sourceService }}</span>
-                    <i class="fa fa-long-arrow-right si-dashboard__dep-arrow"></i>
-                    <span class="si-dashboard__dep-tgt">{{ dep.targetService }}</span>
-                  </td>
-                  <td>{{ dep.callCount }}</td>
-                  <td :class="(dep.avgDuration || 0) > 500 ? 'text-warning' : ''">
-                    {{ formatMs(dep.avgDuration || 0) }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div v-else-if="healthSnapshot.length > 0" class="table-responsive si-dashboard__diag-scroll">
+          <div v-if="healthSnapshot.length > 0" class="table-responsive si-dashboard__diag-scroll">
             <table class="table table-hover mb-0 si-dashboard__diag-table">
               <thead class="table-light">
                 <tr>
@@ -248,12 +182,20 @@
               </tbody>
             </table>
           </div>
-
           <div v-else class="si-dashboard__diag-empty si-dashboard__diag-empty--rich">
             <p class="mb-1">已接入监控，但本窗口暂无延迟样本</p>
             <button type="button" class="btn btn-sm btn-outline-primary" @click="hours = 0; loadData()">扩大到全部已存</button>
           </div>
-
+        </div>
+        <div class="si-dashboard__diag-panel">
+          <div class="si-dashboard__diag-head">
+            <span><i class="fa fa-lightbulb-o me-2"></i>怎样出现调用边</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goTopology()">打开拓扑</button>
+          </div>
+          <ul class="si-dashboard__edge-tips">
+            <li>出站走 OpenFeign、<code>WebClient.Builder</code>、Gateway 或 <code>RestTemplateBuilder</code></li>
+            <li>Agent 写入 <code>remoteService</code> 后，刷新即可在主图看到「调用方 → 被调用方」</li>
+          </ul>
           <div v-if="errorAnalysis && errorAnalysis.length > 0" class="si-dashboard__diag-foot">
             <button type="button" class="btn btn-sm btn-outline-danger py-0" @click="goErrors">
               {{ errorAnalysis.length }} 个异常服务 · 去错误分析
@@ -262,74 +204,116 @@
         </div>
       </section>
 
-      <!-- 主体：拓扑主视图 + 排名辅栏 -->
-      <section v-if="!isSolo" class="si-dashboard__body">
+      <!-- 有调用边：拓扑主舞台 + 窄辅栏 -->
+      <section v-if="isMesh" class="si-dashboard__body si-dashboard__body--mesh">
         <div class="chart-container si-dashboard__panel si-dashboard__chart-topology si-dashboard__hero">
           <div class="si-dashboard__chart-head">
             <div>
               <h6 class="si-dashboard__panel-title mb-0">
-                <i class="fa fa-sitemap me-2"></i>
-                {{ hasDependencies ? '主视图 · 服务依赖拓扑' : '主视图 · 单应用总览' }}
+                <i class="fa fa-sitemap me-2"></i>服务依赖拓扑
               </h6>
               <p class="si-dashboard__panel-desc mb-0">
-                <template v-if="hasDependencies">箭头指向被调用方 · 点击节点/边可下钻链路 · {{ hoursLabel }}</template>
-                <template v-else>已监控 {{ services.length }} 个服务 · 暂无跨服务边 · {{ hoursLabel }}</template>
+                箭头指向被调用方 · 点击节点 / 边下钻链路 · {{ hoursLabel }}
+                <span v-if="collectorStats" class="si-dashboard__inline-meta">
+                  · Collector {{ collectorStats.totalReceivedSpans ?? 0 }} Span
+                </span>
               </p>
             </div>
             <div class="d-flex align-items-center gap-2">
-              <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTopology">
-                完整拓扑
-              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTopology">完整拓扑</button>
               <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshTopologyChart">
                 <i class="fa fa-refresh"></i>
               </button>
             </div>
           </div>
-
-          <div class="si-dashboard__hero-body" :class="{ 'si-dashboard__hero-body--solo': !hasDependencies && services.length > 0 }">
+          <div class="si-dashboard__hero-body">
             <div id="topology-chart" class="si-dashboard__chart-canvas"></div>
+          </div>
+        </div>
 
-            <div v-if="!hasDependencies && services.length > 0" class="si-dashboard__solo">
-              <div class="si-dashboard__solo-card">
-                <h6 class="si-dashboard__solo-title"><i class="fa fa-lightbulb-o me-1"></i>让拓扑更有价值</h6>
-                <ul class="si-dashboard__solo-tips">
-                  <li>业务侧用 OpenFeign / WebClient / Gateway 出站时，Agent 会写入 <code>remoteService</code></li>
-                  <li>上报后此处会出现「调用方 → 被调用方」边，可点击下钻</li>
-                  <li>单应用场景仍可用慢服务、请求排名与最近链路定位问题</li>
-                </ul>
-                <div class="si-dashboard__solo-actions">
-                  <button type="button" class="btn btn-sm btn-primary" @click="goTraces()">查看链路</button>
-                  <button type="button" class="btn btn-sm btn-outline-secondary" @click="hours = 0; loadData()">扩大时间范围</button>
-                </div>
-              </div>
+        <aside class="si-dashboard__rail">
+          <div class="si-dashboard__rail-card">
+            <div class="si-dashboard__rail-head">
+              <span>慢服务 <PercentileHelp /></span>
+              <button type="button" class="btn btn-sm btn-link py-0" @click="goSlowTraces()">更多</button>
+            </div>
+            <ul v-if="slowServices.length" class="si-dashboard__rail-list">
+              <li
+                v-for="row in slowServices.slice(0, 5)"
+                :key="'rail-slow-' + row.serviceName"
+                @click="goServiceSlow(row)"
+              >
+                <span class="si-dashboard__rail-name" :title="row.serviceName">{{ row.serviceName }}</span>
+                <em :class="row.p95Ms >= 1000 ? 'text-danger' : row.p95Ms >= 500 ? 'text-warning' : ''">
+                  {{ formatMs(row.p95Ms) }}
+                </em>
+              </li>
+            </ul>
+            <div v-else class="si-dashboard__rail-empty">暂无延迟样本</div>
+          </div>
 
-              <div class="si-dashboard__solo-card si-dashboard__solo-card--traces">
-                <div class="si-dashboard__solo-traces-head">
-                  <h6 class="si-dashboard__solo-title mb-0"><i class="fa fa-list-ul me-1"></i>最近链路</h6>
-                  <button type="button" class="btn btn-sm btn-link py-0" @click="goTraces()">全部</button>
-                </div>
-                <div v-if="recentTraces.length === 0" class="si-dashboard__diag-empty py-3">暂无最近链路</div>
-                <ul v-else class="si-dashboard__solo-traces">
-                  <li
-                    v-for="tr in recentTraces"
-                    :key="tr.traceId"
-                    class="si-dashboard__solo-trace"
-                    @click="goTraceDetail(tr.traceId)"
-                  >
-                    <div class="si-dashboard__solo-trace-main">
-                      <span class="si-dashboard__solo-trace-op" :title="tr.operationName">{{ tr.operationName || tr.endpoint || tr.traceId }}</span>
-                      <span class="badge" :class="tr.hasError || tr.statusCode === 'ERROR' ? 'bg-danger' : 'bg-success'">
-                        {{ tr.hasError || tr.statusCode === 'ERROR' ? '失败' : '成功' }}
-                      </span>
-                    </div>
-                    <div class="si-dashboard__solo-trace-meta">
-                      <span>{{ tr.serviceName || '—' }}</span>
-                      <span>{{ formatMs(tr.durationMs || 0) }}</span>
-                    </div>
-                  </li>
-                </ul>
+          <div class="si-dashboard__rail-card">
+            <div class="si-dashboard__rail-head">
+              <span>热点依赖</span>
+              <button type="button" class="btn btn-sm btn-link py-0" @click="goTopology()">全部</button>
+            </div>
+            <ul v-if="hotDependencies.length" class="si-dashboard__rail-list">
+              <li
+                v-for="(dep, idx) in hotDependencies.slice(0, 5)"
+                :key="'rail-hot-' + idx"
+                @click="goHotDependency(dep)"
+              >
+                <span class="si-dashboard__rail-dep" :title="`${dep.sourceService} → ${dep.targetService}`">
+                  {{ dep.sourceService }} → {{ dep.targetService }}
+                </span>
+                <em>{{ dep.callCount }}</em>
+              </li>
+            </ul>
+            <div v-else class="si-dashboard__rail-empty">暂无依赖</div>
+          </div>
+
+          <div class="chart-container si-dashboard__panel si-dashboard__chart-rank si-dashboard__rail-rank">
+            <div class="si-dashboard__chart-head">
+              <div>
+                <h6 class="si-dashboard__panel-title mb-0">请求排名</h6>
+                <p class="si-dashboard__panel-desc mb-0">按 Span · 点柱筛选</p>
               </div>
             </div>
+            <div id="service-rank-chart" class="si-dashboard__chart-canvas"></div>
+          </div>
+
+          <button
+            v-if="errorAnalysis && errorAnalysis.length > 0"
+            type="button"
+            class="btn btn-sm btn-outline-danger w-100"
+            @click="goErrors"
+          >
+            {{ errorAnalysis.length }} 个异常服务
+          </button>
+        </aside>
+      </section>
+
+      <!-- 多服务无边：保留拓扑画布 + 排名 -->
+      <section v-if="isWaitingEdges" class="si-dashboard__body">
+        <div class="chart-container si-dashboard__panel si-dashboard__chart-topology si-dashboard__hero">
+          <div class="si-dashboard__chart-head">
+            <div>
+              <h6 class="si-dashboard__panel-title mb-0">
+                <i class="fa fa-sitemap me-2"></i>已监控服务
+              </h6>
+              <p class="si-dashboard__panel-desc mb-0">
+                {{ services.length }} 个服务 · 暂无跨服务边 · {{ hoursLabel }}
+              </p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTopology">完整拓扑</button>
+              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshTopologyChart">
+                <i class="fa fa-refresh"></i>
+              </button>
+            </div>
+          </div>
+          <div class="si-dashboard__hero-body">
+            <div id="topology-chart" class="si-dashboard__chart-canvas"></div>
           </div>
         </div>
 
@@ -337,10 +321,8 @@
           <div class="chart-container si-dashboard__panel si-dashboard__chart-rank">
             <div class="si-dashboard__chart-head">
               <div>
-                <h6 class="si-dashboard__panel-title mb-0">
-                  <i class="fa fa-bar-chart me-2"></i>辅栏 · 请求排名
-                </h6>
-                <p class="si-dashboard__panel-desc mb-0">按 Span 量 Top · 点击柱可筛链路</p>
+                <h6 class="si-dashboard__panel-title mb-0">请求排名</h6>
+                <p class="si-dashboard__panel-desc mb-0">按 Span 量 Top</p>
               </div>
               <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshServiceRankChart">
                 <i class="fa fa-refresh"></i>
@@ -387,6 +369,10 @@ let timeInterval: number | null = null
 const hasDependencies = computed(() => dependencies.value.length > 0)
 /** 只有一个应用、还没有调用边时，首页改看请求而不是空拓扑 */
 const isSolo = computed(() => !hasDependencies.value && services.value.length === 1)
+/** 有跨服务调用边：拓扑占主舞台 */
+const isMesh = computed(() => hasDependencies.value)
+/** 多个服务但还没有调用边（含尚未接入任何服务） */
+const isWaitingEdges = computed(() => !isSolo.value && !isMesh.value)
 
 const soloProfile = computed(() => {
   const name = services.value[0] || ''
@@ -664,8 +650,8 @@ const loadData = async () => {
   }
 }
 
-/** 单应用不挂拓扑图；有调用边时再创建，避免空画布占满首页。 */
-const syncCharts = () => {
+/** 单应用不挂拓扑图；进入多服务视图后再创建，DOM 切换时先 dispose。 */
+const syncCharts = async () => {
   if (isSolo.value) {
     topologyChart?.dispose()
     topologyChart = null
@@ -673,12 +659,14 @@ const syncCharts = () => {
     serviceRankChart = null
     return
   }
-  if (!topologyChart) {
-    mountTopologyChart()
-  }
-  if (!serviceRankChart) {
-    mountRankChart()
-  }
+  // v-if 切换后旧实例可能绑在已卸载节点上
+  topologyChart?.dispose()
+  topologyChart = null
+  serviceRankChart?.dispose()
+  serviceRankChart = null
+  await nextTick()
+  mountTopologyChart()
+  mountRankChart()
   updateCharts()
   topologyChart?.resize()
   serviceRankChart?.resize()
@@ -819,6 +807,130 @@ onUnmounted(() => {
 .si-dashboard__loading i {
   color: var(--si-teal);
   font-size: 1.75rem;
+}
+
+.si-dashboard__content--mesh .si-dashboard__kpis--compact {
+  gap: 0.45rem;
+}
+
+.si-dashboard__kpis--compact .si-dashboard__kpi {
+  min-height: 0;
+}
+
+.si-dashboard__kpis--compact .si-dashboard__kpi :deep(.card-body) {
+  padding: 0.55rem 0.75rem;
+}
+
+.si-dashboard__kpis--compact .si-dashboard__kpi-value {
+  font-size: 1.15rem;
+}
+
+.si-dashboard__kpis--compact .si-dashboard__kpi-label {
+  margin-bottom: 0.1rem !important;
+}
+
+.si-dashboard__body--mesh {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 24%);
+}
+
+.si-dashboard__inline-meta {
+  color: var(--si-muted);
+}
+
+.si-dashboard__diag--slim {
+  max-height: 11rem;
+}
+
+.si-dashboard__edge-tips {
+  margin: 0;
+  padding: 0.65rem 0.85rem 0.85rem 1.35rem;
+  font-size: 0.78rem;
+  color: var(--si-ink-soft);
+  line-height: 1.55;
+}
+
+.si-dashboard__edge-tips code {
+  font-size: 0.72rem;
+  color: var(--si-teal);
+}
+
+.si-dashboard__rail-card {
+  flex-shrink: 0;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--card-bg);
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+}
+
+.si-dashboard__rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
+  background: rgba(15, 118, 110, 0.04);
+}
+
+.si-dashboard__rail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.2rem 0;
+  max-height: 9.5rem;
+  overflow-y: auto;
+}
+
+.si-dashboard__rail-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.si-dashboard__rail-list li:hover {
+  background: rgba(15, 118, 110, 0.06);
+}
+
+.si-dashboard__rail-name,
+.si-dashboard__rail-dep {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--si-ink);
+}
+
+.si-dashboard__rail-list em {
+  flex: 0 0 auto;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--si-ink-soft);
+}
+
+.si-dashboard__rail-empty {
+  padding: 0.75rem;
+  font-size: 0.78rem;
+  color: var(--si-muted);
+  text-align: center;
+}
+
+.si-dashboard__rail-rank {
+  flex: 1;
+  min-height: 8rem;
+}
+
+@media (max-width: 991px) {
+  .si-dashboard__body--mesh {
+    grid-template-columns: 1fr;
+  }
 }
 
 .si-dashboard__kpis {
