@@ -39,15 +39,9 @@
             </select>
           </div>
           <div class="col-lg-2 col-md-4 col-sm-6">
-            <label for="hours-select" class="form-label">时间</label>
+            <label for="hours-select" class="form-label">时间范围</label>
             <select id="hours-select" class="form-select" v-model.number="hours" @change="onFilterChange">
-              <option :value="1">1小时</option>
-              <option :value="6">6小时</option>
-              <option :value="12">12小时</option>
-              <option :value="24">24小时</option>
-              <option :value="72">72小时</option>
-              <option :value="168">7天</option>
-              <option :value="0">全部已存</option>
+              <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
           </div>
           <div class="col-lg-2 col-md-4 col-sm-6">
@@ -163,8 +157,8 @@
                 <td colspan="6" class="text-center text-muted">
                   <div class="py-4">
                     <i class="fa fa-info-circle fa-2x mb-2"></i>
-                    <p class="mb-0">暂无匹配的链路</p>
-                    <p class="small mb-0 mt-1">可放宽筛选，或确认业务服务已上报到 insight-server</p>
+                    <p class="mb-0">{{ emptyNoMatchMessage(hours) }}</p>
+                    <p class="small mb-0 mt-1">{{ EMPTY_HINT_RELAX }}</p>
                   </div>
                 </td>
               </tr>
@@ -181,6 +175,11 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ApiService } from '../services/ApiService'
 import { formatDuration } from '../utils/traceTimeline'
+import {
+  TIME_RANGE_OPTIONS,
+  emptyNoMatchMessage,
+  EMPTY_HINT_RELAX
+} from '../utils/timeRange'
 
 const router = useRouter()
 const route = useRoute()

@@ -44,14 +44,8 @@
         <div class="si-toolbar-inner">
           <div>
             <label class="form-label" for="hours-select-err">时间范围</label>
-            <select id="hours-select-err" class="form-select" style="min-width: 11rem" v-model="hours" @change="loadData">
-              <option :value="1">最近 1 小时</option>
-              <option :value="6">最近 6 小时</option>
-              <option :value="12">最近 12 小时</option>
-              <option :value="24">最近 24 小时</option>
-              <option :value="72">最近 72 小时</option>
-              <option :value="168">最近 7 天</option>
-              <option :value="0">全部已存</option>
+            <select id="hours-select-err" class="form-select" style="min-width: 11rem" v-model.number="hours" @change="loadData">
+              <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
           </div>
           <div class="si-err-hint" title="基于错误 Span 的 status / exception 归类">
@@ -74,7 +68,7 @@
         </div>
         <h3 class="si-err-healthy__title">运行正常</h3>
         <p class="si-err-healthy__desc">
-          所选时间范围内未发现错误调用，所有已上报服务状态良好。
+          {{ hours === 0 ? '全部已存范围内' : formatHoursLabel(hours) + '内' }}未发现错误调用，所有已上报服务状态良好。
         </p>
         <div class="si-err-healthy__tips">
           <span><i class="fa fa-bolt me-1"></i>可在业务侧制造失败请求后再刷新本页</span>
@@ -314,6 +308,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { ApiService } from '../services/ApiService'
+import { TIME_RANGE_OPTIONS, formatHoursLabel } from '../utils/timeRange'
 
 const router = useRouter()
 const loading = ref(true)

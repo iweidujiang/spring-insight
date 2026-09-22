@@ -20,12 +20,7 @@
       <div class="si-dashboard__actions">
         <label class="si-dashboard__hours visually-hidden" for="dashboard-hours">时间范围</label>
         <select id="dashboard-hours" class="form-select form-select-sm si-dashboard__hours" v-model.number="hours" @change="loadData">
-          <option :value="1">近 1 小时</option>
-          <option :value="6">近 6 小时</option>
-          <option :value="24">近 24 小时</option>
-          <option :value="72">近 72 小时</option>
-          <option :value="168">近 7 天</option>
-          <option :value="0">全部已存</option>
+          <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
         <button class="btn btn-primary btn-sm si-dashboard__btn" @click="loadData" :disabled="loading">
           <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
@@ -122,7 +117,7 @@
             <h6 class="mb-0">最近请求</h6>
             <span class="si-app__traces-hint">{{ hoursLabel }}</span>
           </div>
-          <div v-if="recentTraces.length === 0" class="si-dashboard__diag-empty">这个时间范围内还没有请求</div>
+          <div v-if="recentTraces.length === 0" class="si-dashboard__diag-empty">{{ emptyRequestsMessage(hours) }}</div>
           <ul v-else class="si-app__list">
             <li
               v-for="tr in recentTraces"
@@ -183,7 +178,7 @@
             </table>
           </div>
           <div v-else class="si-dashboard__diag-empty si-dashboard__diag-empty--rich">
-            <p class="mb-1">已接入监控，但本窗口暂无延迟样本</p>
+            <p class="mb-1">{{ emptyLatencySampleMessage(hours) }}</p>
             <button type="button" class="btn btn-sm btn-outline-primary" @click="hours = 0; loadData()">扩大到全部已存</button>
           </div>
         </div>
@@ -249,7 +244,7 @@
                 </em>
               </li>
             </ul>
-            <div v-else class="si-dashboard__rail-empty">暂无延迟样本</div>
+            <div v-else class="si-dashboard__rail-empty">{{ emptyInRangeShort(hours, '延迟样本') }}</div>
           </div>
 
           <div class="si-dashboard__rail-card">
@@ -269,7 +264,7 @@
                 <em>{{ dep.callCount }}</em>
               </li>
             </ul>
-            <div v-else class="si-dashboard__rail-empty">暂无依赖</div>
+            <div v-else class="si-dashboard__rail-empty">{{ emptyInRangeShort(hours, '依赖') }}</div>
           </div>
 
           <div class="chart-container si-dashboard__panel si-dashboard__chart-rank si-dashboard__rail-rank">
@@ -347,6 +342,13 @@ import PercentileHelp from '../components/PercentileHelp.vue'
 import { ApiService } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { formatDuration } from '../utils/traceTimeline'
+import {
+  TIME_RANGE_OPTIONS,
+  formatHoursLabel,
+  emptyRequestsMessage,
+  emptyLatencySampleMessage,
+  emptyInRangeShort
+} from '../utils/timeRange'
 
 const router = useRouter()
 
@@ -386,13 +388,7 @@ const soloProfile = computed(() => {
   }
 })
 
-const hoursLabel = computed(() => {
-  const h = hours.value
-  if (h === 0) return '全部已存'
-  if (h === 1) return '近 1 小时'
-  if (h === 168) return '近 7 天'
-  return `近 ${h} 小时`
-})
+const hoursLabel = computed(() => formatHoursLabel(hours.value))
 
 const slowServices = computed(() =>
   [...serviceLatency.value]

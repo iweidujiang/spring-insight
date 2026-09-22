@@ -21,14 +21,8 @@
         <div class="si-toolbar-inner">
           <div>
             <label class="form-label" for="hours-topology">时间范围</label>
-            <select id="hours-topology" class="form-select" style="min-width: 11rem" v-model="hours" @change="loadData">
-              <option :value="1">最近 1 小时</option>
-              <option :value="6">最近 6 小时</option>
-              <option :value="12">最近 12 小时</option>
-              <option :value="24">最近 24 小时</option>
-              <option :value="72">最近 72 小时</option>
-              <option :value="168">最近 7 天</option>
-              <option :value="0">全部已存</option>
+            <select id="hours-topology" class="form-select" style="min-width: 11rem" v-model.number="hours" @change="loadData">
+              <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
           </div>
           <div class="d-flex flex-wrap gap-2 ms-auto">
@@ -97,7 +91,7 @@
           <h5 class="mb-0">最近请求</h5>
           <button type="button" class="btn btn-sm btn-link py-0" @click="goServiceTraces(soloName)">全部</button>
         </div>
-        <div v-if="recentTraces.length === 0" class="si-topo-solo__empty">这个时间范围内还没有请求</div>
+        <div v-if="recentTraces.length === 0" class="si-topo-solo__empty">{{ emptyRequestsMessage(hours) }}</div>
         <ul v-else class="si-topo-solo__list">
           <li
             v-for="tr in recentTraces"
@@ -222,6 +216,7 @@ import PercentileHelp from '../components/PercentileHelp.vue'
 import { ApiService } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { formatDuration } from '../utils/traceTimeline'
+import { TIME_RANGE_OPTIONS, emptyRequestsMessage } from '../utils/timeRange'
 
 const router = useRouter()
 const loading = ref(true)
