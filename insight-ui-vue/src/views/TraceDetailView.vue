@@ -15,7 +15,7 @@
       <div class="si-page__toolbar">
         <button
           v-if="timeline.errorCount > 0"
-          class="btn btn-outline-danger"
+          class="btn btn-sm btn-outline-danger"
           type="button"
           @click="jumpError(-1)"
           title="上一个异常 Span"
@@ -24,18 +24,18 @@
         </button>
         <button
           v-if="timeline.errorCount > 0"
-          class="btn btn-outline-danger"
+          class="btn btn-sm btn-outline-danger"
           type="button"
           @click="jumpError(1)"
           title="下一个异常 Span"
         >
           异常 <i class="fa fa-chevron-down"></i>
         </button>
-        <button class="btn btn-outline-secondary" type="button" @click="goBack">
+        <button class="btn btn-sm btn-outline-secondary" type="button" @click="goBack">
           <i class="fa fa-arrow-left me-1"></i>返回
         </button>
         <button
-          class="btn btn-outline-secondary"
+          class="btn btn-sm btn-outline-secondary"
           type="button"
           @click="copyTraceContext"
           :disabled="loading || spans.length === 0"
@@ -44,7 +44,7 @@
           <i class="fa fa-magic me-1"></i>复制 Context
         </button>
         <button
-          class="btn btn-outline-info"
+          class="btn btn-sm btn-outline-info"
           type="button"
           @click="runExplain"
           :disabled="loading || explaining || spans.length === 0 || !aiStatus.invokeReady"
@@ -53,7 +53,7 @@
           <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-lightbulb-o'"></i>
           {{ explaining ? '解释中…' : 'AI 解释' }}
         </button>
-        <button class="btn btn-primary" type="button" @click="load" :disabled="loading">
+        <button class="btn btn-sm btn-primary" type="button" @click="load" :disabled="loading">
           <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
         </button>
       </div>
@@ -61,19 +61,6 @@
 
     <div v-if="copyHint" class="alert alert-success py-2 mb-3" role="status">{{ copyHint }}</div>
     <div v-if="explainHint" class="alert alert-warning py-2 mb-3" role="status">{{ explainHint }}</div>
-
-    <div v-if="explainMarkdown" class="card stat-card mb-3">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-          <h5 class="card-title mb-0">
-            <i class="fa fa-lightbulb-o me-2"></i>AI 解释
-            <small v-if="explainMeta" class="text-muted ms-2">{{ explainMeta }}</small>
-          </h5>
-          <button class="btn btn-sm btn-outline-secondary" type="button" @click="explainMarkdown = ''">关闭</button>
-        </div>
-        <pre class="trace-ai-markdown mb-0">{{ explainMarkdown }}</pre>
-      </div>
-    </div>
 
     <div v-if="loading" class="loading-spinner">
       <i class="fa fa-spinner fa-spin"></i>
@@ -89,37 +76,37 @@
       </div>
 
       <template v-else>
-        <!-- 摘要 -->
-        <section class="trace-summary">
-          <div class="trace-summary__card">
-            <span class="trace-summary__label">总耗时</span>
-            <span class="trace-summary__value">{{ formatDuration(timeline.totalDurationMs) }}</span>
+        <!-- 摘要细条：高度让给瀑布 -->
+        <section class="trace-strip" aria-label="链路摘要">
+          <div class="trace-strip__item">
+            <span class="trace-strip__label">总耗时</span>
+            <span class="trace-strip__value">{{ formatDuration(timeline.totalDurationMs) }}</span>
           </div>
-          <div class="trace-summary__card">
-            <span class="trace-summary__label">Span 数</span>
-            <span class="trace-summary__value">{{ spans.length }}</span>
+          <div class="trace-strip__item">
+            <span class="trace-strip__label">Span</span>
+            <span class="trace-strip__value">{{ spans.length }}</span>
           </div>
-          <div class="trace-summary__card">
-            <span class="trace-summary__label">涉及服务</span>
-            <span class="trace-summary__value">{{ timeline.serviceCount }}</span>
+          <div class="trace-strip__item">
+            <span class="trace-strip__label">服务</span>
+            <span class="trace-strip__value">{{ timeline.serviceCount }}</span>
           </div>
-          <div class="trace-summary__card">
-            <span class="trace-summary__label">异常 Span</span>
-            <span class="trace-summary__value" :class="{ 'text-danger': timeline.errorCount > 0 }">
+          <div class="trace-strip__item">
+            <span class="trace-strip__label">异常</span>
+            <span class="trace-strip__value" :class="{ 'is-danger': timeline.errorCount > 0 }">
               {{ timeline.errorCount }}
             </span>
           </div>
         </section>
 
-        <!-- 瀑布时间线 -->
-        <div class="card stat-card trace-waterfall-card">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-              <h5 class="card-title mb-0">
-                <i class="fa fa-align-left me-2"></i>调用时间线（瀑布图）
-              </h5>
+        <!-- 主舞台：瀑布 + 右栏选中 Span -->
+        <div class="trace-stage">
+          <section class="trace-stage__main" aria-label="调用时间线">
+            <div class="trace-stage__head">
+              <h3 class="trace-stage__title">
+                <i class="fa fa-align-left me-2"></i>调用时间线
+              </h3>
               <span class="trace-waterfall-hint">
-                缩进=父子；橙边=关键路径（最晚结束路径）；红条=异常
+                缩进=父子 · 橙边=关键路径 · 红条=异常
               </span>
             </div>
 
@@ -134,6 +121,7 @@
                     :style="{ left: `${(i / (timeline.tickMarks.length - 1 || 1)) * 100}%` }"
                   >{{ formatDuration(t) }}</span>
                 </div>
+                <div class="trace-waterfall__axis-dur"></div>
               </div>
 
               <div
@@ -148,7 +136,7 @@
                 }"
                 @click="selectSpan(row.span.spanId)"
               >
-                <div class="trace-waterfall__meta" :style="{ paddingLeft: `${12 + row.depth * 16}px` }">
+                <div class="trace-waterfall__meta" :style="{ paddingLeft: `${10 + row.depth * 14}px` }">
                   <span class="trace-waterfall__svc" :style="{ color: row.color }">{{ row.span.serviceName || '-' }}</span>
                   <span class="trace-waterfall__op" :title="row.span.operationName">{{ row.span.operationName || '-' }}</span>
                 </div>
@@ -169,82 +157,99 @@
                 <div class="trace-waterfall__dur">{{ formatDuration(row.durationMs) }}</div>
               </div>
             </div>
-          </div>
+          </section>
+
+          <aside class="trace-stage__aside" aria-label="选中 Span">
+            <div class="trace-aside">
+              <h3 class="trace-aside__title"><i class="fa fa-info-circle me-2"></i>选中 Span</h3>
+
+              <template v-if="selected">
+                <dl class="trace-selected">
+                  <div><dt>服务</dt><dd>{{ selected.serviceName || '-' }}</dd></div>
+                  <div><dt>操作</dt><dd>{{ selected.operationName || '-' }}</dd></div>
+                  <div><dt>类型</dt><dd>{{ selected.spanKind || '-' }}</dd></div>
+                  <div><dt>组件</dt><dd>{{ selected.component || '-' }}</dd></div>
+                  <div><dt>端点</dt><dd>{{ selected.endpoint || '-' }}</dd></div>
+                  <div><dt>耗时</dt><dd>{{ formatDuration(Number(selected.durationMs) || 0) }}</dd></div>
+                  <div><dt>状态</dt><dd>{{ selected.statusCode || '-' }}</dd></div>
+                  <div><dt>远端</dt><dd>{{ remoteLabel(selected) }}</dd></div>
+                  <div><dt>spanId</dt><dd><code>{{ selected.spanId }}</code></dd></div>
+                  <div><dt>parent</dt><dd><code>{{ selected.parentSpanId || '(root)' }}</code></dd></div>
+                </dl>
+
+                <div v-if="selected.errorCode || selected.errorMessage" class="trace-error-box">
+                  <div class="trace-error-box__title"><i class="fa fa-exclamation-triangle me-1"></i>错误信息</div>
+                  <div v-if="selected.errorCode"><strong>errorCode</strong>：{{ selected.errorCode }}</div>
+                  <div v-if="selected.errorMessage" class="mt-1">{{ selected.errorMessage }}</div>
+                </div>
+
+                <div v-if="tagEntries.length" class="trace-aside__tags">
+                  <div class="trace-tags-title">Tags</div>
+                  <div class="trace-tags">
+                    <span v-for="[k, v] in tagEntries" :key="k" class="trace-tag">
+                      <em>{{ k }}</em>{{ v }}
+                    </span>
+                  </div>
+                </div>
+              </template>
+
+              <p v-else class="trace-aside__empty">点击瀑布行查看详情</p>
+            </div>
+          </aside>
         </div>
 
-        <!-- 选中详情 + 列表 -->
-        <div v-if="selected" class="card stat-card">
-          <div class="card-body">
-            <h5 class="card-title mb-3"><i class="fa fa-info-circle me-2"></i>选中 Span</h5>
-            <dl class="trace-selected">
-              <div><dt>服务</dt><dd>{{ selected.serviceName || '-' }}</dd></div>
-              <div><dt>操作</dt><dd>{{ selected.operationName || '-' }}</dd></div>
-              <div><dt>类型</dt><dd>{{ selected.spanKind || '-' }}</dd></div>
-              <div><dt>组件</dt><dd>{{ selected.component || '-' }}</dd></div>
-              <div><dt>端点</dt><dd>{{ selected.endpoint || '-' }}</dd></div>
-              <div><dt>耗时</dt><dd>{{ formatDuration(Number(selected.durationMs) || 0) }}</dd></div>
-              <div><dt>状态</dt><dd>{{ selected.statusCode || '-' }}</dd></div>
-              <div><dt>远端</dt><dd>{{ remoteLabel(selected) }}</dd></div>
-              <div><dt>spanId</dt><dd><code>{{ selected.spanId }}</code></dd></div>
-              <div><dt>parent</dt><dd><code>{{ selected.parentSpanId || '(root)' }}</code></dd></div>
-            </dl>
-
-            <div v-if="selected.errorCode || selected.errorMessage" class="trace-error-box mt-3">
-              <div class="trace-error-box__title"><i class="fa fa-exclamation-triangle me-1"></i>错误信息</div>
-              <div v-if="selected.errorCode"><strong>errorCode</strong>：{{ selected.errorCode }}</div>
-              <div v-if="selected.errorMessage" class="mt-1">{{ selected.errorMessage }}</div>
-            </div>
-
-            <div v-if="tagEntries.length" class="mt-3">
-              <div class="trace-tags-title">Tags</div>
-              <div class="trace-tags">
-                <span v-for="[k, v] in tagEntries" :key="k" class="trace-tag">
-                  <em>{{ k }}</em>{{ v }}
-                </span>
-              </div>
-            </div>
+        <!-- AI 结果：不占首屏，有内容时出现在瀑布下方 -->
+        <section v-if="explainMarkdown" class="trace-ai-panel" aria-label="AI 解释">
+          <div class="trace-ai-panel__head">
+            <h3 class="trace-ai-panel__title">
+              <i class="fa fa-lightbulb-o me-2"></i>AI 解释
+              <small v-if="explainMeta" class="text-muted ms-2">{{ explainMeta }}</small>
+            </h3>
+            <button class="btn btn-sm btn-outline-secondary" type="button" @click="explainMarkdown = ''">关闭</button>
           </div>
-        </div>
+          <pre class="trace-ai-markdown mb-0">{{ explainMarkdown }}</pre>
+        </section>
 
-        <div class="card stat-card si-table-panel">
-          <div class="card-body">
-            <h5 class="card-title mb-3"><i class="fa fa-list me-2"></i>Span 列表（{{ spans.length }}）</h5>
-            <div class="table-responsive">
-              <table class="table table-hover mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>服务</th>
-                    <th>操作</th>
-                    <th>类型</th>
-                    <th>偏移</th>
-                    <th>耗时</th>
-                    <th>状态</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="(row, i) in timeline.rows"
-                    :key="row.span.spanId || i"
-                    :class="{ 'table-active': selectedSpanId === row.span.spanId, 'table-danger': row.isError }"
-                    style="cursor: pointer"
-                    @click="selectSpan(row.span.spanId)"
-                  >
-                    <td>{{ row.span.serviceName }}</td>
-                    <td class="text-truncate" style="max-width: 280px">{{ row.span.operationName }}</td>
-                    <td>{{ row.span.spanKind }}</td>
-                    <td>+{{ formatDuration(row.offsetMs) }}</td>
-                    <td>{{ formatDuration(row.durationMs) }}</td>
-                    <td>
-                      <span class="badge" :class="row.isError ? 'bg-danger' : 'bg-success'">
-                        {{ row.span.statusCode || (row.isError ? 'ERR' : 'OK') }}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+        <!-- Span 表：默认折叠 -->
+        <details class="trace-span-fold">
+          <summary class="trace-span-fold__summary">
+            <i class="fa fa-list me-2"></i>Span 列表（{{ spans.length }}）
+          </summary>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>服务</th>
+                  <th>操作</th>
+                  <th>类型</th>
+                  <th>偏移</th>
+                  <th>耗时</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(row, i) in timeline.rows"
+                  :key="row.span.spanId || i"
+                  :class="{ 'table-active': selectedSpanId === row.span.spanId, 'table-danger': row.isError }"
+                  style="cursor: pointer"
+                  @click="selectSpan(row.span.spanId)"
+                >
+                  <td>{{ row.span.serviceName }}</td>
+                  <td class="text-truncate" style="max-width: 280px">{{ row.span.operationName }}</td>
+                  <td>{{ row.span.spanKind }}</td>
+                  <td>+{{ formatDuration(row.offsetMs) }}</td>
+                  <td>{{ formatDuration(row.durationMs) }}</td>
+                  <td>
+                    <span class="badge" :class="row.isError ? 'bg-danger' : 'bg-success'">
+                      {{ row.span.statusCode || (row.isError ? 'ERR' : 'OK') }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </div>
+        </details>
       </template>
     </template>
   </div>
@@ -455,7 +460,7 @@ onMounted(async () => {
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.04);
   border: 1px solid var(--card-border);
-  max-height: 28rem;
+  max-height: 22rem;
   overflow: auto;
 }
 
@@ -463,92 +468,165 @@ onMounted(async () => {
   color: var(--si-teal);
 }
 
-.trace-summary {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
+/* —— 摘要细条 —— */
+.trace-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.25rem;
+  align-items: baseline;
+  padding: 0.55rem 0.9rem;
+  margin-bottom: 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: rgba(255, 252, 250, 0.65);
 }
 
-@media (max-width: 767px) {
-  .trace-summary {
-    grid-template-columns: 1fr 1fr;
+.trace-strip__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.trace-strip__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--si-muted);
+}
+
+.trace-strip__value {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.trace-strip__value.is-danger {
+  color: #b91c1c;
+}
+
+/* —— 主舞台：瀑布 + 右栏 —— */
+.trace-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 30%);
+  gap: 0.85rem;
+  align-items: start;
+  margin-bottom: 0.85rem;
+}
+
+@media (max-width: 991px) {
+  .trace-stage {
+    grid-template-columns: 1fr;
   }
 }
 
-.trace-summary__card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 1.05rem 1.2rem;
-  min-height: 5.25rem;
+.trace-stage__main {
+  min-width: 0;
+  padding: 0.85rem 0.95rem 1rem;
   border-radius: 10px;
-  background: var(--card-bg);
   border: 1px solid var(--card-border);
-  box-shadow: var(--box-shadow);
+  background: var(--card-bg);
 }
 
-.trace-summary__label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--si-muted);
-  font-weight: 600;
+.trace-stage__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.65rem;
 }
 
-.trace-summary__value {
-  font-family: var(--font-display);
-  font-size: clamp(1.45rem, 2.2vw, 1.75rem);
+.trace-stage__title {
+  margin: 0;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--si-ink);
-  line-height: 1.15;
-}
-
-.trace-waterfall-card {
-  margin-bottom: 0 !important;
 }
 
 .trace-waterfall-hint {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--si-muted);
-  max-width: 28rem;
-  text-align: right;
 }
 
+.trace-stage__aside {
+  min-width: 0;
+}
+
+@media (min-width: 992px) {
+  .trace-aside {
+    position: sticky;
+    top: calc(var(--si-nav-offset, 4.5rem) + 0.75rem);
+    max-height: calc(100vh - var(--si-nav-offset, 4.5rem) - 1.5rem);
+    overflow: auto;
+  }
+}
+
+.trace-aside {
+  padding: 0.85rem 0.95rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+}
+
+.trace-aside__title {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--si-ink);
+}
+
+.trace-aside__empty {
+  margin: 0;
+  padding: 1.25rem 0.25rem;
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--si-muted);
+}
+
+.trace-aside__tags {
+  margin-top: 0.85rem;
+}
+
+/* —— 瀑布 —— */
 .trace-waterfall {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.2rem;
   border: 1px solid var(--card-border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--si-paper);
-  padding: 0.75rem 0.85rem 0.9rem;
+  padding: 0.55rem 0.65rem 0.7rem;
   overflow-x: auto;
 }
 
 .trace-waterfall__axis,
 .trace-waterfall__row {
   display: grid;
-  grid-template-columns: minmax(180px, 28%) 1fr 4.5rem;
-  gap: 0.65rem;
+  grid-template-columns: minmax(160px, 26%) 1fr 4.25rem;
+  gap: 0.5rem;
   align-items: center;
-  min-width: 640px;
+  min-width: 560px;
 }
 
 .trace-waterfall__axis {
-  padding-bottom: 0.35rem;
-  margin-bottom: 0.15rem;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.1rem;
   border-bottom: 1px dashed rgba(20, 83, 45, 0.15);
 }
 
 .trace-waterfall__axis-track {
   position: relative;
-  height: 1.1rem;
+  height: 1rem;
 }
 
 .trace-waterfall__tick {
   position: absolute;
   transform: translateX(-50%);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   color: var(--si-muted);
   font-weight: 600;
   white-space: nowrap;
@@ -563,8 +641,8 @@ onMounted(async () => {
 }
 
 .trace-waterfall__row {
-  padding: 0.28rem 0;
-  border-radius: 6px;
+  padding: 0.18rem 0;
+  border-radius: 5px;
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -586,18 +664,18 @@ onMounted(async () => {
 .trace-waterfall__meta {
   display: flex;
   flex-direction: column;
-  gap: 0.05rem;
+  gap: 0.02rem;
   min-width: 0;
 }
 
 .trace-waterfall__svc {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .trace-waterfall__op {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--si-ink);
   white-space: nowrap;
   overflow: hidden;
@@ -606,27 +684,27 @@ onMounted(async () => {
 
 .trace-waterfall__track {
   position: relative;
-  height: 1.55rem;
+  height: 1.35rem;
   background: rgba(255, 252, 250, 0.8);
   border: 1px solid rgba(20, 83, 45, 0.08);
-  border-radius: 6px;
+  border-radius: 5px;
   overflow: hidden;
 }
 
 .trace-waterfall__bar {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
-  border-radius: 4px;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 3px;
   min-width: 4px;
   display: flex;
   align-items: center;
-  padding: 0 0.35rem;
+  padding: 0 0.3rem;
   box-shadow: 0 1px 2px rgba(21, 36, 31, 0.12);
 }
 
 .trace-waterfall__bar-label {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
   color: #fff;
   white-space: nowrap;
@@ -636,35 +714,30 @@ onMounted(async () => {
 
 .trace-waterfall__dur {
   text-align: right;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--si-ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
+/* —— 选中 Span —— */
 .trace-selected {
   margin: 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem 1.25rem;
-}
-
-@media (max-width: 767px) {
-  .trace-selected {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: 1fr;
+  gap: 0.45rem 0;
 }
 
 .trace-selected > div {
   display: grid;
-  grid-template-columns: 4.5rem 1fr;
-  gap: 0.5rem;
+  grid-template-columns: 3.75rem 1fr;
+  gap: 0.4rem;
   align-items: start;
 }
 
 .trace-selected dt {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -674,53 +747,54 @@ onMounted(async () => {
 .trace-selected dd {
   margin: 0;
   color: var(--si-ink);
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   word-break: break-all;
 }
 
 .trace-error-box {
-  padding: 0.75rem 0.9rem;
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.8rem;
   border-radius: 8px;
   background: rgba(185, 28, 28, 0.06);
   border: 1px solid rgba(185, 28, 28, 0.2);
   color: #991b1b;
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   word-break: break-word;
 }
 
 .trace-error-box__title {
   font-weight: 700;
-  margin-bottom: 0.35rem;
-  font-size: 0.8rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .trace-tags-title {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--si-muted);
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.4rem;
 }
 
 .trace-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .trace-tag {
   display: inline-flex;
-  gap: 0.35rem;
+  gap: 0.3rem;
   align-items: baseline;
   max-width: 100%;
-  padding: 0.2rem 0.55rem;
-  border-radius: 6px;
+  padding: 0.15rem 0.45rem;
+  border-radius: 5px;
   background: rgba(15, 118, 110, 0.06);
   border: 1px solid rgba(15, 118, 110, 0.14);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   color: var(--si-ink);
   word-break: break-all;
 }
@@ -733,5 +807,65 @@ onMounted(async () => {
 
 .trace-tag em::after {
   content: ':';
+}
+
+/* —— AI 面板（瀑布下方） —— */
+.trace-ai-panel {
+  margin-bottom: 0.85rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+}
+
+.trace-ai-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.trace-ai-panel__title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* —— Span 表折叠 —— */
+.trace-span-fold {
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  padding: 0 0.95rem 0.85rem;
+}
+
+.trace-span-fold__summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.75rem 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  user-select: none;
+}
+
+.trace-span-fold__summary::-webkit-details-marker {
+  display: none;
+}
+
+.trace-span-fold__summary::before {
+  content: '\f0da';
+  font-family: FontAwesome, 'Font Awesome 5 Free', sans-serif;
+  display: inline-block;
+  width: 0.9rem;
+  margin-right: 0.15rem;
+  color: var(--si-muted);
+  transition: transform 0.15s ease;
+}
+
+.trace-span-fold[open] > .trace-span-fold__summary::before {
+  transform: rotate(90deg);
 }
 </style>
