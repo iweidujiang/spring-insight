@@ -97,7 +97,7 @@
             <strong>{{ formatMs(soloProfile.avgMs) }}</strong>
           </div>
           <div class="si-app__metric">
-            <span>p95</span>
+            <span>p95 <PercentileHelp /></span>
             <strong :class="soloProfile.p95Ms >= 1000 ? 'text-danger' : soloProfile.p95Ms >= 500 ? 'text-warning' : ''">
               {{ formatMs(soloProfile.p95Ms) }}
             </strong>
@@ -141,7 +141,7 @@
       <section v-if="!isSolo" class="si-dashboard__diag" aria-label="慢请求与热点依赖">
         <div class="si-dashboard__diag-panel">
           <div class="si-dashboard__diag-head">
-            <span><i class="fa fa-tachometer me-2"></i>慢服务 Top（按 p95）</span>
+            <span><i class="fa fa-tachometer me-2"></i>慢服务 Top（按 p95） <PercentileHelp /></span>
             <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goSlowTraces()">看慢链路</button>
           </div>
           <div v-if="slowServices.length === 0" class="si-dashboard__diag-empty">暂无延迟数据</div>
@@ -361,6 +361,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
+import PercentileHelp from '../components/PercentileHelp.vue'
 import { ApiService } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { formatDuration } from '../utils/traceTimeline'
@@ -1300,7 +1301,8 @@ onUnmounted(() => {
 }
 
 .si-app__metric span {
-  display: block;
+  display: inline-flex;
+  align-items: center;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
