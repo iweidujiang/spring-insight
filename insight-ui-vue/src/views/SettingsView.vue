@@ -204,7 +204,13 @@
               清除不可恢复；按服务只删服务名精确匹配的 Span，相关 Trace 可能不完整。
             </p>
             <div class="d-flex flex-wrap gap-2 mb-3">
-              <button type="button" class="btn btn-outline-danger btn-sm" :disabled="clearing" @click="confirmClear('all')">
+              <button
+                type="button"
+                class="btn btn-outline-danger btn-sm"
+                :disabled="clearing || storage.stored === 0"
+                :title="storage.stored === 0 ? '当前没有可清空的 Span' : undefined"
+                @click="openClearDialog('all')"
+              >
                 清空全部
               </button>
             </div>
@@ -214,7 +220,7 @@
                 <input v-model.number="clearOlderHours" class="form-control" type="number" min="1" />
               </div>
               <div class="col-md-4">
-                <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="confirmClear('older_than')">
+                <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="openClearDialog('older_than')">
                   按时间清理
                 </button>
               </div>
@@ -228,7 +234,7 @@
                 </datalist>
               </div>
               <div class="col-md-4">
-                <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="confirmClear('service')">
+                <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="openClearDialog('service')">
                   按服务清理
                 </button>
               </div>
@@ -237,14 +243,48 @@
         </section>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="clearDialog.open"
+        class="si-confirm"
+        role="presentation"
+        @click.self="closeClearDialog"
+      >
+        <div
+          class="si-confirm__panel"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="si-clear-title"
+          aria-describedby="si-clear-desc"
+        >
+          <div class="si-confirm__icon" aria-hidden="true">
+            <i class="fa fa-exclamation-triangle"></i>
+          </div>
+          <h3 id="si-clear-title" class="si-confirm__title">{{ clearDialog.title }}</h3>
+          <p id="si-clear-desc" class="si-confirm__body">{{ clearDialog.body }}</p>
+          <p class="si-confirm__warn">此操作不可恢复</p>
+          <div class="si-confirm__actions">
+            <button type="button" class="btn btn-outline-secondary" :disabled="clearing" @click="closeClearDialog">
+              取消
+            </button>
+            <button type="button" class="btn btn-danger" :disabled="clearing" @click="runClear">
+              <i class="fa" :class="clearing ? 'fa-spinner fa-spin' : 'fa-trash'"></i>
+              {{ clearing ? '清理中…' : '确认清理' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { ApiService, type RuntimeSettingsSaveBody } from '../services/ApiService'
 
 type SettingsSection = 'alert' | 'ai' | 'data'
+type ClearScope = 'all' | 'older_than' | 'service'
 
 const sections: { id: SettingsSection; label: string; icon: string }[] = [
   { id: 'alert', label: '告警', icon: 'fa-bell' },
@@ -271,6 +311,12 @@ const clearOlderHours = ref(24)
 const clearServiceName = ref('')
 const serviceNames = ref<string[]>([])
 const storage = reactive({ mode: '', stored: 0, max: 0, evicted: 0 })
+const clearDialog = reactive({
+  open: false,
+  scope: 'all' as ClearScope,
+  title: '',
+  body: ''
+})
 
 const form = reactive<RuntimeSettingsSaveBody>({
   alert: {
@@ -382,27 +428,44 @@ async function onSave() {
   }
 }
 
-async function confirmClear(scope: 'all' | 'older_than' | 'service') {
-  let tip = ''
+async function openClearDialog(scope: ClearScope) {
   if (scope === 'all') {
-    tip = `确定清空全部 ${storage.stored} 条 Span？此操作不可恢复。`
+    if (storage.stored === 0) {
+      showMsg('当前没有可清空的 Span', false)
+      return
+    }
+    clearDialog.scope = 'all'
+    clearDialog.title = '清空全部 Span'
+    clearDialog.body = `将删除当前已存的全部 ${storage.stored} 条 Span。仪表盘、拓扑与链路中的对应数据也会随之消失。`
   } else if (scope === 'older_than') {
     if (!clearOlderHours.value || clearOlderHours.value < 1) {
       showMsg('请填写有效的小时数', false)
       return
     }
-    tip = `确定删除早于 ${clearOlderHours.value} 小时的 Span？此操作不可恢复。`
+    clearDialog.scope = 'older_than'
+    clearDialog.title = '按时间清理'
+    clearDialog.body = `将删除早于 ${clearOlderHours.value} 小时的 Span（保留更近的数据）。`
   } else {
     const name = clearServiceName.value.trim()
     if (!name) {
       showMsg('请填写服务名', false)
       return
     }
-    tip = `确定删除服务「${name}」的全部 Span？相关 Trace 可能不完整，且不可恢复。`
+    clearDialog.scope = 'service'
+    clearDialog.title = '按服务清理'
+    clearDialog.body = `将删除服务「${name}」的全部 Span。相关 Trace 可能不完整。`
   }
-  if (!window.confirm(tip)) {
-    return
-  }
+  clearDialog.open = true
+}
+
+function closeClearDialog() {
+  if (clearing.value) return
+  clearDialog.open = false
+}
+
+async function runClear() {
+  if (!clearDialog.open || clearing.value) return
+  const scope = clearDialog.scope
   clearing.value = true
   message.value = ''
   try {
@@ -413,6 +476,7 @@ async function confirmClear(scope: 'all' | 'older_than' | 'service') {
           ? { scope: 'older_than', olderThanHours: clearOlderHours.value }
           : { scope: 'service', serviceName: clearServiceName.value.trim() }
     )
+    clearDialog.open = false
     await refreshStorage()
     showMsg(`已删除 ${result.deleted} 条，剩余 ${result.remaining}。请刷新仪表盘/拓扑查看。`, true)
   } catch (e: any) {
@@ -422,7 +486,21 @@ async function confirmClear(scope: 'all' | 'older_than' | 'service') {
   }
 }
 
-onMounted(load)
+function onClearDialogKey(e: KeyboardEvent) {
+  if (!clearDialog.open) return
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    closeClearDialog()
+  }
+}
+
+onMounted(() => {
+  load()
+  window.addEventListener('keydown', onClearDialogKey)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', onClearDialogKey)
+})
 </script>
 
 <style scoped>
@@ -522,5 +600,75 @@ onMounted(load)
     flex: 1 0 auto;
     justify-content: center;
   }
+}
+</style>
+
+<style>
+/* Teleport 到 body，需非 scoped */
+.si-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(21, 36, 31, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.si-confirm__panel {
+  width: min(26rem, 100%);
+  padding: 1.35rem 1.4rem 1.2rem;
+  border-radius: 12px;
+  background: var(--card-bg, #fffcfa);
+  border: 1px solid rgba(185, 28, 28, 0.22);
+  box-shadow: 0 18px 40px rgba(21, 36, 31, 0.18);
+  text-align: center;
+}
+
+.si-confirm__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 999px;
+  background: rgba(185, 28, 28, 0.1);
+  color: #b91c1c;
+  font-size: 1.25rem;
+}
+
+.si-confirm__title {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display, Fraunces, Georgia, serif);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--si-ink, #15241f);
+}
+
+.si-confirm__body {
+  margin: 0 0 0.45rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--si-ink-soft, #3d524a);
+  text-align: left;
+}
+
+.si-confirm__warn {
+  margin: 0 0 1.15rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #b91c1c;
+}
+
+.si-confirm__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.55rem;
 }
 </style>
