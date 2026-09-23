@@ -13,9 +13,9 @@
 
 # Server
 
-## [Unreleased] — `0.4.0-SNAPSHOT`
+## [Unreleased]
 
-
+## [0.4.0] — 2026-09-23
 
 ### 新增 / 体验
 - 链路列表改为请求主舞台：方法、路径和耗时条；点击整行打开详情
@@ -33,11 +33,16 @@
 ### 仓库 / 构建
 - **版本分线**：`agent.version` 与 `server.version` 拆开；无 Agent 变更时可只升 Server
 - 控制台前端迁入 `insight-server/ui`（不再单独顶层 `insight-ui-vue`）
-- 打 `v*` tag 时 Actions 自动将 `insight-server-x.y.z.jar` 挂到 GitHub Release（需 JDK 17+）
 
 ### 兼容
 - **Agent 可不升**：业务侧继续使用 Central `spring-insight-agent-starter:0.3.2` 上报到本版 Server
 - 正式支持 Boot 3.x + JDK 17+；暂不支持 Boot 4
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.3.2`（本版可不升） |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.4.0` |
 
 ---
 

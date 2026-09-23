@@ -7,17 +7,16 @@
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" /></a>
   <a href="https://www.oracle.com/java/"><img src="https://img.shields.io/badge/Agent-JDK%2017%2B-orange" alt="Java" /></a>
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-3.5.9-brightgreen" alt="Spring Boot" /></a>
-  <a href="https://github.com/iweidujiang/spring-insight"><img src="https://img.shields.io/badge/version-0.3.2-green.svg" alt="Version" /></a>
-  <a href="https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2"><img src="https://img.shields.io/badge/Maven%20Central-0.3.2-blue.svg" alt="Maven Central" /></a>
+  <a href="https://github.com/iweidujiang/spring-insight/releases/tag/v0.4.0"><img src="https://img.shields.io/badge/Server-0.4.0-green.svg" alt="Server" /></a>
+  <a href="https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2"><img src="https://img.shields.io/badge/Agent-0.3.2-blue.svg" alt="Agent" /></a>
 </p>
 
 面向 **Spring Boot / Spring Cloud** 的轻量监测工具：**业务侧加一个 Starter 埋点上报，旁边用 Docker 起一个 `insight-server`，就能看服务拓扑和调用链路。**
 
 
 - 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
-- 正式已发布：**Agent `0.3.2`**（Maven Central）+ **Server `0.3.2`**（GHCR）；`main` 开发中 Server 为 **`0.4.0-SNAPSHOT`**（Agent 仍为 `0.3.2`，可独立升版）
-- **运行时要求**：Spring Boot 3.x + JDK 17+（JDK 21+ 亦可）
-- **暂不支持 Spring Boot 4**（Boot 4 默认 Jackson 3 / 包名变更）；请用 Boot **3.5.x** 验证
+- 已发布：**Agent `0.3.2`**（Maven Central）+ **Server `0.4.0`**（GHCR）
+- **运行时要求**：Spring Boot 3.x + JDK 17+
 - 问题与建议欢迎开 Issue
 
 ---
@@ -33,7 +32,7 @@ docker run --rm -p 9966:9966 \
   -e SPRING_INSIGHT_SERVER_STORAGE_MODE=file \
   -e SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH=/data/spans.json \
   -v spring-insight-data:/data \
-  ghcr.io/iweidujiang/spring-insight-server:0.3.2
+  ghcr.io/iweidujiang/spring-insight-server:0.4.0
 ```
 
 或使用本仓库根目录 Compose（拉取已发布镜像）：
@@ -44,12 +43,12 @@ docker compose up -d
 
 **方式 B — 无 Docker（GitHub Release 可执行 jar）**
 
-从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-0.3.2.jar`（打 `v*` tag 时由 Actions 自动挂载），本机需 **JDK 17+**：
+从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-0.4.0.jar`（打 `v*` tag 时由 Actions 自动挂载），本机需 **JDK 17+**：
 
 ```bash
-java -jar insight-server-0.3.2.jar
+java -jar insight-server-0.4.0.jar
 # 落盘示例：
-# java -jar insight-server-0.3.2.jar --spring.insight.server.storage.mode=file
+# java -jar insight-server-0.4.0.jar --spring.insight.server.storage.mode=file
 ```
 
 **本地改 Server 源码联调（本机打包 + Docker 运行镜像，默认 sqlite）：**
@@ -129,13 +128,13 @@ spring:
 
 ## 版本与坐标
 
-Agent 与 Server **版本号分开维护**：业务侧 Starter 只在埋点变更时升版并发 Central；监测中心可随 UI 单独发 GHCR。号不同不代表不兼容——以兼容说明为准。
+Agent 与 Server **版本说明如下：**
 
 | 坐标 | 当前推荐 | 说明 |
 |------|----------|------|
 | `io.github.iweidujiang:spring-insight-agent-starter` | **`0.3.2`** | **业务侧依赖**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2)） |
 | `io.github.iweidujiang:insight-agent` | **`0.3.2`** | 采集核心（由 Starter 传递） |
-| `ghcr.io/iweidujiang/spring-insight-server` | **`0.3.2`**（开发中将发 `0.4.0`） | **监测中心镜像** |
+| `ghcr.io/iweidujiang/spring-insight-server` | **`0.4.0`** | **监测中心镜像** |
 | Release `insight-server-*.jar` | 同上 | **无 Docker**：JDK 17+ 下 `java -jar` |
 
 仓库根 `pom.xml` 属性：`agent.version` / `server.version`。发版说明见 [CHANGELOG.md](CHANGELOG.md)。
