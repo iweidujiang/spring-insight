@@ -6,9 +6,9 @@
           <i class="fa fa-cog me-2"></i>设置
         </h2>
         <p class="page-description mb-0">
-          {{ sectionHint }}
+          告警推送、链路 AI 解读与存储清理
           <template v-if="section !== 'data'">
-            ；保存后即时生效，写入
+            · 保存后即时生效，写入
             <code v-if="settingsPath">{{ settingsPath }}</code>
             <span v-else>runtime-settings.json</span>
           </template>
@@ -35,83 +35,110 @@
       <p class="mt-2 text-muted mb-0">加载设置…</p>
     </div>
 
-    <div v-else class="si-settings__layout">
-      <nav class="si-settings__nav" aria-label="设置分节">
+    <template v-else>
+      <nav class="si-settings__tabs" aria-label="设置分节">
         <button
           v-for="item in sections"
           :key="item.id"
           type="button"
-          class="si-settings__nav-item"
+          class="si-settings__tab"
           :class="{
             'is-active': section === item.id,
             'is-danger': item.id === 'data'
           }"
           @click="section = item.id"
         >
-          <i class="fa" :class="item.icon" aria-hidden="true"></i>
-          <span>{{ item.label }}</span>
+          <span class="si-settings__tab-icon" aria-hidden="true">
+            <i class="fa" :class="item.icon"></i>
+          </span>
+          <span class="si-settings__tab-text">
+            <strong>{{ item.label }}</strong>
+            <em>{{ item.desc }}</em>
+          </span>
         </button>
       </nav>
 
       <div class="si-settings__panel">
-        <section v-show="section === 'alert'" class="card stat-card si-settings__card">
-          <div class="card-body">
-            <h5 class="card-title"><i class="fa fa-bell me-2"></i>告警</h5>
-            <div class="form-check form-switch mb-3">
+        <!-- 告警 -->
+        <section v-show="section === 'alert'" class="si-settings__card">
+          <header class="si-settings__card-head">
+            <div>
+              <h3 class="si-settings__card-title"><i class="fa fa-bell me-2"></i>告警推送</h3>
+              <p class="si-settings__card-desc">
+                按错误率或错误次数扫描，超阈值时通过 Webhook 或邮件通知。
+              </p>
+            </div>
+            <div class="form-check form-switch mb-0">
               <input id="alert-enabled" v-model="form.alert.enabled" class="form-check-input" type="checkbox" />
-              <label class="form-check-label" for="alert-enabled">启用告警扫描</label>
+              <label class="form-check-label" for="alert-enabled">启用扫描</label>
             </div>
-            <div class="mb-3">
-              <label class="form-label">Webhook URL</label>
-              <input v-model="form.alert.webhookUrl" class="form-control" type="url" placeholder="https://… 或 http://host.docker.internal:…" />
-            </div>
-            <div class="row g-2 mb-3">
-              <div class="col-md-4">
-                <label class="form-label">指标</label>
-                <select v-model="form.alert.metric" class="form-control">
-                  <option value="error_rate">error_rate（%）</option>
-                  <option value="error_count">error_count</option>
-                </select>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">阈值</label>
-                <input v-model.number="form.alert.threshold" class="form-control" type="number" min="0" step="0.1" />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">窗口（分钟）</label>
-                <input v-model.number="form.alert.windowMinutes" class="form-control" type="number" min="1" />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">冷却（分钟）</label>
-                <input v-model.number="form.alert.cooldownMinutes" class="form-control" type="number" min="0" />
-              </div>
+          </header>
+
+          <div class="si-settings__fields">
+            <div class="si-settings__field si-settings__field--full">
+              <label class="form-label" for="alert-webhook">Webhook URL</label>
+              <input
+                id="alert-webhook"
+                v-model="form.alert.webhookUrl"
+                class="form-control"
+                type="url"
+                placeholder="https://… 或 http://host.docker.internal:…"
+              />
             </div>
 
-            <hr class="si-settings__hr" />
-            <h6 class="mb-2"><i class="fa fa-envelope me-1"></i>邮件 SMTP</h6>
-            <div class="form-check form-switch mb-3">
-              <input id="email-enabled" v-model="form.alert.email.enabled" class="form-check-input" type="checkbox" />
-              <label class="form-check-label" for="email-enabled">启用邮件通道</label>
+            <div class="si-settings__field">
+              <label class="form-label" for="alert-metric">指标</label>
+              <select id="alert-metric" v-model="form.alert.metric" class="form-select">
+                <option value="error_rate">error_rate（%）</option>
+                <option value="error_count">error_count</option>
+              </select>
             </div>
-            <div class="row g-2">
-              <div class="col-md-8">
-                <label class="form-label">SMTP Host</label>
-                <input v-model="form.alert.email.host" class="form-control" placeholder="smtp.example.com" />
+            <div class="si-settings__field">
+              <label class="form-label" for="alert-threshold">阈值</label>
+              <input id="alert-threshold" v-model.number="form.alert.threshold" class="form-control" type="number" min="0" step="0.1" />
+            </div>
+            <div class="si-settings__field">
+              <label class="form-label" for="alert-window">窗口（分钟）</label>
+              <input id="alert-window" v-model.number="form.alert.windowMinutes" class="form-control" type="number" min="1" />
+            </div>
+            <div class="si-settings__field">
+              <label class="form-label" for="alert-cooldown">冷却（分钟）</label>
+              <input id="alert-cooldown" v-model.number="form.alert.cooldownMinutes" class="form-control" type="number" min="0" />
+            </div>
+          </div>
+
+          <div class="si-settings__block">
+            <header class="si-settings__block-head">
+              <div>
+                <h4 class="si-settings__block-title"><i class="fa fa-envelope me-1"></i>邮件 SMTP</h4>
+                <p class="si-settings__block-desc">可选；与 Webhook 可同时启用。</p>
               </div>
-              <div class="col-md-4">
-                <label class="form-label">端口</label>
-                <input v-model.number="form.alert.email.port" class="form-control" type="number" min="1" />
+              <div class="form-check form-switch mb-0">
+                <input id="email-enabled" v-model="form.alert.email.enabled" class="form-check-input" type="checkbox" />
+                <label class="form-check-label" for="email-enabled">启用邮件</label>
               </div>
-              <div class="col-md-6">
-                <label class="form-label">用户名</label>
-                <input v-model="form.alert.email.username" class="form-control" autocomplete="off" />
+            </header>
+
+            <div class="si-settings__fields">
+              <div class="si-settings__field si-settings__field--wide">
+                <label class="form-label" for="smtp-host">SMTP Host</label>
+                <input id="smtp-host" v-model="form.alert.email.host" class="form-control" placeholder="smtp.example.com" />
               </div>
-              <div class="col-md-6">
-                <label class="form-label">
+              <div class="si-settings__field si-settings__field--narrow">
+                <label class="form-label" for="smtp-port">端口</label>
+                <input id="smtp-port" v-model.number="form.alert.email.port" class="form-control" type="number" min="1" />
+              </div>
+              <div class="si-settings__field">
+                <label class="form-label" for="smtp-user">用户名</label>
+                <input id="smtp-user" v-model="form.alert.email.username" class="form-control" autocomplete="off" />
+              </div>
+              <div class="si-settings__field">
+                <label class="form-label" for="smtp-pass">
                   密码
-                  <span v-if="passwordConfigured" class="text-muted small">（已配置，留空不修改）</span>
+                  <span v-if="passwordConfigured" class="text-muted small">（已配置，留空不改）</span>
                 </label>
                 <input
+                  id="smtp-pass"
                   v-model="form.alert.email.password"
                   class="form-control"
                   type="password"
@@ -119,22 +146,20 @@
                   :placeholder="passwordConfigured ? '••••••••' : ''"
                 />
               </div>
-              <div class="col-md-6">
-                <label class="form-label">发件人 From</label>
-                <input v-model="form.alert.email.from" class="form-control" type="email" />
+              <div class="si-settings__field">
+                <label class="form-label" for="smtp-from">发件人 From</label>
+                <input id="smtp-from" v-model="form.alert.email.from" class="form-control" type="email" />
               </div>
-              <div class="col-md-6">
-                <label class="form-label">收件人 To（逗号分隔）</label>
-                <input v-model="form.alert.email.to" class="form-control" />
+              <div class="si-settings__field">
+                <label class="form-label" for="smtp-to">收件人 To（逗号分隔）</label>
+                <input id="smtp-to" v-model="form.alert.email.to" class="form-control" />
               </div>
-              <div class="col-md-6">
-                <div class="form-check form-switch mt-2">
+              <div class="si-settings__field si-settings__field--toggles">
+                <div class="form-check form-switch">
                   <input id="email-starttls" v-model="form.alert.email.startTls" class="form-check-input" type="checkbox" />
                   <label class="form-check-label" for="email-starttls">STARTTLS</label>
                 </div>
-              </div>
-              <div class="col-md-6">
-                <div class="form-check form-switch mt-2">
+                <div class="form-check form-switch">
                   <input id="email-ssl" v-model="form.alert.email.ssl" class="form-check-input" type="checkbox" />
                   <label class="form-check-label" for="email-ssl">SSL</label>
                 </div>
@@ -143,31 +168,41 @@
           </div>
         </section>
 
-        <section v-show="section === 'ai'" class="card stat-card si-settings__card">
-          <div class="card-body">
-            <h5 class="card-title"><i class="fa fa-magic me-2"></i>AI 解释</h5>
-            <div class="form-check form-switch mb-3">
+        <!-- AI -->
+        <section v-show="section === 'ai'" class="si-settings__card">
+          <header class="si-settings__card-head">
+            <div>
+              <h3 class="si-settings__card-title"><i class="fa fa-magic me-2"></i>AI 解读</h3>
+              <p class="si-settings__card-desc">
+                对接 OpenAI 兼容接口，为一键解读链路、拓扑边与错误聚合提供模型能力。
+              </p>
+            </div>
+            <div class="form-check form-switch mb-0">
               <input id="ai-enabled" v-model="form.ai.enabled" class="form-check-input" type="checkbox" />
-              <label class="form-check-label" for="ai-enabled">启用链路 AI 解释</label>
+              <label class="form-check-label" for="ai-enabled">启用 AI</label>
             </div>
-            <div class="mb-3">
-              <label class="form-label">Provider</label>
-              <input v-model="form.ai.provider" class="form-control" placeholder="openai-compatible" />
+          </header>
+
+          <div class="si-settings__fields">
+            <div class="si-settings__field">
+              <label class="form-label" for="ai-provider">Provider</label>
+              <input id="ai-provider" v-model="form.ai.provider" class="form-control" placeholder="openai-compatible" />
             </div>
-            <div class="mb-3">
-              <label class="form-label">Base URL</label>
-              <input v-model="form.ai.baseUrl" class="form-control" placeholder="https://api.deepseek.com/v1" />
+            <div class="si-settings__field">
+              <label class="form-label" for="ai-model">Model</label>
+              <input id="ai-model" v-model="form.ai.model" class="form-control" placeholder="deepseek-chat" />
             </div>
-            <div class="mb-3">
-              <label class="form-label">Model</label>
-              <input v-model="form.ai.model" class="form-control" placeholder="deepseek-chat" />
+            <div class="si-settings__field si-settings__field--full">
+              <label class="form-label" for="ai-base">Base URL</label>
+              <input id="ai-base" v-model="form.ai.baseUrl" class="form-control" placeholder="https://api.deepseek.com/v1" />
             </div>
-            <div class="mb-3">
-              <label class="form-label">
+            <div class="si-settings__field si-settings__field--full">
+              <label class="form-label" for="ai-key">
                 API Key
-                <span v-if="apiKeyConfigured" class="text-muted small">（已配置，留空不修改）</span>
+                <span v-if="apiKeyConfigured" class="text-muted small">（已配置，留空不改）</span>
               </label>
               <input
+                id="ai-key"
                 v-model="form.ai.apiKey"
                 class="form-control"
                 type="password"
@@ -175,74 +210,121 @@
                 :placeholder="apiKeyConfigured ? '••••••••' : ''"
               />
             </div>
-            <div class="row g-2">
-              <div class="col-md-4">
-                <label class="form-label">超时（ms）</label>
-                <input v-model.number="form.ai.timeoutMs" class="form-control" type="number" min="1000" />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">最大输入 Span</label>
-                <input v-model.number="form.ai.maxInputSpans" class="form-control" type="number" min="1" />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">maxTokens</label>
-                <input v-model.number="form.ai.maxTokens" class="form-control" type="number" min="64" />
-              </div>
+            <div class="si-settings__field">
+              <label class="form-label" for="ai-timeout">超时（ms）</label>
+              <input id="ai-timeout" v-model.number="form.ai.timeoutMs" class="form-control" type="number" min="1000" />
             </div>
-            <p class="text-muted small mt-3 mb-0">
-              使用 OpenAI 兼容的 Chat Completions 接口即可对接各类大模型；API Key 仅保存在 Server 本机数据目录。
-            </p>
+            <div class="si-settings__field">
+              <label class="form-label" for="ai-spans">最大输入 Span</label>
+              <input id="ai-spans" v-model.number="form.ai.maxInputSpans" class="form-control" type="number" min="1" />
+            </div>
+            <div class="si-settings__field">
+              <label class="form-label" for="ai-tokens">maxTokens</label>
+              <input id="ai-tokens" v-model.number="form.ai.maxTokens" class="form-control" type="number" min="64" />
+            </div>
           </div>
+          <p class="si-settings__footnote">
+            使用 Chat Completions 兼容接口即可对接各类大模型；API Key 仅保存在 Server 本机数据目录。
+          </p>
         </section>
 
-        <section v-show="section === 'data'" class="card stat-card si-settings__card si-settings__card--danger">
-          <div class="card-body">
-            <h5 class="card-title"><i class="fa fa-database me-2"></i>数据</h5>
-            <p class="text-muted small mb-3">
-              当前存储模式 <strong>{{ storage.mode || '—' }}</strong>：
-              已存 {{ storage.stored }} / 上限 {{ storage.max }}，累计裁剪 {{ storage.evicted }}。
-              清除不可恢复；按服务只删服务名精确匹配的 Span，相关 Trace 可能不完整。
-            </p>
-            <div class="d-flex flex-wrap gap-2 mb-3">
+        <!-- 数据 -->
+        <section v-show="section === 'data'" class="si-settings__card si-settings__card--danger">
+          <header class="si-settings__card-head">
+            <div>
+              <h3 class="si-settings__card-title"><i class="fa fa-database me-2"></i>数据清理</h3>
+              <p class="si-settings__card-desc">
+                查看存储占用，并按范围删除 Span。清除不可恢复；按服务精确匹配时，相关 Trace 可能不完整。
+              </p>
+            </div>
+          </header>
+
+          <div class="si-settings__storage">
+            <div class="si-settings__storage-item">
+              <span class="si-settings__storage-label">存储模式</span>
+              <strong>{{ storage.mode || '—' }}</strong>
+            </div>
+            <div class="si-settings__storage-item">
+              <span class="si-settings__storage-label">已存 / 上限</span>
+              <strong>{{ storage.stored }} / {{ storage.max }}</strong>
+            </div>
+            <div class="si-settings__storage-item">
+              <span class="si-settings__storage-label">累计裁剪</span>
+              <strong>{{ storage.evicted }}</strong>
+            </div>
+          </div>
+
+          <div class="si-settings__actions">
+            <article class="si-settings__action">
+              <div class="si-settings__action-copy">
+                <h4>清空全部</h4>
+                <p>删除当前已存的全部 Span。</p>
+              </div>
               <button
                 type="button"
-                class="btn btn-outline-danger btn-sm"
+                class="btn btn-outline-danger"
                 :disabled="clearing || storage.stored === 0"
                 :title="storage.stored === 0 ? '当前没有可清空的 Span' : undefined"
                 @click="openClearDialog('all')"
               >
                 清空全部
               </button>
-            </div>
-            <div class="row g-2 align-items-end mb-3">
-              <div class="col-md-5">
-                <label class="form-label">早于 N 小时</label>
-                <input v-model.number="clearOlderHours" class="form-control" type="number" min="1" />
+            </article>
+
+            <article class="si-settings__action">
+              <div class="si-settings__action-copy">
+                <h4>按时间清理</h4>
+                <p>只删除早于指定小时数的 Span，保留更近的数据。</p>
               </div>
-              <div class="col-md-4">
-                <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="openClearDialog('older_than')">
+              <div class="si-settings__action-row">
+                <div class="si-settings__action-field">
+                  <label class="form-label" for="clear-hours">早于（小时）</label>
+                  <input id="clear-hours" v-model.number="clearOlderHours" class="form-control" type="number" min="1" />
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-outline-warning si-settings__action-btn"
+                  :disabled="clearing"
+                  @click="openClearDialog('older_than')"
+                >
                   按时间清理
                 </button>
               </div>
-            </div>
-            <div class="row g-2 align-items-end">
-              <div class="col-md-7">
-                <label class="form-label">服务名（精确匹配）</label>
-                <input v-model="clearServiceName" class="form-control" list="si-service-names" placeholder="例如 sca-order" />
-                <datalist id="si-service-names">
-                  <option v-for="n in serviceNames" :key="n" :value="n" />
-                </datalist>
+            </article>
+
+            <article class="si-settings__action">
+              <div class="si-settings__action-copy">
+                <h4>按服务清理</h4>
+                <p>按服务名精确匹配删除该服务的全部 Span。</p>
               </div>
-              <div class="col-md-4">
-                <button type="button" class="btn btn-outline-warning btn-sm w-100" :disabled="clearing" @click="openClearDialog('service')">
+              <div class="si-settings__action-row">
+                <div class="si-settings__action-field">
+                  <label class="form-label" for="clear-svc">服务名</label>
+                  <input
+                    id="clear-svc"
+                    v-model="clearServiceName"
+                    class="form-control"
+                    list="si-service-names"
+                    placeholder="例如 sca-order"
+                  />
+                  <datalist id="si-service-names">
+                    <option v-for="n in serviceNames" :key="n" :value="n" />
+                  </datalist>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-outline-warning si-settings__action-btn"
+                  :disabled="clearing"
+                  @click="openClearDialog('service')"
+                >
                   按服务清理
                 </button>
               </div>
-            </div>
+            </article>
           </div>
         </section>
       </div>
-    </div>
+    </template>
 
     <Teleport to="body">
       <div
@@ -280,24 +362,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
 import { ApiService, type RuntimeSettingsSaveBody } from '../services/ApiService'
 
 type SettingsSection = 'alert' | 'ai' | 'data'
 type ClearScope = 'all' | 'older_than' | 'service'
 
-const sections: { id: SettingsSection; label: string; icon: string }[] = [
-  { id: 'alert', label: '告警', icon: 'fa-bell' },
-  { id: 'ai', label: 'AI', icon: 'fa-magic' },
-  { id: 'data', label: '数据', icon: 'fa-database' }
+const sections: { id: SettingsSection; label: string; icon: string; desc: string }[] = [
+  { id: 'alert', label: '告警推送', icon: 'fa-bell', desc: 'Webhook / 邮件通知规则' },
+  { id: 'ai', label: 'AI 解读', icon: 'fa-magic', desc: '配置模型，解读链路与错误' },
+  { id: 'data', label: '数据清理', icon: 'fa-database', desc: '查看占用，删除已存 Span' }
 ]
 
 const section = ref<SettingsSection>('alert')
-const sectionHint = computed(() => {
-  if (section.value === 'alert') return '配置 Webhook / 邮件告警规则'
-  if (section.value === 'ai') return '配置 OpenAI 兼容模型，用于链路与拓扑解读'
-  return '查看存储摘要，并执行不可恢复的 Span 清理'
-})
 
 const loading = ref(true)
 const saving = ref(false)
@@ -504,80 +581,195 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.si-settings__layout {
+.si-settings__tabs {
   display: grid;
-  grid-template-columns: 10.5rem minmax(0, 1fr);
-  gap: 1.25rem;
-  align-items: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1rem;
 }
 
-.si-settings__nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.5rem;
-  background: var(--si-surface-2, #f7f9f7);
-  border: 1px solid rgba(15, 118, 110, 0.1);
-  border-radius: 0.65rem;
-  position: sticky;
-  top: 1rem;
+@media (max-width: 900px) {
+  .si-settings__tabs {
+    grid-template-columns: 1fr;
+  }
 }
 
-.si-settings__nav-item {
+.si-settings__tab {
   display: flex;
-  align-items: center;
-  gap: 0.55rem;
+  align-items: flex-start;
+  gap: 0.75rem;
   width: 100%;
-  padding: 0.55rem 0.75rem;
-  border: 0;
-  border-radius: 0.45rem;
-  background: transparent;
-  color: var(--si-nav-group, #6b7f76);
-  font-size: 0.92rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--card-bg);
   text-align: left;
   cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
-.si-settings__nav-item:hover {
-  background: rgba(15, 118, 110, 0.06);
-  color: #0f766e;
+.si-settings__tab:hover {
+  border-color: rgba(15, 118, 110, 0.28);
+  background: rgba(15, 118, 110, 0.04);
 }
 
-.si-settings__nav-item.is-active {
-  background: rgba(15, 118, 110, 0.12);
-  color: #0f766e;
-  font-weight: 600;
+.si-settings__tab.is-active {
+  border-color: rgba(15, 118, 110, 0.45);
+  background: rgba(15, 118, 110, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.12);
 }
 
-.si-settings__nav-item.is-danger.is-active {
-  background: var(--si-danger-zone, rgba(185, 28, 28, 0.06));
+.si-settings__tab.is-danger.is-active {
+  border-color: rgba(185, 28, 28, 0.35);
+  background: rgba(185, 28, 28, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.08);
+}
+
+.si-settings__tab-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--si-teal);
+  flex-shrink: 0;
+}
+
+.si-settings__tab.is-danger .si-settings__tab-icon {
+  background: rgba(185, 28, 28, 0.1);
   color: #b91c1c;
+}
+
+.si-settings__tab-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.si-settings__tab-text strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--si-ink);
+}
+
+.si-settings__tab-text em {
+  font-style: normal;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--si-muted);
 }
 
 .si-settings__panel {
   min-width: 0;
 }
 
-.si-settings__card .card-title {
-  margin-bottom: 1rem;
+.si-settings__card {
+  padding: 1.15rem 1.25rem 1.35rem;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
 }
 
 .si-settings__card--danger {
-  border-color: rgba(185, 28, 28, 0.25);
-  background: var(--si-danger-zone, rgba(185, 28, 28, 0.06));
-  box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.06);
+  border-color: rgba(185, 28, 28, 0.22);
+  background: rgba(185, 28, 28, 0.04);
 }
 
-.si-settings__hr {
-  border: 0;
-  border-top: 1px solid rgba(15, 118, 110, 0.12);
-  margin: 1rem 0;
+.si-settings__card-head,
+.si-settings__block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.si-settings__card-title,
+.si-settings__block-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--si-ink);
+}
+
+.si-settings__block-title {
+  font-size: 0.95rem;
+}
+
+.si-settings__card-desc,
+.si-settings__block-desc {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--si-muted);
+}
+
+.si-settings__block {
+  margin-top: 1.15rem;
+  padding-top: 1.1rem;
+  border-top: 1px dashed rgba(15, 118, 110, 0.18);
+}
+
+.si-settings__fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem 0.75rem;
+}
+
+@media (max-width: 991px) {
+  .si-settings__fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575px) {
+  .si-settings__fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.si-settings__field--full {
+  grid-column: 1 / -1;
+}
+
+.si-settings__field--wide {
+  grid-column: span 3;
+}
+
+.si-settings__field--narrow {
+  grid-column: span 1;
+}
+
+@media (max-width: 991px) {
+  .si-settings__field--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.si-settings__field--toggles {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  padding-top: 0.25rem;
 }
 
 .si-settings .form-label {
-  font-size: 0.85rem;
-  margin-bottom: 0.25rem;
+  font-size: 0.82rem;
+  margin-bottom: 0.3rem;
+  color: var(--si-ink-soft);
+}
+
+.si-settings__footnote {
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
+  color: var(--si-muted);
+  line-height: 1.45;
 }
 
 .si-settings code {
@@ -585,20 +777,122 @@ onUnmounted(() => {
   word-break: break-all;
 }
 
-@media (max-width: 768px) {
-  .si-settings__layout {
+/* —— 数据清理 —— */
+.si-settings__storage {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 700px) {
+  .si-settings__storage {
     grid-template-columns: 1fr;
   }
+}
 
-  .si-settings__nav {
-    flex-direction: row;
-    position: static;
-    overflow-x: auto;
+.si-settings__storage-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid rgba(185, 28, 28, 0.14);
+  background: rgba(255, 252, 250, 0.75);
+}
+
+.si-settings__storage-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--si-muted);
+}
+
+.si-settings__storage-item strong {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.si-settings__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.si-settings__action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.85rem 1.25rem;
+  align-items: center;
+  padding: 0.95rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(185, 28, 28, 0.16);
+  background: rgba(255, 252, 250, 0.85);
+}
+
+@media (max-width: 767px) {
+  .si-settings__action {
+    grid-template-columns: 1fr;
+  }
+}
+
+.si-settings__action-copy h4 {
+  margin: 0 0 0.2rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--si-ink);
+}
+
+.si-settings__action-copy p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--si-muted);
+}
+
+.si-settings__action-row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 16rem) 8.5rem;
+  gap: 0.65rem;
+  align-items: end;
+  width: min(100%, 26rem);
+  justify-self: end;
+}
+
+@media (max-width: 767px) {
+  .si-settings__action-row {
+    width: 100%;
+    grid-template-columns: 1fr;
+    justify-self: stretch;
+  }
+}
+
+.si-settings__action-field {
+  min-width: 0;
+}
+
+.si-settings__action-btn {
+  white-space: nowrap;
+  height: calc(1.5em + 0.75rem + 2px);
+}
+
+.si-settings__action > .btn {
+  justify-self: end;
+  min-width: 8.5rem;
+}
+
+@media (max-width: 767px) {
+  .si-settings__action > .btn {
+    justify-self: stretch;
+    width: 100%;
   }
 
-  .si-settings__nav-item {
-    flex: 1 0 auto;
-    justify-content: center;
+  .si-settings__action-btn {
+    width: 100%;
   }
 }
 </style>
