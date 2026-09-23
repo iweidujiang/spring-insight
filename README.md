@@ -15,7 +15,7 @@
 
 
 - 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
-- 正式版：**`0.3.2`**（Agent 与 insight-server 均为 **JDK 17+**）
+- 正式已发布：**Agent `0.3.2`**（Maven Central）+ **Server `0.3.2`**（GHCR）；`main` 开发中 Server 为 **`0.4.0-SNAPSHOT`**（Agent 仍为 `0.3.2`，可独立升版）
 - **运行时要求**：Spring Boot 3.x + JDK 17+（JDK 21+ 亦可）
 - **暂不支持 Spring Boot 4**（Boot 4 默认 Jackson 3 / 包名变更）；请用 Boot **3.5.x** 验证
 - 问题与建议欢迎开 Issue
@@ -129,14 +129,16 @@ spring:
 
 ## 版本与坐标
 
-| 坐标 | 说明 |
-|------|------|
-| `io.github.iweidujiang:spring-insight-agent-starter:0.3.2` | **业务侧依赖这个**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2)） |
-| `io.github.iweidujiang:insight-agent:0.3.2` | 采集核心（由 Starter 传递） |
-| `ghcr.io/iweidujiang/spring-insight-server:0.3.2` | **监测中心镜像（推荐）** |
-| [Release `insight-server-0.3.2.jar`](https://github.com/iweidujiang/spring-insight/releases) | **无 Docker**：JDK 17+ 下 `java -jar`（tag 推送后 Actions 自动挂载） |
+Agent 与 Server **版本号分开维护**：业务侧 Starter 只在埋点变更时升版并发 Central；监测中心可随 UI 单独发 GHCR。号不同不代表不兼容——以兼容说明为准。
 
-发版说明见 [CHANGELOG.md](CHANGELOG.md)。
+| 坐标 | 当前推荐 | 说明 |
+|------|----------|------|
+| `io.github.iweidujiang:spring-insight-agent-starter` | **`0.3.2`** | **业务侧依赖**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2)） |
+| `io.github.iweidujiang:insight-agent` | **`0.3.2`** | 采集核心（由 Starter 传递） |
+| `ghcr.io/iweidujiang/spring-insight-server` | **`0.3.2`**（开发中将发 `0.4.0`） | **监测中心镜像** |
+| Release `insight-server-*.jar` | 同上 | **无 Docker**：JDK 17+ 下 `java -jar` |
+
+仓库根 `pom.xml` 属性：`agent.version` / `server.version`。发版说明见 [CHANGELOG.md](CHANGELOG.md)。
 
 ---
 

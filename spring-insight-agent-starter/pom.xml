@@ -11,6 +11,8 @@
     </parent>
 
     <artifactId>spring-insight-agent-starter</artifactId>
+    <!-- 须与父 POM properties.agent.version 一致；无埋点变更不 bump -->
+    <version>0.3.2</version>
     <name>Spring Insight Agent Starter</name>
     <description>业务侧轻量 Starter：仅埋点与上报（无 UI、无 MVC Collector），配合 insight-server 使用</description>
 

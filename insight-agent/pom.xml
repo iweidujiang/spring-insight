@@ -12,6 +12,8 @@
     </parent>
 
     <artifactId>insight-agent</artifactId>
+    <!-- 须与父 POM properties.agent.version 一致；无埋点变更不 bump -->
+    <version>0.3.2</version>
     <name>Spring Insight Agent</name>
     <description>Spring Insight 数据采集代理</description>
 

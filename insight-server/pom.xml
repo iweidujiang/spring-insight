@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>insight-server</artifactId>
+    <!-- 继承父 POM version（= server.version）；仅 Server/UI 发版时 bump 父版 -->
     <name>Spring Insight Server</name>
     <description>独立监测中心：Span 存储（memory/file/sqlite）、上报/查询 API、控制台 UI（默认端口 9966）</description>
 

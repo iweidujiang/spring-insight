@@ -7,6 +7,13 @@
 
     <groupId>io.github.iweidujiang</groupId>
     <artifactId>spring-insight-parent</artifactId>
+    <!--
+      版本策略（Agent / Server 分线）：
+      - agent.version：业务侧 insight-agent + starter（Maven Central）；无埋点变更不升、不发
+      - server.version：insight-server + 本 reactor 父 POM（GHCR / Release jar）；可随 UI 频繁升
+      - 父 POM <version> 须与 server.version 保持一致
+      - Agent 子模块显式 <version> 须与 agent.version 保持一致
+    -->
     <version>0.4.0-SNAPSHOT</version>
 
     <packaging>pom</packaging>
@@ -54,6 +61,11 @@
     </modules>
 
     <properties>
+        <!-- Agent：与 Central 已发版对齐；有埋点变更再 bump 并 deploy -->
+        <agent.version>0.3.2</agent.version>
+        <!-- Server / 父 POM：可随控制台发版独立 bump（GHCR） -->
+        <server.version>0.4.0-SNAPSHOT</server.version>
+
         <!-- Agent + Server 统一目标 Java 17（Boot 3 基线；JDK 21+ 亦可运行） -->
         <java.version>17</java.version>
         <spring-boot.version>3.5.9</spring-boot.version>
@@ -82,17 +94,17 @@
             <dependency>
                 <groupId>io.github.iweidujiang</groupId>
                 <artifactId>insight-agent</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.github.iweidujiang</groupId>
-                <artifactId>insight-server</artifactId>
-                <version>${project.version}</version>
+                <version>${agent.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.github.iweidujiang</groupId>
                 <artifactId>spring-insight-agent-starter</artifactId>
-                <version>${project.version}</version>
+                <version>${agent.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.iweidujiang</groupId>
+                <artifactId>insight-server</artifactId>
+                <version>${server.version}</version>
             </dependency>
 
             <dependency>
@@ -194,11 +206,13 @@ Agent 与 insight-server 字节码目标均为 Java 17（Spring Boot 3 基线；
     </build>
 
     <!--
-      发布到 Maven Central：
-        1) 版本改为非 SNAPSHOT（如 0.1.0）
+      发布到 Maven Central（仅 Agent 有变更时）：
+        1) 同步 bump properties.agent.version 与 insight-agent / starter 的 <version>
         2) ~/.m2/settings.xml 配置 server id=central 的 Portal Token
         3) 本机 GPG 可用（可用 -Dgpg.skip=true 仅验证 sources/javadoc）
-        4) mvn -Prelease clean deploy "-Dskip.ui=true"  (PowerShell 须给 -Dskip.ui 加引号)
+        4) 只 deploy Agent 模块，避免把 Server 推上 Central：
+           mvn -Prelease clean deploy -pl insight-agent,spring-insight-agent-starter -am "-Dskip.ui=true"
+        Server 发版：改 server.version（= 父 POM version）后打 v* tag → GHCR / Release jar
       日常开发不要开 -Prelease，以免每次签名。
     -->
     <profiles>
