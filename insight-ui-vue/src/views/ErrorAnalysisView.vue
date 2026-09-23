@@ -1,15 +1,26 @@
 <template>
-  <div class="si-page fade-in">
+  <div class="si-page fade-in si-err-page">
     <div class="si-page__header">
       <div>
         <h2 class="page-title mb-1">
           <i class="fa fa-exclamation-triangle me-2"></i>错误分析
         </h2>
-        <p class="page-description mb-0">按服务、HTTP 状态码与异常类聚合，可下钻到异常链路</p>
+        <p class="page-description mb-0">
+          按服务、HTTP 状态码与异常类聚合；点整行可下钻到异常链路
+        </p>
       </div>
       <div class="si-page__toolbar">
+        <label class="form-label mb-0 visually-hidden" for="hours-select-err">时间范围</label>
+        <select
+          id="hours-select-err"
+          class="form-select form-select-sm si-err-hours"
+          v-model.number="hours"
+          @change="loadData"
+        >
+          <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
         <button
-          class="btn btn-outline-primary"
+          class="btn btn-sm btn-outline-primary"
           @click="onExplainErrors"
           :disabled="loading || explaining || !hasErrors || !aiReady"
           :title="aiReady ? '用当前聚合摘要调用 AI' : '请先在设置中启用 AI 并配置密钥'"
@@ -17,10 +28,10 @@
           <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
           {{ explaining ? '解读中…' : '一键解读' }}
         </button>
-        <button class="btn btn-primary" @click="loadData" :disabled="loading">
+        <button class="btn btn-sm btn-primary" @click="loadData" :disabled="loading">
           <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
         </button>
-        <button class="btn btn-outline-secondary" @click="downloadErrorData" :disabled="loading || !hasErrors">
+        <button class="btn btn-sm btn-outline-secondary" @click="downloadErrorData" :disabled="loading || !hasErrors">
           <i class="fa fa-download"></i> 导出
         </button>
         <span class="badge bg-info">
@@ -29,36 +40,14 @@
       </div>
     </div>
 
-    <div v-if="explainMarkdown" class="card stat-card si-err-ai mb-3">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <h5 class="card-title mb-0"><i class="fa fa-magic me-2"></i>AI 解读</h5>
-          <button type="button" class="btn btn-sm btn-link text-muted" @click="explainMarkdown = ''">关闭</button>
-        </div>
-        <pre class="si-err-ai__md mb-0">{{ explainMarkdown }}</pre>
-      </div>
-    </div>
-
-    <div class="card stat-card si-toolbar-card">
-      <div class="card-body">
-        <div class="si-toolbar-inner">
-          <div>
-            <label class="form-label" for="hours-select-err">时间范围</label>
-            <select id="hours-select-err" class="form-select" style="min-width: 11rem" v-model.number="hours" @change="loadData">
-              <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-          </div>
-          <div class="si-err-hint" title="基于错误 Span 的 status / exception 归类">
-            <i class="fa fa-info-circle me-1"></i>
-            分类优先读 http.status_code，其次异常类名；可点「相关链路」下钻
-          </div>
-        </div>
-      </div>
-    </div>
+    <p class="si-err-hint-line">
+      <i class="fa fa-info-circle me-1"></i>
+      分类优先读 http.status_code，其次异常类名 · {{ formatHoursLabel(hours) }}
+    </p>
 
     <div v-if="loading" class="loading-spinner">
       <i class="fa fa-spinner fa-spin"></i>
-      <span class="ms-2">正在加载错误分析数据...</span>
+      <span class="ms-2">正在加载错误分析数据…</span>
     </div>
 
     <div v-show="!loading" class="si-err-body">
@@ -72,232 +61,213 @@
         </p>
         <div class="si-err-healthy__tips">
           <span><i class="fa fa-bolt me-1"></i>可在业务侧制造失败请求后再刷新本页</span>
-          <span><i class="fa fa-list-ul me-1"></i>也可到「链路追踪」按状态筛选排查</span>
+          <button type="button" class="btn btn-sm btn-outline-secondary" @click="goErrorTraces">
+            到链路追踪按异常筛选
+          </button>
         </div>
       </div>
 
       <template v-else>
-        <div class="si-err-summary">
-          <div class="si-err-summary__card">
-            <span class="si-err-summary__label">异常服务</span>
-            <span class="si-err-summary__value text-danger">{{ errorAnalysis.length }}</span>
+        <section class="si-err-strip" aria-label="错误摘要">
+          <div class="si-err-strip__item">
+            <span class="si-err-strip__label">异常服务</span>
+            <span class="si-err-strip__value is-danger">{{ errorAnalysis.length }}</span>
           </div>
-          <div class="si-err-summary__card">
-            <span class="si-err-summary__label">错误 Span</span>
-            <span class="si-err-summary__value">{{ totalErrorSpans }}</span>
+          <div class="si-err-strip__item">
+            <span class="si-err-strip__label">错误 Span</span>
+            <span class="si-err-strip__value">{{ totalErrorSpans }}</span>
           </div>
-          <div class="si-err-summary__card">
-            <span class="si-err-summary__label">状态码类</span>
-            <span class="si-err-summary__value">{{ byStatusCode.length }}</span>
+          <div class="si-err-strip__item">
+            <span class="si-err-strip__label">状态码类</span>
+            <span class="si-err-strip__value">{{ byStatusCode.length }}</span>
           </div>
-          <div class="si-err-summary__card">
-            <span class="si-err-summary__label">异常类</span>
-            <span class="si-err-summary__value text-warning">{{ byException.length }}</span>
+          <div class="si-err-strip__item">
+            <span class="si-err-strip__label">异常类</span>
+            <span class="si-err-strip__value">{{ byException.length }}</span>
           </div>
-          <div class="si-err-summary__card">
-            <span class="si-err-summary__label">最高错误率</span>
-            <span class="si-err-summary__value text-warning">{{ maxErrorRate }}%</span>
+          <div class="si-err-strip__item">
+            <span class="si-err-strip__label">最高错误率</span>
+            <span class="si-err-strip__value is-warn">{{ maxErrorRate }}%</span>
           </div>
-        </div>
+        </section>
 
-        <div class="si-charts-row">
-          <div class="chart-container si-chart-panel">
-            <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
-              <h5 class="mb-0"><i class="fa fa-bar-chart me-2"></i>服务错误率</h5>
-              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshCharts">
+        <!-- 主舞台：错误服务列表（对齐链路「请求主舞台」） -->
+        <section class="si-err-stage" aria-label="错误服务">
+          <div class="si-err-stage__head">
+            <h3 class="si-err-stage__title"><i class="fa fa-list me-2"></i>错误服务</h3>
+            <span class="badge bg-danger">{{ errorAnalysis.length }} 个</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0 si-err-table">
+              <thead class="table-light">
+                <tr>
+                  <th>服务</th>
+                  <th>总调用</th>
+                  <th>错误</th>
+                  <th>错误率</th>
+                  <th>级别</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(error, index) in errorAnalysis"
+                  :key="error.serviceName"
+                  class="si-err-row"
+                  :class="error.errorRate > 10 ? 'is-severe' : error.errorRate > 5 ? 'is-warn' : ''"
+                  :style="{ animationDelay: `${Math.min(index, 20) * 0.03}s` }"
+                  @click="viewServiceDetails(error.serviceName)"
+                >
+                  <td class="si-err-svc">{{ error.serviceName }}</td>
+                  <td>{{ error.totalCalls }}</td>
+                  <td class="text-danger fw-semibold">{{ error.errorCalls }}</td>
+                  <td>
+                    <span class="si-err-rate" :data-level="rateLevel(error.errorRate)">
+                      {{ error.errorRate.toFixed(2) }}%
+                    </span>
+                  </td>
+                  <td>
+                    <span class="si-err-level" :data-level="rateLevel(error.errorRate)">
+                      {{ rateLabel(error.errorRate) }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="si-err-charts">
+          <div class="si-err-chart">
+            <div class="si-err-chart__head">
+              <h4><i class="fa fa-bar-chart me-2"></i>服务错误率</h4>
+              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshCharts" title="重绘">
                 <i class="fa fa-refresh"></i>
               </button>
             </div>
-            <div class="si-chart-canvas-wrap">
-              <div id="error-rate-chart" class="w-100 h-100" style="min-height: 220px"></div>
+            <div class="si-err-chart__canvas">
+              <div id="error-rate-chart" class="w-100 h-100"></div>
             </div>
           </div>
-          <div class="chart-container si-chart-panel">
-            <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
-              <h5 class="mb-0"><i class="fa fa-pie-chart me-2"></i>错误调用占比（按服务）</h5>
+          <div class="si-err-chart">
+            <div class="si-err-chart__head">
+              <h4><i class="fa fa-pie-chart me-2"></i>错误调用占比</h4>
             </div>
-            <div class="si-chart-canvas-wrap">
-              <div id="error-pie-chart" class="w-100 h-100" style="min-height: 220px"></div>
+            <div class="si-err-chart__canvas">
+              <div id="error-pie-chart" class="w-100 h-100"></div>
             </div>
           </div>
         </div>
 
         <div class="si-err-split">
-          <div class="card stat-card si-table-panel">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="card-title mb-0"><i class="fa fa-code me-2"></i>按 HTTP 状态码</h5>
-                <span class="badge bg-secondary">{{ byStatusCode.length }} 类</span>
-              </div>
-              <div v-if="byStatusCode.length === 0" class="text-muted small py-3">暂无 HTTP 状态类错误</div>
-              <div v-else class="table-responsive">
-                <table class="table table-hover mb-0">
-                  <thead class="table-light">
-                    <tr>
-                      <th>状态码</th>
-                      <th>次数</th>
-                      <th>涉及服务</th>
-                      <th>样例</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="row in byStatusCode" :key="'st-' + row.key">
-                      <td><span class="badge bg-danger">{{ row.label }}</span></td>
-                      <td class="text-danger fw-semibold">{{ row.count }}</td>
-                      <td>
-                        <span class="small">{{ row.services.slice(0, 3).join('、') }}</span>
-                        <span v-if="row.serviceCount > 3" class="text-muted small"> 等 {{ row.serviceCount }} 个</span>
-                      </td>
-                      <td class="si-err-sample" :title="row.sampleMessage">{{ row.sampleMessage || '—' }}</td>
-                      <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" @click="viewCategoryTraces(row.key)">
-                          <i class="fa fa-list-ul"></i> 链路
-                        </button>
-                        <button
-                          v-if="row.sampleTraceId"
-                          class="btn btn-sm btn-outline-secondary"
-                          @click="viewTrace(row.sampleTraceId)"
-                        >
-                          样例
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+          <section class="si-err-panel">
+            <div class="si-err-panel__head">
+              <h4><i class="fa fa-code me-2"></i>按 HTTP 状态码</h4>
+              <span class="badge bg-secondary">{{ byStatusCode.length }}</span>
             </div>
-          </div>
-
-          <div class="card stat-card si-table-panel">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="card-title mb-0"><i class="fa fa-bug me-2"></i>按异常类</h5>
-                <span class="badge bg-warning text-dark">{{ byException.length }} 类</span>
-              </div>
-              <div v-if="byException.length === 0" class="text-muted small py-3">暂无异常类错误</div>
-              <div v-else class="table-responsive">
-                <table class="table table-hover mb-0">
-                  <thead class="table-light">
-                    <tr>
-                      <th>异常</th>
-                      <th>次数</th>
-                      <th>涉及服务</th>
-                      <th>样例</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="row in byException" :key="'ex-' + row.key">
-                      <td><code class="si-err-ex">{{ row.label }}</code></td>
-                      <td class="text-danger fw-semibold">{{ row.count }}</td>
-                      <td>
-                        <span class="small">{{ row.services.slice(0, 3).join('、') }}</span>
-                        <span v-if="row.serviceCount > 3" class="text-muted small"> 等 {{ row.serviceCount }} 个</span>
-                      </td>
-                      <td class="si-err-sample" :title="row.sampleMessage">{{ row.sampleMessage || '—' }}</td>
-                      <td>
-                        <button class="btn btn-sm btn-outline-primary me-1" @click="viewCategoryTraces(row.key)">
-                          <i class="fa fa-list-ul"></i> 链路
-                        </button>
-                        <button
-                          v-if="row.sampleTraceId"
-                          class="btn btn-sm btn-outline-secondary"
-                          @click="viewTrace(row.sampleTraceId)"
-                        >
-                          样例
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="byOther.length > 0" class="card stat-card si-table-panel">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h5 class="card-title mb-0"><i class="fa fa-question-circle me-2"></i>其它错误</h5>
-              <span class="badge bg-secondary">{{ byOther.length }} 类</span>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-hover mb-0">
+            <div v-if="byStatusCode.length === 0" class="si-err-panel__empty">暂无 HTTP 状态类错误</div>
+            <div v-else class="table-responsive">
+              <table class="table table-hover mb-0 si-err-table si-err-table--compact">
                 <thead class="table-light">
                   <tr>
-                    <th>分类</th>
+                    <th>状态码</th>
                     <th>次数</th>
-                    <th>涉及服务</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in byOther" :key="'ot-' + row.key">
-                    <td>{{ row.label }}</td>
-                    <td>{{ row.count }}</td>
-                    <td class="small">{{ row.services.join('、') || '—' }}</td>
-                    <td>
-                      <button class="btn btn-sm btn-outline-primary" @click="viewCategoryTraces(row.key)">
-                        相关链路
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div class="card stat-card si-table-panel">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h5 class="card-title mb-0"><i class="fa fa-list me-2"></i>错误服务列表</h5>
-              <span class="badge bg-danger">{{ errorAnalysis.length }} 个异常服务</span>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-hover mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>服务名称</th>
-                    <th>总调用数</th>
-                    <th>错误调用数</th>
-                    <th>错误率</th>
-                    <th>状态</th>
-                    <th>操作</th>
+                    <th>服务</th>
+                    <th>样例</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
-                    v-for="(error, index) in errorAnalysis"
-                    :key="error.serviceName"
-                    :class="error.errorRate > 10 ? 'table-danger' : error.errorRate > 5 ? 'table-warning' : ''"
-                    :style="{ animationDelay: `${index * 0.05}s` }"
+                    v-for="row in byStatusCode"
+                    :key="'st-' + row.key"
+                    class="si-err-row"
+                    @click="viewCategoryTraces(row.key)"
                   >
-                    <td>{{ error.serviceName }}</td>
-                    <td>{{ error.totalCalls }}</td>
-                    <td class="text-danger">{{ error.errorCalls }}</td>
-                    <td>
-                      <span class="badge" :class="error.errorRate > 10 ? 'bg-danger' : error.errorRate > 5 ? 'bg-warning' : 'bg-info'">
-                        {{ error.errorRate.toFixed(2) }}%
-                      </span>
+                    <td><span class="si-err-code">{{ row.label }}</span></td>
+                    <td class="text-danger fw-semibold">{{ row.count }}</td>
+                    <td class="small">
+                      {{ row.services.slice(0, 2).join('、') }}
+                      <span v-if="row.serviceCount > 2" class="text-muted"> 等{{ row.serviceCount }}</span>
                     </td>
-                    <td>
-                      <span v-if="error.errorRate > 10" class="badge bg-danger">严重</span>
-                      <span v-else-if="error.errorRate > 5" class="badge bg-warning">警告</span>
-                      <span v-else class="badge bg-info">注意</span>
-                    </td>
-                    <td>
-                      <button class="btn btn-sm btn-primary" @click="viewServiceDetails(error.serviceName)">
-                        <i class="fa fa-list-ul"></i> 相关链路
-                      </button>
-                    </td>
+                    <td class="si-err-sample" :title="row.sampleMessage">{{ row.sampleMessage || '—' }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
+
+          <section class="si-err-panel">
+            <div class="si-err-panel__head">
+              <h4><i class="fa fa-bug me-2"></i>按异常类</h4>
+              <span class="badge bg-warning text-dark">{{ byException.length }}</span>
+            </div>
+            <div v-if="byException.length === 0" class="si-err-panel__empty">暂无异常类错误</div>
+            <div v-else class="table-responsive">
+              <table class="table table-hover mb-0 si-err-table si-err-table--compact">
+                <thead class="table-light">
+                  <tr>
+                    <th>异常</th>
+                    <th>次数</th>
+                    <th>服务</th>
+                    <th>样例</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="row in byException"
+                    :key="'ex-' + row.key"
+                    class="si-err-row"
+                    @click="viewCategoryTraces(row.key)"
+                  >
+                    <td><code class="si-err-ex">{{ row.label }}</code></td>
+                    <td class="text-danger fw-semibold">{{ row.count }}</td>
+                    <td class="small">
+                      {{ row.services.slice(0, 2).join('、') }}
+                      <span v-if="row.serviceCount > 2" class="text-muted"> 等{{ row.serviceCount }}</span>
+                    </td>
+                    <td class="si-err-sample" :title="row.sampleMessage">{{ row.sampleMessage || '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
+
+        <details v-if="byOther.length > 0" class="si-err-fold">
+          <summary class="si-err-fold__summary">
+            <i class="fa fa-question-circle me-2"></i>其它错误（{{ byOther.length }}）
+          </summary>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0 si-err-table si-err-table--compact">
+              <thead class="table-light">
+                <tr>
+                  <th>分类</th>
+                  <th>次数</th>
+                  <th>服务</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in byOther"
+                  :key="'ot-' + row.key"
+                  class="si-err-row"
+                  @click="viewCategoryTraces(row.key)"
+                >
+                  <td>{{ row.label }}</td>
+                  <td>{{ row.count }}</td>
+                  <td class="small">{{ row.services.join('、') || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <section v-if="explainMarkdown" class="si-err-ai" aria-label="AI 解读">
+          <div class="si-err-ai__head">
+            <h3><i class="fa fa-magic me-2"></i>AI 解读</h3>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @click="explainMarkdown = ''">关闭</button>
+          </div>
+          <pre class="si-err-ai__md">{{ explainMarkdown }}</pre>
+        </section>
       </template>
     </div>
   </div>
@@ -334,6 +304,20 @@ const maxErrorRate = computed(() => {
   if (errorAnalysis.value.length === 0) return '0.00'
   return Math.max(...errorAnalysis.value.map((e) => e.errorRate || 0)).toFixed(2)
 })
+
+const PIE_COLORS = ['#0f766e', '#b91c1c', '#b45309', '#15803d', '#1d4ed8', '#c2410c', '#047857', '#0d9488']
+
+const rateLevel = (rate: number) => {
+  if (rate > 10) return 'severe'
+  if (rate > 5) return 'warn'
+  return 'note'
+}
+
+const rateLabel = (rate: number) => {
+  if (rate > 10) return '严重'
+  if (rate > 5) return '警告'
+  return '注意'
+}
 
 const updateCurrentTime = () => {
   currentTime.value = new Date().toTimeString().split(' ')[0]
@@ -380,23 +364,34 @@ const updateCharts = () => {
   }))
 
   errorRateChart.setOption({
-    tooltip: { trigger: 'axis' },
-    grid: { left: 48, right: 16, top: 24, bottom: 48 },
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 252, 250, 0.96)',
+      borderColor: 'rgba(20, 83, 45, 0.15)',
+      textStyle: { color: '#15241f' }
+    },
+    grid: { left: 44, right: 12, top: 20, bottom: 40 },
     xAxis: {
       type: 'category',
       data: serviceNames,
-      axisLabel: { rotate: serviceNames.length > 4 ? 30 : 0, color: '#6b7f76' }
+      axisLabel: { rotate: serviceNames.length > 4 ? 28 : 0, color: '#6b7f76', fontSize: 11 },
+      axisLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.15)' } }
     },
     yAxis: {
       type: 'value',
       name: '%',
-      axisLabel: { color: '#6b7f76' }
+      nameTextStyle: { color: '#6b7f76' },
+      axisLabel: { color: '#6b7f76' },
+      splitLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.08)' } }
     },
     series: [
       {
         type: 'bar',
+        barMaxWidth: 36,
         data: errorRates,
         itemStyle: {
+          borderRadius: [4, 4, 0, 0],
           color: (params: any) => {
             const v = Number(params.value || 0)
             if (v > 10) return '#b91c1c'
@@ -409,14 +404,34 @@ const updateCharts = () => {
   })
 
   errorPieChart.setOption({
-    tooltip: { trigger: 'item' },
-    legend: { bottom: 0, type: 'scroll' },
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: 'rgba(255, 252, 250, 0.96)',
+      borderColor: 'rgba(20, 83, 45, 0.15)',
+      textStyle: { color: '#15241f' }
+    },
+    legend: {
+      bottom: 0,
+      type: 'scroll',
+      textStyle: { color: '#3d524a', fontSize: 11 }
+    },
+    color: PIE_COLORS,
     series: [
       {
         type: 'pie',
-        radius: ['35%', '62%'],
+        radius: ['38%', '64%'],
+        center: ['50%', '46%'],
         data: pieData,
-        label: { formatter: '{b}\n{d}%' }
+        label: {
+          formatter: '{b}\n{d}%',
+          color: '#15241f',
+          fontSize: 11
+        },
+        itemStyle: {
+          borderColor: '#fffcfa',
+          borderWidth: 2
+        }
       }
     ]
   })
@@ -429,15 +444,15 @@ const refreshCharts = () => {
 }
 
 const viewServiceDetails = (serviceName: string) => {
-  router.push({ path: '/traces', query: { service: serviceName, status: 'error' } })
+  router.push({ path: '/traces', query: { service: serviceName, status: 'error', hours: String(hours.value) } })
 }
 
 const viewCategoryTraces = (key: string) => {
-  router.push({ path: '/traces', query: { status: 'error', q: key } })
+  router.push({ path: '/traces', query: { status: 'error', q: key, hours: String(hours.value) } })
 }
 
-const viewTrace = (traceId: string) => {
-  router.push({ path: `/traces/${encodeURIComponent(traceId)}` })
+const goErrorTraces = () => {
+  router.push({ path: '/traces', query: { status: 'error', hours: String(hours.value) } })
 }
 
 async function onExplainErrors() {
@@ -518,14 +533,15 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.si-err-hint {
-  align-self: center;
+.si-err-hours {
+  min-width: 9.5rem;
+  width: auto;
+}
+
+.si-err-hint-line {
+  margin: -0.35rem 0 0.85rem;
   font-size: 0.78rem;
   color: var(--si-muted);
-  padding: 0.35rem 0.65rem;
-  border-radius: 8px;
-  background: var(--si-paper);
-  border: 1px solid var(--card-border);
 }
 
 .si-err-body {
@@ -542,7 +558,7 @@ onUnmounted(() => {
   text-align: center;
   min-height: clamp(280px, 42vh, 420px);
   padding: 2rem 1.5rem;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid rgba(21, 128, 61, 0.2);
   background:
     radial-gradient(ellipse at 50% 20%, rgba(21, 128, 61, 0.08), transparent 55%),
@@ -550,14 +566,14 @@ onUnmounted(() => {
 }
 
 .si-err-healthy__icon {
-  font-size: 3rem;
+  font-size: 2.75rem;
   color: #15803d;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.65rem;
 }
 
 .si-err-healthy__title {
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--si-ink);
   margin: 0 0 0.4rem;
@@ -566,7 +582,7 @@ onUnmounted(() => {
 .si-err-healthy__desc {
   max-width: 28rem;
   color: var(--si-muted);
-  margin: 0 0 1.25rem;
+  margin: 0 0 1.1rem;
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -574,56 +590,160 @@ onUnmounted(() => {
 .si-err-healthy__tips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem 1rem;
+  gap: 0.55rem 0.85rem;
   justify-content: center;
+  align-items: center;
   font-size: 0.78rem;
   color: var(--si-muted);
 }
 
-.si-err-summary {
+.si-err-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.25rem;
+  align-items: baseline;
+  padding: 0.55rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: rgba(255, 252, 250, 0.65);
+}
+
+.si-err-strip__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.si-err-strip__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--si-muted);
+}
+
+.si-err-strip__value {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.si-err-strip__value.is-danger {
+  color: #b91c1c;
+}
+
+.si-err-strip__value.is-warn {
+  color: #b45309;
+}
+
+.si-err-stage,
+.si-err-panel,
+.si-err-chart,
+.si-err-ai,
+.si-err-fold {
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+}
+
+.si-err-stage {
+  padding: 0.85rem 0.95rem 0.5rem;
+}
+
+.si-err-stage__head,
+.si-err-panel__head,
+.si-err-chart__head,
+.si-err-ai__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.si-err-stage__title,
+.si-err-panel__head h4,
+.si-err-chart__head h4,
+.si-err-ai__head h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--si-ink);
+}
+
+.si-err-table .si-err-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.si-err-table .si-err-row:hover {
+  background: rgba(15, 118, 110, 0.05);
+}
+
+.si-err-table .si-err-row.is-severe:hover {
+  background: rgba(185, 28, 28, 0.06);
+}
+
+.si-err-svc {
+  font-weight: 600;
+  color: var(--si-ink);
+}
+
+.si-err-rate,
+.si-err-level {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.12rem 0.45rem;
+  border-radius: 5px;
+}
+
+.si-err-rate[data-level='severe'],
+.si-err-level[data-level='severe'] {
+  color: #991b1b;
+  background: rgba(185, 28, 28, 0.1);
+}
+
+.si-err-rate[data-level='warn'],
+.si-err-level[data-level='warn'] {
+  color: #9a3412;
+  background: rgba(180, 83, 9, 0.12);
+}
+
+.si-err-rate[data-level='note'],
+.si-err-level[data-level='note'] {
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.si-err-charts {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.65rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
 }
 
-@media (max-width: 1100px) {
-  .si-err-summary {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 575px) {
-  .si-err-summary {
+@media (max-width: 991px) {
+  .si-err-charts {
     grid-template-columns: 1fr;
   }
 }
 
-.si-err-summary__card {
+.si-err-chart {
+  padding: 0.75rem 0.85rem 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 1.05rem 1.2rem;
-  min-height: 5.25rem;
-  border-radius: 10px;
-  background: var(--card-bg);
+  min-height: 260px;
+}
+
+.si-err-chart__canvas {
+  flex: 1;
+  min-height: 210px;
+  border-radius: 8px;
+  background: var(--si-paper);
   border: 1px solid var(--card-border);
-  box-shadow: var(--box-shadow);
-}
-
-.si-err-summary__label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--si-muted);
-  font-weight: 600;
-}
-
-.si-err-summary__value {
-  font-family: var(--font-display);
-  font-size: clamp(1.35rem, 2vw, 1.65rem);
-  font-weight: 700;
-  color: var(--si-ink);
-  line-height: 1.15;
+  padding: 0.35rem;
 }
 
 .si-err-split {
@@ -638,29 +758,98 @@ onUnmounted(() => {
   }
 }
 
-.si-err-sample {
-  max-width: 14rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.78rem;
+.si-err-panel {
+  padding: 0.75rem 0.85rem 0.5rem;
+}
+
+.si-err-panel__empty {
+  padding: 1rem 0.25rem 1.25rem;
+  font-size: 0.85rem;
   color: var(--si-muted);
 }
 
+.si-err-table--compact td,
+.si-err-table--compact th {
+  font-size: 0.84rem;
+  vertical-align: middle;
+}
+
+.si-err-sample {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.76rem;
+  color: var(--si-muted);
+}
+
+.si-err-code {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #991b1b;
+  background: rgba(185, 28, 28, 0.1);
+}
+
 .si-err-ex {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: #9a3412;
   background: rgba(180, 83, 9, 0.08);
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
 }
 
+.si-err-fold {
+  padding: 0 0.95rem 0.75rem;
+}
+
+.si-err-fold__summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.75rem 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  user-select: none;
+}
+
+.si-err-fold__summary::-webkit-details-marker {
+  display: none;
+}
+
+.si-err-fold__summary::before {
+  content: '\f0da';
+  font-family: FontAwesome, 'Font Awesome 5 Free', sans-serif;
+  display: inline-block;
+  width: 0.9rem;
+  margin-right: 0.15rem;
+  color: var(--si-muted);
+  transition: transform 0.15s ease;
+}
+
+.si-err-fold[open] > .si-err-fold__summary::before {
+  transform: rotate(90deg);
+}
+
+.si-err-ai {
+  padding: 0.85rem 0.95rem;
+}
+
 .si-err-ai__md {
   white-space: pre-wrap;
+  word-break: break-word;
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   line-height: 1.55;
   margin: 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--card-border);
+  max-height: 22rem;
+  overflow: auto;
   color: var(--si-ink);
 }
 </style>

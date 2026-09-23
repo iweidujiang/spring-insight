@@ -8,7 +8,7 @@
         <p class="page-description mb-0">
           {{ isSolo
             ? '当前只有一个应用、还没有跨服务调用。'
-            : '箭头：调用方 → 被调用方；点击节点/边可下钻到该服务的链路列表' }}
+            : '箭头：调用方 → 被调用方；点击节点或边先选中，再从旁栏下钻链路' }}
         </p>
       </div>
       <span class="badge bg-info">
@@ -118,92 +118,153 @@
       </section>
     </div>
 
-    <div v-else class="si-topo-layout">
-      <div class="chart-container si-topo-graph-card">
-        <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
-          <h5 class="mb-0">
-            <i class="fa fa-sitemap me-2"></i>服务依赖拓扑
-          </h5>
-          <div class="d-flex gap-2 align-items-center">
-            <span class="si-topo-legend"><i class="fa fa-hand-pointer-o me-1"></i>点击节点/边查看链路</span>
-            <span class="si-topo-legend"><i class="fa fa-long-arrow-right"></i> 调用方向</span>
-            <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshTopology">
-              <i class="fa fa-refresh"></i> 重绘
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" @click="fitToScreen">
-              <i class="fa fa-expand"></i> 适应窗口
-            </button>
+    <div v-else class="si-topo-mesh">
+      <div class="si-topo-stage">
+        <section class="si-topo-stage__main" aria-label="服务依赖拓扑">
+          <div class="si-topo-stage__head">
+            <div>
+              <h3 class="si-topo-stage__title">
+                <i class="fa fa-sitemap me-2"></i>服务依赖拓扑
+              </h3>
+              <p class="si-topo-legend">
+                <span>{{ serviceNames.length }} 个服务</span>
+                <span>·</span>
+                <span>{{ dependencies.length }} 条调用边</span>
+                <span>·</span>
+                <span>箭头 = 调用方向</span>
+                <span>·</span>
+                <span>边上数字 = 调用次数</span>
+              </p>
+            </div>
+            <div class="d-flex gap-2 align-items-center flex-shrink-0">
+              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshTopology" title="重绘">
+                <i class="fa fa-refresh"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" @click="fitToScreen" title="适应窗口">
+                <i class="fa fa-expand"></i>
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="si-topo-canvas-wrap">
-          <div ref="chartEl" class="si-topo-canvas"></div>
-        </div>
+          <div class="si-topo-canvas-wrap">
+            <div ref="chartEl" class="si-topo-canvas"></div>
+          </div>
+        </section>
+
+        <aside class="si-topo-stage__aside" aria-label="选中项">
+          <div class="si-topo-rail">
+            <h3 class="si-topo-rail__title">
+              <i class="fa fa-hand-pointer-o me-2"></i>选中
+            </h3>
+
+            <template v-if="selection.kind === 'node' && selection.service">
+              <p class="si-topo-rail__kicker">服务节点</p>
+              <p class="si-topo-rail__name">{{ selection.service }}</p>
+              <dl class="si-topo-rail__stats">
+                <div><dt>关联调用</dt><dd>{{ nodeCallCount(selection.service) }}</dd></div>
+                <div><dt>平均耗时</dt><dd>{{ formatMs(nodeAvgMs(selection.service)) }}</dd></div>
+                <div><dt>错误</dt><dd :class="{ 'text-danger': nodeErrorCount(selection.service) > 0 }">{{ nodeErrorCount(selection.service) }}</dd></div>
+              </dl>
+              <div class="si-topo-rail__actions">
+                <button type="button" class="btn btn-primary btn-sm w-100" @click="goServiceTraces(selection.service)">
+                  查看该服务链路
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100" @click="clearSelection">
+                  取消选中
+                </button>
+              </div>
+            </template>
+
+            <template v-else-if="selection.kind === 'edge' && selection.service && selection.peer">
+              <p class="si-topo-rail__kicker">调用边</p>
+              <p class="si-topo-rail__edge">
+                <span>{{ selection.service }}</span>
+                <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                <span>{{ selection.peer }}</span>
+              </p>
+              <dl class="si-topo-rail__stats">
+                <div><dt>调用次数</dt><dd>{{ edgeCallCount(selection.service, selection.peer) }}</dd></div>
+                <div><dt>平均耗时</dt><dd>{{ formatMs(edgeAvgMs(selection.service, selection.peer)) }}</dd></div>
+              </dl>
+              <div class="si-topo-rail__actions">
+                <button type="button" class="btn btn-primary btn-sm w-100" @click="goServiceTraces(selection.service)">
+                  查看调用方链路
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100" @click="goServiceTraces(selection.peer)">
+                  查看被调方链路
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-info btn-sm w-100"
+                  :disabled="explaining"
+                  @click="explainEdge(selection.service, selection.peer)"
+                >
+                  <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
+                  {{ explaining ? '解读中…' : 'AI 解释此边' }}
+                </button>
+                <button type="button" class="btn btn-link btn-sm" @click="clearSelection">取消选中</button>
+              </div>
+              <div v-if="edgeExplain" class="si-topo-rail__explain">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <strong>边解读</strong>
+                  <button type="button" class="btn btn-sm btn-link py-0" @click="edgeExplain = ''">关闭</button>
+                </div>
+                <pre>{{ edgeExplain }}</pre>
+              </div>
+            </template>
+
+            <p v-else class="si-topo-rail__empty">
+              点击图上的节点或边，在此查看摘要并下钻链路。
+            </p>
+          </div>
+        </aside>
       </div>
 
-      <div class="card stat-card si-topo-table-card">
-        <div class="card-body d-flex flex-column">
-          <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
-            <h5 class="card-title mb-0">
-              <i class="fa fa-list me-2"></i>依赖关系列表
-            </h5>
-            <span class="badge bg-primary">{{ dependencies.length }} 条</span>
-          </div>
-          <div class="table-responsive si-topo-table-scroll">
-            <table class="table table-hover mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>源服务</th>
-                  <th></th>
-                  <th>目标服务</th>
-                  <th>调用次数</th>
-                  <th>平均耗时(ms)</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="dep in dependencies" :key="`${dep.sourceService}-${dep.targetService}`">
-                  <td><code class="si-svc">{{ dep.sourceService }}</code></td>
-                  <td class="text-center text-info"><i class="fa fa-long-arrow-right"></i></td>
-                  <td><code class="si-svc">{{ dep.targetService }}</code></td>
-                  <td>{{ dep.callCount }}</td>
-                  <td :class="dep.avgDuration > 1000 ? 'text-danger' : dep.avgDuration > 500 ? 'text-warning' : 'text-success'">
-                    {{ dep.avgDuration || 0 }}
-                  </td>
-                  <td>
-                    <div class="d-flex gap-1 flex-wrap">
-                      <button class="btn btn-sm btn-outline-primary" type="button" @click="goServiceTraces(dep.sourceService)" title="查看调用方链路">
-                        源
-                      </button>
-                      <button class="btn btn-sm btn-outline-secondary" type="button" @click="goServiceTraces(dep.targetService)" title="查看被调用方链路">
-                        目标
-                      </button>
-                      <button
-                        class="btn btn-sm btn-outline-info"
-                        type="button"
-                        :disabled="explaining"
-                        @click="explainEdge(dep.sourceService, dep.targetService)"
-                        title="AI 解释该依赖边"
-                      >
-                        <i class="fa fa-magic"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+      <details class="si-topo-fold">
+        <summary class="si-topo-fold__summary">
+          <i class="fa fa-list me-2"></i>依赖关系列表（{{ dependencies.length }}）
+        </summary>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>源服务</th>
+                <th></th>
+                <th>目标服务</th>
+                <th>调用次数</th>
+                <th>平均耗时</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="dep in sortedDependencies"
+                :key="`${dep.sourceService}-${dep.targetService}`"
+                :class="{
+                  'table-active':
+                    selection.kind === 'edge' &&
+                    selection.service === dep.sourceService &&
+                    selection.peer === dep.targetService
+                }"
+                style="cursor: pointer"
+                @click="selectEdge(dep.sourceService, dep.targetService)"
+              >
+                <td><code class="si-svc">{{ dep.sourceService }}</code></td>
+                <td class="text-center text-info"><i class="fa fa-long-arrow-right"></i></td>
+                <td><code class="si-svc">{{ dep.targetService }}</code></td>
+                <td>{{ dep.callCount }}</td>
+                <td :class="dep.avgDuration > 1000 ? 'text-danger' : dep.avgDuration > 500 ? 'text-warning' : 'text-success'">
+                  {{ formatMs(dep.avgDuration || 0) }}
+                </td>
+                <td @click.stop>
+                  <button class="btn btn-sm btn-outline-primary" type="button" @click="goServiceTraces(dep.sourceService)">
+                    链路
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
-
-      <div v-if="edgeExplain" class="card stat-card mt-3">
-        <div class="card-body">
-          <div class="d-flex justify-content-between">
-            <h5 class="card-title mb-2"><i class="fa fa-magic me-2"></i>边解读</h5>
-            <button type="button" class="btn btn-sm btn-link" @click="edgeExplain = ''">关闭</button>
-          </div>
-          <pre class="mb-0" style="white-space:pre-wrap;font-family:var(--font-body);font-size:0.9rem">{{ edgeExplain }}</pre>
-        </div>
-      </div>
+      </details>
     </div>
   </div>
 </template>
@@ -229,6 +290,10 @@ const recentTraces = ref<any[]>([])
 const chartEl = ref<HTMLElement | null>(null)
 const explaining = ref(false)
 const edgeExplain = ref('')
+const selection = ref<{ kind: 'node' | 'edge' | null; service: string; peer?: string }>({
+  kind: null,
+  service: ''
+})
 
 let topologyChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
@@ -245,6 +310,10 @@ const soloLatency = computed(() => {
   }
 })
 
+const sortedDependencies = computed(() =>
+  [...dependencies.value].sort((a, b) => (b.callCount || 0) - (a.callCount || 0))
+)
+
 const formatMs = (ms: number) => formatDuration(Number(ms) || 0)
 const traceFailed = (tr: any) => !!(tr?.hasError || tr?.statusCode === 'ERROR')
 const traceMethod = (tr: any) => {
@@ -257,9 +326,54 @@ const tracePath = (tr: any) => {
   return op.replace(/^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+/i, '')
 }
 
+const highlightOpts = () => {
+  if (selection.value.kind === 'node' && selection.value.service) {
+    return { highlight: { node: selection.value.service } }
+  }
+  if (selection.value.kind === 'edge' && selection.value.service && selection.value.peer) {
+    return {
+      highlight: {
+        edge: { source: selection.value.service, target: selection.value.peer }
+      }
+    }
+  }
+  return {}
+}
+
 const topologyOpts = () => ({
-  standaloneServices: serviceNames.value
+  standaloneServices: serviceNames.value,
+  ...highlightOpts()
 })
+
+const findEdge = (source: string, target: string) =>
+  dependencies.value.find((d) => d.sourceService === source && d.targetService === target)
+
+const nodeCallCount = (name: string) => {
+  let n = 0
+  dependencies.value.forEach((d) => {
+    if (d.sourceService === name || d.targetService === name) n += Number(d.callCount) || 0
+  })
+  if (n > 0) return n
+  const row = serviceLatency.value.find((item: any) => item.serviceName === name)
+  return row?.spanCount || 0
+}
+
+const nodeAvgMs = (name: string) => {
+  const row = serviceLatency.value.find((item: any) => item.serviceName === name)
+  if (row?.avgMs != null) return Number(row.avgMs) || 0
+  const related = dependencies.value.filter((d) => d.sourceService === name || d.targetService === name)
+  if (!related.length) return 0
+  const sum = related.reduce((a, d) => a + (Number(d.avgDuration) || 0), 0)
+  return Math.round(sum / related.length)
+}
+
+const nodeErrorCount = (name: string) => {
+  const row = serviceLatency.value.find((item: any) => item.serviceName === name)
+  return Number(row?.errorCount) || 0
+}
+
+const edgeCallCount = (source: string, target: string) => Number(findEdge(source, target)?.callCount) || 0
+const edgeAvgMs = (source: string, target: string) => Number(findEdge(source, target)?.avgDuration) || 0
 
 const updateCurrentTime = () => {
   currentTime.value = new Date().toTimeString().split(' ')[0]
@@ -273,6 +387,24 @@ const goServiceTraces = (serviceName: string) => {
 const goTraceDetail = (traceId: string) => {
   if (!traceId) return
   router.push({ name: 'trace-detail', params: { traceId } })
+}
+
+const clearSelection = () => {
+  selection.value = { kind: null, service: '' }
+  edgeExplain.value = ''
+  updateChart()
+}
+
+const selectNode = (service: string) => {
+  selection.value = { kind: 'node', service }
+  edgeExplain.value = ''
+  updateChart()
+}
+
+const selectEdge = (source: string, target: string) => {
+  selection.value = { kind: 'edge', service: source, peer: target }
+  edgeExplain.value = ''
+  updateChart()
 }
 
 async function explainEdge(source: string, target: string) {
@@ -290,8 +422,11 @@ const bindTopologyClick = () => {
   topologyChart.off('click')
   topologyChart.on('click', (params: any) => {
     const hit = resolveTopologyClick(params)
-    if (hit?.service) {
-      goServiceTraces(hit.service)
+    if (!hit?.service) return
+    if (hit.kind === 'edge' && hit.peer) {
+      selectEdge(hit.service, hit.peer)
+    } else {
+      selectNode(hit.service)
     }
   })
 }
@@ -350,6 +485,8 @@ const syncChart = async () => {
 const loadData = async () => {
   try {
     loading.value = true
+    selection.value = { kind: null, service: '' }
+    edgeExplain.value = ''
     const h = hours.value
     const [deps, names, latency, recent] = await Promise.all([
       ApiService.getServiceDependencies(h),
@@ -390,25 +527,64 @@ onUnmounted(() => {
   min-height: calc(100dvh - 2rem);
 }
 
-.si-topo-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-  flex: 1;
-}
-
-.si-topo-graph-card {
-  min-height: clamp(360px, 52vh, 620px) !important;
-  height: auto !important;
-  margin-bottom: 0 !important;
+.si-topo-mesh {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  gap: 0.75rem;
+}
+
+.si-topo-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 28%);
+  gap: 0.85rem;
+  align-items: stretch;
+}
+
+@media (max-width: 991px) {
+  .si-topo-stage {
+    grid-template-columns: 1fr;
+  }
+}
+
+.si-topo-stage__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.85rem 0.95rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  min-height: clamp(420px, 58vh, 680px);
+}
+
+.si-topo-stage__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+  flex-shrink: 0;
+}
+
+.si-topo-stage__title {
+  margin: 0 0 0.2rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--si-ink);
+}
+
+.si-topo-legend {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.4rem;
+  font-size: 0.72rem;
+  color: var(--si-muted);
 }
 
 .si-topo-canvas-wrap {
   flex: 1;
-  min-height: 320px;
+  min-height: 360px;
   width: 100%;
   position: relative;
   overflow: hidden;
@@ -426,18 +602,158 @@ onUnmounted(() => {
   height: 100%;
 }
 
-.si-topo-legend {
-  font-size: 0.72rem;
+.si-topo-stage__aside {
+  min-width: 0;
+}
+
+@media (min-width: 992px) {
+  .si-topo-rail {
+    position: sticky;
+    top: calc(var(--si-nav-offset, 4.5rem) + 0.75rem);
+    max-height: calc(100vh - var(--si-nav-offset, 4.5rem) - 1.5rem);
+    overflow: auto;
+  }
+}
+
+.si-topo-rail {
+  padding: 0.85rem 0.95rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  height: 100%;
+}
+
+.si-topo-rail__title {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.si-topo-rail__kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--si-teal);
+}
+
+.si-topo-rail__name {
+  margin: 0.2rem 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  word-break: break-all;
+}
+
+.si-topo-rail__edge {
+  margin: 0.25rem 0 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  word-break: break-all;
+}
+
+.si-topo-rail__edge i {
+  color: var(--si-teal);
+}
+
+.si-topo-rail__stats {
+  margin: 0 0 0.85rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.si-topo-rail__stats > div {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.si-topo-rail__stats dt {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--si-muted);
 }
 
-.si-topo-table-card {
-  margin-bottom: 0 !important;
+.si-topo-rail__stats dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-.si-topo-table-scroll {
-  max-height: min(36vh, 320px);
-  overflow-y: auto;
+.si-topo-rail__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.si-topo-rail__empty {
+  margin: 1.5rem 0 0;
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--si-muted);
+  line-height: 1.5;
+}
+
+.si-topo-rail__explain {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--card-border);
+  text-align: left;
+}
+
+.si-topo-rail__explain pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.si-topo-fold {
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  padding: 0 0.95rem 0.85rem;
+}
+
+.si-topo-fold__summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.75rem 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  user-select: none;
+}
+
+.si-topo-fold__summary::-webkit-details-marker {
+  display: none;
+}
+
+.si-topo-fold__summary::before {
+  content: '\f0da';
+  font-family: FontAwesome, 'Font Awesome 5 Free', sans-serif;
+  display: inline-block;
+  width: 0.9rem;
+  margin-right: 0.15rem;
+  color: var(--si-muted);
+  transition: transform 0.15s ease;
+}
+
+.si-topo-fold[open] > .si-topo-fold__summary::before {
+  transform: rotate(90deg);
 }
 
 .si-svc {
