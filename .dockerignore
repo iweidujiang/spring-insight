@@ -9,8 +9,8 @@
 !insight-server/target/
 !insight-server/target/insight-server.jar
 boot2/**/target
-insight-ui-vue/node_modules
-insight-ui-vue/dist
+insight-server/ui/node_modules
+insight-server/ui/dist
 docs
 *.md
 !README.md

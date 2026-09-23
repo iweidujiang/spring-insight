@@ -22,6 +22,7 @@
 - 错误分析：与链路列表对齐（摘要细条、可点行主舞台、墨青图表色）；AI 结果下移
 - 设置页：顶部卡片分节（告警推送 / AI 解读 / 数据清理）带说明；数据清理表单对齐为行动卡片
 - **版本分线**：`agent.version` 与 `server.version` 拆开；无 Agent 变更时可不发 Central，仅升 Server
+- 控制台前端迁入 `insight-server/ui`（不再单独顶层 `insight-ui-vue`）
 
 ## [0.3.2] — 2026-09-20
 

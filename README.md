@@ -153,8 +153,7 @@ Agent 与 Server **版本号分开维护**：业务侧 Starter 只在埋点变�
 |------|------|
 | `spring-insight-agent-starter` | 业务侧依赖 |
 | `insight-agent` | 采集核心 |
-| `insight-server` | 监测中心（GHCR 镜像或本地打包） |
-| `insight-ui-vue` | 控制台前端（打进 Server） |
+| `insight-server` | 监测中心（API + 控制台 UI；前端源码在 `insight-server/ui`） |
 | `compose.yaml` | 一键起监测中心 |
 
 ---
@@ -173,6 +172,8 @@ Agent 与 Server **版本号分开维护**：业务侧 Starter 只在埋点变�
 mvn clean install -DskipTests
 java -jar insight-server/target/insight-server.jar
 ```
+
+仅改控制台时，可在 `insight-server/ui` 下 `npm run dev`（默认代理到本机 9966）。
 
 正式发版后优先从 GitHub Release 下载 `insight-server-x.y.z.jar`，无需自行编译。
 

@@ -21,7 +21,7 @@
         <frontend.maven.plugin.version>1.15.1</frontend.maven.plugin.version>
         <frontend.node.version>v20.18.1</frontend.node.version>
         <frontend.npm.version>10.8.2</frontend.npm.version>
-        <insight.ui.dir>${project.basedir}/../insight-ui-vue</insight.ui.dir>
+        <insight.ui.dir>${project.basedir}/ui</insight.ui.dir>
     </properties>
 
     <dependencies>
@@ -77,7 +77,7 @@
         <finalName>insight-server</finalName>
         <plugins>
             <!--
-              打包前构建 insight-ui-vue，产物覆盖 target/classes/static，保证 jar 内 UI 与源码一致。
+              打包前构建 ui/（Vue 控制台），产物覆盖 target/classes/static，保证 jar 内 UI 与源码一致。
               无 Node 环境或只想用已提交 static 时：-Dskip.ui=true
             -->
             <plugin>

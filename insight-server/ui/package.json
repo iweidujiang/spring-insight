@@ -1,12 +1,12 @@
 {
-  "name": "insight-ui-vue",
+  "name": "insight-server-ui",
   "private": true,
-  "version": "0.1.1-SNAPSHOT",
+  "version": "0.4.0-SNAPSHOT",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:server": "vite build --outDir ../insight-server/target/classes/static --emptyOutDir",
+    "build:server": "vite build --outDir ../target/classes/static --emptyOutDir",
     "preview": "vite preview"
   },
   "dependencies": {

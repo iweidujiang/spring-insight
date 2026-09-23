@@ -1,6 +1,6 @@
 # Spring Insight 持续集成
 # - JDK 17 构建与校验（Agent + Server 字节码目标均为 17）
-# - 前端：单独校验 insight-ui-vue 可构建
+# - 前端：单独校验 insight-server/ui 可构建
 
 name: CI
 
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: insight-ui-vue
+        working-directory: insight-server/ui
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -56,7 +56,7 @@ jobs:
           # 使用 Node 22，避免 Actions 对 Node 20 的弃用限制
           node-version: "22"
           cache: npm
-          cache-dependency-path: insight-ui-vue/package-lock.json
+          cache-dependency-path: insight-server/ui/package-lock.json
       - name: 安装依赖并构建前端
         run: |
           npm ci

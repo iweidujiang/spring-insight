@@ -2,9 +2,9 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
-// https://vitejs.dev/config/
+// Insight Server 控制台（源码位于 insight-server/ui）
 export default defineConfig({
-  // Insight Server 控制台挂在根路径 /，与业务侧 Agent 解耦
+  // 控制台挂在根路径 /，与业务侧 Agent 解耦
   base: '/',
   plugins: [vue()],
   resolve: {
