@@ -15,10 +15,22 @@
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-09-24
+
 ### 新增 / 体验
 - **AI 结构化解读（schemaVersion=1）**：Trace / 错误分析 / 拓扑边统一返回 `summary` + `evidence`（可跳转）+ `suggestions`；仍保留 `markdown` 兼容
 - 控制台 AI 面板：展示结论与建议；证据可点回 Span / 链路列表 / 拓扑边
 - AI 审计记录附带结论摘要（进程内，重启清空）
+
+### 兼容
+- **Agent 可不升**：业务侧继续使用 Central `spring-insight-agent-starter:0.3.2` 上报到本版 Server
+- 正式支持 Boot 3.x + JDK 17+；暂不支持 Boot 4
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.3.2`（本版可不升） |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.5.0` |
 
 ---
 

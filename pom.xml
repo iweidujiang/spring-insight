@@ -14,7 +14,7 @@
       - 父 POM <version> 须与 server.version 保持一致
       - Agent 子模块显式 <version> 须与 agent.version 保持一致
     -->
-    <version>0.5.0-SNAPSHOT</version>
+    <version>0.5.0</version>
 
     <packaging>pom</packaging>
     <name>Spring Insight</name>
@@ -64,7 +64,7 @@
         <!-- Agent：与 Central 已发版对齐；有埋点变更再 bump 并 deploy -->
         <agent.version>0.3.2</agent.version>
         <!-- Server / 父 POM：可随控制台发版独立 bump（GHCR） -->
-        <server.version>0.5.0-SNAPSHOT</server.version>
+        <server.version>0.5.0</server.version>
 
         <!-- Agent + Server 统一目标 Java 17（Boot 3 基线；JDK 21+ 亦可运行） -->
         <java.version>17</java.version>
