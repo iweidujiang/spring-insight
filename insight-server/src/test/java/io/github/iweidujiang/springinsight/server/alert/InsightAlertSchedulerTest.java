@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.server.alert;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
+import io.github.iweidujiang.springinsight.server.ai.InsightAiExplainService;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -97,7 +99,7 @@ class InsightAlertSchedulerTest {
         when(settings.effectiveAlert()).thenReturn(props);
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
                 settings, persistence, new InsightAlertWebhookSender(new ObjectMapper()),
-                new InsightAlertEmailSender(), metrics);
+                new InsightAlertEmailSender(), metrics, mockAi());
         scheduler.scan();
         scheduler.scan();
         assertEquals(2, hits.get());
@@ -117,7 +119,20 @@ class InsightAlertSchedulerTest {
                 storeWithOneError(),
                 new InsightAlertWebhookSender(new ObjectMapper()),
                 new InsightAlertEmailSender(),
-                lastMetrics);
+                lastMetrics,
+                mockAi());
+    }
+
+    private static InsightAiExplainService mockAi() {
+        InsightAiExplainService ai = mock(InsightAiExplainService.class);
+        when(ai.explainForAlert(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(Map.of("skipped", true, "skipReason", "attachToAlerts=false"));
+        return ai;
     }
 
     private InsightServerAlertProperties baseProps(int port, String metric, double threshold, int cooldown) {

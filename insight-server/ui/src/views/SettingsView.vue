@@ -174,7 +174,7 @@
             <div>
               <h3 class="si-settings__card-title"><i class="fa fa-magic me-2"></i>AI 解读</h3>
               <p class="si-settings__card-desc">
-                对接 OpenAI 兼容接口。解读结果含摘要、可点证据与处置建议（链路 / 拓扑边 / 错误聚合）。
+                对接 OpenAI 兼容接口。解读含摘要、可点证据与建议；可选在告警推送时附带短解读。
               </p>
             </div>
             <div class="form-check form-switch mb-0">
@@ -221,6 +221,24 @@
             <div class="si-settings__field">
               <label class="form-label" for="ai-tokens">maxTokens</label>
               <input id="ai-tokens" v-model.number="form.ai.maxTokens" class="form-control" type="number" min="64" />
+            </div>
+            <div class="si-settings__field si-settings__field--full">
+              <div class="form-check form-switch">
+                <input id="ai-attach-alerts" v-model="form.ai.attachToAlerts" class="form-check-input" type="checkbox" />
+                <label class="form-check-label" for="ai-attach-alerts">告警附带 AI 解读</label>
+              </div>
+              <p class="form-text mb-0">开启后，Webhook / 邮件会附带短摘要与建议（须同时启用 AI；失败不阻断推送）。</p>
+            </div>
+            <div class="si-settings__field">
+              <label class="form-label" for="ai-alert-max">告警 AI 每小时上限</label>
+              <input
+                id="ai-alert-max"
+                v-model.number="form.ai.alertMaxPerHour"
+                class="form-control"
+                type="number"
+                min="1"
+                :disabled="!form.ai.attachToAlerts"
+              />
             </div>
           </div>
           <p class="si-settings__footnote">
@@ -423,7 +441,9 @@ const form = reactive<RuntimeSettingsSaveBody>({
     model: 'gpt-4o-mini',
     timeoutMs: 30000,
     maxInputSpans: 40,
-    maxTokens: 800
+    maxTokens: 800,
+    attachToAlerts: false,
+    alertMaxPerHour: 10
   }
 })
 
@@ -472,6 +492,8 @@ async function load() {
     form.ai.timeoutMs = Number(data.ai?.timeoutMs ?? 30000)
     form.ai.maxInputSpans = Number(data.ai?.maxInputSpans ?? 40)
     form.ai.maxTokens = Number(data.ai?.maxTokens ?? 800)
+    form.ai.attachToAlerts = !!data.ai?.attachToAlerts
+    form.ai.alertMaxPerHour = Number(data.ai?.alertMaxPerHour ?? 10)
     apiKeyConfigured.value = !!data.ai?.apiKeyConfigured
 
     await refreshStorage()

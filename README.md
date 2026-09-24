@@ -7,7 +7,7 @@
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" /></a>
   <a href="https://www.oracle.com/java/"><img src="https://img.shields.io/badge/Agent-JDK%2017%2B-orange" alt="Java" /></a>
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-3.5.9-brightgreen" alt="Spring Boot" /></a>
-  <a href="https://github.com/iweidujiang/spring-insight/releases/tag/v0.5.0"><img src="https://img.shields.io/badge/Server-0.5.0-green.svg" alt="Server" /></a>
+  <a href="https://github.com/iweidujiang/spring-insight/releases/tag/v0.6.0"><img src="https://img.shields.io/badge/Server-0.6.0-green.svg" alt="Server" /></a>
   <a href="https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2"><img src="https://img.shields.io/badge/Agent-0.3.2-blue.svg" alt="Agent" /></a>
 </p>
 
@@ -15,7 +15,7 @@
 
 
 - 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
-- 已发布：**Agent `0.3.2`**（Maven Central）+ **Server `0.5.0`**（GHCR）
+- 已发布：**Agent `0.3.2`**（Maven Central）+ **Server `0.6.0`**（GHCR）
 - **运行时要求**：Spring Boot 3.x + JDK 17+
 - 问题与建议欢迎开 Issue
 
@@ -32,7 +32,7 @@ docker run --rm -p 9966:9966 \
   -e SPRING_INSIGHT_SERVER_STORAGE_MODE=file \
   -e SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH=/data/spans.json \
   -v spring-insight-data:/data \
-  ghcr.io/iweidujiang/spring-insight-server:0.5.0
+  ghcr.io/iweidujiang/spring-insight-server:0.6.0
 ```
 
 或使用本仓库根目录 Compose（拉取已发布镜像）：
@@ -43,12 +43,12 @@ docker compose up -d
 
 **方式 B — 无 Docker（GitHub Release 可执行 jar）**
 
-从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-0.5.0.jar`（打 `v*` tag 时由 Actions 自动挂载），本机需 **JDK 17+**：
+从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-0.6.0.jar`（打 `v*` tag 时由 Actions 自动挂载），本机需 **JDK 17+**：
 
 ```bash
-java -jar insight-server-0.5.0.jar
+java -jar insight-server-0.6.0.jar
 # 落盘示例：
-# java -jar insight-server-0.5.0.jar --spring.insight.server.storage.mode=file
+# java -jar insight-server-0.6.0.jar --spring.insight.server.storage.mode=file
 ```
 
 **本地改 Server 源码联调（本机打包 + Docker 运行镜像，默认 sqlite）：**
@@ -134,7 +134,7 @@ Agent 与 Server **版本说明如下：**
 |------|----------|------|
 | `io.github.iweidujiang:spring-insight-agent-starter` | **`0.3.2`** | **业务侧依赖**（[Central](https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.3.2)） |
 | `io.github.iweidujiang:insight-agent` | **`0.3.2`** | 采集核心（由 Starter 传递） |
-| `ghcr.io/iweidujiang/spring-insight-server` | **`0.5.0`** | **监测中心镜像** |
+| `ghcr.io/iweidujiang/spring-insight-server` | **`0.6.0`** | **监测中心镜像** |
 | Release `insight-server-*.jar` | 同上 | **无 Docker**：JDK 17+ 下 `java -jar` |
 
 仓库根 `pom.xml` 属性：`agent.version` / `server.version`。发版说明见 [CHANGELOG.md](CHANGELOG.md)。

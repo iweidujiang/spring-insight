@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
  * 基于 OpenAI 兼容 Chat Completions 做结构化解读（Trace / 错误聚合 / 拓扑边）。
@@ -40,6 +41,9 @@ public class InsightAiExplainService {
     private final InsightAiAuditLog auditLog;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
+
+    /** 告警 AI 调用时间戳（epoch ms），用于每小时限流 */
+    private final ConcurrentLinkedDeque<Long> alertAiCallTimes = new ConcurrentLinkedDeque<>();
 
     /**
      * @param settingsService      运行时设置
@@ -264,6 +268,156 @@ public class InsightAiExplainService {
                     String.valueOf(degraded.getOrDefault("summary", "")));
             return degraded;
         }
+    }
+
+    /**
+     * 告警触发时的短解读：写入 Webhook/邮件的 {@code aiSummary} / {@code aiSuggestions}。
+     * <p>
+     * 未开 attachToAlerts、未配齐、或触达每小时上限时返回 {@code skipped=true}，不调模型。
+     * </p>
+     *
+     * @param serviceName   告警服务
+     * @param metric        指标名
+     * @param value         当前指标值
+     * @param threshold     阈值
+     * @param windowMinutes 窗口分钟
+     * @return 供告警 payload 合并的字段
+     */
+    public Map<String, Object> explainForAlert(String serviceName,
+                                               String metric,
+                                               double value,
+                                               double threshold,
+                                               int windowMinutes) {
+        InsightServerAiProperties properties = settingsService.effectiveAi();
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("aiAttached", false);
+        if (!properties.isAttachToAlerts()) {
+            out.put("skipped", true);
+            out.put("skipReason", "attachToAlerts=false");
+            return out;
+        }
+        if (!properties.isInvokeReady()) {
+            out.put("skipped", true);
+            out.put("skipReason", "ai_not_ready");
+            return out;
+        }
+        if (!isOpenAiCompatible(properties.getProvider())) {
+            out.put("skipped", true);
+            out.put("skipReason", "provider_unsupported");
+            return out;
+        }
+        int maxPerHour = properties.getAlertMaxPerHour() > 0 ? properties.getAlertMaxPerHour() : 10;
+        if (!tryAcquireAlertQuota(maxPerHour)) {
+            out.put("skipped", true);
+            out.put("skipReason", "rate_limited");
+            log.info("[AI] 告警解读达每小时上限({})，本次只推指标", maxPerHour);
+            return out;
+        }
+
+        // 错误聚合按小时桶；短窗口也至少取近 1 小时摘要
+        int hours = Math.max(1, (int) Math.ceil(windowMinutes / 60.0));
+        Map<String, Object> breakdown = persistenceService.findErrorBreakdown(hours);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("serviceName", serviceName);
+        payload.put("metric", metric);
+        payload.put("value", value);
+        payload.put("threshold", threshold);
+        payload.put("windowMinutes", windowMinutes);
+        payload.put("totalErrorSpans", breakdown.get("total_error_spans"));
+        payload.put("byService", filterServiceRows(breakdown.get("by_service"), serviceName, 5));
+        payload.put("byStatusCode", limitList(breakdown.get("by_status_code"), 5));
+        payload.put("byException", limitList(breakdown.get("by_exception"), 5));
+
+        try {
+            String raw = callChatCompletions(
+                    properties,
+                    """
+                            你是 Spring Insight 告警助手。根据告警指标与错误聚合 JSON，用极短中文说明为何触发、先查什么。
+                            """ + InsightAiExplainSchema.JSON_OUTPUT_RULES + """
+                            对本场景：summary 不超过 60 字；suggestions 最多 3 条；evidence 可空或 1～2 条 type=service/status/exception。
+                            """,
+                    "请解读以下告警上下文：\n```json\n"
+                            + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload)
+                            + "\n```");
+            Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, objectMapper);
+            out.put("aiAttached", true);
+            out.put("aiDegraded", false);
+            out.put("aiSummary", String.valueOf(parsed.getOrDefault("summary", "")));
+            @SuppressWarnings("unchecked")
+            List<String> suggestions = (List<String>) parsed.getOrDefault("suggestions", List.of());
+            out.put("aiSuggestions", suggestions);
+            out.put("aiModel", properties.getModel() != null ? properties.getModel() : "");
+            auditLog.record("alert", serviceName, false, properties.getModel(),
+                    String.valueOf(out.get("aiSummary")));
+            return out;
+        } catch (Exception e) {
+            log.warn("[AI] 告警解读失败: service={}, error={}", serviceName, e.getMessage());
+            out.put("aiAttached", true);
+            out.put("aiDegraded", true);
+            out.put("aiSummary", "模型调用失败：" + safeMsg(e));
+            out.put("aiSuggestions", List.of());
+            out.put("aiModel", properties.getModel() != null ? properties.getModel() : "");
+            auditLog.record("alert", serviceName, true, properties.getModel(),
+                    String.valueOf(out.get("aiSummary")));
+            return out;
+        }
+    }
+
+    /**
+     * 尝试占用一次告警 AI 配额（滑动 1 小时窗口）。
+     *
+     * @param maxPerHour 上限
+     * @return 是否允许本次调用
+     */
+    boolean tryAcquireAlertQuota(int maxPerHour) {
+        long now = System.currentTimeMillis();
+        long cutoff = now - 3_600_000L;
+        while (true) {
+            Long oldest = alertAiCallTimes.peekFirst();
+            if (oldest == null || oldest >= cutoff) {
+                break;
+            }
+            alertAiCallTimes.pollFirst();
+        }
+        if (alertAiCallTimes.size() >= maxPerHour) {
+            return false;
+        }
+        alertAiCallTimes.addLast(now);
+        return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> filterServiceRows(Object raw, String serviceName, int max) {
+        if (!(raw instanceof List<?> list) || list.isEmpty()) {
+            return List.of();
+        }
+        List<Map<String, Object>> matched = new ArrayList<>();
+        for (Object o : list) {
+            if (!(o instanceof Map<?, ?> row)) {
+                continue;
+            }
+            Object name = row.get("service_name");
+            if (name == null) {
+                name = row.get("serviceName");
+            }
+            if (serviceName != null && serviceName.equals(String.valueOf(name))) {
+                matched.add((Map<String, Object>) row);
+            }
+        }
+        if (matched.isEmpty()) {
+            Object limited = limitList(raw, max);
+            if (limited instanceof List<?> l) {
+                List<Map<String, Object>> copy = new ArrayList<>();
+                for (Object o : l) {
+                    if (o instanceof Map<?, ?> m) {
+                        copy.add((Map<String, Object>) m);
+                    }
+                }
+                return copy;
+            }
+            return List.of();
+        }
+        return matched.size() <= max ? matched : matched.subList(0, max);
     }
 
     /**

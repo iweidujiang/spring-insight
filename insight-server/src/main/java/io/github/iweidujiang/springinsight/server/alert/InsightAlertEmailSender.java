@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.stream.Collectors;
 
 /**
  * 通过自定义 SMTP 将告警发到真实邮箱。
@@ -95,11 +95,30 @@ public class InsightAlertEmailSender {
 
     /**
      * @param payload 告警字段
-     * @return 邮件正文
+     * @return 邮件正文（AI 摘要优先展示）
      */
     static String formatBody(Map<String, Object> payload) {
-        return payload.entrySet().stream()
-                .map(e -> e.getKey() + ": " + e.getValue())
-                .collect(Collectors.joining("\n"));
+        StringBuilder sb = new StringBuilder();
+        Object summary = payload.get("aiSummary");
+        if (summary != null && !String.valueOf(summary).isBlank()) {
+            sb.append("AI 解读: ").append(summary).append('\n');
+            Object suggestions = payload.get("aiSuggestions");
+            if (suggestions instanceof List<?> list && !list.isEmpty()) {
+                sb.append("建议:\n");
+                int i = 1;
+                for (Object item : list) {
+                    sb.append("  ").append(i++).append(". ").append(item).append('\n');
+                }
+            }
+            sb.append('\n');
+        }
+        for (Map.Entry<String, Object> e : payload.entrySet()) {
+            String k = e.getKey();
+            if ("aiSummary".equals(k) || "aiSuggestions".equals(k)) {
+                continue;
+            }
+            sb.append(k).append(": ").append(e.getValue()).append('\n');
+        }
+        return sb.toString().trim();
     }
 }

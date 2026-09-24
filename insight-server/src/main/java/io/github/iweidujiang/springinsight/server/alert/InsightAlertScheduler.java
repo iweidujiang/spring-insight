@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.server.alert;
 
+import io.github.iweidujiang.springinsight.server.ai.InsightAiExplainService;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
 import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
@@ -19,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 定时扫描服务错误窗口，超阈值则推送 Webhook 和/或邮件。
+ * 定时扫描服务错误窗口，超阈值则推送 Webhook 和/或邮件；可选附带 AI 短解读。
  * <p>
  * 是否启用以 {@link InsightRuntimeSettingsService#effectiveAlert()} 为准（控制台可改，无需重启）。
  * </p>
@@ -39,6 +40,7 @@ public class InsightAlertScheduler {
     private final InsightAlertWebhookSender webhookSender;
     private final InsightAlertEmailSender emailSender;
     private final InsightAlertMetrics metrics;
+    private final InsightAiExplainService aiExplainService;
 
     /** 服务名 → 上次成功推送的 epoch 毫秒 */
     private final ConcurrentHashMap<String, Long> lastFiredAt = new ConcurrentHashMap<>();
@@ -52,17 +54,20 @@ public class InsightAlertScheduler {
      * @param webhookSender       Webhook
      * @param emailSender         邮件
      * @param metrics             结果计数
+     * @param aiExplainService    可选告警 AI 解读
      */
     public InsightAlertScheduler(InsightRuntimeSettingsService settingsService,
                                  TraceSpanPersistenceService persistenceService,
                                  InsightAlertWebhookSender webhookSender,
                                  InsightAlertEmailSender emailSender,
-                                 InsightAlertMetrics metrics) {
+                                 InsightAlertMetrics metrics,
+                                 InsightAiExplainService aiExplainService) {
         this.settingsService = settingsService;
         this.persistenceService = persistenceService;
         this.webhookSender = webhookSender;
         this.emailSender = emailSender;
         this.metrics = metrics;
+        this.aiExplainService = aiExplainService;
     }
 
     /**
@@ -142,14 +147,55 @@ public class InsightAlertScheduler {
             }
             double value = InsightAlertEvaluator.metricValue(properties, errorCalls, errorRate);
             Map<String, Object> payload = InsightAlertEvaluator.payload(properties, service, value, at);
+            attachAiIfNeeded(payload, properties, service, value);
             boolean delivered = deliver(properties, payload);
             if (delivered) {
                 lastFiredAt.put(service, now);
                 metrics.record("success");
-                log.info("[告警] 已推送: service={}, metric={}, value={}", service, properties.normalizedMetric(), value);
+                log.info("[告警] 已推送: service={}, metric={}, value={}, aiAttached={}",
+                        service, properties.normalizedMetric(), value, payload.getOrDefault("aiAttached", false));
             } else {
                 metrics.record("failure");
             }
+        }
+    }
+
+    /**
+     * 若 AI「告警附带解读」开启，则向 payload 合并短解读字段（失败不阻断推送）。
+     *
+     * @param payload    告警体
+     * @param properties 告警配置
+     * @param service    服务名
+     * @param value      指标值
+     */
+    private void attachAiIfNeeded(Map<String, Object> payload,
+                                  InsightServerAlertProperties properties,
+                                  String service,
+                                  double value) {
+        try {
+            Map<String, Object> ai = aiExplainService.explainForAlert(
+                    service,
+                    properties.normalizedMetric(),
+                    value,
+                    properties.getThreshold(),
+                    properties.getWindowMinutes() > 0 ? properties.getWindowMinutes() : 15);
+            if (ai == null || Boolean.TRUE.equals(ai.get("skipped"))) {
+                return;
+            }
+            // 只合并对外字段，避免 skipReason 等内部键进入 Webhook
+            copyAiField(payload, ai, "aiAttached");
+            copyAiField(payload, ai, "aiDegraded");
+            copyAiField(payload, ai, "aiSummary");
+            copyAiField(payload, ai, "aiSuggestions");
+            copyAiField(payload, ai, "aiModel");
+        } catch (Exception e) {
+            log.warn("[告警] 附带 AI 解读异常（仍推送指标）: service={}, error={}", service, e.getMessage());
+        }
+    }
+
+    private static void copyAiField(Map<String, Object> target, Map<String, Object> ai, String key) {
+        if (ai.containsKey(key) && ai.get(key) != null) {
+            target.put(key, ai.get(key));
         }
     }
 

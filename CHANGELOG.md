@@ -15,6 +15,24 @@
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-24
+
+### 新增 / 体验
+- **告警附带 AI 解读**（默认关）：开启后 Webhook / 邮件附带 `aiSummary` / `aiSuggestions`；失败不阻断推送；每小时调用上限可配（默认 10）
+- 设置页 AI：增加「告警附带 AI 解读」开关与每小时上限
+
+### 兼容
+- **Agent 可不升**：业务侧继续使用 Central `spring-insight-agent-starter:0.3.2`
+- 未开启 `attachToAlerts` 时，告警 payload 与 0.5.x 一致
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.3.2`（本版可不升） |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.6.0` |
+
+---
+
 ## [0.5.0] — 2026-09-24
 
 ### 新增 / 体验

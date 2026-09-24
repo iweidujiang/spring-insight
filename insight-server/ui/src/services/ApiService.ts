@@ -384,6 +384,8 @@ export interface RuntimeSettingsView {
     timeoutMs: number
     maxInputSpans: number
     maxTokens: number
+    attachToAlerts: boolean
+    alertMaxPerHour: number
   }
 }
 
@@ -417,6 +419,8 @@ export interface RuntimeSettingsSaveBody {
     timeoutMs: number
     maxInputSpans: number
     maxTokens: number
+    attachToAlerts: boolean
+    alertMaxPerHour: number
   }
 }
 

@@ -112,6 +112,30 @@ class InsightAiExplainServiceTest {
     }
 
     /**
+     * 告警未开 attachToAlerts 时跳过，不调 HTTP。
+     */
+    @Test
+    void explainForAlertSkippedWhenDisabled() {
+        InsightServerAiProperties p = props(true, "http://127.0.0.1:1/v1", "k");
+        p.setAttachToAlerts(false);
+        InsightAiExplainService svc = service(p, storeWithTrace());
+        Map<String, Object> body = svc.explainForAlert("sca-order", "error_rate", 20, 10, 15);
+        assertTrue(Boolean.TRUE.equals(body.get("skipped")));
+        assertFalse(Boolean.TRUE.equals(body.get("aiAttached")));
+    }
+
+    /**
+     * 每小时配额耗尽后拒绝。
+     */
+    @Test
+    void alertQuotaLimited() {
+        InsightAiExplainService svc = service(props(false, "", ""), storeWithTrace());
+        assertTrue(svc.tryAcquireAlertQuota(2));
+        assertTrue(svc.tryAcquireAlertQuota(2));
+        assertFalse(svc.tryAcquireAlertQuota(2));
+    }
+
+    /**
      * Span 截断保留错误并打 truncated。
      */
     @Test

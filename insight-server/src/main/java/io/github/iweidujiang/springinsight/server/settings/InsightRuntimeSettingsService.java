@@ -163,6 +163,8 @@ public class InsightRuntimeSettingsService {
         out.setTimeoutMs(patch.getTimeoutMs() > 0 ? patch.getTimeoutMs() : out.getTimeoutMs());
         out.setMaxInputSpans(patch.getMaxInputSpans() > 0 ? patch.getMaxInputSpans() : out.getMaxInputSpans());
         out.setMaxTokens(patch.getMaxTokens() > 0 ? patch.getMaxTokens() : out.getMaxTokens());
+        out.setAttachToAlerts(patch.isAttachToAlerts());
+        out.setAlertMaxPerHour(patch.getAlertMaxPerHour() > 0 ? patch.getAlertMaxPerHour() : out.getAlertMaxPerHour());
         return out;
     }
 
@@ -199,6 +201,8 @@ public class InsightRuntimeSettingsService {
         m.put("timeoutMs", a.getTimeoutMs());
         m.put("maxInputSpans", a.getMaxInputSpans());
         m.put("maxTokens", a.getMaxTokens());
+        m.put("attachToAlerts", a.isAttachToAlerts());
+        m.put("alertMaxPerHour", a.getAlertMaxPerHour());
         return m;
     }
 
@@ -235,6 +239,8 @@ public class InsightRuntimeSettingsService {
         a.setTimeoutMs(p.getTimeoutMs());
         a.setMaxInputSpans(p.getMaxInputSpans());
         a.setMaxTokens(p.getMaxTokens());
+        a.setAttachToAlerts(p.isAttachToAlerts());
+        a.setAlertMaxPerHour(p.getAlertMaxPerHour());
         return a;
     }
 
@@ -271,6 +277,8 @@ public class InsightRuntimeSettingsService {
         p.setTimeoutMs(a.getTimeoutMs());
         p.setMaxInputSpans(a.getMaxInputSpans());
         p.setMaxTokens(a.getMaxTokens());
+        p.setAttachToAlerts(a.isAttachToAlerts());
+        p.setAlertMaxPerHour(a.getAlertMaxPerHour() > 0 ? a.getAlertMaxPerHour() : 10);
         return p;
     }
 
@@ -326,6 +334,8 @@ public class InsightRuntimeSettingsService {
         c.setTimeoutMs(a.getTimeoutMs());
         c.setMaxInputSpans(a.getMaxInputSpans());
         c.setMaxTokens(a.getMaxTokens());
+        c.setAttachToAlerts(a.isAttachToAlerts());
+        c.setAlertMaxPerHour(a.getAlertMaxPerHour());
         return c;
     }
 

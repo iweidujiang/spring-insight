@@ -30,7 +30,7 @@ class InsightAlertEmailSenderTest {
     }
 
     /**
-     * 正文为 key: value 行。
+     * 正文为 key: value 行；有 AI 摘要时优先展示。
      */
     @Test
     void formatBody() {
@@ -38,6 +38,23 @@ class InsightAlertEmailSenderTest {
         payload.put("serviceName", "sca-order");
         payload.put("value", 3.0);
         assertEquals("serviceName: sca-order\nvalue: 3.0", InsightAlertEmailSender.formatBody(payload));
+    }
+
+    /**
+     * AI 摘要与建议排在正文前部。
+     */
+    @Test
+    void formatBodyWithAi() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("serviceName", "sca-order");
+        payload.put("aiSummary", "错误率飙升");
+        payload.put("aiSuggestions", java.util.List.of("查下游", "看 Trace"));
+        payload.put("value", 12.0);
+        String body = InsightAlertEmailSender.formatBody(payload);
+        assertTrue(body.startsWith("AI 解读: 错误率飙升"));
+        assertTrue(body.contains("1. 查下游"));
+        assertTrue(body.contains("serviceName: sca-order"));
+        assertFalse(body.contains("aiSummary:"));
     }
 
     /**

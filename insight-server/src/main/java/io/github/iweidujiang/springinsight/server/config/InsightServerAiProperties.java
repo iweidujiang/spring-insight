@@ -59,6 +59,16 @@ public class InsightServerAiProperties {
     private int maxTokens = 800;
 
     /**
+     * 告警推送时是否附带 AI 短解读（须同时启用 AI 且配齐 key；默认关）
+     */
+    private boolean attachToAlerts = false;
+
+    /**
+     * 告警附带 AI 的每小时调用上限（防刷 token；超出则本小时内只推指标、不调模型）
+     */
+    private int alertMaxPerHour = 10;
+
+    /**
      * @return 规范化 base-url（去掉末尾 /）
      */
     public String normalizedBaseUrl() {

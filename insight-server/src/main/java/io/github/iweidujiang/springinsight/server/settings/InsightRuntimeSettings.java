@@ -59,5 +59,9 @@ public class InsightRuntimeSettings {
         private int timeoutMs = 30000;
         private int maxInputSpans = 40;
         private int maxTokens = 800;
+        /** 告警推送是否附带 AI 短解读 */
+        private boolean attachToAlerts = false;
+        /** 告警 AI 每小时最多调用次数 */
+        private int alertMaxPerHour = 10;
     }
 }
