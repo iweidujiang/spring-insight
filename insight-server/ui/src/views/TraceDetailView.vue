@@ -199,16 +199,14 @@
         </div>
 
         <!-- AI 结果：不占首屏，有内容时出现在瀑布下方 -->
-        <section v-if="explainMarkdown" class="trace-ai-panel" aria-label="AI 解释">
-          <div class="trace-ai-panel__head">
-            <h3 class="trace-ai-panel__title">
-              <i class="fa fa-lightbulb-o me-2"></i>AI 解释
-              <small v-if="explainMeta" class="text-muted ms-2">{{ explainMeta }}</small>
-            </h3>
-            <button class="btn btn-sm btn-outline-secondary" type="button" @click="explainMarkdown = ''">关闭</button>
-          </div>
-          <pre class="trace-ai-markdown mb-0">{{ explainMarkdown }}</pre>
-        </section>
+        <AiExplainPanel
+          v-if="explainResult"
+          :result="explainResult"
+          title="AI 解释"
+          :meta="explainMeta"
+          @close="explainResult = null"
+          @select-span="selectSpan"
+        />
 
         <!-- Span 表：默认折叠 -->
         <details class="trace-span-fold">
@@ -258,7 +256,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ApiService } from '../services/ApiService'
+import { ApiService, type AiExplainResult } from '../services/ApiService'
+import AiExplainPanel from '../components/AiExplainPanel.vue'
 import {
   buildTraceTimeline,
   formatDuration,
@@ -274,7 +273,7 @@ const loading = ref(true)
 const selectedSpanId = ref<string | null>(null)
 const copyHint = ref('')
 const explainHint = ref('')
-const explainMarkdown = ref('')
+const explainResult = ref<AiExplainResult | null>(null)
 const explainMeta = ref('')
 const explaining = ref(false)
 const aiStatus = ref({
@@ -392,7 +391,7 @@ const runExplain = async () => {
       explainHint.value = '解释请求失败（网络或鉴权）'
       return
     }
-    explainMarkdown.value = res.markdown || ''
+    explainResult.value = res
     explainMeta.value = [res.provider, res.model].filter(Boolean).join(' · ')
     if (res.degraded) {
       explainHint.value = res.message || '已降级：请检查 AI 配置或复制 Context'
@@ -422,11 +421,15 @@ const load = async () => {
   loading.value = true
   try {
     spans.value = await ApiService.getTraceDetail(id)
+    const spanFromQuery = String(route.query.span || '')
+    const byQuery = spanFromQuery
+      ? spans.value.find((s) => s.spanId === spanFromQuery)
+      : null
     const firstError = spans.value.find((s) =>
       s.success === false || (s.statusCode && !['OK', '0', '200'].includes(String(s.statusCode).toUpperCase()))
     )
     const root = spans.value.find((s) => !s.parentSpanId) || spans.value[0]
-    selectedSpanId.value = (firstError || root)?.spanId || null
+    selectedSpanId.value = (byQuery || firstError || root)?.spanId || null
     await scrollSelectedIntoView()
   } finally {
     loading.value = false
@@ -438,7 +441,7 @@ const goBack = () => {
 }
 
 watch(() => route.params.traceId, () => {
-  explainMarkdown.value = ''
+  explainResult.value = null
   explainHint.value = ''
   load()
 })

@@ -21,9 +21,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 基于 OpenAI 兼容 Chat Completions 解释 Trace（DeepSeek / OpenAI / 兼容网关等）。
+ * 基于 OpenAI 兼容 Chat Completions 做结构化解读（Trace / 错误聚合 / 拓扑边）。
  * <p>
- * 配置取自 {@link InsightRuntimeSettingsService#effectiveAi()}（控制台可改）。
+ * 配置取自 {@link InsightRuntimeSettingsService#effectiveAi()}；结果为 schemaVersion=1
+ *（summary / evidence / suggestions），并保留 markdown 兼容字段。
  * </p>
  *
  * @since 2026-09-18
@@ -32,8 +33,6 @@ import java.util.Map;
 @Slf4j
 @Service
 public class InsightAiExplainService {
-
-    private static final String DISCLAIMER = "\n\n---\n*AI 建议，请以 Span 为准。*";
 
     private final InsightRuntimeSettingsService settingsService;
     private final TraceContextExportService contextExportService;
@@ -91,50 +90,42 @@ public class InsightAiExplainService {
             return null;
         }
         Map<String, Object> truncated = truncateContext(context, properties.getMaxInputSpans());
+        Map<String, Object> nav = Map.of("traceId", traceId);
 
-        if (!properties.isEnabled()) {
-            return degraded(properties,
-                    "AI 未启用。请到控制台「设置」打开 AI，或「复制 Context」粘贴到任意 LLM。",
-                    truncated);
-        }
-        if (!properties.isInvokeReady()) {
-            return degraded(properties,
-                    "AI 已启用但未配齐 base-url / api-key。请到「设置」页填写后重试。",
-                    truncated);
-        }
-        if (!isOpenAiCompatible(properties.getProvider())) {
-            return degraded(properties,
-                    "当前仅支持 provider=openai-compatible（可用 DeepSeek / OpenAI / 兼容网关）。",
-                    truncated);
+        Map<String, Object> gate = gateOrNull(properties, "trace", nav);
+        if (gate != null) {
+            return gate;
         }
 
         try {
-            String markdown = callChatCompletions(
+            String raw = callChatCompletions(
                     properties,
                     """
                             你是 Spring Insight 分布式链路诊断助手。根据用户提供的 Trace Context JSON（已脱敏）做简要分析。
-                            要求：
-                            1. 用简洁中文 Markdown：先结论，再可疑 Span / 服务，再建议排查步骤（最多 5 条）。
-                            2. 只依据 JSON 中出现的字段，勿编造未出现的服务名、状态码或异常。
-                            3. 不要输出原始 JSON 全文。
+                            """ + InsightAiExplainSchema.JSON_OUTPUT_RULES + """
+                            对本场景：优先指出失败或最慢的 Span（type=span，ref=spanId），再给处置建议。
                             """,
                     "请解释以下 Trace Context：\n```json\n"
                             + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(truncated)
                             + "\n```");
-            Map<String, Object> ok = new LinkedHashMap<>();
-            ok.put("degraded", false);
-            ok.put("markdown", markdown + DISCLAIMER);
-            ok.put("model", properties.getModel());
-            ok.put("provider", properties.getProvider());
-            ok.put("traceId", traceId);
-            auditLog.record("trace", traceId, false, properties.getModel());
+            Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, objectMapper);
+            Map<String, Object> ok = InsightAiExplainSchema.buildResponse(
+                    "trace", false, null, properties.getModel(), properties.getProvider(), parsed, nav);
+            auditLog.record("trace", traceId, false, properties.getModel(),
+                    String.valueOf(ok.getOrDefault("summary", "")));
             return ok;
         } catch (Exception e) {
             log.warn("[AI] 解释失败: traceId={}, error={}", traceId, e.getMessage());
-            Map<String, Object> degraded = degraded(properties,
-                    "模型调用失败：" + safeMsg(e) + "。请检查「设置」中的 base-url/model/api-key。",
-                    truncated);
-            auditLog.record("trace", traceId, true, properties.getModel());
+            Map<String, Object> degraded = InsightAiExplainSchema.buildResponse(
+                    "trace",
+                    true,
+                    "模型调用失败：" + safeMsg(e) + "。请检查「设置」中的 base-url/model/api-key；也可「复制 Context」。",
+                    properties.getModel(),
+                    properties.getProvider(),
+                    null,
+                    nav);
+            auditLog.record("trace", traceId, true, properties.getModel(),
+                    String.valueOf(degraded.getOrDefault("summary", "")));
             return degraded;
         }
     }
@@ -154,51 +145,48 @@ public class InsightAiExplainService {
         payload.put("byService", limitList(breakdown.get("by_service"), 15));
         payload.put("byStatusCode", limitList(breakdown.get("by_status_code"), 10));
         payload.put("byException", limitList(breakdown.get("by_exception"), 10));
+        Map<String, Object> nav = Map.of("hours", hours);
 
-        if (!properties.isEnabled()) {
-            return degradedErrors(properties, "AI 未启用。请到控制台「设置」打开 AI。", payload);
+        Map<String, Object> gate = gateOrNull(properties, "errors", nav);
+        if (gate != null) {
+            return gate;
         }
-        if (!properties.isInvokeReady()) {
-            return degradedErrors(properties, "AI 已启用但未配齐 base-url / api-key。", payload);
-        }
-        if (!isOpenAiCompatible(properties.getProvider())) {
-            return degradedErrors(properties, "当前仅支持 OpenAI 兼容 Chat Completions。", payload);
-        }
+
         Number total = (Number) breakdown.getOrDefault("total_error_spans", 0);
         if (total == null || total.longValue() <= 0) {
-            Map<String, Object> empty = new LinkedHashMap<>();
-            empty.put("degraded", false);
-            empty.put("markdown", "### 暂无错误可解读\n\n所选时间范围内没有错误 Span。" + DISCLAIMER);
-            empty.put("model", properties.getModel());
-            empty.put("provider", properties.getProvider());
-            empty.put("hours", hours);
-            return empty;
+            Map<String, Object> emptyParsed = new LinkedHashMap<>();
+            emptyParsed.put("structured", true);
+            emptyParsed.put("summary", "所选时间范围内没有错误 Span");
+            emptyParsed.put("evidence", List.of());
+            emptyParsed.put("suggestions", List.of("扩大时间窗口，或确认业务侧是否上报错误 Span"));
+            return InsightAiExplainSchema.buildResponse(
+                    "errors", false, null, properties.getModel(), properties.getProvider(), emptyParsed, nav);
         }
         try {
-            String markdown = callChatCompletions(
+            String raw = callChatCompletions(
                     properties,
                     """
                             你是 Spring Insight 错误分析助手。根据用户提供的错误聚合 JSON（按服务 / 状态码 / 异常类）做简要解读。
-                            要求：
-                            1. 用简洁中文 Markdown：先总览，再最值得先查的 2～3 个线索，再建议排查步骤（最多 5 条）。
-                            2. 只依据 JSON，勿编造未出现的服务名或状态码。
-                            3. 不要输出原始 JSON 全文。
+                            """ + InsightAiExplainSchema.JSON_OUTPUT_RULES + """
+                            对本场景：evidence 优先用 type=service / status / exception，ref 取 JSON 中已有键；
+                            若有 sample_trace_id 可用 type=trace。建议应可直接指导下钻。
                             """,
                     "请解读以下错误分析摘要：\n```json\n"
                             + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload)
                             + "\n```");
-            Map<String, Object> ok = new LinkedHashMap<>();
-            ok.put("degraded", false);
-            ok.put("markdown", markdown + DISCLAIMER);
-            ok.put("model", properties.getModel());
-            ok.put("provider", properties.getProvider());
-            ok.put("hours", hours);
-            auditLog.record("errors", "hours=" + hours, false, properties.getModel());
+            Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, objectMapper);
+            Map<String, Object> ok = InsightAiExplainSchema.buildResponse(
+                    "errors", false, null, properties.getModel(), properties.getProvider(), parsed, nav);
+            auditLog.record("errors", "hours=" + hours, false, properties.getModel(),
+                    String.valueOf(ok.getOrDefault("summary", "")));
             return ok;
         } catch (Exception e) {
             log.warn("[AI] 错误解读失败: hours={}, error={}", hours, e.getMessage());
-            Map<String, Object> degraded = degradedErrors(properties, "模型调用失败：" + safeMsg(e), payload);
-            auditLog.record("errors", "hours=" + hours, true, properties.getModel());
+            Map<String, Object> degraded = InsightAiExplainSchema.buildResponse(
+                    "errors", true, "模型调用失败：" + safeMsg(e),
+                    properties.getModel(), properties.getProvider(), null, nav);
+            auditLog.record("errors", "hours=" + hours, true, properties.getModel(),
+                    String.valueOf(degraded.getOrDefault("summary", "")));
             return degraded;
         }
     }
@@ -229,61 +217,85 @@ public class InsightAiExplainService {
         payload.put("hours", hours);
         payload.put("edge", edge);
 
+        Map<String, Object> nav = new LinkedHashMap<>();
+        nav.put("source", source);
+        nav.put("target", target);
+        nav.put("hours", hours);
+
         String subject = source + "->" + target;
-        if (!properties.isEnabled()) {
-            return degradedEdge(properties, "AI 未启用。", payload);
-        }
-        if (!properties.isInvokeReady()) {
-            return degradedEdge(properties, "AI 未配齐 base-url / api-key。", payload);
+        Map<String, Object> gate = gateOrNull(properties, "dependency", nav);
+        if (gate != null) {
+            return gate;
         }
         if (edge == null) {
-            Map<String, Object> miss = new LinkedHashMap<>();
-            miss.put("degraded", true);
-            miss.put("message", "未找到该依赖边");
-            miss.put("markdown", "### 未找到依赖\n\n窗口内没有 " + subject + " 的调用边。" + DISCLAIMER);
-            miss.put("source", source);
-            miss.put("target", target);
-            return miss;
+            return InsightAiExplainSchema.buildResponse(
+                    "dependency",
+                    true,
+                    "窗口内没有 " + subject + " 的调用边。",
+                    properties.getModel(),
+                    properties.getProvider(),
+                    null,
+                    nav);
         }
         try {
-            String markdown = callChatCompletions(
+            String raw = callChatCompletions(
                     properties,
                     """
                             你是 Spring Insight 拓扑助手。根据依赖边 JSON（调用次数、平均耗时等）说明这条边可能意味着什么。
-                            要求：简洁中文 Markdown；勿编造未出现的指标；最多 4 条建议。
+                            """ + InsightAiExplainSchema.JSON_OUTPUT_RULES + """
+                            对本场景：至少一条 evidence 使用 type=edge，ref 为「源服务->目标服务」；
+                            建议侧重超时、错误率与下游容量。
                             """,
                     "请解释依赖边：\n```json\n"
                             + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload)
                             + "\n```");
-            Map<String, Object> ok = new LinkedHashMap<>();
-            ok.put("degraded", false);
-            ok.put("markdown", markdown + DISCLAIMER);
-            ok.put("model", properties.getModel());
-            ok.put("provider", properties.getProvider());
-            ok.put("source", source);
-            ok.put("target", target);
-            auditLog.record("dependency", subject, false, properties.getModel());
+            Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, objectMapper);
+            Map<String, Object> ok = InsightAiExplainSchema.buildResponse(
+                    "dependency", false, null, properties.getModel(), properties.getProvider(), parsed, nav);
+            auditLog.record("dependency", subject, false, properties.getModel(),
+                    String.valueOf(ok.getOrDefault("summary", "")));
             return ok;
         } catch (Exception e) {
             log.warn("[AI] 依赖边解读失败: {} error={}", subject, e.getMessage());
-            Map<String, Object> degraded = degradedEdge(properties, "模型调用失败：" + safeMsg(e), payload);
-            auditLog.record("dependency", subject, true, properties.getModel());
+            Map<String, Object> degraded = InsightAiExplainSchema.buildResponse(
+                    "dependency", true, "模型调用失败：" + safeMsg(e),
+                    properties.getModel(), properties.getProvider(), null, nav);
+            auditLog.record("dependency", subject, true, properties.getModel(),
+                    String.valueOf(degraded.getOrDefault("summary", "")));
             return degraded;
         }
     }
 
-    private Map<String, Object> degradedEdge(InsightServerAiProperties properties,
-                                             String message,
-                                             Map<String, Object> payload) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("degraded", true);
-        body.put("message", message);
-        body.put("markdown", "### 未能解释该边\n\n" + message + DISCLAIMER);
-        body.put("model", properties.getModel() != null ? properties.getModel() : "");
-        body.put("provider", properties.getProvider() != null ? properties.getProvider() : "");
-        body.put("source", payload.get("source"));
-        body.put("target", payload.get("target"));
-        return body;
+    /**
+     * 未启用 / 未配齐 / provider 不支持时返回降级响应，否则 null。
+     *
+     * @param properties AI 配置
+     * @param kind       场景
+     * @param nav        导航上下文
+     * @return 降级体或 null
+     */
+    private Map<String, Object> gateOrNull(InsightServerAiProperties properties,
+                                           String kind,
+                                           Map<String, Object> nav) {
+        if (!properties.isEnabled()) {
+            return InsightAiExplainSchema.buildResponse(
+                    kind, true,
+                    "AI 未启用。请到控制台「设置」打开 AI，或「复制 Context」粘贴到任意 LLM。",
+                    properties.getModel(), properties.getProvider(), null, nav);
+        }
+        if (!properties.isInvokeReady()) {
+            return InsightAiExplainSchema.buildResponse(
+                    kind, true,
+                    "AI 已启用但未配齐 base-url / api-key。请到「设置」页填写后重试。",
+                    properties.getModel(), properties.getProvider(), null, nav);
+        }
+        if (!isOpenAiCompatible(properties.getProvider())) {
+            return InsightAiExplainSchema.buildResponse(
+                    kind, true,
+                    "当前仅支持 provider=openai-compatible（可用 DeepSeek / OpenAI / 兼容网关）。",
+                    properties.getModel(), properties.getProvider(), null, nav);
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -345,7 +357,9 @@ public class InsightAiExplainService {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("model", properties.getModel());
-        body.put("max_tokens", properties.getMaxTokens() > 0 ? properties.getMaxTokens() : 800);
+        // JSON 结构化输出略长于纯散文
+        int maxTokens = properties.getMaxTokens() > 0 ? properties.getMaxTokens() : 800;
+        body.put("max_tokens", Math.max(maxTokens, 600));
         body.put("temperature", 0.2);
 
         List<Map<String, String>> messages = new ArrayList<>(2);
@@ -379,33 +393,6 @@ public class InsightAiExplainService {
             throw new IllegalStateException("响应缺少 choices[0].message.content");
         }
         return content.asText().trim();
-    }
-
-    private Map<String, Object> degraded(InsightServerAiProperties properties,
-                                         String message,
-                                         Map<String, Object> context) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("degraded", true);
-        body.put("message", message);
-        body.put("markdown", "### 未能自动解释\n\n" + message + "\n\n可使用页面上的「复制 Context」粘贴到任意 LLM。"
-                + DISCLAIMER);
-        body.put("model", properties.getModel() != null ? properties.getModel() : "");
-        body.put("provider", properties.getProvider() != null ? properties.getProvider() : "");
-        body.put("traceId", context.get("traceId"));
-        return body;
-    }
-
-    private Map<String, Object> degradedErrors(InsightServerAiProperties properties,
-                                               String message,
-                                               Map<String, Object> payload) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("degraded", true);
-        body.put("message", message);
-        body.put("markdown", "### 未能自动解读\n\n" + message + DISCLAIMER);
-        body.put("model", properties.getModel() != null ? properties.getModel() : "");
-        body.put("provider", properties.getProvider() != null ? properties.getProvider() : "");
-        body.put("hours", payload.get("hours"));
-        return body;
     }
 
     private static boolean isOpenAiCompatible(String provider) {

@@ -15,6 +15,13 @@
 
 ## [Unreleased]
 
+### 新增 / 体验
+- **AI 结构化解读（schemaVersion=1）**：Trace / 错误分析 / 拓扑边统一返回 `summary` + `evidence`（可跳转）+ `suggestions`；仍保留 `markdown` 兼容
+- 控制台 AI 面板：展示结论与建议；证据可点回 Span / 链路列表 / 拓扑边
+- AI 审计记录附带结论摘要（进程内，重启清空）
+
+---
+
 ## [0.4.0] — 2026-09-23
 
 ### 新增 / 体验

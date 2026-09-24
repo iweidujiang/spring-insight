@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * Trace AI 解释 API（默认关闭；OpenAI 兼容，含 DeepSeek）。
+ * AI 解读 API（默认关闭；OpenAI 兼容）。返回 schemaVersion=1 结构化结果，并保留 markdown。
  *
  * @since 2026-09-18
  * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
@@ -52,13 +52,14 @@ public class InsightAiController {
             return ResponseEntity.ok(body);
         } catch (Exception e) {
             log.error("[AI] 未预期异常: traceId={}", traceId, e);
-            // 仍降级，避免打爆 UI
-            return ResponseEntity.ok(Map.of(
-                    "degraded", true,
-                    "message", "内部错误，请稍后重试或复制 Context",
-                    "markdown", "### 未能自动解释\n\n内部错误。请「复制 Context」手动解释。\n\n---\n*AI 建议，请以 Span 为准。*",
-                    "traceId", traceId != null ? traceId : ""
-            ));
+            return ResponseEntity.ok(InsightAiExplainSchema.buildResponse(
+                    "trace",
+                    true,
+                    "内部错误，请稍后重试或复制 Context",
+                    "",
+                    "",
+                    null,
+                    Map.of("traceId", traceId != null ? traceId : "")));
         }
     }
 
@@ -66,7 +67,7 @@ public class InsightAiController {
      * 错误分析页「一键解读」。
      *
      * @param hours 时间窗口小时，默认 24
-     * @return Markdown 解读
+     * @return 结构化解读
      */
     @PostMapping("/errors/explain")
     public ResponseEntity<?> explainErrors(
@@ -75,12 +76,8 @@ public class InsightAiController {
             return ResponseEntity.ok(explainService.explainErrors(hours));
         } catch (Exception e) {
             log.error("[AI] 错误解读未预期异常: hours={}", hours, e);
-            return ResponseEntity.ok(Map.of(
-                    "degraded", true,
-                    "message", "内部错误",
-                    "markdown", "### 未能自动解读\n\n内部错误，请稍后重试。\n\n---\n*AI 建议，请以 Span 为准。*",
-                    "hours", hours
-            ));
+            return ResponseEntity.ok(InsightAiExplainSchema.buildResponse(
+                    "errors", true, "内部错误，请稍后重试", "", "", null, Map.of("hours", hours)));
         }
     }
 
@@ -90,7 +87,7 @@ public class InsightAiController {
      * @param source 源服务
      * @param target 目标服务
      * @param hours  窗口
-     * @return Markdown
+     * @return 结构化解读
      */
     @PostMapping("/dependencies/explain")
     public ResponseEntity<?> explainDependency(
@@ -101,7 +98,7 @@ public class InsightAiController {
     }
 
     /**
-     * 最近 AI 调用审计。
+     * 最近 AI 调用审计（含摘要）。
      *
      * @param limit 条数
      * @return 列表

@@ -233,14 +233,7 @@ export class ApiService {
   }
 
   /** 解释 Trace；失败时后端仍可能返回 degraded=true 的 200 */
-  static async explainTrace(traceId: string): Promise<{
-    degraded: boolean
-    markdown: string
-    message?: string
-    model?: string
-    provider?: string
-    traceId?: string
-  } | null> {
+  static async explainTrace(traceId: string): Promise<AiExplainResult | null> {
     try {
       return await request(`/traces/${encodeURIComponent(traceId)}/explain`, {
         method: 'POST',
@@ -290,14 +283,7 @@ export class ApiService {
   }
 
   /** 错误分析一键解读 */
-  static async explainErrors(hours: number = 24): Promise<{
-    degraded: boolean
-    markdown: string
-    message?: string
-    model?: string
-    provider?: string
-    hours?: number
-  } | null> {
+  static async explainErrors(hours: number = 24): Promise<AiExplainResult | null> {
     try {
       return await request(`/errors/explain?hours=${hours}`, {
         method: 'POST',
@@ -309,11 +295,7 @@ export class ApiService {
   }
 
   /** 拓扑边解读 */
-  static async explainDependency(source: string, target: string, hours: number = 24): Promise<{
-    degraded: boolean
-    markdown: string
-    message?: string
-  } | null> {
+  static async explainDependency(source: string, target: string, hours: number = 24): Promise<AiExplainResult | null> {
     try {
       const qs = new URLSearchParams({
         source,
@@ -328,6 +310,47 @@ export class ApiService {
       return null
     }
   }
+}
+
+/** AI 证据跳转 */
+export interface AiEvidenceNav {
+  kind: 'span' | 'trace' | 'traces' | 'topology'
+  traceId?: string
+  spanId?: string
+  service?: string
+  q?: string
+  status?: string
+  hours?: number
+  source?: string
+  target?: string
+}
+
+/** AI 证据项 */
+export interface AiEvidence {
+  type: string
+  ref: string
+  label: string
+  reason: string
+  nav?: AiEvidenceNav
+}
+
+/** schemaVersion=1 结构化解读（仍含 markdown 兼容字段） */
+export interface AiExplainResult {
+  schemaVersion?: number
+  kind?: string
+  degraded: boolean
+  structured?: boolean
+  summary?: string
+  evidence?: AiEvidence[]
+  suggestions?: string[]
+  markdown: string
+  message?: string
+  model?: string
+  provider?: string
+  traceId?: string
+  hours?: number
+  source?: string
+  target?: string
 }
 
 /** GET /settings 脱敏视图 */

@@ -203,13 +203,12 @@
                 </button>
                 <button type="button" class="btn btn-link btn-sm" @click="clearSelection">取消选中</button>
               </div>
-              <div v-if="edgeExplain" class="si-topo-rail__explain">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                  <strong>边解读</strong>
-                  <button type="button" class="btn btn-sm btn-link py-0" @click="edgeExplain = ''">关闭</button>
-                </div>
-                <pre>{{ edgeExplain }}</pre>
-              </div>
+              <AiExplainPanel
+                v-if="edgeExplain"
+                :result="edgeExplain"
+                title="边解读"
+                @close="edgeExplain = null"
+              />
             </template>
 
             <p v-else class="si-topo-rail__empty">
@@ -271,15 +270,17 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
-import { ApiService } from '../services/ApiService'
+import AiExplainPanel from '../components/AiExplainPanel.vue'
+import { ApiService, type AiExplainResult } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { formatDuration } from '../utils/traceTimeline'
 import { TIME_RANGE_OPTIONS, emptyRequestsMessage } from '../utils/timeRange'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(true)
 const currentTime = ref('')
 const hours = ref(72)
@@ -289,7 +290,7 @@ const serviceLatency = ref<any[]>([])
 const recentTraces = ref<any[]>([])
 const chartEl = ref<HTMLElement | null>(null)
 const explaining = ref(false)
-const edgeExplain = ref('')
+const edgeExplain = ref<AiExplainResult | null>(null)
 const selection = ref<{ kind: 'node' | 'edge' | null; service: string; peer?: string }>({
   kind: null,
   service: ''
@@ -391,19 +392,19 @@ const goTraceDetail = (traceId: string) => {
 
 const clearSelection = () => {
   selection.value = { kind: null, service: '' }
-  edgeExplain.value = ''
+  edgeExplain.value = null
   updateChart()
 }
 
 const selectNode = (service: string) => {
   selection.value = { kind: 'node', service }
-  edgeExplain.value = ''
+  edgeExplain.value = null
   updateChart()
 }
 
 const selectEdge = (source: string, target: string) => {
   selection.value = { kind: 'edge', service: source, peer: target }
-  edgeExplain.value = ''
+  edgeExplain.value = null
   updateChart()
 }
 
@@ -411,7 +412,7 @@ async function explainEdge(source: string, target: string) {
   explaining.value = true
   try {
     const result = await ApiService.explainDependency(source, target, Number(hours.value))
-    edgeExplain.value = result?.markdown || result?.message || '无返回'
+    edgeExplain.value = result
   } finally {
     explaining.value = false
   }
@@ -486,7 +487,7 @@ const loadData = async () => {
   try {
     loading.value = true
     selection.value = { kind: null, service: '' }
-    edgeExplain.value = ''
+    edgeExplain.value = null
     const h = hours.value
     const [deps, names, latency, recent] = await Promise.all([
       ApiService.getServiceDependencies(h),
@@ -503,6 +504,18 @@ const loadData = async () => {
   } finally {
     loading.value = false
     await syncChart()
+    applyRouteSelection()
+  }
+}
+
+/** 支持从 AI 证据跳转：?source=&target= */
+const applyRouteSelection = () => {
+  const source = String(route.query.source || '')
+  const target = String(route.query.target || '')
+  if (source && target && findEdge(source, target)) {
+    selectEdge(source, target)
+  } else if (source && serviceNames.value.includes(source)) {
+    selectNode(source)
   }
 }
 
@@ -512,6 +525,11 @@ onMounted(async () => {
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
   window.addEventListener('resize', handleResize)
+  // 路由带 hours 时先对齐时间窗
+  const qHours = Number(route.query.hours)
+  if (Number.isFinite(qHours) && qHours >= 0) {
+    hours.value = qHours
+  }
   await loadData()
 })
 

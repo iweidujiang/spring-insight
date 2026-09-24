@@ -174,7 +174,7 @@
             <div>
               <h3 class="si-settings__card-title"><i class="fa fa-magic me-2"></i>AI 解读</h3>
               <p class="si-settings__card-desc">
-                对接 OpenAI 兼容接口，为一键解读链路、拓扑边与错误聚合提供模型能力。
+                对接 OpenAI 兼容接口。解读结果含摘要、可点证据与处置建议（链路 / 拓扑边 / 错误聚合）。
               </p>
             </div>
             <div class="form-check form-switch mb-0">

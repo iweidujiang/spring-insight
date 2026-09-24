@@ -261,13 +261,12 @@
           </div>
         </details>
 
-        <section v-if="explainMarkdown" class="si-err-ai" aria-label="AI 解读">
-          <div class="si-err-ai__head">
-            <h3><i class="fa fa-magic me-2"></i>AI 解读</h3>
-            <button type="button" class="btn btn-sm btn-outline-secondary" @click="explainMarkdown = ''">关闭</button>
-          </div>
-          <pre class="si-err-ai__md">{{ explainMarkdown }}</pre>
-        </section>
+        <AiExplainPanel
+          v-if="explainResult"
+          :result="explainResult"
+          title="AI 解读"
+          @close="explainResult = null"
+        />
       </template>
     </div>
   </div>
@@ -277,13 +276,14 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
-import { ApiService } from '../services/ApiService'
+import { ApiService, type AiExplainResult } from '../services/ApiService'
+import AiExplainPanel from '../components/AiExplainPanel.vue'
 import { TIME_RANGE_OPTIONS, formatHoursLabel } from '../utils/timeRange'
 
 const router = useRouter()
 const loading = ref(true)
 const explaining = ref(false)
-const explainMarkdown = ref('')
+const explainResult = ref<AiExplainResult | null>(null)
 const aiReady = ref(false)
 const currentTime = ref('')
 const hours = ref(24)
@@ -459,7 +459,7 @@ async function onExplainErrors() {
   explaining.value = true
   try {
     const result = await ApiService.explainErrors(Number(hours.value))
-    explainMarkdown.value = result?.markdown || result?.message || '无返回内容'
+    explainResult.value = result
   } finally {
     explaining.value = false
   }

@@ -78,7 +78,7 @@ class InsightAiExplainServiceTest {
     void explainSuccessViaCompatibleApi() throws Exception {
         AtomicInteger hits = new AtomicInteger();
         int port = startMockLlm(hits, 200,
-                "{\"choices\":[{\"message\":{\"content\":\"## 结论\\n下游超时\"}}]}");
+                "{\"choices\":[{\"message\":{\"content\":\"{\\\"summary\\\":\\\"下游超时\\\",\\\"evidence\\\":[{\\\"type\\\":\\\"span\\\",\\\"ref\\\":\\\"s1\\\",\\\"label\\\":\\\"GET /order\\\",\\\"reason\\\":\\\"500\\\"}],\\\"suggestions\\\":[\\\"查下游\\\"]}\"}}]}");
 
         InsightServerAiProperties p = props(true, "http://127.0.0.1:" + port + "/v1", "sk-test");
         p.setModel("deepseek-chat");
@@ -88,6 +88,8 @@ class InsightAiExplainServiceTest {
         Map<String, Object> body = svc.explain("t1");
         assertEquals(1, hits.get());
         assertFalse((Boolean) body.get("degraded"));
+        assertEquals(1, body.get("schemaVersion"));
+        assertEquals("下游超时", body.get("summary"));
         assertTrue(String.valueOf(body.get("markdown")).contains("下游超时"));
         assertTrue(String.valueOf(body.get("markdown")).contains("AI 建议"));
         assertEquals("deepseek-chat", body.get("model"));

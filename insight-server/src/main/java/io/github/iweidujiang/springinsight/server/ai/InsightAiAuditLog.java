@@ -31,12 +31,29 @@ public class InsightAiAuditLog {
      * @param model    模型名
      */
     public void record(String kind, String subject, boolean degraded, String model) {
+        record(kind, subject, degraded, model, null);
+    }
+
+    /**
+     * 记录一次调用（可附摘要，便于回看）。
+     *
+     * @param kind     trace | errors | dependency
+     * @param subject  traceId / hours / edge
+     * @param degraded 是否降级
+     * @param model    模型名
+     * @param summary  结论摘要；可空
+     */
+    public void record(String kind, String subject, boolean degraded, String model, String summary) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("at", Instant.now().toString());
         row.put("kind", kind != null ? kind : "");
         row.put("subject", subject != null ? subject : "");
         row.put("degraded", degraded);
         row.put("model", model != null ? model : "");
+        if (summary != null && !summary.isBlank()) {
+            String s = summary.trim();
+            row.put("summary", s.length() <= 160 ? s : s.substring(0, 160) + "...");
+        }
         entries.addFirst(row);
         while (entries.size() > MAX) {
             entries.removeLast();
