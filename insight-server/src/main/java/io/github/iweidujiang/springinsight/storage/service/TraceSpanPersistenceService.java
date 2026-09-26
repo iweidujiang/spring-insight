@@ -521,6 +521,165 @@ public class TraceSpanPersistenceService {
     }
 
     /**
+     * 半开区间 {@code [fromInclusiveMs, toExclusiveMs)} 内的时段聚合（一趟快照）。
+     * <p>
+     * {@code fromInclusiveMs <= 0} 表示不设下界；{@code toExclusiveMs <= 0} 表示不设上界。
+     * </p>
+     *
+     * @param fromInclusiveMs 起始（含）
+     * @param toExclusiveMs   结束（不含）
+     * @param topN            Top 列表长度
+     * @return spanCount / errorSpanCount / errorServices / slowServices / hotEdges / sampleErrorTraceIds / sampleSlowTraceIds
+     */
+    public Map<String, Object> summarizeWindow(long fromInclusiveMs, long toExclusiveMs, int topN) {
+        int max = Math.max(1, Math.min(topN, 20));
+        long spanCount = 0L;
+        long errorSpanCount = 0L;
+
+        Map<String, long[]> errorByService = new HashMap<>();
+        Map<String, List<Long>> durationsByService = new HashMap<>();
+        Map<String, long[]> edgeAgg = new HashMap<>();
+        List<String> sampleErrorTraceIds = new ArrayList<>();
+        // traceId -> max duration among spans in window（取慢样本）
+        Map<String, Long> slowTraceMax = new HashMap<>();
+
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (s == null) {
+                continue;
+            }
+            long t = n(s.getStartTime());
+            if (fromInclusiveMs > 0L && t < fromInclusiveMs) {
+                continue;
+            }
+            if (toExclusiveMs > 0L && t >= toExclusiveMs) {
+                continue;
+            }
+            spanCount++;
+            boolean err = isError(s);
+            if (err) {
+                errorSpanCount++;
+            }
+            String name = s.getServiceName();
+            if (name != null && !name.isBlank()) {
+                long[] ea = errorByService.computeIfAbsent(name, x -> new long[]{0L, 0L});
+                ea[0]++;
+                if (err) {
+                    ea[1]++;
+                }
+                long dur = n(s.getDurationMs());
+                if (dur <= 0 && s.getEndTime() != null) {
+                    dur = Math.max(0L, n(s.getEndTime()) - t);
+                }
+                durationsByService.computeIfAbsent(name, x -> new ArrayList<>()).add(Math.max(0L, dur));
+            }
+            String remote = s.getRemoteService();
+            if (remote != null && !remote.isBlank()) {
+                String src = name != null ? name : "";
+                String key = src + "\0" + remote;
+                long[] a = edgeAgg.computeIfAbsent(key, x -> new long[]{0L, 0L});
+                a[0]++;
+                a[1] += n(s.getDurationMs());
+            }
+            String tid = s.getTraceId();
+            if (tid != null && !tid.isBlank()) {
+                long dur = n(s.getDurationMs());
+                slowTraceMax.merge(tid, dur, Math::max);
+                if (err && sampleErrorTraceIds.size() < max && !sampleErrorTraceIds.contains(tid)) {
+                    sampleErrorTraceIds.add(tid);
+                }
+            }
+        }
+
+        List<Map<String, Object>> errorServices = new ArrayList<>();
+        for (Map.Entry<String, long[]> e : errorByService.entrySet()) {
+            long total = e.getValue()[0];
+            long err = e.getValue()[1];
+            if (err <= 0) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("serviceName", e.getKey());
+            row.put("totalSpans", total);
+            row.put("errorSpans", err);
+            row.put("errorRate", Math.round((err * 10000.0 / total)) / 100.0);
+            errorServices.add(row);
+        }
+        errorServices.sort((a, b) -> Long.compare(
+                ((Number) b.get("errorSpans")).longValue(),
+                ((Number) a.get("errorSpans")).longValue()));
+        if (errorServices.size() > max) {
+            errorServices = new ArrayList<>(errorServices.subList(0, max));
+        }
+
+        List<Map<String, Object>> slowServices = new ArrayList<>();
+        for (Map.Entry<String, List<Long>> e : durationsByService.entrySet()) {
+            List<Long> durs = e.getValue();
+            if (durs.isEmpty()) {
+                continue;
+            }
+            durs.sort(Long::compareTo);
+            long p95 = percentile(durs, 0.95);
+            long sum = 0L;
+            for (Long d : durs) {
+                sum += d;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("serviceName", e.getKey());
+            row.put("spanCount", durs.size());
+            row.put("avgMs", Math.round((sum / (double) durs.size()) * 100.0) / 100.0);
+            row.put("p95Ms", p95);
+            slowServices.add(row);
+        }
+        slowServices.sort((a, b) -> Long.compare(
+                ((Number) b.get("p95Ms")).longValue(),
+                ((Number) a.get("p95Ms")).longValue()));
+        if (slowServices.size() > max) {
+            slowServices = new ArrayList<>(slowServices.subList(0, max));
+        }
+
+        List<Map<String, Object>> hotEdges = new ArrayList<>();
+        for (Map.Entry<String, long[]> e : edgeAgg.entrySet()) {
+            long cnt = e.getValue()[0];
+            if (cnt <= 0) {
+                continue;
+            }
+            String[] parts = e.getKey().split("\0", 2);
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("sourceService", parts[0]);
+            row.put("targetService", parts.length > 1 ? parts[1] : "");
+            row.put("callCount", cnt);
+            row.put("avgDurationMs", Math.round((e.getValue()[1] / (double) cnt) * 100.0) / 100.0);
+            hotEdges.add(row);
+        }
+        hotEdges.sort((a, b) -> Long.compare(
+                ((Number) b.get("callCount")).longValue(),
+                ((Number) a.get("callCount")).longValue()));
+        if (hotEdges.size() > max) {
+            hotEdges = new ArrayList<>(hotEdges.subList(0, max));
+        }
+
+        List<Map.Entry<String, Long>> slowSorted = new ArrayList<>(slowTraceMax.entrySet());
+        slowSorted.sort((a, b) -> Long.compare(b.getValue(), a.getValue()));
+        List<String> sampleSlowTraceIds = new ArrayList<>();
+        for (Map.Entry<String, Long> e : slowSorted) {
+            if (sampleSlowTraceIds.size() >= max) {
+                break;
+            }
+            sampleSlowTraceIds.add(e.getKey());
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("spanCount", spanCount);
+        body.put("errorSpanCount", errorSpanCount);
+        body.put("errorServices", errorServices);
+        body.put("slowServices", slowServices);
+        body.put("hotEdges", hotEdges);
+        body.put("sampleErrorTraceIds", sampleErrorTraceIds);
+        body.put("sampleSlowTraceIds", sampleSlowTraceIds);
+        return body;
+    }
+
+    /**
      * @param serviceName 服务名
      * @param limit       条数
      * @return 该服务最近 Span

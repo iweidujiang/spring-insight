@@ -1,7 +1,7 @@
 {
   "name": "insight-server-ui",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.7.0-SNAPSHOT",
   "type": "module",
   "scripts": {
     "dev": "vite",
