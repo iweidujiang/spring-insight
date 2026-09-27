@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 近 N 小时时段事实与上一窗环比（无 AI）。
+ * 近 N 小时时段事实与上一时段环比（无 AI）。
  *
  * @since 2026-09-26
  * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
@@ -175,7 +175,7 @@ public class InsightPeriodInsightService {
         long err = num(current.get("errorSpanCount"));
         long spans = num(current.get("spanCount"));
         if (spans <= 0) {
-            return "近窗内暂无 Span";
+            return "本时段暂无 Span";
         }
         Map<String, Object> delta = deltaObj instanceof Map<?, ?> m
                 ? (Map<String, Object>) m
@@ -183,16 +183,16 @@ public class InsightPeriodInsightService {
         long dErr = num(delta.get("errorSpanCount"));
         String trend;
         if (dErr > 0) {
-            trend = "错误 Span 较上一窗 +" + dErr;
+            trend = "错误 Span 较上一时段 +" + dErr;
         } else if (dErr < 0) {
-            trend = "错误 Span 较上一窗 " + dErr;
+            trend = "错误 Span 较上一时段 " + dErr;
         } else {
-            trend = "错误 Span 与上一窗持平";
+            trend = "错误 Span 与上一时段持平";
         }
         if (err <= 0) {
-            return "近窗 " + spans + " 条 Span，无错误；" + trend;
+            return "本时段 " + spans + " 条 Span，无错误；" + trend;
         }
-        return "近窗 " + spans + " 条 Span，错误 " + err + " 条；" + trend;
+        return "本时段 " + spans + " 条 Span，错误 " + err + " 条；" + trend;
     }
 
     private static long num(Object o) {

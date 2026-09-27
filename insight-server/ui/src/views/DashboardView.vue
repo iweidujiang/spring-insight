@@ -453,9 +453,9 @@ const periodBullets = computed((): PeriodBullet[] => {
   let errText = `错误 Span ${err} 条`
   if (p.compare && delta) {
     const d = delta.errorSpanCount
-    if (d > 0) errText += `（较上一窗 +${d}）`
-    else if (d < 0) errText += `（较上一窗 ${d}）`
-    else errText += '（与上一窗持平）'
+    if (d > 0) errText += `（较上一时段 +${d}）`
+    else if (d < 0) errText += `（较上一时段 ${d}）`
+    else errText += '（与上一时段持平）'
   }
   out.push({
     text: errText,
@@ -1148,17 +1148,28 @@ onUnmounted(() => {
 /* Collector 收成横条 */
 .si-period {
   flex-shrink: 0;
-  padding: 0.65rem 0.9rem 0.7rem;
-  border-radius: 10px;
-  border: 1px solid var(--card-border);
+  position: relative;
+  padding: 0.85rem 1.1rem 0.95rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 118, 110, 0.22);
   background:
-    linear-gradient(135deg, rgba(15, 118, 110, 0.05) 0%, transparent 42%),
-    var(--card-bg);
-  box-shadow: var(--box-shadow);
+    linear-gradient(105deg, rgba(15, 118, 110, 0.1) 0%, rgba(15, 118, 110, 0.03) 38%, var(--card-bg) 72%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, var(--box-shadow);
+}
+
+.si-period::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55rem;
+  bottom: 0.55rem;
+  width: 4px;
+  border-radius: 0 3px 3px 0;
+  background: var(--si-teal);
 }
 
 .si-period--compact {
-  padding: 0.45rem 0.75rem 0.5rem;
+  padding: 0.7rem 0.95rem 0.75rem 1.05rem;
 }
 
 .si-period__head {
@@ -1166,71 +1177,81 @@ onUnmounted(() => {
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.5rem 1rem;
+  gap: 0.55rem 1.1rem;
 }
 
 .si-period__kicker {
   margin: 0;
-  font-size: 0.68rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--si-muted);
+  color: var(--si-teal);
 }
 
 .si-period__headline {
-  margin: 0.15rem 0 0;
+  margin: 0.28rem 0 0;
   font-family: var(--font-display);
-  font-size: 0.98rem;
+  font-size: clamp(1.12rem, 1.6vw, 1.35rem);
   font-weight: 700;
   color: var(--si-ink);
   line-height: 1.35;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
 }
 
 .si-period--compact .si-period__headline {
-  font-size: 0.88rem;
+  font-size: clamp(1.02rem, 1.4vw, 1.18rem);
 }
 
 .si-period__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  align-items: center;
 }
 
 .si-period__action {
-  font-size: 0.72rem;
-  padding: 0.2rem 0.55rem;
-  border-color: rgba(20, 83, 45, 0.22);
-  color: var(--si-ink-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border-color: rgba(15, 118, 110, 0.35);
+  color: var(--si-ink);
+  background: rgba(255, 252, 250, 0.85);
+}
+
+.si-period__action:hover {
+  border-color: var(--si-teal);
+  color: var(--si-teal);
+  background: #fff;
 }
 
 .si-period__bullets {
   list-style: none;
-  margin: 0.45rem 0 0;
+  margin: 0.65rem 0 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 0.85rem;
+  gap: 0.45rem 1.15rem;
 }
 
 .si-period__bullets li {
   position: relative;
-  padding-left: 0.75rem;
-  font-size: 0.8rem;
+  padding-left: 0.9rem;
+  font-size: 0.92rem;
+  font-weight: 600;
   color: var(--si-ink-soft);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .si-period__bullets li::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 0.45em;
-  width: 0.35rem;
-  height: 0.35rem;
+  top: 0.5em;
+  width: 0.4rem;
+  height: 0.4rem;
   border-radius: 50%;
-  background: rgba(15, 118, 110, 0.45);
+  background: rgba(15, 118, 110, 0.55);
 }
 
 .si-period__bullet--warn {
@@ -1250,7 +1271,8 @@ onUnmounted(() => {
 }
 
 .si-period__bullet--muted {
-  color: var(--si-muted);
+  color: var(--si-ink-soft);
+  font-weight: 500;
 }
 
 .si-period__bullet-btn {
@@ -1273,8 +1295,8 @@ onUnmounted(() => {
 }
 
 .si-period__empty {
-  margin: 0.4rem 0 0;
-  font-size: 0.78rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
   color: var(--si-muted);
 }
 

@@ -40,16 +40,16 @@ class InsightPeriodInsightServiceTest {
     }
 
     /**
-     * 当前窗错误多于上一窗时 delta.errorSpanCount &gt; 0。
+     * 本时段错误多于上一时段时 delta.errorSpanCount &gt; 0。
      */
     @Test
     @SuppressWarnings("unchecked")
     void deltaErrorIncreases() {
         long now = System.currentTimeMillis();
-        // 当前窗（近 1h）：2 条错误
+        // 本时段（近 1h）：2 条错误
         TraceSpan cur1 = span("order", "t-cur-1", false, now - 10 * 60_000L);
         TraceSpan cur2 = span("order", "t-cur-2", false, now - 20 * 60_000L);
-        // 上一窗（1h～2h 前）：1 条错误
+        // 上一时段（1h～2h 前）：1 条错误
         TraceSpan prev = span("order", "t-prev", false, now - 90 * 60_000L);
         // 更早：不计
         TraceSpan old = span("order", "t-old", false, now - 5 * 3_600_000L);

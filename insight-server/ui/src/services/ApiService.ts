@@ -282,7 +282,7 @@ export class ApiService {
     return request('/storage/clear', { method: 'POST', data: body })
   }
 
-  /** 时段洞察事实（无 AI）：当前窗 vs 上一同等窗 */
+  /** 时段洞察事实（无 AI）：本时段 vs 上一同等时段 */
   static async getPeriodInsight(hours: number = 24): Promise<PeriodInsight | null> {
     try {
       const raw = await request<any>(`/insights/period?hours=${hours}`)

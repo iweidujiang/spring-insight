@@ -22,9 +22,9 @@ public class InsightPeriodInsightController {
     private final InsightPeriodInsightService periodInsightService;
 
     /**
-     * 近 N 小时时段事实；可与上一同等窗口对比。
+     * 近 N 小时时段事实；可与上一同等时段对比。
      *
-     * @param hours 窗口小时，默认 24；{@code <=0} 表示全部且不做环比
+     * @param hours 时段小时数，默认 24；{@code <=0} 表示全部且不做环比
      * @return schemaVersion=1 事实体
      */
     @GetMapping("/period")
