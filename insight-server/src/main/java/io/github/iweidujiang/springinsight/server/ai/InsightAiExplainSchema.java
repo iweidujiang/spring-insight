@@ -47,6 +47,9 @@ public final class InsightAiExplainSchema {
 
     /**
      * 将模型原文解析为结构化字段；解析失败时不把推理草稿当结论。
+     * <p>
+     * 兼容：完整 JSON、{@code ```json} 围栏（可无换行）、JSON 被截断但 {@code summary} 字符串完整。
+     * </p>
      *
      * @param rawModelText 模型返回文本
      * @param mapper       Jackson
@@ -57,40 +60,37 @@ public final class InsightAiExplainSchema {
         String raw = rawModelText != null ? rawModelText.trim() : "";
         out.put("rawText", raw);
         String json = extractJsonObject(raw);
-        if (!StringUtils.hasText(json)) {
-            out.put("structured", false);
-            out.put("summary", fallbackSummary(raw));
-            out.put("evidence", List.of());
-            out.put("suggestions", List.of());
-            return out;
+        if (StringUtils.hasText(json)) {
+            try {
+                JsonNode root = mapper.readTree(json);
+                if (looksLikeExplainObject(root)) {
+                    String summary = textOrEmpty(root.get("summary"));
+                    if (StringUtils.hasText(summary)) {
+                        out.put("structured", true);
+                        out.put("summary", summary.trim());
+                        out.put("evidence", parseEvidence(root.get("evidence")));
+                        out.put("suggestions", parseSuggestions(root.get("suggestions")));
+                        return out;
+                    }
+                }
+            } catch (Exception ignored) {
+                // 下文尝试只抽 summary 字段
+            }
         }
-        try {
-            JsonNode root = mapper.readTree(json);
-            if (!looksLikeExplainObject(root)) {
-                out.put("structured", false);
-                out.put("summary", fallbackSummary(raw));
-                out.put("evidence", List.of());
-                out.put("suggestions", List.of());
-                return out;
-            }
-            String summary = textOrEmpty(root.get("summary"));
-            if (!StringUtils.hasText(summary)) {
-                summary = fallbackSummary(raw);
-            }
-            List<Map<String, Object>> evidence = parseEvidence(root.get("evidence"));
-            List<String> suggestions = parseSuggestions(root.get("suggestions"));
+        // JSON 截断 / 围栏不规范时：至少抽出 summary 一句给人看
+        String summaryOnly = extractSummaryField(raw);
+        if (StringUtils.hasText(summaryOnly)) {
             out.put("structured", true);
-            out.put("summary", summary.trim());
-            out.put("evidence", evidence);
-            out.put("suggestions", suggestions);
-            return out;
-        } catch (Exception e) {
-            out.put("structured", false);
-            out.put("summary", fallbackSummary(raw));
+            out.put("summary", summaryOnly.trim());
             out.put("evidence", List.of());
             out.put("suggestions", List.of());
             return out;
         }
+        out.put("structured", false);
+        out.put("summary", fallbackSummary(raw));
+        out.put("evidence", List.of());
+        out.put("suggestions", List.of());
+        return out;
     }
 
     /**
@@ -389,17 +389,7 @@ public final class InsightAiExplainSchema {
         if (!StringUtils.hasText(raw)) {
             return "";
         }
-        String t = raw.trim();
-        if (t.startsWith("```")) {
-            int firstNl = t.indexOf('\n');
-            int lastFence = t.lastIndexOf("```");
-            if (firstNl > 0 && lastFence > firstNl) {
-                t = t.substring(firstNl + 1, lastFence).trim();
-                if (t.regionMatches(true, 0, "json", 0, 4)) {
-                    t = t.substring(4).trim();
-                }
-            }
-        }
+        String t = stripCodeFence(raw);
         // 优先：能解析且含 summary 的对象（避免把思考过程里的 {call_count:2} 当成结论）
         String withSummary = findBalancedObjectContaining(t, "summary");
         if (StringUtils.hasText(withSummary)) {
@@ -411,6 +401,136 @@ public final class InsightAiExplainSchema {
             return "";
         }
         return t.substring(start, end + 1);
+    }
+
+    /**
+     * 去掉 Markdown 代码围栏；兼容 {@code ```json\{} 无换行写法。
+     *
+     * @param raw 原文
+     * @return 去围栏后的文本
+     */
+    static String stripCodeFence(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return "";
+        }
+        String t = raw.trim();
+        if (!t.startsWith("```")) {
+            return t;
+        }
+        int i = 3;
+        while (i < t.length() && Character.isWhitespace(t.charAt(i))) {
+            i++;
+        }
+        if (t.regionMatches(true, i, "json", 0, 4)) {
+            i += 4;
+        }
+        while (i < t.length() && (t.charAt(i) == ' ' || t.charAt(i) == '\t' || t.charAt(i) == '\r')) {
+            i++;
+        }
+        if (i < t.length() && t.charAt(i) == '\n') {
+            i++;
+        }
+        t = t.substring(i);
+        int last = t.lastIndexOf("```");
+        if (last >= 0) {
+            t = t.substring(0, last);
+        }
+        return t.trim();
+    }
+
+    /**
+     * 从可能截断的 JSON / 围栏文本中抽出 {@code "summary":"..."} 的字符串值。
+     *
+     * @param raw 原文
+     * @return summary 文案；抽不出则为空
+     */
+    static String extractSummaryField(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return "";
+        }
+        String t = stripCodeFence(raw);
+        int key = indexOfSummaryKey(t);
+        if (key < 0) {
+            return "";
+        }
+        int i = key + "\"summary\"".length();
+        while (i < t.length() && Character.isWhitespace(t.charAt(i))) {
+            i++;
+        }
+        if (i >= t.length() || t.charAt(i) != ':') {
+            return "";
+        }
+        i++;
+        while (i < t.length() && Character.isWhitespace(t.charAt(i))) {
+            i++;
+        }
+        if (i >= t.length()) {
+            return "";
+        }
+        char quote = t.charAt(i);
+        if (quote != '"' && quote != '\'' ) {
+            return "";
+        }
+        i++;
+        StringBuilder sb = new StringBuilder();
+        boolean escape = false;
+        for (; i < t.length(); i++) {
+            char c = t.charAt(i);
+            if (escape) {
+                switch (c) {
+                    case 'n' -> sb.append('\n');
+                    case 'r' -> sb.append('\r');
+                    case 't' -> sb.append('\t');
+                    case '"' -> sb.append('"');
+                    case '\'' -> sb.append('\'');
+                    case '\\' -> sb.append('\\');
+                    case '/' -> sb.append('/');
+                    case 'u' -> {
+                        if (i + 4 < t.length()) {
+                            try {
+                                sb.append((char) Integer.parseInt(t.substring(i + 1, i + 5), 16));
+                                i += 4;
+                            } catch (NumberFormatException e) {
+                                sb.append('u');
+                            }
+                        } else {
+                            sb.append('u');
+                        }
+                    }
+                    default -> sb.append(c);
+                }
+                escape = false;
+                continue;
+            }
+            if (c == '\\') {
+                escape = true;
+                continue;
+            }
+            if (c == quote) {
+                return sb.toString().trim();
+            }
+            sb.append(c);
+        }
+        // 字符串未闭合（截断）：若已有可读中文结论则仍返回
+        String partial = sb.toString().trim();
+        return partial.length() >= 8 ? partial : "";
+    }
+
+    private static int indexOfSummaryKey(String t) {
+        int from = 0;
+        while (from < t.length()) {
+            int at = t.indexOf("\"summary\"", from);
+            if (at < 0) {
+                return -1;
+            }
+            // 避免命中 "summaryXxx"
+            int after = at + "\"summary\"".length();
+            if (after >= t.length() || !Character.isLetterOrDigit(t.charAt(after))) {
+                return at;
+            }
+            from = after;
+        }
+        return -1;
     }
 
     /**
@@ -488,9 +608,18 @@ public final class InsightAiExplainSchema {
         if (!StringUtils.hasText(raw)) {
             return "未能解析模型输出";
         }
+        String fromField = extractSummaryField(raw);
+        if (StringUtils.hasText(fromField)) {
+            return fromField;
+        }
         // 推理模型常把草稿放进 content/reasoning；勿直接展示给用户
         if (looksLikeReasoningDraft(raw)) {
             return "模型未输出结构化结论（仅有思考草稿）。可换非推理模型，或在设置中增大 max_tokens 后重试。";
+        }
+        // 仍是裸 JSON / 围栏时，勿把原文糊到 UI
+        String stripped = stripCodeFence(raw).trim();
+        if (stripped.startsWith("{") || raw.trim().startsWith("```")) {
+            return "模型输出无法完整解析。请增大 max_tokens 后重试，或换用非推理模型。";
         }
         String one = raw.replace('\r', ' ').replace('\n', ' ').trim();
         return one.length() <= 120 ? one : one.substring(0, 120) + "...";

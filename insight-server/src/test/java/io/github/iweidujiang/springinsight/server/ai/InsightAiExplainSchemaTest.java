@@ -87,6 +87,32 @@ class InsightAiExplainSchemaTest {
     }
 
     /**
+     * ```json 与 { 同行、且 JSON 截断时，仍只展示 summary 一句。
+     */
+    @Test
+    void parseTruncatedJsonFenceShowsSummaryOnly() {
+        String raw = "```json { \"summary\": \"sca-user 到 sca-loyalty 在 6 小时内仅 2 次调用、平均耗时 93.5，样本过少，暂不能判定异常，需结合基线继续观察。\", \"evidence\": [ {";
+        Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, mapper);
+        assertTrue(Boolean.TRUE.equals(parsed.get("structured")));
+        assertEquals(
+                "sca-user 到 sca-loyalty 在 6 小时内仅 2 次调用、平均耗时 93.5，样本过少，暂不能判定异常，需结合基线继续观察。",
+                parsed.get("summary"));
+        assertFalse(String.valueOf(parsed.get("summary")).contains("evidence"));
+        assertFalse(String.valueOf(parsed.get("summary")).contains("```"));
+    }
+
+    /**
+     * 完整围栏 JSON（无换行）也能解析。
+     */
+    @Test
+    void parseJsonFenceSameLine() {
+        String raw = "```json {\"summary\":\"下游偏慢\",\"evidence\":[],\"suggestions\":[\"查超时\"]} ```";
+        Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, mapper);
+        assertTrue(Boolean.TRUE.equals(parsed.get("structured")));
+        assertEquals("下游偏慢", parsed.get("summary"));
+    }
+
+    /**
      * buildResponse 附带 span nav 与 markdown。
      */
     @Test
