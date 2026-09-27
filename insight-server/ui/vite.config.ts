@@ -4,7 +4,7 @@ import { resolve } from 'path'
 
 /**
  * Maven/Windows 默认控制台常为 GBK：Vite 的 ✓/✗ 等 UTF-8 符号会被显示成「鉁?」。
- * 构建日志改为 ASCII，避免打包输出难看（不影响产物）。
+ * 构建日志改为 ASCII，避免打包输出显示乱码
  */
 function asciiBuildLogger(): Logger {
   const base = createLogger()

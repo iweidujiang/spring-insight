@@ -67,6 +67,42 @@
       </section>
 
       <section
+        class="si-period"
+        :class="{ 'si-period--compact': isMesh }"
+        aria-label="时段摘要"
+      >
+        <header class="si-period__head">
+          <div>
+            <p class="si-period__kicker">时段摘要 · {{ hoursLabel }}</p>
+            <h3 class="si-period__headline">{{ periodHeadline }}</h3>
+          </div>
+          <div v-if="periodActions.length" class="si-period__actions">
+            <button
+              v-for="act in periodActions"
+              :key="act.key"
+              type="button"
+              class="btn btn-sm btn-outline-secondary si-period__action"
+              @click="act.run"
+            >
+              {{ act.label }}
+            </button>
+          </div>
+        </header>
+        <ul v-if="periodBullets.length" class="si-period__bullets">
+          <li v-for="(b, i) in periodBullets" :key="i" :class="b.tone ? `si-period__bullet--${b.tone}` : undefined">
+            <button
+              v-if="b.run"
+              type="button"
+              class="si-period__bullet-btn"
+              @click="b.run"
+            >{{ b.text }}</button>
+            <span v-else>{{ b.text }}</span>
+          </li>
+        </ul>
+        <p v-else class="si-period__empty">{{ periodEmptyHint }}</p>
+      </section>
+
+      <section
         v-if="collectorStats && !isMesh"
         class="si-dashboard__collector-strip"
         aria-label="采集器状态"
@@ -339,7 +375,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
-import { ApiService } from '../services/ApiService'
+import { ApiService, type PeriodInsight, type PeriodInsightLink } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { formatDuration } from '../utils/traceTimeline'
 import {
@@ -363,6 +399,7 @@ const errorAnalysis = ref<any[]>([])
 const collectorStats = ref<any>({})
 const totalSpans = ref(0)
 const recentTraces = ref<any[]>([])
+const periodInsight = ref<PeriodInsight | null>(null)
 
 let topologyChart: echarts.ECharts | null = null
 let serviceRankChart: echarts.ECharts | null = null
@@ -389,6 +426,121 @@ const soloProfile = computed(() => {
 })
 
 const hoursLabel = computed(() => formatHoursLabel(hours.value))
+
+const periodHeadline = computed(() => {
+  if (!periodInsight.value) return '暂无时段摘要'
+  return periodInsight.value.headline || '暂无时段摘要'
+})
+
+const periodEmptyHint = computed(() => {
+  if (!periodInsight.value) return '暂无法获取时段事实'
+  return emptyInRangeShort(hours.value, 'Span 数据')
+})
+
+type PeriodBullet = { text: string; tone?: 'warn' | 'ok' | 'muted'; run?: () => void }
+
+const periodBullets = computed((): PeriodBullet[] => {
+  const p = periodInsight.value
+  const cur = p?.current
+  if (!p || !cur || cur.spanCount <= 0) return []
+
+  const max = isMesh.value ? 3 : 5
+  const out: PeriodBullet[] = []
+  const delta = p.delta
+  const links = p.links
+
+  const err = cur.errorSpanCount
+  let errText = `错误 Span ${err} 条`
+  if (p.compare && delta) {
+    const d = delta.errorSpanCount
+    if (d > 0) errText += `（较上一窗 +${d}）`
+    else if (d < 0) errText += `（较上一窗 ${d}）`
+    else errText += '（与上一窗持平）'
+  }
+  out.push({
+    text: errText,
+    tone: err > 0 ? 'warn' : 'ok',
+    run: err > 0 && links.errorTraces ? () => followPeriodLink(links.errorTraces) : undefined
+  })
+
+  const topErr = cur.errorServices[0]
+  if (topErr?.serviceName && topErr.errorSpans > 0) {
+    out.push({
+      text: `错误最多：${topErr.serviceName}（${topErr.errorSpans}）`,
+      tone: 'warn',
+      run: () => goTraces({
+        service: topErr.serviceName,
+        status: 'error',
+        ...(hours.value > 0 ? { hours: String(hours.value) } : {})
+      })
+    })
+  }
+
+  if (delta?.newErrorServices?.length) {
+    const names = delta.newErrorServices.slice(0, 3).join('、')
+    out.push({
+      text: `新增出错服务：${names}`,
+      tone: 'warn',
+      run: links.errorAnalysis ? () => followPeriodLink(links.errorAnalysis) : undefined
+    })
+  }
+
+  const slow = cur.slowServices[0]
+  if (slow?.serviceName && out.length < max) {
+    out.push({
+      text: `最慢服务：${slow.serviceName}（p95 ${formatMs(slow.p95Ms)}）`,
+      tone: slow.p95Ms >= 1000 ? 'warn' : 'muted',
+      run: links.sampleSlowTrace
+        ? () => followPeriodLink(links.sampleSlowTrace)
+        : () => goServiceSlow({ serviceName: slow.serviceName, p50Ms: slow.avgMs })
+    })
+  }
+
+  const edge = cur.hotEdges[0]
+  if (edge?.sourceService && edge?.targetService && out.length < max) {
+    out.push({
+      text: `热点依赖：${edge.sourceService} → ${edge.targetService}（${edge.callCount} 次）`,
+      tone: 'muted',
+      run: links.hotEdge ? () => followPeriodLink(links.hotEdge) : undefined
+    })
+  }
+
+  return out.slice(0, max)
+})
+
+const periodActions = computed(() => {
+  const links = periodInsight.value?.links
+  if (!links) return [] as Array<{ key: string; label: string; run: () => void }>
+  const acts: Array<{ key: string; label: string; run: () => void }> = []
+  if (links.errorAnalysis) {
+    acts.push({ key: 'errors', label: '错误分析', run: () => followPeriodLink(links.errorAnalysis) })
+  }
+  if (links.errorTraces && (periodInsight.value?.current?.errorSpanCount ?? 0) > 0) {
+    acts.push({ key: 'err-traces', label: '错误链路', run: () => followPeriodLink(links.errorTraces) })
+  }
+  if (links.sampleSlowTrace) {
+    acts.push({ key: 'slow', label: '慢链路样例', run: () => followPeriodLink(links.sampleSlowTrace) })
+  }
+  if (links.hotEdge) {
+    acts.push({ key: 'edge', label: '热点依赖', run: () => followPeriodLink(links.hotEdge) })
+  }
+  return acts.slice(0, isMesh.value ? 2 : 4)
+})
+
+const followPeriodLink = (link?: PeriodInsightLink) => {
+  if (!link?.path) return
+  if (link.traceId) {
+    goTraceDetail(link.traceId)
+    return
+  }
+  const query: Record<string, string> = {}
+  if (link.query) {
+    for (const [k, v] of Object.entries(link.query)) {
+      query[k] = String(v)
+    }
+  }
+  router.push({ path: link.path, query })
+}
 
 const slowServices = computed(() =>
   [...serviceLatency.value]
@@ -620,14 +772,15 @@ const loadData = async () => {
   try {
     loading.value = true
     const h = hours.value
-    const [serviceNames, serviceDeps, serviceStatsData, latencyData, errorAnalysisData, collectorStatsData, recent] = await Promise.all([
+    const [serviceNames, serviceDeps, serviceStatsData, latencyData, errorAnalysisData, collectorStatsData, recent, period] = await Promise.all([
       ApiService.getServiceNames(),
       ApiService.getServiceDependencies(h),
       ApiService.getServiceStats(h),
       ApiService.getServiceLatency(h, 20),
       ApiService.getErrorAnalysis(h),
       ApiService.getCollectorStats(),
-      ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 16 })
+      ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 16 }),
+      ApiService.getPeriodInsight(h)
     ])
     services.value = serviceNames
     dependencies.value = serviceDeps
@@ -636,6 +789,7 @@ const loadData = async () => {
     errorAnalysis.value = errorAnalysisData
     collectorStats.value = collectorStatsData
     recentTraces.value = Array.isArray(recent) ? recent : []
+    periodInsight.value = period
     totalSpans.value = serviceStatsData.reduce((sum: number, s: any) => sum + (s.totalSpans || 0), 0)
   } catch (error) {
     console.error('加载仪表盘数据失败:', error)
@@ -992,6 +1146,138 @@ onUnmounted(() => {
 }
 
 /* Collector 收成横条 */
+.si-period {
+  flex-shrink: 0;
+  padding: 0.65rem 0.9rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.05) 0%, transparent 42%),
+    var(--card-bg);
+  box-shadow: var(--box-shadow);
+}
+
+.si-period--compact {
+  padding: 0.45rem 0.75rem 0.5rem;
+}
+
+.si-period__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.si-period__kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--si-muted);
+}
+
+.si-period__headline {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.si-period--compact .si-period__headline {
+  font-size: 0.88rem;
+}
+
+.si-period__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.si-period__action {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-color: rgba(20, 83, 45, 0.22);
+  color: var(--si-ink-soft);
+}
+
+.si-period__bullets {
+  list-style: none;
+  margin: 0.45rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+}
+
+.si-period__bullets li {
+  position: relative;
+  padding-left: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--si-ink-soft);
+  line-height: 1.4;
+}
+
+.si-period__bullets li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: rgba(15, 118, 110, 0.45);
+}
+
+.si-period__bullet--warn {
+  color: #9a3412;
+}
+
+.si-period__bullet--warn::before {
+  background: #c2410c;
+}
+
+.si-period__bullet--ok {
+  color: #14532d;
+}
+
+.si-period__bullet--ok::before {
+  background: #15803d;
+}
+
+.si-period__bullet--muted {
+  color: var(--si-muted);
+}
+
+.si-period__bullet-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(20, 83, 45, 0.28);
+  text-underline-offset: 0.15em;
+}
+
+.si-period__bullet-btn:hover {
+  color: var(--si-teal);
+  text-decoration-color: var(--si-teal);
+}
+
+.si-period__empty {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  color: var(--si-muted);
+}
+
 .si-dashboard__collector-strip {
   flex-shrink: 0;
   display: flex;

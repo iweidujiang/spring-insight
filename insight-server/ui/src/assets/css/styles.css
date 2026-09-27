@@ -939,10 +939,12 @@ body::before {
   border-radius: 0 0 10px 10px;
 }
 
-/* 数据表：列宽稳定、分隔线贯通、单元格垂直居中 */
+/* 数据表：列宽稳定；collapse 保证行分隔线贯通（separate + 各 td 底边易错位） */
 .si-data-table {
   table-layout: fixed;
   width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
 }
 
 .si-data-table thead th,
@@ -951,8 +953,12 @@ body::before {
   box-sizing: border-box;
 }
 
-.si-data-table tbody tr > * {
+.si-data-table tbody td {
   border-bottom: 1px solid rgba(20, 83, 45, 0.1);
+}
+
+.si-data-table thead th {
+  border-bottom: 1px solid rgba(20, 83, 45, 0.14);
 }
 
 /* HTTP 方法：固定槽位，路径左缘对齐 */

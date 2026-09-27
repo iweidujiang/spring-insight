@@ -274,12 +274,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import { TIME_RANGE_OPTIONS, formatHoursLabel } from '../utils/timeRange'
 
+const route = useRoute()
 const router = useRouter()
 const loading = ref(true)
 const explaining = ref(false)
@@ -521,6 +522,10 @@ onMounted(async () => {
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
   window.addEventListener('resize', handleResize)
+  const qHours = Number(route.query.hours)
+  if (Number.isFinite(qHours) && qHours >= 0) {
+    hours.value = qHours
+  }
   await refreshAiStatus()
   await loadData()
 })

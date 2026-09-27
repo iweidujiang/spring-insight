@@ -130,9 +130,11 @@
                 @click="viewTraceDetail(trace.traceId)"
               >
                 <td class="si-trace-op">
-                  <span class="si-http-method" :data-method="traceMethod(trace)">{{ traceMethod(trace) || 'REQ' }}</span>
-                  <span class="si-trace-path" :title="tracePath(trace)">{{ tracePath(trace) }}</span>
-                  <span v-if="trace.serviceCount > 1" class="si-trace-extra">{{ trace.serviceCount }} 个服务</span>
+                  <div class="si-trace-op__inner">
+                    <span class="si-http-method" :data-method="traceMethod(trace)">{{ traceMethod(trace) || 'REQ' }}</span>
+                    <span class="si-trace-path" :title="tracePath(trace)">{{ tracePath(trace) }}</span>
+                    <span v-if="trace.serviceCount > 1" class="si-trace-extra">{{ trace.serviceCount }} 个服务</span>
+                  </div>
                 </td>
                 <td class="si-trace-dur">
                   <span class="si-dur" aria-hidden="false">
@@ -409,6 +411,12 @@ onUnmounted(() => {
 }
 
 .si-trace-op {
+  /* 勿对 td 设 display:flex，否则 border-collapse/行高错位 */
+  min-width: 0;
+  max-width: 100%;
+}
+
+.si-trace-op__inner {
   display: flex;
   align-items: center;
   gap: 0.55rem;

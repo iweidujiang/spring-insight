@@ -282,6 +282,16 @@ export class ApiService {
     return request('/storage/clear', { method: 'POST', data: body })
   }
 
+  /** 时段洞察事实（无 AI）：当前窗 vs 上一同等窗 */
+  static async getPeriodInsight(hours: number = 24): Promise<PeriodInsight | null> {
+    try {
+      const raw = await request<any>(`/insights/period?hours=${hours}`)
+      return normalizePeriodInsight(raw, hours)
+    } catch {
+      return null
+    }
+  }
+
   /** 错误分析一键解读 */
   static async explainErrors(hours: number = 24): Promise<AiExplainResult | null> {
     try {
@@ -308,6 +318,135 @@ export class ApiService {
       })
     } catch {
       return null
+    }
+  }
+}
+
+/** 时段洞察跳转提示 */
+export interface PeriodInsightLink {
+  path: string
+  query?: Record<string, string | number>
+  traceId?: string
+}
+
+/** GET /insights/period 事实体（schemaVersion=1） */
+export interface PeriodInsight {
+  schemaVersion: number
+  hours: number
+  compare: boolean
+  headline: string
+  window: { fromEpochMs: number; toEpochMs: number; from: string; to: string } | null
+  previousWindow: { fromEpochMs: number; toEpochMs: number; from: string; to: string } | null
+  current: PeriodInsightSnapshot | null
+  previous: PeriodInsightSnapshot | null
+  delta: PeriodInsightDelta | null
+  links: {
+    errorAnalysis?: PeriodInsightLink
+    errorTraces?: PeriodInsightLink
+    sampleSlowTrace?: PeriodInsightLink
+    sampleErrorTrace?: PeriodInsightLink
+    hotEdge?: PeriodInsightLink
+  }
+}
+
+export interface PeriodInsightSnapshot {
+  spanCount: number
+  errorSpanCount: number
+  errorServices: Array<{ serviceName: string; errorSpans: number; totalSpans?: number }>
+  slowServices: Array<{ serviceName: string; p95Ms: number; avgMs?: number; spanCount?: number }>
+  hotEdges: Array<{ sourceService: string; targetService: string; callCount: number }>
+  sampleErrorTraceIds: string[]
+  sampleSlowTraceIds: string[]
+}
+
+export interface PeriodInsightDelta {
+  errorSpanCount: number
+  spanCount: number
+  errorServiceCount: number
+  newErrorServices: string[]
+}
+
+function normalizePeriodLink(raw: any): PeriodInsightLink | undefined {
+  if (!raw || typeof raw !== 'object' || !raw.path) return undefined
+  const queryRaw = raw.query && typeof raw.query === 'object' ? raw.query : undefined
+  const query: Record<string, string | number> = {}
+  if (queryRaw) {
+    for (const [k, v] of Object.entries(queryRaw)) {
+      if (v == null) continue
+      query[k] = typeof v === 'number' ? v : String(v)
+    }
+  }
+  return {
+    path: String(raw.path),
+    query: Object.keys(query).length ? query : undefined,
+    traceId: raw.traceId ? String(raw.traceId) : undefined
+  }
+}
+
+function normalizePeriodSnapshot(raw: any): PeriodInsightSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    spanCount: Number(raw.spanCount ?? 0),
+    errorSpanCount: Number(raw.errorSpanCount ?? 0),
+    errorServices: Array.isArray(raw.errorServices)
+      ? raw.errorServices.map((r: any) => ({
+          serviceName: String(r.serviceName ?? ''),
+          errorSpans: Number(r.errorSpans ?? 0),
+          totalSpans: r.totalSpans != null ? Number(r.totalSpans) : undefined
+        }))
+      : [],
+    slowServices: Array.isArray(raw.slowServices)
+      ? raw.slowServices.map((r: any) => ({
+          serviceName: String(r.serviceName ?? ''),
+          p95Ms: Number(r.p95Ms ?? 0),
+          avgMs: r.avgMs != null ? Number(r.avgMs) : undefined,
+          spanCount: r.spanCount != null ? Number(r.spanCount) : undefined
+        }))
+      : [],
+    hotEdges: Array.isArray(raw.hotEdges)
+      ? raw.hotEdges.map((r: any) => ({
+          sourceService: String(r.sourceService ?? ''),
+          targetService: String(r.targetService ?? ''),
+          callCount: Number(r.callCount ?? 0)
+        }))
+      : [],
+    sampleErrorTraceIds: Array.isArray(raw.sampleErrorTraceIds)
+      ? raw.sampleErrorTraceIds.map(String)
+      : [],
+    sampleSlowTraceIds: Array.isArray(raw.sampleSlowTraceIds)
+      ? raw.sampleSlowTraceIds.map(String)
+      : []
+  }
+}
+
+function normalizePeriodInsight(raw: any, hours: number): PeriodInsight {
+  const linksRaw = raw?.links && typeof raw.links === 'object' ? raw.links : {}
+  const deltaRaw = raw?.delta && typeof raw.delta === 'object' ? raw.delta : null
+  return {
+    schemaVersion: Number(raw?.schemaVersion ?? 1),
+    hours: Number(raw?.hours ?? hours),
+    compare: Boolean(raw?.compare),
+    headline: String(raw?.headline ?? ''),
+    window: raw?.window ?? null,
+    previousWindow: raw?.previousWindow ?? null,
+    current: normalizePeriodSnapshot(raw?.current),
+    previous: normalizePeriodSnapshot(raw?.previous),
+    delta: deltaRaw
+      ? {
+          errorSpanCount: Number(deltaRaw.errorSpanCount ?? 0),
+          spanCount: Number(deltaRaw.spanCount ?? 0),
+          errorServiceCount: Number(deltaRaw.errorServiceCount ?? 0),
+          newErrorServices: Array.isArray(deltaRaw.newErrorServices)
+            ? deltaRaw.newErrorServices.map(String)
+            : []
+        }
+      : null,
+    links: {
+      errorAnalysis: normalizePeriodLink(linksRaw.errorAnalysis),
+      errorTraces: normalizePeriodLink(linksRaw.errorTraces),
+      sampleSlowTrace: normalizePeriodLink(linksRaw.sampleSlowTrace),
+      sampleErrorTrace: normalizePeriodLink(linksRaw.sampleErrorTrace),
+      hotEdge: normalizePeriodLink(linksRaw.hotEdge)
     }
   }
 }
