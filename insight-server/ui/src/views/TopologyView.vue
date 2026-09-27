@@ -8,7 +8,7 @@
         <p class="page-description mb-0">
           {{ isSolo
             ? '当前只有一个应用、还没有跨服务调用。'
-            : '箭头：调用方 → 被调用方；点击节点或边先选中，再从旁栏下钻链路' }}
+            : '箭头：调用方 → 被调用方；点击节点或调用链路先选中，再从旁栏下钻' }}
         </p>
       </div>
       <span class="badge bg-info">
@@ -129,11 +129,11 @@
               <p class="si-topo-legend">
                 <span>{{ serviceNames.length }} 个服务</span>
                 <span>·</span>
-                <span>{{ dependencies.length }} 条调用边</span>
+                <span>{{ dependencies.length }} 条调用链路</span>
                 <span>·</span>
                 <span>箭头 = 调用方向</span>
                 <span>·</span>
-                <span>边上数字 = 调用次数</span>
+                <span>线上数字 = 调用次数</span>
               </p>
             </div>
             <div class="d-flex gap-2 align-items-center flex-shrink-0">
@@ -175,7 +175,7 @@
             </template>
 
             <template v-else-if="selection.kind === 'edge' && selection.service && selection.peer">
-              <p class="si-topo-rail__kicker">调用边</p>
+              <p class="si-topo-rail__kicker">调用链路</p>
               <p class="si-topo-rail__edge">
                 <span>{{ selection.service }}</span>
                 <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
@@ -199,20 +199,20 @@
                   @click="explainEdge(selection.service, selection.peer)"
                 >
                   <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
-                  {{ explaining ? '解读中…' : 'AI 解释此边' }}
+                  {{ explaining ? '解读中…' : 'AI 解释此链路' }}
                 </button>
                 <button type="button" class="btn btn-link btn-sm" @click="clearSelection">取消选中</button>
               </div>
               <AiExplainPanel
                 v-if="edgeExplain"
                 :result="edgeExplain"
-                title="边解读"
+                title="链路解读"
                 @close="edgeExplain = null"
               />
             </template>
 
             <p v-else class="si-topo-rail__empty">
-              点击图上的节点或边，在此查看摘要并下钻链路。
+              点击图上的节点或调用链路，在此查看摘要并下钻。
             </p>
           </div>
         </aside>

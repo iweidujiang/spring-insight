@@ -205,7 +205,7 @@ public class InsightAiExplainService {
      */
     public Map<String, Object> explainDependency(String source, String target, int hours) {
         InsightServerAiProperties properties = settingsService.effectiveAi();
-        List<Map<String, Object>> deps = persistenceService.getServiceDependencies(hours > 0 ? hours : 24);
+        List<Map<String, Object>> deps = persistenceService.getServiceDependencies(hours);
         Map<String, Object> edge = null;
         for (Map<String, Object> row : deps) {
             String s = String.valueOf(row.getOrDefault("source_service", row.get("sourceService")));
@@ -235,7 +235,7 @@ public class InsightAiExplainService {
             return InsightAiExplainSchema.buildResponse(
                     "dependency",
                     true,
-                    "窗口内没有 " + subject + " 的调用边。",
+                    "所选时段内没有 " + subject + " 的调用链路。",
                     properties.getModel(),
                     properties.getProvider(),
                     null,
@@ -245,12 +245,12 @@ public class InsightAiExplainService {
             String raw = callChatCompletions(
                     properties,
                     """
-                            你是 Spring Insight 拓扑助手。根据依赖边 JSON（调用次数、平均耗时等）说明这条边可能意味着什么。
+                            你是 Spring Insight 拓扑助手。根据服务间调用链路 JSON（调用次数、平均耗时等）说明这条调用关系可能意味着什么。
                             """ + InsightAiExplainSchema.JSON_OUTPUT_RULES + """
                             对本场景：至少一条 evidence 使用 type=edge，ref 为「源服务->目标服务」；
                             建议侧重超时、错误率与下游容量。
                             """,
-                    "请解释依赖边：\n```json\n"
+                    "请解释调用链路：\n```json\n"
                             + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload)
                             + "\n```");
             Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, objectMapper);
@@ -260,7 +260,7 @@ public class InsightAiExplainService {
                     String.valueOf(ok.getOrDefault("summary", "")));
             return ok;
         } catch (Exception e) {
-            log.warn("[AI] 依赖边解读失败: {} error={}", subject, e.getMessage());
+            log.warn("[AI] 调用链路解读失败: {} error={}", subject, e.getMessage());
             Map<String, Object> degraded = InsightAiExplainSchema.buildResponse(
                     "dependency", true, "模型调用失败：" + safeMsg(e),
                     properties.getModel(), properties.getProvider(), null, nav);
@@ -537,16 +537,92 @@ public class InsightAiExplainService {
     }
 
     /**
+     * 从 Chat Completions 响应取出 assistant 文本。
+     * <p>
+     * 兼容：字符串 {@code content}、多段 content 数组、部分推理模型的
+     * {@code reasoning_content}（仅作兜底，优先正式 content）。
+     * </p>
+     *
      * @param responseBody Chat Completions JSON
      * @return assistant 文本
      */
     String extractContent(String responseBody) throws Exception {
         JsonNode root = objectMapper.readTree(responseBody);
-        JsonNode content = root.path("choices").path(0).path("message").path("content");
-        if (content.isMissingNode() || !content.isTextual() || content.asText().isBlank()) {
-            throw new IllegalStateException("响应缺少 choices[0].message.content");
+        JsonNode choice0 = root.path("choices").path(0);
+        if (choice0.isMissingNode() || choice0.isNull()) {
+            throw new IllegalStateException(
+                    "响应缺少 choices[0]：" + abbreviate(responseBody, 180));
         }
-        return content.asText().trim();
+        JsonNode message = choice0.path("message");
+        String fromContent = readMessageText(message.path("content"));
+        if (StringUtils.hasText(fromContent)) {
+            return fromContent.trim();
+        }
+        // DeepSeek reasoner / 部分兼容网关：正文可能在 reasoning_content，content 为 null
+        String fromReasoning = readMessageText(message.path("reasoning_content"));
+        if (!StringUtils.hasText(fromReasoning)) {
+            fromReasoning = readMessageText(message.path("reasoning"));
+        }
+        if (StringUtils.hasText(fromReasoning)) {
+            log.warn("[AI] choices[0].message.content 为空，已回退 reasoning_content；finish_reason={}",
+                    choice0.path("finish_reason").asText(""));
+            return fromReasoning.trim();
+        }
+        String finish = choice0.path("finish_reason").asText("");
+        String refusal = readMessageText(message.path("refusal"));
+        String hint = StringUtils.hasText(refusal)
+                ? "refusal=" + abbreviate(refusal, 80)
+                : "finish_reason=" + (finish.isBlank() ? "?" : finish);
+        throw new IllegalStateException(
+                "响应缺少可用正文（content/reasoning_content）；" + hint + "；"
+                        + abbreviate(responseBody, 160));
+    }
+
+    /**
+     * 读取 message 字段：纯文本，或 OpenAI 多段 content 数组中的 text。
+     *
+     * @param node content / reasoning_content 节点
+     * @return 拼接后的文本；无有效内容时为空串
+     */
+    private static String readMessageText(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return "";
+        }
+        if (node.isTextual()) {
+            return node.asText();
+        }
+        if (node.isArray()) {
+            StringBuilder sb = new StringBuilder();
+            for (JsonNode part : node) {
+                if (part == null || part.isNull()) {
+                    continue;
+                }
+                if (part.isTextual()) {
+                    sb.append(part.asText());
+                    continue;
+                }
+                String text = part.path("text").asText("");
+                if (!text.isBlank()) {
+                    sb.append(text);
+                    continue;
+                }
+                // 少数网关用 content 字段嵌套
+                String nested = part.path("content").asText("");
+                if (!nested.isBlank()) {
+                    sb.append(nested);
+                }
+            }
+            return sb.toString();
+        }
+        // 个别实现把 content 做成对象
+        if (node.isObject()) {
+            String text = node.path("text").asText("");
+            if (!text.isBlank()) {
+                return text;
+            }
+            return node.path("content").asText("");
+        }
+        return "";
     }
 
     private static boolean isOpenAiCompatible(String provider) {

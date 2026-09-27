@@ -158,6 +158,34 @@ class InsightAiExplainServiceTest {
         assertEquals("err", spans.get(0).get("spanId"));
     }
 
+    /**
+     * content 为多段数组时仍能取出正文。
+     *
+     * @throws Exception 解析失败
+     */
+    @Test
+    void extractContentFromArrayParts() throws Exception {
+        InsightAiExplainService svc = service(props(false, "", ""), storeWithTrace());
+        String body = """
+                {"choices":[{"message":{"content":[{"type":"text","text":"{\\"summary\\":\\"ok\\"}"}]}}]}
+                """;
+        assertTrue(svc.extractContent(body).contains("summary"));
+    }
+
+    /**
+     * content 为空时回退 reasoning_content（推理模型常见）。
+     *
+     * @throws Exception 解析失败
+     */
+    @Test
+    void extractContentFallsBackToReasoning() throws Exception {
+        InsightAiExplainService svc = service(props(false, "", ""), storeWithTrace());
+        String body = """
+                {"choices":[{"finish_reason":"stop","message":{"content":null,"reasoning_content":"{\\"summary\\":\\"via-reasoning\\"}"}}]}
+                """;
+        assertEquals("{\"summary\":\"via-reasoning\"}", svc.extractContent(body));
+    }
+
     private static InsightServerAiProperties props(boolean enabled, String baseUrl, String key) {
         InsightServerAiProperties p = new InsightServerAiProperties();
         p.setEnabled(enabled);

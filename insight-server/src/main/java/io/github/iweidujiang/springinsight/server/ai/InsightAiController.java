@@ -3,11 +3,7 @@ package io.github.iweidujiang.springinsight.server.ai;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -82,18 +78,18 @@ public class InsightAiController {
     }
 
     /**
-     * 拓扑边解读。
+     * 拓扑调用链路解读。
      *
      * @param source 源服务
      * @param target 目标服务
-     * @param hours  窗口
+     * @param hours  时段小时
      * @return 结构化解读
      */
     @PostMapping("/dependencies/explain")
     public ResponseEntity<?> explainDependency(
-            @org.springframework.web.bind.annotation.RequestParam("source") String source,
-            @org.springframework.web.bind.annotation.RequestParam("target") String target,
-            @org.springframework.web.bind.annotation.RequestParam(value = "hours", defaultValue = "24") int hours) {
+            @RequestParam("source") String source,
+            @RequestParam("target") String target,
+            @RequestParam(value = "hours", defaultValue = "24") int hours) {
         return ResponseEntity.ok(explainService.explainDependency(source, target, hours));
     }
 
@@ -105,7 +101,7 @@ public class InsightAiController {
      */
     @GetMapping("/ai/audit")
     public java.util.List<Map<String, Object>> audit(
-            @org.springframework.web.bind.annotation.RequestParam(value = "limit", defaultValue = "20") int limit) {
+            @RequestParam(value = "limit", defaultValue = "20") int limit) {
         return auditLog.recent(limit);
     }
 }

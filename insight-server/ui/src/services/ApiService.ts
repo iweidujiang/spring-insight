@@ -304,7 +304,7 @@ export class ApiService {
     }
   }
 
-  /** 拓扑边解读 */
+  /** 拓扑调用链路解读 */
   static async explainDependency(source: string, target: string, hours: number = 24): Promise<AiExplainResult | null> {
     try {
       const qs = new URLSearchParams({
