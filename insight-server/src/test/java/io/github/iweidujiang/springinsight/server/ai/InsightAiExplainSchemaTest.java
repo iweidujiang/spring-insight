@@ -59,6 +59,34 @@ class InsightAiExplainSchemaTest {
     }
 
     /**
+     * 推理草稿不直接展示为结论。
+     */
+    @Test
+    void parseReasoningDraftNotShownAsSummary() {
+        String raw = "We need answer only JSON. Need infer. Provided edge sca-user -> sca-loyalty, hours 6, call_count 2, avg_duration 93.5.";
+        Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, mapper);
+        assertFalse(Boolean.TRUE.equals(parsed.get("structured")));
+        assertFalse(InsightAiExplainSchema.isStructuredOk(parsed));
+        String summary = String.valueOf(parsed.get("summary"));
+        assertTrue(summary.contains("结构化结论") || summary.contains("思考"));
+        assertFalse(summary.contains("We need"));
+    }
+
+    /**
+     * 思考草稿末尾若带 summary JSON，应抽出结构化结果。
+     */
+    @Test
+    void parseJsonEmbeddedAfterReasoning() {
+        String raw = """
+                We need answer only JSON. Need infer.
+                {"summary":"调用偏少但耗时正常","evidence":[{"type":"edge","ref":"sca-user->sca-loyalty","label":"user→loyalty","reason":"2次"}],"suggestions":["关注错误率"]}
+                """;
+        Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, mapper);
+        assertTrue(Boolean.TRUE.equals(parsed.get("structured")));
+        assertEquals("调用偏少但耗时正常", parsed.get("summary"));
+    }
+
+    /**
      * buildResponse 附带 span nav 与 markdown。
      */
     @Test

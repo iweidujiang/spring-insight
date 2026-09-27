@@ -26,7 +26,9 @@ public final class InsightAiExplainSchema {
 
     /** 要求模型只输出 JSON 的公共说明。 */
     public static final String JSON_OUTPUT_RULES = """
-            你必须只输出一个 JSON 对象（可包在 ```json 代码块中），不要输出其它说明文字。字段：
+            你必须只输出一个 JSON 对象（可包在 ```json 代码块中），不要输出其它说明文字。
+            若模型支持「思考 / reasoning」，最终答案必须写在正式回复正文（content）里，不要只写在思考过程中。
+            字段：
             {
               "summary": "一句话结论",
               "evidence": [
@@ -44,7 +46,7 @@ public final class InsightAiExplainSchema {
     }
 
     /**
-     * 将模型原文解析为结构化字段；解析失败时把全文放入 summary，并标记 structured=false。
+     * 将模型原文解析为结构化字段；解析失败时不把推理草稿当结论。
      *
      * @param rawModelText 模型返回文本
      * @param mapper       Jackson
@@ -64,6 +66,13 @@ public final class InsightAiExplainSchema {
         }
         try {
             JsonNode root = mapper.readTree(json);
+            if (!looksLikeExplainObject(root)) {
+                out.put("structured", false);
+                out.put("summary", fallbackSummary(raw));
+                out.put("evidence", List.of());
+                out.put("suggestions", List.of());
+                return out;
+            }
             String summary = textOrEmpty(root.get("summary"));
             if (!StringUtils.hasText(summary)) {
                 summary = fallbackSummary(raw);
@@ -82,6 +91,18 @@ public final class InsightAiExplainSchema {
             out.put("suggestions", List.of());
             return out;
         }
+    }
+
+    /**
+     * 是否已得到可用的结构化结论（供调用方决定是否降级）。
+     *
+     * @param parsed {@link #parseStructured} 结果
+     * @return true 表示有 summary 且 structured
+     */
+    public static boolean isStructuredOk(Map<String, Object> parsed) {
+        return parsed != null
+                && Boolean.TRUE.equals(parsed.get("structured"))
+                && StringUtils.hasText(String.valueOf(parsed.getOrDefault("summary", "")));
     }
 
     /**
@@ -359,7 +380,7 @@ public final class InsightAiExplainSchema {
     }
 
     /**
-     * 从模型输出中抽出 JSON 对象文本（支持 ```json 围栏）。
+     * 从模型输出中抽出含 summary 的 JSON 对象（支持 ```json 围栏；跳过思考草稿里的无关花括号）。
      *
      * @param raw 原文
      * @return JSON 或空
@@ -379,6 +400,11 @@ public final class InsightAiExplainSchema {
                 }
             }
         }
+        // 优先：能解析且含 summary 的对象（避免把思考过程里的 {call_count:2} 当成结论）
+        String withSummary = findBalancedObjectContaining(t, "summary");
+        if (StringUtils.hasText(withSummary)) {
+            return withSummary;
+        }
         int start = t.indexOf('{');
         int end = t.lastIndexOf('}');
         if (start < 0 || end <= start) {
@@ -387,12 +413,111 @@ public final class InsightAiExplainSchema {
         return t.substring(start, end + 1);
     }
 
+    /**
+     * 扫描文本，返回第一个括号平衡且包含指定字段名的 JSON 对象。
+     *
+     * @param text      原文
+     * @param fieldName 必含字段（如 summary）
+     * @return JSON 片段或空
+     */
+    static String findBalancedObjectContaining(String text, String fieldName) {
+        if (!StringUtils.hasText(text) || !StringUtils.hasText(fieldName)) {
+            return "";
+        }
+        String needle = "\"" + fieldName + "\"";
+        int from = 0;
+        while (from < text.length()) {
+            int start = text.indexOf('{', from);
+            if (start < 0) {
+                return "";
+            }
+            int end = findMatchingBrace(text, start);
+            if (end < 0) {
+                from = start + 1;
+                continue;
+            }
+            String candidate = text.substring(start, end + 1);
+            if (candidate.contains(needle)) {
+                return candidate;
+            }
+            from = start + 1;
+        }
+        return "";
+    }
+
+    /**
+     * @param text  全文
+     * @param start '{' 下标
+     * @return 配对 '}' 下标；失败 -1
+     */
+    private static int findMatchingBrace(String text, int start) {
+        int depth = 0;
+        boolean inString = false;
+        boolean escape = false;
+        for (int i = start; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (inString) {
+                if (escape) {
+                    escape = false;
+                } else if (c == '\\') {
+                    escape = true;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            if (c == '"') {
+                inString = true;
+            } else if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static boolean looksLikeExplainObject(JsonNode root) {
+        return root != null && root.isObject() && root.has("summary");
+    }
+
     private static String fallbackSummary(String raw) {
         if (!StringUtils.hasText(raw)) {
             return "未能解析模型输出";
         }
+        // 推理模型常把草稿放进 content/reasoning；勿直接展示给用户
+        if (looksLikeReasoningDraft(raw)) {
+            return "模型未输出结构化结论（仅有思考草稿）。可换非推理模型，或在设置中增大 max_tokens 后重试。";
+        }
         String one = raw.replace('\r', ' ').replace('\n', ' ').trim();
         return one.length() <= 120 ? one : one.substring(0, 120) + "...";
+    }
+
+    /**
+     * 粗判：像英文 CoT /「只输出 JSON」自检，而非给用户的结论。
+     *
+     * @param raw 原文
+     * @return true 表示不宜直接展示
+     */
+    static boolean looksLikeReasoningDraft(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return false;
+        }
+        String lower = raw.toLowerCase(Locale.ROOT);
+        if (lower.contains("we need") && lower.contains("json")) {
+            return true;
+        }
+        if (lower.contains("answer only json") || lower.contains("only output json")) {
+            return true;
+        }
+        if (lower.contains("need infer") || lower.contains("let's think")) {
+            return true;
+        }
+        // 中文思考草稿常见开头
+        return raw.contains("我需要") && (raw.contains("JSON") || raw.contains("json"));
     }
 
     private static String textOrEmpty(JsonNode n) {

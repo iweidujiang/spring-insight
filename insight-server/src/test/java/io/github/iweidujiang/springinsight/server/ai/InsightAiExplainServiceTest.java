@@ -173,17 +173,34 @@ class InsightAiExplainServiceTest {
     }
 
     /**
-     * content 为空时回退 reasoning_content（推理模型常见）。
+     * content 为空时，仅当 reasoning 含 summary JSON 才可用。
      *
-     * @throws Exception 解析失败
+     * @throws Exception 仅有思考草稿
      */
     @Test
     void extractContentFallsBackToReasoning() throws Exception {
         InsightAiExplainService svc = service(props(false, "", ""), storeWithTrace());
         String body = """
-                {"choices":[{"finish_reason":"stop","message":{"content":null,"reasoning_content":"{\\"summary\\":\\"via-reasoning\\"}"}}]}
+                {"choices":[{"finish_reason":"stop","message":{"content":null,"reasoning_content":"think... {\\"summary\\":\\"via-reasoning\\",\\"evidence\\":[],\\"suggestions\\":[]}"}}]}
                 """;
-        assertEquals("{\"summary\":\"via-reasoning\"}", svc.extractContent(body));
+        assertTrue(svc.extractContent(body).contains("via-reasoning"));
+    }
+
+    /**
+     * 纯思考草稿（无 summary JSON）应失败，避免当成结论。
+     */
+    @Test
+    void extractContentRejectsReasoningDraft() {
+        InsightAiExplainService svc = service(props(false, "", ""), storeWithTrace());
+        String body = """
+                {"choices":[{"finish_reason":"length","message":{"content":null,"reasoning_content":"We need answer only JSON. Need infer. Provided edge sca-user -> sca-loyalty."}}]}
+                """;
+        try {
+            svc.extractContent(body);
+            org.junit.jupiter.api.Assertions.fail("expected failure");
+        } catch (Exception e) {
+            assertTrue(e.getMessage().contains("思考过程") || e.getMessage().contains("JSON"));
+        }
     }
 
     private static InsightServerAiProperties props(boolean enabled, String baseUrl, String key) {

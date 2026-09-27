@@ -112,10 +112,8 @@ public class InsightAiExplainService {
                     "请解释以下 Trace Context：\n```json\n"
                             + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(truncated)
                             + "\n```");
-            Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, objectMapper);
-            Map<String, Object> ok = InsightAiExplainSchema.buildResponse(
-                    "trace", false, null, properties.getModel(), properties.getProvider(), parsed, nav);
-            auditLog.record("trace", traceId, false, properties.getModel(),
+            Map<String, Object> ok = completeExplain("trace", raw, properties, nav);
+            auditLog.record("trace", traceId, Boolean.TRUE.equals(ok.get("degraded")), properties.getModel(),
                     String.valueOf(ok.getOrDefault("summary", "")));
             return ok;
         } catch (Exception e) {
@@ -178,10 +176,8 @@ public class InsightAiExplainService {
                     "请解读以下错误分析摘要：\n```json\n"
                             + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload)
                             + "\n```");
-            Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, objectMapper);
-            Map<String, Object> ok = InsightAiExplainSchema.buildResponse(
-                    "errors", false, null, properties.getModel(), properties.getProvider(), parsed, nav);
-            auditLog.record("errors", "hours=" + hours, false, properties.getModel(),
+            Map<String, Object> ok = completeExplain("errors", raw, properties, nav);
+            auditLog.record("errors", "hours=" + hours, Boolean.TRUE.equals(ok.get("degraded")), properties.getModel(),
                     String.valueOf(ok.getOrDefault("summary", "")));
             return ok;
         } catch (Exception e) {
@@ -253,10 +249,8 @@ public class InsightAiExplainService {
                     "请解释调用链路：\n```json\n"
                             + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload)
                             + "\n```");
-            Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, objectMapper);
-            Map<String, Object> ok = InsightAiExplainSchema.buildResponse(
-                    "dependency", false, null, properties.getModel(), properties.getProvider(), parsed, nav);
-            auditLog.record("dependency", subject, false, properties.getModel(),
+            Map<String, Object> ok = completeExplain("dependency", raw, properties, nav);
+            auditLog.record("dependency", subject, Boolean.TRUE.equals(ok.get("degraded")), properties.getModel(),
                     String.valueOf(ok.getOrDefault("summary", "")));
             return ok;
         } catch (Exception e) {
@@ -341,13 +335,20 @@ public class InsightAiExplainService {
                             + "\n```");
             Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, objectMapper);
             out.put("aiAttached", true);
-            out.put("aiDegraded", false);
-            out.put("aiSummary", String.valueOf(parsed.getOrDefault("summary", "")));
-            @SuppressWarnings("unchecked")
-            List<String> suggestions = (List<String>) parsed.getOrDefault("suggestions", List.of());
-            out.put("aiSuggestions", suggestions);
+            if (!InsightAiExplainSchema.isStructuredOk(parsed)) {
+                out.put("aiDegraded", true);
+                out.put("aiSummary", String.valueOf(parsed.getOrDefault("summary",
+                        "模型未输出结构化结论")));
+                out.put("aiSuggestions", List.of());
+            } else {
+                out.put("aiDegraded", false);
+                out.put("aiSummary", String.valueOf(parsed.getOrDefault("summary", "")));
+                @SuppressWarnings("unchecked")
+                List<String> suggestions = (List<String>) parsed.getOrDefault("suggestions", List.of());
+                out.put("aiSuggestions", suggestions);
+            }
             out.put("aiModel", properties.getModel() != null ? properties.getModel() : "");
-            auditLog.record("alert", serviceName, false, properties.getModel(),
+            auditLog.record("alert", serviceName, Boolean.TRUE.equals(out.get("aiDegraded")), properties.getModel(),
                     String.valueOf(out.get("aiSummary")));
             return out;
         } catch (Exception e) {
@@ -503,6 +504,30 @@ public class InsightAiExplainService {
         return copy;
     }
 
+    /**
+     * 解析模型原文：无结构化 JSON 时降级，避免把思考草稿展示为结论。
+     *
+     * @param kind       场景
+     * @param raw        模型正文
+     * @param properties AI 配置
+     * @param nav        跳转上下文
+     * @return 统一响应
+     */
+    private Map<String, Object> completeExplain(String kind,
+                                                String raw,
+                                                InsightServerAiProperties properties,
+                                                Map<String, Object> nav) {
+        Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(raw, objectMapper);
+        if (!InsightAiExplainSchema.isStructuredOk(parsed)) {
+            String msg = String.valueOf(parsed.getOrDefault("summary",
+                    "模型未输出结构化结论。可换非推理模型，或增大 max_tokens 后重试。"));
+            return InsightAiExplainSchema.buildResponse(
+                    kind, true, msg, properties.getModel(), properties.getProvider(), null, nav);
+        }
+        return InsightAiExplainSchema.buildResponse(
+                kind, false, null, properties.getModel(), properties.getProvider(), parsed, nav);
+    }
+
     private String callChatCompletions(InsightServerAiProperties properties,
                                        String systemPrompt,
                                        String userContent) throws Exception {
@@ -558,15 +583,21 @@ public class InsightAiExplainService {
         if (StringUtils.hasText(fromContent)) {
             return fromContent.trim();
         }
-        // DeepSeek reasoner / 部分兼容网关：正文可能在 reasoning_content，content 为 null
+        // 推理模型：content 常为空，仅 reasoning_content 有草稿；只有抽出含 summary 的 JSON 才可用
         String fromReasoning = readMessageText(message.path("reasoning_content"));
         if (!StringUtils.hasText(fromReasoning)) {
             fromReasoning = readMessageText(message.path("reasoning"));
         }
         if (StringUtils.hasText(fromReasoning)) {
-            log.warn("[AI] choices[0].message.content 为空，已回退 reasoning_content；finish_reason={}",
-                    choice0.path("finish_reason").asText(""));
-            return fromReasoning.trim();
+            String json = InsightAiExplainSchema.extractJsonObject(fromReasoning);
+            if (StringUtils.hasText(json) && json.contains("\"summary\"")) {
+                log.warn("[AI] content 为空，已从 reasoning_content 提取 JSON；finish_reason={}",
+                        choice0.path("finish_reason").asText(""));
+                return json;
+            }
+            throw new IllegalStateException(
+                    "模型仅返回思考过程、未在正文给出 JSON 结论。可换非推理模型，或增大 max_tokens 后重试。"
+                            + " finish_reason=" + choice0.path("finish_reason").asText("?"));
         }
         String finish = choice0.path("finish_reason").asText("");
         String refusal = readMessageText(message.path("refusal"));
@@ -574,7 +605,7 @@ public class InsightAiExplainService {
                 ? "refusal=" + abbreviate(refusal, 80)
                 : "finish_reason=" + (finish.isBlank() ? "?" : finish);
         throw new IllegalStateException(
-                "响应缺少可用正文（content/reasoning_content）；" + hint + "；"
+                "响应缺少可用正文（content）；" + hint + "；"
                         + abbreviate(responseBody, 160));
     }
 
