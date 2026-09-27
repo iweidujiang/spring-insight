@@ -64,7 +64,7 @@ public class InsightPeriodInsightService {
         body.put("previous", previous);
         body.put("delta", buildDelta(current, previous));
         body.put("links", buildLinks(hours, current));
-        body.put("headline", headlineWithCompare(current, body.get("delta")));
+        body.put("headline", headlineWithCompare(hours, current, body.get("delta")));
         return body;
     }
 
@@ -171,11 +171,13 @@ public class InsightPeriodInsightService {
     }
 
     @SuppressWarnings("unchecked")
-    private static String headlineWithCompare(Map<String, Object> current, Object deltaObj) {
+    private static String headlineWithCompare(int hours, Map<String, Object> current, Object deltaObj) {
         long err = num(current.get("errorSpanCount"));
         long spans = num(current.get("spanCount"));
+        String currentLabel = currentPeriodLabel(hours);
+        String priorLabel = priorPeriodLabel(hours);
         if (spans <= 0) {
-            return "本时段暂无 Span";
+            return currentLabel + "暂无 Span";
         }
         Map<String, Object> delta = deltaObj instanceof Map<?, ?> m
                 ? (Map<String, Object>) m
@@ -183,16 +185,42 @@ public class InsightPeriodInsightService {
         long dErr = num(delta.get("errorSpanCount"));
         String trend;
         if (dErr > 0) {
-            trend = "错误 Span 较上一时段 +" + dErr;
+            trend = "错误 Span 较" + priorLabel + " +" + dErr;
         } else if (dErr < 0) {
-            trend = "错误 Span 较上一时段 " + dErr;
+            trend = "错误 Span 较" + priorLabel + " " + dErr;
         } else {
-            trend = "错误 Span 与上一时段持平";
+            trend = "错误 Span 与" + priorLabel + "持平";
         }
         if (err <= 0) {
-            return "本时段 " + spans + " 条 Span，无错误；" + trend;
+            return currentLabel + " " + spans + " 条 Span，无错误；" + trend;
         }
-        return "本时段 " + spans + " 条 Span，错误 " + err + " 条；" + trend;
+        return currentLabel + " " + spans + " 条 Span，错误 " + err + " 条；" + trend;
+    }
+
+    /**
+     * 当前统计时段的口语标签（与控制台「近 N 小时」一致）。
+     *
+     * @param hours 时段小时数；已保证 &gt; 0
+     * @return 如「近 12 小时」「近 7 天」
+     */
+    private static String currentPeriodLabel(int hours) {
+        if (hours == 168) {
+            return "近 7 天";
+        }
+        return "近 " + hours + " 小时";
+    }
+
+    /**
+     * 环比对照时段标签：紧挨当前时段之前、同等时长的一段。
+     *
+     * @param hours 时段小时数；已保证 &gt; 0
+     * @return 如「此前同等 12 小时」「此前同等 7 天」
+     */
+    private static String priorPeriodLabel(int hours) {
+        if (hours == 168) {
+            return "此前同等 7 天";
+        }
+        return "此前同等 " + hours + " 小时";
     }
 
     private static long num(Object o) {

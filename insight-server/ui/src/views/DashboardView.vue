@@ -73,7 +73,8 @@
       >
         <header class="si-period__head">
           <div>
-            <p class="si-period__kicker">时段摘要 · {{ hoursLabel }}</p>
+            <p class="si-period__kicker">时段摘要</p>
+            <p class="si-period__scope">{{ periodScopeText }}</p>
             <h3 class="si-period__headline">{{ periodHeadline }}</h3>
           </div>
           <div v-if="periodActions.length" class="si-period__actions">
@@ -432,10 +433,40 @@ const periodHeadline = computed(() => {
   return periodInsight.value.headline || '暂无时段摘要'
 })
 
+/** 口径说明：当前统计段 + 环比对照段（含具体起止时刻） */
+const periodScopeText = computed(() => {
+  const p = periodInsight.value
+  if (!p) return hoursLabel.value
+  if (!p.compare || hours.value <= 0) {
+    return hours.value <= 0 ? '统计范围：全部已存 Span（不做环比）' : `统计范围：${hoursLabel.value}`
+  }
+  const cur = formatPeriodClock(p.window?.fromEpochMs, p.window?.toEpochMs)
+  const prev = formatPeriodClock(p.previousWindow?.fromEpochMs, p.previousWindow?.toEpochMs)
+  const priorLabel = hours.value === 168 ? '此前同等 7 天' : `此前同等 ${hours.value} 小时`
+  if (cur && prev) {
+    return `统计：${hoursLabel.value}（${cur}）· 环比：${priorLabel}（${prev}）`
+  }
+  return `统计：${hoursLabel.value} · 环比：${priorLabel}（紧挨当前时段之前）`
+})
+
 const periodEmptyHint = computed(() => {
   if (!periodInsight.value) return '暂无法获取时段事实'
   return emptyInRangeShort(hours.value, 'Span 数据')
 })
+
+/** 本地时刻短格式，如 9/27 00:00～12:00 */
+const formatPeriodClock = (fromMs?: number, toMs?: number) => {
+  if (!fromMs || !toMs || fromMs <= 0 || toMs <= 0) return ''
+  const fmt = (ms: number) => {
+    const d = new Date(ms)
+    const mon = d.getMonth() + 1
+    const day = d.getDate()
+    const hh = String(d.getHours()).padStart(2, '0')
+    const mm = String(d.getMinutes()).padStart(2, '0')
+    return `${mon}/${day} ${hh}:${mm}`
+  }
+  return `${fmt(fromMs)}～${fmt(toMs)}`
+}
 
 type PeriodBullet = { text: string; tone?: 'warn' | 'ok' | 'muted'; run?: () => void }
 
@@ -448,14 +479,15 @@ const periodBullets = computed((): PeriodBullet[] => {
   const out: PeriodBullet[] = []
   const delta = p.delta
   const links = p.links
+  const priorShort = hours.value === 168 ? '此前同等 7 天' : `此前同等 ${hours.value} 小时`
 
   const err = cur.errorSpanCount
   let errText = `错误 Span ${err} 条`
   if (p.compare && delta) {
     const d = delta.errorSpanCount
-    if (d > 0) errText += `（较上一时段 +${d}）`
-    else if (d < 0) errText += `（较上一时段 ${d}）`
-    else errText += '（与上一时段持平）'
+    if (d > 0) errText += `（较${priorShort} +${d}）`
+    else if (d < 0) errText += `（较${priorShort} ${d}）`
+    else errText += `（与${priorShort}持平）`
   }
   out.push({
     text: errText,
@@ -1189,8 +1221,16 @@ onUnmounted(() => {
   color: var(--si-teal);
 }
 
+.si-period__scope {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--si-ink-soft);
+  line-height: 1.4;
+}
+
 .si-period__headline {
-  margin: 0.28rem 0 0;
+  margin: 0.35rem 0 0;
   font-family: var(--font-display);
   font-size: clamp(1.12rem, 1.6vw, 1.35rem);
   font-weight: 700;
