@@ -125,13 +125,13 @@
               class="si-app__row"
               @click="goTraceDetail(tr.traceId)"
             >
-              <span class="si-app__method" :data-method="traceMethod(tr)">{{ traceMethod(tr) || 'REQ' }}</span>
+              <span class="si-http-method" :data-method="traceMethod(tr)">{{ traceMethod(tr) || 'REQ' }}</span>
               <span class="si-app__path" :title="tracePath(tr)">{{ tracePath(tr) }}</span>
-              <span class="si-app__dur">
-                <span class="si-app__track">
-                  <i class="si-app__bar" :style="{ width: durationShare(tr) + '%' }"></i>
+              <span class="si-dur si-app__dur">
+                <span class="si-dur__track">
+                  <i class="si-dur__bar" :style="{ width: durationShare(tr) + '%' }"></i>
                 </span>
-                <em>{{ formatMs(tr.durationMs || 0) }}</em>
+                <em class="si-dur__val">{{ formatMs(tr.durationMs || 0) }}</em>
               </span>
               <span class="badge" :class="traceFailed(tr) ? 'bg-danger' : 'bg-success'">
                 {{ traceFailed(tr) ? '失败' : '成功' }}
@@ -149,7 +149,7 @@
             <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goSlowTraces()">看慢链路</button>
           </div>
           <div v-if="healthSnapshot.length > 0" class="table-responsive si-dashboard__diag-scroll">
-            <table class="table table-hover mb-0 si-dashboard__diag-table">
+            <table class="table table-hover mb-0 si-dashboard__diag-table si-data-table">
               <thead class="table-light">
                 <tr>
                   <th>服务</th>
@@ -1471,32 +1471,20 @@ onUnmounted(() => {
 
 .si-app__row {
   display: grid;
-  grid-template-columns: 4.2rem minmax(0, 1fr) minmax(7rem, 11rem) 3.2rem;
+  grid-template-columns: 3.5rem minmax(0, 1fr) 8.5rem 3.2rem;
   align-items: center;
   gap: 0.75rem;
   padding: 0.62rem 0.95rem;
   cursor: pointer;
+  border-bottom: 1px solid rgba(20, 83, 45, 0.08);
+}
+
+.si-app__row:last-child {
+  border-bottom: none;
 }
 
 .si-app__row:hover {
   background: rgba(15, 118, 110, 0.06);
-}
-
-.si-app__method {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--si-teal);
-}
-
-.si-app__method[data-method="POST"],
-.si-app__method[data-method="PUT"],
-.si-app__method[data-method="PATCH"] {
-  color: #b45309;
-}
-
-.si-app__method[data-method="DELETE"] {
-  color: #b91c1c;
 }
 
 .si-app__path {
@@ -1510,32 +1498,7 @@ onUnmounted(() => {
 }
 
 .si-app__dur {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
   min-width: 0;
-}
-
-.si-app__track {
-  flex: 1;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(15, 118, 110, 0.12);
-  overflow: hidden;
-}
-
-.si-app__bar {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: #0f766e;
-}
-
-.si-app__dur em {
-  flex: 0 0 auto;
-  font-style: normal;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--si-ink-soft);
+  max-width: none;
 }
 </style>

@@ -98,9 +98,9 @@
             :key="tr.traceId"
             @click="goTraceDetail(tr.traceId)"
           >
-            <span class="si-topo-solo__method" :data-method="traceMethod(tr)">{{ traceMethod(tr) || 'REQ' }}</span>
+            <span class="si-http-method" :data-method="traceMethod(tr)">{{ traceMethod(tr) || 'REQ' }}</span>
             <span class="si-topo-solo__path" :title="tracePath(tr)">{{ tracePath(tr) }}</span>
-            <em>{{ formatMs(tr.durationMs || 0) }}</em>
+            <em class="si-dur__val">{{ formatMs(tr.durationMs || 0) }}</em>
             <span class="badge" :class="traceFailed(tr) ? 'bg-danger' : 'bg-success'">
               {{ traceFailed(tr) ? '失败' : '成功' }}
             </span>
@@ -223,7 +223,7 @@
           <i class="fa fa-list me-2"></i>依赖关系列表（{{ dependencies.length }}）
         </summary>
         <div class="table-responsive">
-          <table class="table table-hover mb-0">
+          <table class="table table-hover mb-0 si-data-table">
             <thead class="table-light">
               <tr>
                 <th>源服务</th>
@@ -914,32 +914,20 @@ onUnmounted(() => {
 
 .si-topo-solo__list li {
   display: grid;
-  grid-template-columns: 4.2rem minmax(0, 1fr) 4.5rem 3.2rem;
+  grid-template-columns: 3.5rem minmax(0, 1fr) 3.5rem 3.2rem;
   gap: 0.65rem;
   align-items: center;
   padding: 0.58rem 0.95rem;
   cursor: pointer;
+  border-bottom: 1px solid rgba(20, 83, 45, 0.08);
+}
+
+.si-topo-solo__list li:last-child {
+  border-bottom: none;
 }
 
 .si-topo-solo__list li:hover {
   background: rgba(15, 118, 110, 0.06);
-}
-
-.si-topo-solo__method {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--si-teal);
-}
-
-.si-topo-solo__method[data-method='POST'],
-.si-topo-solo__method[data-method='PUT'],
-.si-topo-solo__method[data-method='PATCH'] {
-  color: #b45309;
-}
-
-.si-topo-solo__method[data-method='DELETE'] {
-  color: #b91c1c;
 }
 
 .si-topo-solo__path {
@@ -951,12 +939,9 @@ onUnmounted(() => {
   color: var(--si-ink);
 }
 
-.si-topo-solo__list em {
-  font-style: normal;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--si-ink-soft);
-  text-align: right;
+.si-topo-solo__list .si-dur__val {
+  width: 3.5rem;
+  flex: none;
 }
 
 .si-topo-solo__hint {
@@ -996,10 +981,10 @@ onUnmounted(() => {
   }
 
   .si-topo-solo__list li {
-    grid-template-columns: 3.6rem minmax(0, 1fr) 3.2rem;
+    grid-template-columns: 3.5rem minmax(0, 1fr) 3.2rem;
   }
 
-  .si-topo-solo__list em {
+  .si-topo-solo__list .si-dur__val {
     display: none;
   }
 }

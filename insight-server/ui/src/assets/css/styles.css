@@ -939,6 +939,87 @@ body::before {
   border-radius: 0 0 10px 10px;
 }
 
+/* 数据表：列宽稳定、分隔线贯通、单元格垂直居中 */
+.si-data-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.si-data-table thead th,
+.si-data-table tbody td {
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+
+.si-data-table tbody tr > * {
+  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
+}
+
+/* HTTP 方法：固定槽位，路径左缘对齐 */
+.si-http-method {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 3.5rem;
+  flex: 0 0 3.5rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  color: var(--si-teal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.si-http-method[data-method="POST"],
+.si-http-method[data-method="PUT"],
+.si-http-method[data-method="PATCH"] {
+  color: #b45309;
+}
+
+.si-http-method[data-method="DELETE"] {
+  color: #b91c1c;
+}
+
+/* 耗时：固定轨道 + 等宽数字右对齐 */
+.si-dur {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 8.5rem;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.si-dur__track {
+  flex: 0 0 4.5rem;
+  width: 4.5rem;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.12);
+  overflow: hidden;
+}
+
+.si-dur__bar {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #0f766e;
+}
+
+.si-dur__val {
+  flex: 0 0 3.25rem;
+  width: 3.25rem;
+  margin: 0;
+  font-style: normal;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--si-ink-soft);
+  white-space: nowrap;
+}
+
 .si-page .loading-spinner { min-height: 200px; }
 
 /* 0.4 路由切换 */

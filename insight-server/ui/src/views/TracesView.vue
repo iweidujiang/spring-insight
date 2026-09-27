@@ -110,15 +110,15 @@
           <span class="badge bg-primary">{{ traces.length }} 条</span>
         </div>
         <div class="table-responsive">
-          <table class="table table-hover mb-0 si-trace-table">
+          <table class="table table-hover mb-0 si-trace-table si-data-table">
             <thead class="table-light">
               <tr>
-                <th>请求</th>
-                <th>耗时</th>
-                <th>状态</th>
-                <th>服务</th>
-                <th>时间</th>
-                <th></th>
+                <th class="si-trace-col-op">请求</th>
+                <th class="si-trace-col-dur">耗时</th>
+                <th class="si-trace-col-status">状态</th>
+                <th class="si-trace-col-svc">服务</th>
+                <th class="si-trace-col-time">时间</th>
+                <th class="si-trace-col-act"></th>
               </tr>
             </thead>
             <tbody>
@@ -130,24 +130,26 @@
                 @click="viewTraceDetail(trace.traceId)"
               >
                 <td class="si-trace-op">
-                  <span class="si-trace-method" :data-method="traceMethod(trace)">{{ traceMethod(trace) || 'REQ' }}</span>
+                  <span class="si-http-method" :data-method="traceMethod(trace)">{{ traceMethod(trace) || 'REQ' }}</span>
                   <span class="si-trace-path" :title="tracePath(trace)">{{ tracePath(trace) }}</span>
                   <span v-if="trace.serviceCount > 1" class="si-trace-extra">{{ trace.serviceCount }} 个服务</span>
                 </td>
                 <td class="si-trace-dur">
-                  <span class="si-trace-track">
-                    <i :style="{ width: durationShare(trace) + '%' }"></i>
+                  <span class="si-dur" aria-hidden="false">
+                    <span class="si-dur__track">
+                      <i class="si-dur__bar" :style="{ width: durationShare(trace) + '%' }"></i>
+                    </span>
+                    <em class="si-dur__val" :class="durationClass(trace.durationMs)">{{ formatDuration(Number(trace.durationMs) || 0) }}</em>
                   </span>
-                  <em :class="durationClass(trace.durationMs)">{{ formatDuration(Number(trace.durationMs) || 0) }}</em>
                 </td>
-                <td>
+                <td class="si-trace-status">
                   <span class="badge" :class="traceFailed(trace) ? 'bg-danger' : 'bg-success'">
                     {{ traceFailed(trace) ? '失败' : '成功' }}
                   </span>
                 </td>
                 <td class="text-truncate si-trace-service" :title="trace.serviceName">{{ trace.serviceName || '—' }}</td>
                 <td class="si-trace-time">{{ formatTime(trace.startTime) }}</td>
-                <td @click.stop>
+                <td class="si-trace-act" @click.stop>
                   <button class="btn btn-sm btn-outline-secondary" @click="copyTraceId(trace.traceId)" title="复制 Trace ID">
                     <i class="fa fa-copy"></i>
                   </button>
@@ -382,34 +384,41 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
+.si-trace-col-op {
+  width: 40%;
+}
+
+.si-trace-col-dur {
+  width: 11rem;
+}
+
+.si-trace-col-status {
+  width: 5.5rem;
+}
+
+.si-trace-col-svc {
+  width: 18%;
+}
+
+.si-trace-col-time {
+  width: 9.5rem;
+}
+
+.si-trace-col-act {
+  width: 3.25rem;
+}
+
 .si-trace-op {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.55rem;
-  min-width: 12rem;
-  max-width: 36rem;
-}
-
-.si-trace-method {
-  flex: 0 0 auto;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--si-teal, #0f766e);
-}
-
-.si-trace-method[data-method="POST"],
-.si-trace-method[data-method="PUT"],
-.si-trace-method[data-method="PATCH"] {
-  color: #b45309;
-}
-
-.si-trace-method[data-method="DELETE"] {
-  color: #b91c1c;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .si-trace-path {
   min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -421,42 +430,31 @@ onUnmounted(() => {
   flex: 0 0 auto;
   font-size: 0.72rem;
   color: var(--si-muted, #6b7f76);
-}
-
-.si-trace-dur {
-  min-width: 9rem;
   white-space: nowrap;
 }
 
-.si-trace-track {
-  display: inline-block;
-  width: 4.5rem;
-  height: 4px;
-  margin-right: 0.45rem;
-  vertical-align: middle;
-  border-radius: 999px;
-  background: rgba(15, 118, 110, 0.12);
-  overflow: hidden;
+.si-trace-dur {
+  white-space: nowrap;
 }
 
-.si-trace-track i {
-  display: block;
-  height: 100%;
-  background: #0f766e;
-}
-
-.si-trace-dur em {
-  font-style: normal;
-  font-weight: 700;
+.si-trace-status .badge {
+  min-width: 2.75rem;
+  justify-content: center;
 }
 
 .si-trace-service {
-  max-width: 8rem;
+  max-width: none;
 }
 
 .si-trace-time {
   font-size: 0.82rem;
   color: var(--si-muted, #6b7f76);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.si-trace-act {
+  text-align: right;
+  width: 3.25rem;
 }
 </style>

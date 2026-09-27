@@ -214,7 +214,7 @@
             <i class="fa fa-list me-2"></i>Span 列表（{{ spans.length }}）
           </summary>
           <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0 si-data-table">
               <thead class="table-light">
                 <tr>
                   <th>服务</th>

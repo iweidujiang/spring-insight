@@ -98,7 +98,7 @@
             <span class="badge bg-danger">{{ errorAnalysis.length }} 个</span>
           </div>
           <div class="table-responsive">
-            <table class="table table-hover mb-0 si-err-table">
+            <table class="table table-hover mb-0 si-err-table si-data-table">
               <thead class="table-light">
                 <tr>
                   <th>服务</th>
@@ -166,7 +166,7 @@
             </div>
             <div v-if="byStatusCode.length === 0" class="si-err-panel__empty">暂无 HTTP 状态类错误</div>
             <div v-else class="table-responsive">
-              <table class="table table-hover mb-0 si-err-table si-err-table--compact">
+              <table class="table table-hover mb-0 si-err-table si-err-table--compact si-data-table">
                 <thead class="table-light">
                   <tr>
                     <th>状态码</th>
@@ -202,7 +202,7 @@
             </div>
             <div v-if="byException.length === 0" class="si-err-panel__empty">暂无异常类错误</div>
             <div v-else class="table-responsive">
-              <table class="table table-hover mb-0 si-err-table si-err-table--compact">
+              <table class="table table-hover mb-0 si-err-table si-err-table--compact si-data-table">
                 <thead class="table-light">
                   <tr>
                     <th>异常</th>
@@ -237,7 +237,7 @@
             <i class="fa fa-question-circle me-2"></i>其它错误（{{ byOther.length }}）
           </summary>
           <div class="table-responsive">
-            <table class="table table-hover mb-0 si-err-table si-err-table--compact">
+            <table class="table table-hover mb-0 si-err-table si-err-table--compact si-data-table">
               <thead class="table-light">
                 <tr>
                   <th>分类</th>

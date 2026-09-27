@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:server": "vite build --outDir ../target/classes/static --emptyOutDir",
+    "build:server": "node ./scripts/clean-server-static.mjs && vite build --outDir ../target/classes/static --emptyOutDir false",
     "preview": "vite preview"
   },
   "dependencies": {
