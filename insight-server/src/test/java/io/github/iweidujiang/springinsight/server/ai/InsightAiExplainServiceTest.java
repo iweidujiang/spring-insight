@@ -5,6 +5,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAiProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.server.insight.InsightPeriodInsightService;
 import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
 import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
@@ -173,6 +174,20 @@ class InsightAiExplainServiceTest {
     }
 
     /**
+     * 时段 AI：未启用时降级，summary 只写失败原因（不把事实 headline 塞进面板）。
+     */
+    @Test
+    void explainPeriodDisabledUsesFactsHeadline() {
+        InsightAiExplainService svc = service(props(false, "http://127.0.0.1:1/v1", "k"), storeWithTrace());
+        Map<String, Object> body = svc.explainPeriod(24);
+        assertTrue(Boolean.TRUE.equals(body.get("degraded")));
+        assertEquals("period", body.get("kind"));
+        assertEquals("近 24 小时暂无 Span", body.get("factsHeadline"));
+        assertTrue(String.valueOf(body.get("summary")).contains("AI"));
+        assertFalse(String.valueOf(body.get("summary")).equals("近 24 小时暂无 Span"));
+    }
+
+    /**
      * content 为空时，仅当 reasoning 含 summary JSON 才可用。
      *
      * @throws Exception 仅有思考草稿
@@ -226,7 +241,17 @@ class InsightAiExplainServiceTest {
                 "by_status_code", List.of(),
                 "by_exception", List.of()
         ));
-        return new InsightAiExplainService(settings, export, persistence, new InsightAiAuditLog(), new ObjectMapper());
+        InsightPeriodInsightService period = mock(InsightPeriodInsightService.class);
+        Map<String, Object> periodBody = new java.util.LinkedHashMap<>();
+        periodBody.put("schemaVersion", 1);
+        periodBody.put("hours", 24);
+        periodBody.put("compare", true);
+        periodBody.put("headline", "近 24 小时暂无 Span");
+        periodBody.put("current", Map.of("spanCount", 0L, "errorSpanCount", 0L));
+        periodBody.put("delta", null);
+        when(period.build(org.mockito.ArgumentMatchers.anyInt())).thenReturn(periodBody);
+        return new InsightAiExplainService(
+                settings, export, persistence, period, new InsightAiAuditLog(), new ObjectMapper());
     }
 
     private static TraceContextExportService storeWithTrace() {

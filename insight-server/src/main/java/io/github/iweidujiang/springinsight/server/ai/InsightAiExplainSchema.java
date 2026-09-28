@@ -32,13 +32,13 @@ public final class InsightAiExplainSchema {
             {
               "summary": "一句话结论",
               "evidence": [
-                {"type":"span|service|status|exception|edge|trace","ref":"引用值","label":"短标签","reason":"为何可疑"}
+                {"type":"span|service|status|exception|edge|trace|errors","ref":"引用值","label":"短标签","reason":"为何可疑"}
               ],
               "suggestions": ["可执行排查建议，最多 5 条"]
             }
             规则：
             1. 只依据用户提供的 JSON，勿编造未出现的服务名、状态码、异常或 Span。
-            2. evidence.type 含义：span=spanId；service=服务名；status=HTTP 状态码键；exception=异常类；edge=源服务->目标服务；trace=traceId。
+            2. evidence.type 含义：span=spanId；service=服务名；status=HTTP 状态码键；exception=异常类；edge=源服务->目标服务；trace=traceId；errors=跳转错误分析。
             3. evidence 最多 5 条；suggestions 最多 5 条；summary 不超过 80 字。
             """;
 
@@ -312,6 +312,12 @@ public final class InsightAiExplainSchema {
                 nav.put("kind", "topology");
                 nav.put("source", source);
                 nav.put("target", target);
+                if (hours != null) {
+                    nav.put("hours", hours);
+                }
+            }
+            case "errors", "error-analysis" -> {
+                nav.put("kind", "error-analysis");
                 if (hours != null) {
                     nav.put("hours", hours);
                 }

@@ -292,6 +292,18 @@ export class ApiService {
     }
   }
 
+  /** 时段洞察 AI 小结 */
+  static async explainPeriod(hours: number = 24): Promise<AiExplainResult | null> {
+    try {
+      return await request(`/insights/period/explain?hours=${hours}`, {
+        method: 'POST',
+        timeout: 60000
+      })
+    } catch {
+      return null
+    }
+  }
+
   /** 错误分析一键解读 */
   static async explainErrors(hours: number = 24): Promise<AiExplainResult | null> {
     try {
@@ -453,7 +465,7 @@ function normalizePeriodInsight(raw: any, hours: number): PeriodInsight {
 
 /** AI 证据跳转 */
 export interface AiEvidenceNav {
-  kind: 'span' | 'trace' | 'traces' | 'topology'
+  kind: 'span' | 'trace' | 'traces' | 'topology' | 'error-analysis'
   traceId?: string
   spanId?: string
   service?: string

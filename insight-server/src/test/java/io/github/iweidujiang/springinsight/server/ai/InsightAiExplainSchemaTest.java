@@ -135,6 +135,24 @@ class InsightAiExplainSchemaTest {
     }
 
     /**
+     * errors 证据跳转错误分析页。
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void buildResponseEnrichesErrorsNav() {
+        Map<String, Object> parsed = InsightAiExplainSchema.parseStructured(
+                "{\"summary\":\"错误上升\",\"evidence\":[{\"type\":\"errors\",\"ref\":\"\",\"label\":\"错误分析\",\"reason\":\"环比+\"}],\"suggestions\":[]}",
+                mapper);
+        Map<String, Object> body = InsightAiExplainSchema.buildResponse(
+                "period", false, null, "m", "p", parsed, Map.of("hours", 12));
+        List<Map<String, Object>> evidence = (List<Map<String, Object>>) body.get("evidence");
+        Map<String, Object> nav = (Map<String, Object>) evidence.get(0).get("nav");
+        assertNotNull(nav);
+        assertEquals("error-analysis", nav.get("kind"));
+        assertEquals(12, nav.get("hours"));
+    }
+
+    /**
      * extractJsonObject 取首尾花括号。
      */
     @Test

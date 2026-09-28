@@ -64,6 +64,12 @@ const onEvidence = (item: AiEvidence) => {
     if (nav.target) query.target = nav.target
     if (nav.hours != null) query.hours = String(nav.hours)
     router.push({ path: '/topology', query })
+    return
+  }
+  if (nav.kind === 'error-analysis') {
+    const query: Record<string, string> = {}
+    if (nav.hours != null) query.hours = String(nav.hours)
+    router.push({ path: '/error-analysis', query })
   }
 }
 
@@ -82,6 +88,10 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
     </div>
 
     <p v-if="summary" class="si-ai-panel__summary">{{ summary }}</p>
+    <p
+      v-if="result.degraded && result.message && result.message !== summary"
+      class="si-ai-panel__degrade-msg"
+    >{{ result.message }}</p>
 
     <div v-if="evidence.length" class="si-ai-panel__block">
       <h4 class="si-ai-panel__sub">可疑证据</h4>
@@ -146,6 +156,12 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
   font-size: 0.95rem;
   line-height: 1.5;
   color: var(--si-ink, #1c1917);
+}
+.si-ai-panel__degrade-msg {
+  margin: -0.35rem 0 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--si-muted, #78716c);
 }
 .si-ai-panel__block {
   margin-bottom: 0.75rem;

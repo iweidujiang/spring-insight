@@ -77,7 +77,16 @@
             <p class="si-period__scope">{{ periodScopeText }}</p>
             <h3 class="si-period__headline">{{ periodHeadline }}</h3>
           </div>
-          <div v-if="periodActions.length" class="si-period__actions">
+          <div class="si-period__actions">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-info si-period__action"
+              :disabled="periodExplaining"
+              @click="explainPeriod"
+            >
+              <i class="fa" :class="periodExplaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
+              {{ periodExplaining ? '小结中…' : 'AI 小结' }}
+            </button>
             <button
               v-for="act in periodActions"
               :key="act.key"
@@ -101,6 +110,12 @@
           </li>
         </ul>
         <p v-else class="si-period__empty">{{ periodEmptyHint }}</p>
+        <AiExplainPanel
+          v-if="periodExplain"
+          :result="periodExplain"
+          title="时段 AI 小结"
+          @close="periodExplain = null"
+        />
       </section>
 
       <section
@@ -376,7 +391,8 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
-import { ApiService, type PeriodInsight, type PeriodInsightLink } from '../services/ApiService'
+import AiExplainPanel from '../components/AiExplainPanel.vue'
+import { ApiService, type AiExplainResult, type PeriodInsight, type PeriodInsightLink } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { formatDuration } from '../utils/traceTimeline'
 import {
@@ -401,6 +417,8 @@ const collectorStats = ref<any>({})
 const totalSpans = ref(0)
 const recentTraces = ref<any[]>([])
 const periodInsight = ref<PeriodInsight | null>(null)
+const periodExplain = ref<AiExplainResult | null>(null)
+const periodExplaining = ref(false)
 
 let topologyChart: echarts.ECharts | null = null
 let serviceRankChart: echarts.ECharts | null = null
@@ -572,6 +590,17 @@ const followPeriodLink = (link?: PeriodInsightLink) => {
     }
   }
   router.push({ path: link.path, query })
+}
+
+const explainPeriod = async () => {
+  if (periodExplaining.value) return
+  periodExplaining.value = true
+  try {
+    const result = await ApiService.explainPeriod(Number(hours.value))
+    periodExplain.value = result
+  } finally {
+    periodExplaining.value = false
+  }
 }
 
 const slowServices = computed(() =>
@@ -822,6 +851,7 @@ const loadData = async () => {
     collectorStats.value = collectorStatsData
     recentTraces.value = Array.isArray(recent) ? recent : []
     periodInsight.value = period
+    periodExplain.value = null
     totalSpans.value = serviceStatsData.reduce((sum: number, s: any) => sum + (s.totalSpans || 0), 0)
   } catch (error) {
     console.error('加载仪表盘数据失败:', error)
@@ -1338,6 +1368,10 @@ onUnmounted(() => {
   margin: 0.5rem 0 0;
   font-size: 0.9rem;
   color: var(--si-muted);
+}
+
+.si-period :deep(.si-ai-panel) {
+  margin-top: 0.75rem;
 }
 
 .si-dashboard__collector-strip {

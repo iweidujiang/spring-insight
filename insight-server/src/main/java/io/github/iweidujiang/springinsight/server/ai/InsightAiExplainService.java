@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.server.ai;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAiProperties;
+import io.github.iweidujiang.springinsight.server.insight.InsightPeriodInsightService;
 import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
@@ -22,7 +23,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
- * 基于 OpenAI 兼容 Chat Completions 做结构化解读（Trace / 错误聚合 / 拓扑边）。
+ * 基于 OpenAI 兼容 Chat Completions 做结构化解读（Trace / 错误聚合 / 拓扑调用链路 / 时段）。
  * <p>
  * 配置取自 {@link InsightRuntimeSettingsService#effectiveAi()}；结果为 schemaVersion=1
  *（summary / evidence / suggestions），并保留 markdown 兼容字段。
@@ -38,6 +39,7 @@ public class InsightAiExplainService {
     private final InsightRuntimeSettingsService settingsService;
     private final TraceContextExportService contextExportService;
     private final TraceSpanPersistenceService persistenceService;
+    private final InsightPeriodInsightService periodInsightService;
     private final InsightAiAuditLog auditLog;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
@@ -49,17 +51,20 @@ public class InsightAiExplainService {
      * @param settingsService      运行时设置
      * @param contextExportService Context 导出
      * @param persistenceService   错误/依赖聚合
+     * @param periodInsightService 时段事实
      * @param auditLog             调用审计
      * @param objectMapper         JSON
      */
     public InsightAiExplainService(InsightRuntimeSettingsService settingsService,
                                    TraceContextExportService contextExportService,
                                    TraceSpanPersistenceService persistenceService,
+                                   InsightPeriodInsightService periodInsightService,
                                    InsightAiAuditLog auditLog,
                                    ObjectMapper objectMapper) {
         this.settingsService = settingsService;
         this.contextExportService = contextExportService;
         this.persistenceService = persistenceService;
+        this.periodInsightService = periodInsightService;
         this.auditLog = auditLog;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
@@ -262,6 +267,157 @@ public class InsightAiExplainService {
                     String.valueOf(degraded.getOrDefault("summary", "")));
             return degraded;
         }
+    }
+
+    /**
+     * 时段洞察 AI 小结：先算事实，再喂模型。
+     * <p>
+     * 失败时 {@code degraded=true}，面板只展示失败原因（事实 headline 已在上方卡片，不再重复进 summary，避免「成功结论 + 失败原因」并存）。
+     * </p>
+     *
+     * @param hours 时段小时；{@code <=0} 表示全部已存（无环比）
+     * @return schemaVersion=1 解读；含 {@code factsHeadline}
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> explainPeriod(int hours) {
+        InsightServerAiProperties properties = settingsService.effectiveAi();
+        Map<String, Object> facts = periodInsightService.build(hours);
+        String headline = String.valueOf(facts.getOrDefault("headline", ""));
+        Map<String, Object> nav = new LinkedHashMap<>();
+        nav.put("hours", hours);
+
+        Map<String, Object> gate = gateOrNull(properties, "period", nav);
+        if (gate != null) {
+            return periodDegraded(properties, nav, headline, String.valueOf(gate.getOrDefault("summary", "")));
+        }
+
+        Map<String, Object> current = facts.get("current") instanceof Map<?, ?> m
+                ? (Map<String, Object>) m
+                : Map.of();
+        long spans = current.get("spanCount") instanceof Number n ? n.longValue() : 0L;
+        if (spans <= 0) {
+            Map<String, Object> emptyParsed = new LinkedHashMap<>();
+            emptyParsed.put("structured", true);
+            emptyParsed.put("summary", StringUtils.hasText(headline) ? headline : "所选时段暂无 Span");
+            emptyParsed.put("evidence", List.of());
+            emptyParsed.put("suggestions", List.of("确认业务服务已上报，或扩大时间范围"));
+            Map<String, Object> body = InsightAiExplainSchema.buildResponse(
+                    "period", false, null, properties.getModel(), properties.getProvider(), emptyParsed, nav);
+            body.put("factsHeadline", headline);
+            return body;
+        }
+
+        Map<String, Object> payload = slimPeriodFacts(facts);
+        try {
+            // 推理模型思考占 token，时段小结抬高下限，降低 finish_reason=length
+            String raw = callChatCompletions(
+                    properties,
+                    """
+                            你是 Spring Insight 时段洞察助手。根据「本时段 vs 此前同等时长」事实 JSON 做简要小结。
+                            """ + InsightAiExplainSchema.JSON_OUTPUT_RULES + """
+                            对本场景：
+                            - summary 用中文概括环比与风险，不超过 80 字；
+                            - evidence 优先 type=service / edge / trace / errors；edge 的 ref 为「源->目标」；
+                            - 样本过少时明确说明不宜下结论，勿夸大。
+                            """,
+                    "请解读以下时段事实：\n```json\n"
+                            + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload)
+                            + "\n```",
+                    1600);
+            Map<String, Object> ok = completeExplain("period", raw, properties, nav);
+            ok.put("factsHeadline", headline);
+            auditLog.record("period", "hours=" + hours, Boolean.TRUE.equals(ok.get("degraded")),
+                    properties.getModel(), String.valueOf(ok.getOrDefault("summary", "")));
+            return ok;
+        } catch (Exception e) {
+            log.warn("[AI] 时段解读失败: hours={}, error={}", hours, e.getMessage());
+            Map<String, Object> degraded = periodDegraded(
+                    properties, nav, headline, friendlyPeriodAiError(e));
+            auditLog.record("period", "hours=" + hours, true, properties.getModel(),
+                    String.valueOf(degraded.getOrDefault("summary", "")));
+            return degraded;
+        }
+    }
+
+    /**
+     * AI 不可用或失败时：面板只展示一条原因；事实 headline 单独放在 {@code factsHeadline}。
+     *
+     * @param properties AI 配置
+     * @param nav        跳转上下文
+     * @param headline   事实一句话（给前端备用，不写入 summary）
+     * @param aiMessage  AI 侧原因（作为 summary）
+     * @return 降级响应
+     */
+    private Map<String, Object> periodDegraded(InsightServerAiProperties properties,
+                                               Map<String, Object> nav,
+                                               String headline,
+                                               String aiMessage) {
+        String reason = StringUtils.hasText(aiMessage) ? aiMessage.trim() : "AI 小结未能生成";
+        Map<String, Object> parsed = new LinkedHashMap<>();
+        parsed.put("structured", true);
+        parsed.put("summary", reason);
+        parsed.put("evidence", List.of());
+        parsed.put("suggestions", List.of());
+        Map<String, Object> body = InsightAiExplainSchema.buildResponse(
+                "period",
+                true,
+                null,
+                properties.getModel(),
+                properties.getProvider(),
+                parsed,
+                nav);
+        body.put("factsHeadline", headline != null ? headline : "");
+        return body;
+    }
+
+    /**
+     * 将模型异常收成用户可读的一句，避免堆叠技术字段。
+     *
+     * @param e 调用异常
+     * @return 短文案
+     */
+    private static String friendlyPeriodAiError(Exception e) {
+        String m = e.getMessage() != null ? e.getMessage() : "";
+        if (m.contains("finish_reason=length") || m.contains("思考过程")) {
+            return "AI 小结失败：模型输出被截断或未给出结论。请在设置中增大 max_tokens，或改用非推理模型后重试。";
+        }
+        return "AI 小结失败：" + safeMsg(e);
+    }
+
+    /**
+     * 压缩时段事实，控制 token。
+     *
+     * @param facts {@link InsightPeriodInsightService#build(int)} 结果
+     * @return 供模型阅读的精简 Map
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> slimPeriodFacts(Map<String, Object> facts) {
+        Map<String, Object> slim = new LinkedHashMap<>();
+        slim.put("hours", facts.get("hours"));
+        slim.put("compare", facts.get("compare"));
+        slim.put("headline", facts.get("headline"));
+        slim.put("window", facts.get("window"));
+        slim.put("previousWindow", facts.get("previousWindow"));
+        slim.put("delta", facts.get("delta"));
+        Map<String, Object> current = facts.get("current") instanceof Map<?, ?> m
+                ? (Map<String, Object>) m
+                : Map.of();
+        Map<String, Object> curSlim = new LinkedHashMap<>();
+        curSlim.put("spanCount", current.get("spanCount"));
+        curSlim.put("errorSpanCount", current.get("errorSpanCount"));
+        curSlim.put("errorServices", limitList(current.get("errorServices"), 5));
+        curSlim.put("slowServices", limitList(current.get("slowServices"), 5));
+        curSlim.put("hotEdges", limitList(current.get("hotEdges"), 5));
+        curSlim.put("sampleErrorTraceIds", limitList(current.get("sampleErrorTraceIds"), 3));
+        curSlim.put("sampleSlowTraceIds", limitList(current.get("sampleSlowTraceIds"), 3));
+        slim.put("current", curSlim);
+        if (facts.get("previous") instanceof Map<?, ?> prevRaw) {
+            Map<String, Object> prev = (Map<String, Object>) prevRaw;
+            slim.put("previous", Map.of(
+                    "spanCount", prev.getOrDefault("spanCount", 0),
+                    "errorSpanCount", prev.getOrDefault("errorSpanCount", 0)));
+        }
+        return slim;
     }
 
     /**
@@ -531,14 +687,28 @@ public class InsightAiExplainService {
     private String callChatCompletions(InsightServerAiProperties properties,
                                        String systemPrompt,
                                        String userContent) throws Exception {
+        return callChatCompletions(properties, systemPrompt, userContent, 600);
+    }
+
+    /**
+     * @param properties   AI 配置
+     * @param systemPrompt system
+     * @param userContent  user
+     * @param minMaxTokens max_tokens 下限（推理模型可抬高）
+     * @return assistant 文本
+     */
+    private String callChatCompletions(InsightServerAiProperties properties,
+                                       String systemPrompt,
+                                       String userContent,
+                                       int minMaxTokens) throws Exception {
         String url = properties.normalizedBaseUrl() + "/chat/completions";
         int timeoutMs = properties.getTimeoutMs() > 0 ? properties.getTimeoutMs() : 30_000;
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("model", properties.getModel());
-        // JSON 结构化输出略长于纯散文
         int maxTokens = properties.getMaxTokens() > 0 ? properties.getMaxTokens() : 800;
-        body.put("max_tokens", Math.max(maxTokens, 600));
+        int floor = Math.max(600, minMaxTokens);
+        body.put("max_tokens", Math.max(maxTokens, floor));
         body.put("temperature", 0.2);
 
         List<Map<String, String>> messages = new ArrayList<>(2);
