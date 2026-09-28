@@ -165,6 +165,7 @@ public class InsightRuntimeSettingsService {
         out.setMaxTokens(patch.getMaxTokens() > 0 ? patch.getMaxTokens() : out.getMaxTokens());
         out.setAttachToAlerts(patch.isAttachToAlerts());
         out.setAlertMaxPerHour(patch.getAlertMaxPerHour() > 0 ? patch.getAlertMaxPerHour() : out.getAlertMaxPerHour());
+        out.setPeriodMaxPerHour(patch.getPeriodMaxPerHour() > 0 ? patch.getPeriodMaxPerHour() : out.getPeriodMaxPerHour());
         return out;
     }
 
@@ -203,6 +204,7 @@ public class InsightRuntimeSettingsService {
         m.put("maxTokens", a.getMaxTokens());
         m.put("attachToAlerts", a.isAttachToAlerts());
         m.put("alertMaxPerHour", a.getAlertMaxPerHour());
+        m.put("periodMaxPerHour", a.getPeriodMaxPerHour());
         return m;
     }
 
@@ -241,6 +243,7 @@ public class InsightRuntimeSettingsService {
         a.setMaxTokens(p.getMaxTokens());
         a.setAttachToAlerts(p.isAttachToAlerts());
         a.setAlertMaxPerHour(p.getAlertMaxPerHour());
+        a.setPeriodMaxPerHour(p.getPeriodMaxPerHour());
         return a;
     }
 
@@ -279,6 +282,7 @@ public class InsightRuntimeSettingsService {
         p.setMaxTokens(a.getMaxTokens());
         p.setAttachToAlerts(a.isAttachToAlerts());
         p.setAlertMaxPerHour(a.getAlertMaxPerHour() > 0 ? a.getAlertMaxPerHour() : 10);
+        p.setPeriodMaxPerHour(a.getPeriodMaxPerHour() > 0 ? a.getPeriodMaxPerHour() : 20);
         return p;
     }
 
@@ -336,6 +340,7 @@ public class InsightRuntimeSettingsService {
         c.setMaxTokens(a.getMaxTokens());
         c.setAttachToAlerts(a.isAttachToAlerts());
         c.setAlertMaxPerHour(a.getAlertMaxPerHour());
+        c.setPeriodMaxPerHour(a.getPeriodMaxPerHour());
         return c;
     }
 

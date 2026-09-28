@@ -69,6 +69,11 @@ public class InsightServerAiProperties {
     private int alertMaxPerHour = 10;
 
     /**
+     * 仪表盘「时段 AI 小结」每小时调用上限（超出则降级，不调模型）
+     */
+    private int periodMaxPerHour = 20;
+
+    /**
      * @return 规范化 base-url（去掉末尾 /）
      */
     public String normalizedBaseUrl() {

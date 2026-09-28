@@ -137,6 +137,54 @@ class InsightAiExplainServiceTest {
     }
 
     /**
+     * 时段 AI 每小时配额耗尽后拒绝。
+     */
+    @Test
+    void periodQuotaLimited() {
+        InsightAiExplainService svc = service(props(false, "", ""), storeWithTrace());
+        assertTrue(svc.tryAcquirePeriodQuota(2));
+        assertTrue(svc.tryAcquirePeriodQuota(2));
+        assertFalse(svc.tryAcquirePeriodQuota(2));
+    }
+
+    /**
+     * 时段 AI：有数据且配额耗尽时降级提示上限。
+     */
+    @Test
+    void explainPeriodQuotaExceededDegrades() {
+        InsightServerAiProperties p = props(true, "http://127.0.0.1:1/v1", "sk-test");
+        p.setPeriodMaxPerHour(1);
+        InsightPeriodInsightService period = mock(InsightPeriodInsightService.class);
+        Map<String, Object> periodBody = new java.util.LinkedHashMap<>();
+        periodBody.put("schemaVersion", 1);
+        periodBody.put("hours", 24);
+        periodBody.put("compare", true);
+        periodBody.put("headline", "近 24 小时 10 条 Span，无错误");
+        periodBody.put("current", Map.of(
+                "spanCount", 10L,
+                "errorSpanCount", 0L,
+                "errorServices", List.of(),
+                "slowServices", List.of(),
+                "hotEdges", List.of(),
+                "sampleErrorTraceIds", List.of(),
+                "sampleSlowTraceIds", List.of()));
+        periodBody.put("delta", Map.of("errorSpanCount", 0L));
+        when(period.build(org.mockito.ArgumentMatchers.anyInt())).thenReturn(periodBody);
+
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAi()).thenReturn(p);
+        TraceSpanPersistenceService persistence = mock(TraceSpanPersistenceService.class);
+        InsightAiExplainService svc = new InsightAiExplainService(
+                settings, storeWithTrace(), persistence, period, new InsightAiAuditLog(), new ObjectMapper());
+
+        assertTrue(svc.tryAcquirePeriodQuota(1));
+        Map<String, Object> body = svc.explainPeriod(24);
+        assertTrue(Boolean.TRUE.equals(body.get("degraded")));
+        assertTrue(String.valueOf(body.get("summary")).contains("上限"));
+        assertEquals("近 24 小时 10 条 Span，无错误", body.get("factsHeadline"));
+    }
+
+    /**
      * Span 截断保留错误并打 truncated。
      */
     @Test

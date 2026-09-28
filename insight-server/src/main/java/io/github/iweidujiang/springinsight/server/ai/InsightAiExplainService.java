@@ -47,6 +47,9 @@ public class InsightAiExplainService {
     /** 告警 AI 调用时间戳（epoch ms），用于每小时限流 */
     private final ConcurrentLinkedDeque<Long> alertAiCallTimes = new ConcurrentLinkedDeque<>();
 
+    /** 时段 AI 小结调用时间戳（epoch ms），用于每小时限流 */
+    private final ConcurrentLinkedDeque<Long> periodAiCallTimes = new ConcurrentLinkedDeque<>();
+
     /**
      * @param settingsService      运行时设置
      * @param contextExportService Context 导出
@@ -307,6 +310,12 @@ public class InsightAiExplainService {
             return body;
         }
 
+        int maxPerHour = properties.getPeriodMaxPerHour() > 0 ? properties.getPeriodMaxPerHour() : 20;
+        if (!tryAcquirePeriodQuota(maxPerHour)) {
+            return periodDegraded(properties, nav, headline,
+                    "本小时时段 AI 小结已达上限（" + maxPerHour + " 次）。请稍后再试，或在设置中调高「时段 AI 每小时上限」。");
+        }
+
         Map<String, Object> payload = slimPeriodFacts(facts);
         try {
             // 推理模型思考占 token，时段小结抬高下限，降低 finish_reason=length
@@ -527,19 +536,43 @@ public class InsightAiExplainService {
      * @return 是否允许本次调用
      */
     boolean tryAcquireAlertQuota(int maxPerHour) {
+        return tryAcquireQuota(alertAiCallTimes, maxPerHour);
+    }
+
+    /**
+     * 尝试占用一次时段 AI 配额（滑动 1 小时窗口）。
+     *
+     * @param maxPerHour 上限
+     * @return 是否允许本次调用
+     */
+    boolean tryAcquirePeriodQuota(int maxPerHour) {
+        return tryAcquireQuota(periodAiCallTimes, maxPerHour);
+    }
+
+    /**
+     * 滑动 1 小时窗口配额。
+     *
+     * @param times      调用时间戳队列
+     * @param maxPerHour 上限；{@code <=0} 视为不允许
+     * @return 是否允许
+     */
+    private static boolean tryAcquireQuota(ConcurrentLinkedDeque<Long> times, int maxPerHour) {
+        if (maxPerHour <= 0) {
+            return false;
+        }
         long now = System.currentTimeMillis();
         long cutoff = now - 3_600_000L;
         while (true) {
-            Long oldest = alertAiCallTimes.peekFirst();
+            Long oldest = times.peekFirst();
             if (oldest == null || oldest >= cutoff) {
                 break;
             }
-            alertAiCallTimes.pollFirst();
+            times.pollFirst();
         }
-        if (alertAiCallTimes.size() >= maxPerHour) {
+        if (times.size() >= maxPerHour) {
             return false;
         }
-        alertAiCallTimes.addLast(now);
+        times.addLast(now);
         return true;
     }
 

@@ -240,6 +240,17 @@
                 :disabled="!form.ai.attachToAlerts"
               />
             </div>
+            <div class="si-settings__field">
+              <label class="form-label" for="ai-period-max">时段 AI 每小时上限</label>
+              <input
+                id="ai-period-max"
+                v-model.number="form.ai.periodMaxPerHour"
+                class="form-control"
+                type="number"
+                min="1"
+              />
+              <p class="form-text mb-0">仪表盘「时段摘要 → AI 小结」按钮触发；超出后本小时内降级，不调模型。</p>
+            </div>
           </div>
           <p class="si-settings__footnote">
             使用 Chat Completions 兼容接口即可对接各类大模型；API Key 仅保存在 Server 本机数据目录。
@@ -443,7 +454,8 @@ const form = reactive<RuntimeSettingsSaveBody>({
     maxInputSpans: 40,
     maxTokens: 800,
     attachToAlerts: false,
-    alertMaxPerHour: 10
+    alertMaxPerHour: 10,
+    periodMaxPerHour: 20
   }
 })
 
@@ -494,6 +506,7 @@ async function load() {
     form.ai.maxTokens = Number(data.ai?.maxTokens ?? 800)
     form.ai.attachToAlerts = !!data.ai?.attachToAlerts
     form.ai.alertMaxPerHour = Number(data.ai?.alertMaxPerHour ?? 10)
+    form.ai.periodMaxPerHour = Number(data.ai?.periodMaxPerHour ?? 20)
     apiKeyConfigured.value = !!data.ai?.apiKeyConfigured
 
     await refreshStorage()

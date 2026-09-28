@@ -63,5 +63,7 @@ public class InsightRuntimeSettings {
         private boolean attachToAlerts = false;
         /** 告警 AI 每小时最多调用次数 */
         private int alertMaxPerHour = 10;
+        /** 时段 AI 小结每小时最多调用次数 */
+        private int periodMaxPerHour = 20;
     }
 }

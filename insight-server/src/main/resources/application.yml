@@ -54,6 +54,9 @@ spring:
         timeout-ms: 30000
         max-input-spans: 40
         max-tokens: 800
+        attach-to-alerts: false
+        alert-max-per-hour: 10
+        period-max-per-hour: 20
 
 server:
   port: 9966

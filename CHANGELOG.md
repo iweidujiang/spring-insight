@@ -16,7 +16,7 @@
 ## [Unreleased]
 
 ### 新增 / 体验
-- **时段洞察（开发中）**：近 N 小时事实摘要与上一时段环比（`GET /api/v1/ui/insights/period`）；仪表盘「时段摘要」卡片；可选 AI 小结（`POST /api/v1/ui/insights/period/explain`，失败降级仍展示事实 headline）
+- **时段洞察（开发中）**：近 N 小时事实摘要与上一时段环比（`GET /api/v1/ui/insights/period`）；仪表盘「时段摘要」卡片；可选 AI 小结（`POST /api/v1/ui/insights/period/explain`，失败仅提示原因不挡仪表盘）；时段 AI 每小时调用上限可配（默认 20，设置页与告警上限并列）
 
 ---
 

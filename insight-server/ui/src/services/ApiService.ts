@@ -537,6 +537,7 @@ export interface RuntimeSettingsView {
     maxTokens: number
     attachToAlerts: boolean
     alertMaxPerHour: number
+    periodMaxPerHour: number
   }
 }
 
@@ -572,6 +573,7 @@ export interface RuntimeSettingsSaveBody {
     maxTokens: number
     attachToAlerts: boolean
     alertMaxPerHour: number
+    periodMaxPerHour: number
   }
 }
 
