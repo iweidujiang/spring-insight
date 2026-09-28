@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.collector.controller;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.collector.model.CollectorRequest;
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
+import io.github.iweidujiang.springinsight.server.CompanionAgentVersion;
 import io.github.iweidujiang.springinsight.server.ServerVersion;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import jakarta.validation.Valid;
@@ -37,6 +38,7 @@ public class CollectorController {
     private final TraceSpanCollectorService traceSpanCollectorService;
     private final TraceSpanPersistenceService persistenceService;
     private final String serverVersion;
+    private final String agentVersion;
 
     /**
      * @param traceSpanCollectorService 采集服务
@@ -51,6 +53,7 @@ public class CollectorController {
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.persistenceService = persistenceService;
         this.serverVersion = ServerVersion.resolve(environment, buildPropertiesProvider.getIfAvailable());
+        this.agentVersion = CompanionAgentVersion.resolve(environment);
     }
 
     /**
@@ -64,7 +67,10 @@ public class CollectorController {
         body.put("status", "UP");
         body.put("service", "spring-insight-server");
         body.put("timestamp", Instant.now());
+        // version：兼容旧客户端；另拆 serverVersion / agentVersion 供关于页分开展示
         body.put("version", serverVersion);
+        body.put("serverVersion", serverVersion);
+        body.put("agentVersion", agentVersion);
         body.put("storageMode", persistenceService.getStorageMode());
         body.put("storedSpans", persistenceService.getStoredSpanCount());
         body.put("evictedSpans", persistenceService.getEvictedSpanCount());

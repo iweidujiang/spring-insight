@@ -18,13 +18,19 @@
           <h5 class="card-title"><i class="fa fa-cube me-2"></i>项目信息</h5>
           <dl class="si-about__dl">
             <div><dt>项目名称</dt><dd>Spring Insight</dd></div>
-            <div><dt>版本</dt><dd>{{ appVersion }}</dd></div>
+            <div>
+              <dt>版本</dt>
+              <dd class="si-about__versions">
+                <span class="si-about__ver"><em>Server</em>{{ serverVersion }}</span>
+                <span class="si-about__ver"><em>Agent</em>{{ agentVersion }}</span>
+              </dd>
+            </div>
             <div><dt>描述</dt><dd>面向 Spring 微服务的轻量分布式监测中心（Agent + Server）</dd></div>
             <div>
               <dt>技术栈</dt>
               <dd class="si-about__tags">
                 <span>Spring Boot 3.5</span>
-                <span>Java 21</span>
+                <span>Java 17+</span>
                 <span>Vue 3</span>
                 <span>TypeScript</span>
                 <span>ECharts</span>
@@ -80,7 +86,8 @@ import axios from 'axios'
 
 const currentTime = ref('')
 const buildTime = ref('')
-const appVersion = ref('…')
+const serverVersion = ref('…')
+const agentVersion = ref('…')
 const storageMode = ref('')
 let timeInterval: number | null = null
 
@@ -99,15 +106,17 @@ const updateCurrentTime = () => {
 }
 
 /**
- * 从 Server health 读取版本（与 jar Manifest / 配置一致，避免前端硬编码）。
+ * 从 health 读取 Server / 配套 Agent 版本（避免前端硬编码）。
  */
 async function loadServerMeta() {
   try {
     const { data } = await axios.get('/api/v1/health', { timeout: 8000 })
-    appVersion.value = data?.version || 'unknown'
+    serverVersion.value = data?.serverVersion || data?.version || 'unknown'
+    agentVersion.value = data?.agentVersion || 'unknown'
     storageMode.value = data?.storageMode || ''
   } catch {
-    appVersion.value = 'unknown'
+    serverVersion.value = 'unknown'
+    agentVersion.value = 'unknown'
   }
 }
 
@@ -169,6 +178,34 @@ onUnmounted(() => {
   color: var(--si-ink);
   font-size: 0.9rem;
   line-height: 1.45;
+}
+
+.si-about__versions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.si-about__ver {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  background: var(--si-paper);
+  border: 1px solid var(--card-border);
+}
+
+.si-about__ver em {
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--si-teal);
 }
 
 .si-about__dl a {

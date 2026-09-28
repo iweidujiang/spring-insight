@@ -3,7 +3,11 @@ spring:
   application:
     name: spring-insight-server
   insight:
+    # 关于页 / health：与根 POM agent.version、server.version 对齐（打包时 Maven @过滤@）
+    agent:
+      version: @agent.version@
     server:
+      version: @server.version@
       storage:
         # memory（默认，重启清空）| file（JSON 落盘）| sqlite（DB 落盘，需显式开启）
         mode: memory

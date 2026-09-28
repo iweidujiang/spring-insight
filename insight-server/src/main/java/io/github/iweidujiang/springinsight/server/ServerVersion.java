@@ -26,7 +26,8 @@ public final class ServerVersion {
     public static String resolve(Environment environment, BuildProperties buildProperties) {
         if (environment != null) {
             String configured = environment.getProperty("spring.insight.server.version");
-            if (StringUtils.hasText(configured)) {
+            // Maven 未过滤时仍是 @server.version@，忽略并回退 build-info / Manifest
+            if (StringUtils.hasText(configured) && !configured.contains("@")) {
                 return configured.trim();
             }
         }

@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.github.iweidujiang</groupId>
         <artifactId>spring-insight-parent</artifactId>
-        <version>0.7.0</version>
+        <version>0.7.1</version>
     </parent>
 
     <artifactId>insight-server</artifactId>
@@ -22,6 +22,8 @@
         <frontend.node.version>v20.18.1</frontend.node.version>
         <frontend.npm.version>10.8.2</frontend.npm.version>
         <insight.ui.dir>${project.basedir}/ui</insight.ui.dir>
+        <!-- application.yml 用 @…@ 注入 agent.version / server.version，避免与 Spring ${} 冲突 -->
+        <resource.delimiter>@</resource.delimiter>
     </properties>
 
     <dependencies>
@@ -75,6 +77,24 @@
     <build>
         <!-- 固定产物名，便于 Dockerfile.runtime COPY -->
         <finalName>insight-server</finalName>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>application.yml</include>
+                    <include>application-*.yml</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>application.yml</exclude>
+                    <exclude>application-*.yml</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
             <!--
               打包前构建 ui/（Vue 控制台），产物覆盖 target/classes/static，保证 jar 内 UI 与源码一致。

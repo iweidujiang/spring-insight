@@ -17,6 +17,24 @@
 
 ---
 
+## [0.7.1] — 2026-09-28
+
+### 体验
+- **关于页**：版本区分展示 **Server** / 配套 **Agent**（`/api/v1/health` 增加 `serverVersion`、`agentVersion`；`version` 仍为 Server 兼容字段）
+- 技术栈标注改为 Java 17+（与运行基线一致）
+
+### 兼容
+- **Agent 可不升**：业务侧继续使用 Central `spring-insight-agent-starter:0.3.2`
+- health 旧字段 `version` 行为不变
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.3.2`（本版可不升） |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.7.1` |
+
+---
+
 ## [0.7.0] — 2026-09-28
 
 ### 新增 / 体验
