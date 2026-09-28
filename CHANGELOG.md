@@ -15,6 +15,10 @@
 
 ## [Unreleased]
 
+---
+
+## [0.7.0] — 2026-09-28
+
 ### 新增 / 体验
 - **时段洞察**：近 N 小时事实摘要与上一同等时段环比（`GET /api/v1/ui/insights/period`）
 - 仪表盘「时段摘要」卡片：口径行（本段 / 环比起止时刻）、事实 bullet、跳转错误分析 / 慢链路 / 拓扑
@@ -24,6 +28,12 @@
 ### 兼容
 - **Agent 可不升**：业务侧继续使用 Central `spring-insight-agent-starter:0.3.2`
 - 仅升 Server；未点「AI 小结」时行为与 0.6.x 一致
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.3.2`（本版可不升） |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.7.0` |
 
 ---
 
