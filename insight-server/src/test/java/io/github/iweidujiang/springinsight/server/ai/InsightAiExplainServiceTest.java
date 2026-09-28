@@ -148,6 +148,54 @@ class InsightAiExplainServiceTest {
     }
 
     /**
+     * 时段 AI：有数据时 Chat Completions 成功返回结构化小结。
+     *
+     * @throws Exception mock 失败
+     */
+    @Test
+    void explainPeriodSuccessViaCompatibleApi() throws Exception {
+        AtomicInteger hits = new AtomicInteger();
+        int port = startMockLlm(hits, 200,
+                "{\"choices\":[{\"message\":{\"content\":\"{\\\"summary\\\":\\\"近窗平稳\\\",\\\"evidence\\\":[{\\\"type\\\":\\\"errors\\\",\\\"ref\\\":\\\"\\\",\\\"label\\\":\\\"错误分析\\\",\\\"reason\\\":\\\"无新增错误\\\"}],\\\"suggestions\\\":[\\\"保持观察\\\"]}\"}}]}");
+
+        InsightServerAiProperties p = props(true, "http://127.0.0.1:" + port + "/v1", "sk-test");
+        p.setModel("deepseek-chat");
+        p.setProvider("deepseek");
+        p.setPeriodMaxPerHour(20);
+
+        InsightPeriodInsightService period = mock(InsightPeriodInsightService.class);
+        Map<String, Object> periodBody = new java.util.LinkedHashMap<>();
+        periodBody.put("schemaVersion", 1);
+        periodBody.put("hours", 24);
+        periodBody.put("compare", true);
+        periodBody.put("headline", "近 24 小时 10 条 Span，无错误");
+        periodBody.put("current", Map.of(
+                "spanCount", 10L,
+                "errorSpanCount", 0L,
+                "errorServices", List.of(),
+                "slowServices", List.of(),
+                "hotEdges", List.of(),
+                "sampleErrorTraceIds", List.of(),
+                "sampleSlowTraceIds", List.of()));
+        periodBody.put("delta", Map.of("errorSpanCount", 0L, "newErrorServices", List.of()));
+        when(period.build(org.mockito.ArgumentMatchers.anyInt())).thenReturn(periodBody);
+
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAi()).thenReturn(p);
+        InsightAiExplainService svc = new InsightAiExplainService(
+                settings, storeWithTrace(), mock(TraceSpanPersistenceService.class),
+                period, new InsightAiAuditLog(), new ObjectMapper());
+
+        Map<String, Object> body = svc.explainPeriod(24);
+        assertEquals(1, hits.get());
+        assertFalse(Boolean.TRUE.equals(body.get("degraded")));
+        assertEquals("period", body.get("kind"));
+        assertEquals("近窗平稳", body.get("summary"));
+        assertEquals("近 24 小时 10 条 Span，无错误", body.get("factsHeadline"));
+        assertTrue(Boolean.TRUE.equals(body.get("structured")));
+    }
+
+    /**
      * 时段 AI：有数据且配额耗尽时降级提示上限。
      */
     @Test

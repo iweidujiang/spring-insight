@@ -16,9 +16,18 @@
 ## [Unreleased]
 
 ### 新增 / 体验
-- **时段洞察（开发中）**：近 N 小时事实摘要与上一时段环比（`GET /api/v1/ui/insights/period`）；仪表盘「时段摘要」卡片；可选 AI 小结（`POST /api/v1/ui/insights/period/explain`，失败仅提示原因不挡仪表盘）；时段 AI 每小时调用上限可配（默认 20，设置页与告警上限并列）
+- **时段洞察**：近 N 小时事实摘要与上一同等时段环比（`GET /api/v1/ui/insights/period`）
+- 仪表盘「时段摘要」卡片：口径行（本段 / 环比起止时刻）、事实 bullet、跳转错误分析 / 慢链路 / 拓扑
+- **时段 AI 小结**（按钮触发）：`POST /api/v1/ui/insights/period/explain`；未启用 / 失败 / 超限时降级提示，不挡仪表盘
+- 设置页 AI：增加「时段 AI 每小时上限」（默认 20，与告警上限并列）
+
+### 兼容
+- **Agent 可不升**：业务侧继续使用 Central `spring-insight-agent-starter:0.3.2`
+- 仅升 Server；未点「AI 小结」时行为与 0.6.x 一致
 
 ---
+
+## [0.6.0] — 2026-09-24
 
 ### 新增 / 体验
 - **告警附带 AI 解读**（默认关）：开启后 Webhook / 邮件附带 `aiSummary` / `aiSuggestions`；失败不阻断推送；每小时调用上限可配（默认 10）
