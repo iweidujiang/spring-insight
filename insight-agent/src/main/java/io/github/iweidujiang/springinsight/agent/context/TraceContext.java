@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.agent.context;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.NamedThreadLocal;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -65,24 +66,43 @@ public class TraceContext {
     }
 
     /**
-     * 开始一个新的 Span 并压入栈
+     * 开始一个新的 Span 并压入栈（无远程父级时新建根，栈非空时挂到栈顶）。
+     *
+     * @param operationName 操作名
+     * @return 压栈后的 Span
      */
     public static TraceSpan startSpan(String operationName) {
+        return startSpan(operationName, null, null);
+    }
+
+    /**
+     * 开始 Span：优先挂到本地栈顶；栈空且提供远程上下文时延续跨服务 Trace。
+     *
+     * @param operationName      操作名
+     * @param remoteTraceId      入站 {@code traceparent} 的 TraceId；无则 null
+     * @param remoteParentSpanId 入站 parent SpanId；无则 null
+     * @return 压栈后的 Span
+     */
+    public static TraceSpan startSpan(String operationName, String remoteTraceId, String remoteParentSpanId) {
         Deque<TraceSpan> stack = SPAN_STACK.get();
 
         TraceSpan parentSpan = stack.isEmpty() ? null : stack.peek();
         TraceSpan span;
 
-        if (parentSpan == null) {
-            // 创建根 Span
-            span = new TraceSpan();
-            log.debug("[追踪上下文] 创建根Span: traceId={}, spanId={}, operation={}",
-                    span.getTraceId(), span.getSpanId(), operationName);
-        } else {
-            // 创建子 Span
+        if (parentSpan != null) {
+            // 进程内子 Span：忽略远程头，挂本地父
             span = new TraceSpan(parentSpan.getTraceId(), parentSpan.getSpanId());
             log.debug("[追踪上下文] 创建子Span: traceId={}, parentSpanId={}, spanId={}, operation={}",
                     span.getTraceId(), span.getParentSpanId(), span.getSpanId(), operationName);
+        } else if (StringUtils.hasText(remoteTraceId) && StringUtils.hasText(remoteParentSpanId)) {
+            // 跨服务延续：与上游共享 traceId，parent 为对端注入的 SpanId
+            span = new TraceSpan(remoteTraceId.trim(), remoteParentSpanId.trim());
+            log.debug("[追踪上下文] 延续远程Span: traceId={}, parentSpanId={}, spanId={}, operation={}",
+                    span.getTraceId(), span.getParentSpanId(), span.getSpanId(), operationName);
+        } else {
+            span = new TraceSpan();
+            log.debug("[追踪上下文] 创建根Span: traceId={}, spanId={}, operation={}",
+                    span.getTraceId(), span.getSpanId(), operationName);
         }
 
         span.setOperationName(operationName);

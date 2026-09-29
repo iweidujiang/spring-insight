@@ -67,6 +67,15 @@ public class InsightProperties {
     private boolean contextPropagationEnabled = true;
 
     /**
+     * 是否在 HTTP 出入站透传 W3C {@code traceparent}（跨服务共享 TraceId）。
+     * <p>
+     * 与 {@link #contextPropagationEnabled}（进程内线程池）独立；默认 true。
+     * 本切片先覆盖 Servlet 入站 + RestTemplate/RestClient 出站；Feign/WebClient/Gateway 后续补齐。
+     * </p>
+     */
+    private boolean httpTracePropagationEnabled = true;
+
+    /**
      * 是否将 Span / 上报队列指标桥接到宿主 {@code MeterRegistry}（Actuator / Prometheus）。
      * <p>仅当 classpath 存在 Micrometer 且容器中有 MeterRegistry 时生效；默认 true。</p>
      */

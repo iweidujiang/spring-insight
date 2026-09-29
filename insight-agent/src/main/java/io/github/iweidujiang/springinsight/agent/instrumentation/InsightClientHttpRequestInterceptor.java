@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.agent.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
+import io.github.iweidujiang.springinsight.agent.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,8 @@ import java.util.Optional;
  * RestTemplate / RestClient 出站 CLIENT Span（共享拦截器）。
  * <p>
  * 仅在存在父 Span 且开启 HTTP 追踪时创建子 Span；不压入 {@link TraceContext} 栈。
+ * 开启 {@code spring.insight.http-trace-propagation-enabled} 时注入 W3C {@code traceparent}
+ * （以本 CLIENT SpanId 为下游 parent）。
  * 须通过 {@code RestTemplateBuilder} / {@code RestClient.Builder} 注入；{@code new RestTemplate()} 不会生效。
  * </p>
  *
@@ -81,6 +84,17 @@ public class InsightClientHttpRequestInterceptor implements ClientHttpRequestInt
         clientSpan.addTag("http.method", method)
                 .addTag("http.path", path)
                 .addTag("http.query", query != null ? query : "");
+
+        // 出站注入：用 CLIENT SpanId 作为下游 parent，便于瀑布挂到 CLIENT 下
+        if (insightProperties.isHttpTracePropagationEnabled()) {
+            boolean injected = W3cTracePropagator.inject(
+                    clientSpan.getTraceId(),
+                    clientSpan.getSpanId(),
+                    request.getHeaders()::set);
+            if (injected) {
+                clientSpan.addTag("insight.propagation", "w3c");
+            }
+        }
 
         try {
             ClientHttpResponse response = execution.execute(request, body);

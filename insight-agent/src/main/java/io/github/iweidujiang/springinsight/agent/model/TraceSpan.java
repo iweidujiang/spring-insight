@@ -4,8 +4,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.Map;
 
 /**
@@ -79,18 +81,24 @@ public class TraceSpan {
     @JsonIgnore
     private final Instant createTime = Instant.now();
 
+    /** 用于 W3C 兼容的 TraceId / SpanId 随机源 */
+    private static final SecureRandom ID_RANDOM = new SecureRandom();
+
     /**
-     * 创建一个新的 TraceSpan（根Span）
+     * 创建一个新的 TraceSpan（根Span）；ID 符合 W3C：TraceId 32 hex、SpanId 16 hex。
      */
     public TraceSpan() {
-        this.traceId = generateId();
-        this.spanId = generateId();
+        this.traceId = generateTraceId();
+        this.spanId = generateSpanId();
         this.startTime = System.currentTimeMillis();
         log.debug("创建一个新的 TraceSpan: traceId={}, spanId={}", traceId, spanId);
     }
 
     /**
-     * 创建一个子 Span
+     * 创建一个子 Span（或跨服务延续的 SERVER Span）。
+     *
+     * @param traceId       共享 TraceId
+     * @param parentSpanId  父 SpanId
      */
     public TraceSpan(String traceId, String parentSpanId) {
         if (traceId == null || traceId.trim().isEmpty()) {
@@ -99,7 +107,7 @@ public class TraceSpan {
 
         this.traceId = traceId;
         this.parentSpanId = parentSpanId;
-        this.spanId = generateId();
+        this.spanId = generateSpanId();
         this.startTime = System.currentTimeMillis();
 
         log.debug("创建子 span: traceId={}, parentSpanId={}, spanId={}",
@@ -151,7 +159,7 @@ public class TraceSpan {
                                            Long durationMs, Boolean success) {
         TraceSpan traceSpan = new TraceSpan();
         traceSpan.setTraceId(traceId);
-        traceSpan.setSpanId(generateId());
+        traceSpan.setSpanId(generateSpanId());
         traceSpan.setServiceName(serviceName);
         traceSpan.setOperationName(operationName);
         traceSpan.setSpanKind("HTTP");
@@ -163,11 +171,56 @@ public class TraceSpan {
     }
 
     /**
-     * 生成一个唯一ID
+     * 生成 SpanId（16 位小写十六进制）。兼容旧调用方。
+     *
+     * @return 非全 0 的 16 hex
      */
     public static String generateId() {
-        return Long.toHexString(System.currentTimeMillis()) +
-                Long.toHexString(System.nanoTime() % 1000000);
+        return generateSpanId();
+    }
+
+    /**
+     * 生成 W3C TraceId（32 位小写十六进制，非全 0）。
+     *
+     * @return TraceId
+     */
+    public static String generateTraceId() {
+        return randomHex(16);
+    }
+
+    /**
+     * 生成 W3C SpanId（16 位小写十六进制，非全 0）。
+     *
+     * @return SpanId
+     */
+    public static String generateSpanId() {
+        return randomHex(8);
+    }
+
+    /**
+     * @param numBytes 随机字节数（TraceId=16，SpanId=8）
+     * @return 对应长度的小写 hex，且不全为 0
+     */
+    private static String randomHex(int numBytes) {
+        byte[] bytes = new byte[numBytes];
+        // 避免 W3C 禁止的全 0 ID
+        do {
+            ID_RANDOM.nextBytes(bytes);
+        } while (isAllZero(bytes));
+        return HexFormat.of().formatHex(bytes);
+    }
+
+    /**
+     * @param bytes 待检查数组
+     * @return 是否全为 0
+     */
+    private static boolean isAllZero(byte[] bytes) {
+        for (byte b : bytes) {
+            if (b != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

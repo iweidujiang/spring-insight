@@ -26,6 +26,13 @@
       "type": "java.lang.Boolean",
       "description": "是否启用 JDBC 调用 Aspect。默认 false（普通 Spring AOP 对 java.sql.* 往往无效）。",
       "defaultValue": false
+    },
+    {
+      "name": "spring.insight.http-trace-propagation-enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否在 HTTP 出入站透传 W3C traceparent（跨服务共享 TraceId）。与 context-propagation-enabled（线程池）独立。默认 true。当前覆盖 Servlet 入站与 RestTemplate/RestClient 出站。",
+      "defaultValue": true,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
     }
   ],
   "hints": []

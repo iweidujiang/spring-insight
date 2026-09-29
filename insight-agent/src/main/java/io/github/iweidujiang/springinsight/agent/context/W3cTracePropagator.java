@@ -1,0 +1,160 @@
+package io.github.iweidujiang.springinsight.agent.context;
+
+import org.springframework.util.StringUtils;
+
+import java.util.Locale;
+import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * W3C Trace Context（{@code traceparent}）编解码，供跨服务 HTTP 透传复用。
+ * <p>
+ * 格式：{@code 00-{32hex-trace-id}-{16hex-parent-id}-{2hex-flags}}。
+ * 本切片仅支持 version {@code 00}；非法或全 0 的 ID 视为无效。
+ * </p>
+ *
+ * @since 2026-09-29
+ * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
+ */
+public final class W3cTracePropagator {
+
+    /** W3C 标准请求头名 */
+    public static final String TRACEPARENT_HEADER = "traceparent";
+
+    private static final String VERSION = "00";
+    private static final String FLAGS_SAMPLED = "01";
+
+    private static final Pattern TRACEPARENT = Pattern.compile(
+            "^([0-9a-f]{2})-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$",
+            Pattern.CASE_INSENSITIVE);
+
+    private static final String ALL_ZERO_TRACE = "00000000000000000000000000000000";
+    private static final String ALL_ZERO_SPAN = "0000000000000000";
+
+    /**
+     * 工具类，禁止实例化。
+     */
+    private W3cTracePropagator() {
+    }
+
+    /**
+     * 将当前 Span 上下文编码为 {@code traceparent} 值。
+     *
+     * @param traceId 32 位十六进制 TraceId；非规范长度时尽量左补 0 / 截断以兼容旧 ID
+     * @param spanId  16 位十六进制 SpanId；同上
+     * @return 可写入请求头的字符串；入参无效时 empty
+     */
+    public static Optional<String> formatTraceparent(String traceId, String spanId) {
+        String tid = normalizeHexId(traceId, 32);
+        String sid = normalizeHexId(spanId, 16);
+        if (tid == null || sid == null) {
+            return Optional.empty();
+        }
+        if (ALL_ZERO_TRACE.equals(tid) || ALL_ZERO_SPAN.equals(sid)) {
+            return Optional.empty();
+        }
+        return Optional.of(VERSION + "-" + tid + "-" + sid + "-" + FLAGS_SAMPLED);
+    }
+
+    /**
+     * 解析 {@code traceparent} 头。
+     *
+     * @param headerValue 原始头值，可为 null
+     * @return 解析成功时的远程上下文；失败 empty
+     */
+    public static Optional<RemoteContext> parseTraceparent(String headerValue) {
+        if (!StringUtils.hasText(headerValue)) {
+            return Optional.empty();
+        }
+        String trimmed = headerValue.trim();
+        Matcher m = TRACEPARENT.matcher(trimmed);
+        if (!m.matches()) {
+            return Optional.empty();
+        }
+        String version = m.group(1).toLowerCase(Locale.ROOT);
+        if (!VERSION.equals(version)) {
+            // 未知版本：按 W3C 建议可尝试解析后续字段；本切片保守拒绝
+            return Optional.empty();
+        }
+        String traceId = m.group(2).toLowerCase(Locale.ROOT);
+        String parentId = m.group(3).toLowerCase(Locale.ROOT);
+        if (ALL_ZERO_TRACE.equals(traceId) || ALL_ZERO_SPAN.equals(parentId)) {
+            return Optional.empty();
+        }
+        return Optional.of(new RemoteContext(traceId, parentId));
+    }
+
+    /**
+     * 从 getter 读取 {@code traceparent} 并解析。
+     *
+     * @param headerGetter 头名 → 头值
+     * @return 远程上下文；无头或非法时 empty
+     */
+    public static Optional<RemoteContext> extract(Function<String, String> headerGetter) {
+        if (headerGetter == null) {
+            return Optional.empty();
+        }
+        return parseTraceparent(headerGetter.apply(TRACEPARENT_HEADER));
+    }
+
+    /**
+     * 将 Span 上下文写入 setter（通常为 HTTP 请求头）。
+     *
+     * @param traceId     TraceId
+     * @param spanId      当前（将作为下游 parent 的）SpanId
+     * @param headerSetter 头名、头值写入回调
+     * @return 是否成功写入
+     */
+    public static boolean inject(String traceId, String spanId, BiConsumer<String, String> headerSetter) {
+        if (headerSetter == null) {
+            return false;
+        }
+        Optional<String> value = formatTraceparent(traceId, spanId);
+        if (value.isEmpty()) {
+            return false;
+        }
+        headerSetter.accept(TRACEPARENT_HEADER, value.get());
+        return true;
+    }
+
+    /**
+     * 将任意十六进制 ID 规范到固定长度（不足左补 0，过长取右侧）。
+     *
+     * @param raw    原始 ID
+     * @param length 目标长度（32 或 16）
+     * @return 小写十六进制；无法规范化时 null
+     */
+    static String normalizeHexId(String raw, int length) {
+        if (!StringUtils.hasText(raw)) {
+            return null;
+        }
+        String hex = raw.trim().toLowerCase(Locale.ROOT);
+        if (!hex.chars().allMatch(c -> (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
+            return null;
+        }
+        if (hex.length() == length) {
+            return hex;
+        }
+        if (hex.length() < length) {
+            StringBuilder sb = new StringBuilder(length);
+            for (int i = hex.length(); i < length; i++) {
+                sb.append('0');
+            }
+            sb.append(hex);
+            return sb.toString();
+        }
+        return hex.substring(hex.length() - length);
+    }
+
+    /**
+     * 入站解析得到的远程 Trace 上下文。
+     *
+     * @param traceId         远程 TraceId（小写 32 hex）
+     * @param parentSpanId    远端 SpanId，作为本机 SERVER Span 的 parent
+     */
+    public record RemoteContext(String traceId, String parentSpanId) {
+    }
+}

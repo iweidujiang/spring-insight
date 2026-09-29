@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.agent.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
+import io.github.iweidujiang.springinsight.agent.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import org.junit.jupiter.api.AfterEach;
@@ -104,12 +105,14 @@ class InsightClientHttpRequestInterceptorTest {
         TraceSpan parent = TraceContext.startSpan("parent");
         ClientHttpResponse response = mockResponse(HttpStatus.OK);
         AtomicInteger calls = new AtomicInteger();
+        HttpHeaders outboundHeaders = new HttpHeaders();
         ClientHttpRequestExecution execution = (req, body) -> {
             calls.incrementAndGet();
             return response;
         };
 
-        interceptor.intercept(request("http://sca-product/product/price/1?x=1"), new byte[0], execution);
+        interceptor.intercept(request("http://sca-product/product/price/1?x=1", outboundHeaders),
+                new byte[0], execution);
 
         assertEquals(1, calls.get());
         ArgumentCaptor<TraceSpan> captor = ArgumentCaptor.forClass(TraceSpan.class);
@@ -128,6 +131,27 @@ class InsightClientHttpRequestInterceptorTest {
         assertTrue(reported.isFinished());
         // 子 Span 未压入 TraceContext
         assertEquals(1, TraceContext.getStackDepth());
+        // 默认开启 HTTP 透传：出站应带 traceparent，且 parent-id = CLIENT spanId
+        String tp = outboundHeaders.getFirst(W3cTracePropagator.TRACEPARENT_HEADER);
+        assertTrue(tp != null && !tp.isBlank());
+        assertTrue(tp.contains(reported.getSpanId()));
+        assertEquals("w3c", reported.getTags().get("insight.propagation"));
+    }
+
+    @Test
+    void httpTracePropagationDisabled_skipsTraceparentHeader() throws Exception {
+        properties.setHttpTracePropagationEnabled(false);
+        TraceContext.startSpan("parent");
+        HttpHeaders outboundHeaders = new HttpHeaders();
+        ClientHttpResponse response = mockResponse(HttpStatus.OK);
+        ClientHttpRequestExecution execution = (req, body) -> response;
+
+        interceptor.intercept(request("http://host/p", outboundHeaders), new byte[0], execution);
+
+        assertNull(outboundHeaders.getFirst(W3cTracePropagator.TRACEPARENT_HEADER));
+        ArgumentCaptor<TraceSpan> captor = ArgumentCaptor.forClass(TraceSpan.class);
+        verify(spanReportingListener).reportSpan(captor.capture());
+        assertNull(captor.getValue().getTags().get("insight.propagation"));
     }
 
     @Test
@@ -162,9 +186,14 @@ class InsightClientHttpRequestInterceptorTest {
     }
 
     private static HttpRequest request(String uri) {
+        return request(uri, new HttpHeaders());
+    }
+
+    private static HttpRequest request(String uri, HttpHeaders headers) {
         HttpRequest request = mock(HttpRequest.class);
         lenient().when(request.getURI()).thenReturn(URI.create(uri));
         lenient().when(request.getMethod()).thenReturn(HttpMethod.GET);
+        lenient().when(request.getHeaders()).thenReturn(headers);
         return request;
     }
 

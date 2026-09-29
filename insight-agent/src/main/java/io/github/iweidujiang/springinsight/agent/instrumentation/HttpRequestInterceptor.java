@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.agent.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
+import io.github.iweidujiang.springinsight.agent.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import jakarta.servlet.http.HttpServletRequest;
@@ -56,12 +57,25 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
         // 构建操作名称：方法 + 路径
         String operationName = request.getMethod() + " " + request.getRequestURI();
 
-        // 创建并启动Span
-        TraceSpan span = TraceContext.startSpan(operationName);
+        // 跨服务：读取 W3C traceparent，延续上游 TraceId（无头或关闭开关时仍新建根）
+        String remoteTraceId = null;
+        String remoteParentSpanId = null;
+        if (insightProperties.isHttpTracePropagationEnabled()) {
+            Optional<W3cTracePropagator.RemoteContext> remote = W3cTracePropagator.extract(request::getHeader);
+            if (remote.isPresent()) {
+                remoteTraceId = remote.get().traceId();
+                remoteParentSpanId = remote.get().parentSpanId();
+            }
+        }
+
+        TraceSpan span = TraceContext.startSpan(operationName, remoteTraceId, remoteParentSpanId);
 
         // 设置Span属性
         span.setSpanKind("SERVER");
         span.setComponent("SpringMVC");
+        if (remoteTraceId != null) {
+            span.addTag("insight.propagation", "w3c");
+        }
 
         // 添加HTTP相关标签
         span.addTag("http.method", request.getMethod())
