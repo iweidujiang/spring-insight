@@ -10,6 +10,7 @@ package io.github.iweidujiang.springinsight.agent.boot2.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -50,17 +51,22 @@ public class TraceSpan {
     @JsonIgnore
     private final Instant createTime = Instant.now();
 
+    /** W3C 兼容 TraceId / SpanId 随机源 */
+    private static final SecureRandom ID_RANDOM = new SecureRandom();
+
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
+
     /**
-     * 创建根 Span。
+     * 创建根 Span；ID 符合 W3C：TraceId 32 hex、SpanId 16 hex。
      */
     public TraceSpan() {
-        this.traceId = generateId();
-        this.spanId = generateId();
+        this.traceId = generateTraceId();
+        this.spanId = generateSpanId();
         this.startTime = System.currentTimeMillis();
     }
 
     /**
-     * 创建子 Span。
+     * 创建子 Span（或跨服务延续的 SERVER Span）。
      *
      * @param traceId      与父共享的 TraceId
      * @param parentSpanId 父 SpanId
@@ -71,7 +77,7 @@ public class TraceSpan {
         }
         this.traceId = traceId;
         this.parentSpanId = parentSpanId;
-        this.spanId = generateId();
+        this.spanId = generateSpanId();
         this.startTime = System.currentTimeMillis();
     }
 
@@ -107,13 +113,61 @@ public class TraceSpan {
     }
 
     /**
-     * 生成简易唯一 ID。
+     * 生成 SpanId（16 hex）。兼容旧调用方。
      *
-     * @return hex 时间戳拼接串
+     * @return 非全 0 的 16 hex
      */
     public static String generateId() {
-        return Long.toHexString(System.currentTimeMillis())
-                + Long.toHexString(System.nanoTime() % 1000000L);
+        return generateSpanId();
+    }
+
+    /**
+     * 生成 W3C TraceId（32 hex）。
+     *
+     * @return TraceId
+     */
+    public static String generateTraceId() {
+        return randomHex(16);
+    }
+
+    /**
+     * 生成 W3C SpanId（16 hex）。
+     *
+     * @return SpanId
+     */
+    public static String generateSpanId() {
+        return randomHex(8);
+    }
+
+    /**
+     * @param numBytes 随机字节数
+     * @return 小写 hex，且不全为 0
+     */
+    private static String randomHex(int numBytes) {
+        byte[] bytes = new byte[numBytes];
+        do {
+            ID_RANDOM.nextBytes(bytes);
+        } while (isAllZero(bytes));
+        char[] out = new char[numBytes * 2];
+        for (int i = 0; i < numBytes; i++) {
+            int v = bytes[i] & 0xff;
+            out[i * 2] = HEX[v >>> 4];
+            out[i * 2 + 1] = HEX[v & 0x0f];
+        }
+        return new String(out);
+    }
+
+    /**
+     * @param bytes 待检查
+     * @return 是否全 0
+     */
+    private static boolean isAllZero(byte[] bytes) {
+        for (int i = 0; i < bytes.length; i++) {
+            if (bytes[i] != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

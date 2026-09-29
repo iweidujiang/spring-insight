@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
 import io.github.iweidujiang.springinsight.agent.boot2.context.TraceContext;
+import io.github.iweidujiang.springinsight.agent.boot2.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
 import org.slf4j.Logger;
@@ -56,10 +57,28 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
             return true;
         }
         String operationName = request.getMethod() + " " + request.getRequestURI();
-        TraceSpan span = TraceContext.startSpan(operationName);
+        String remoteTraceId = null;
+        String remoteParentSpanId = null;
+        if (insightProperties.isHttpTracePropagationEnabled()) {
+            Optional<W3cTracePropagator.RemoteContext> remote = W3cTracePropagator.extract(
+                    new W3cTracePropagator.HeaderGetter() {
+                        @Override
+                        public String get(String name) {
+                            return request.getHeader(name);
+                        }
+                    });
+            if (remote.isPresent()) {
+                remoteTraceId = remote.get().getTraceId();
+                remoteParentSpanId = remote.get().getParentSpanId();
+            }
+        }
+        TraceSpan span = TraceContext.startSpan(operationName, remoteTraceId, remoteParentSpanId);
         span.setSpanKind("SERVER");
         span.setComponent("SpringMVC");
         span.setServiceName(insightProperties.getServiceName());
+        if (remoteTraceId != null) {
+            span.addTag("insight.propagation", "w3c");
+        }
         span.addTag("http.method", request.getMethod())
                 .addTag("http.path", request.getRequestURI())
                 .addTag("http.query", request.getQueryString() != null ? request.getQueryString() : "")

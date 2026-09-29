@@ -12,6 +12,7 @@ package io.github.iweidujiang.springinsight.agent.boot2.context;
 
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
 import org.springframework.core.NamedThreadLocal;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -35,14 +36,34 @@ public final class TraceContext {
         return stack.isEmpty() ? Optional.<TraceSpan>empty() : Optional.of(stack.peek());
     }
 
+    /**
+     * 开始一个新的 Span 并压入栈。
+     *
+     * @param operationName 操作名
+     * @return 压栈后的 Span
+     */
     public static TraceSpan startSpan(String operationName) {
+        return startSpan(operationName, null, null);
+    }
+
+    /**
+     * 开始 Span：优先挂到本地栈顶；栈空且提供远程上下文时延续跨服务 Trace。
+     *
+     * @param operationName      操作名
+     * @param remoteTraceId      入站 traceparent 的 TraceId；无则 null
+     * @param remoteParentSpanId 入站 parent SpanId；无则 null
+     * @return 压栈后的 Span
+     */
+    public static TraceSpan startSpan(String operationName, String remoteTraceId, String remoteParentSpanId) {
         Deque<TraceSpan> stack = SPAN_STACK.get();
         TraceSpan parent = stack.isEmpty() ? null : stack.peek();
         TraceSpan span;
-        if (parent == null) {
-            span = new TraceSpan();
-        } else {
+        if (parent != null) {
             span = new TraceSpan(parent.getTraceId(), parent.getSpanId());
+        } else if (StringUtils.hasText(remoteTraceId) && StringUtils.hasText(remoteParentSpanId)) {
+            span = new TraceSpan(remoteTraceId.trim(), remoteParentSpanId.trim());
+        } else {
+            span = new TraceSpan();
         }
         span.setOperationName(operationName);
         stack.push(span);
