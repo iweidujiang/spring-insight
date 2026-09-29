@@ -3,7 +3,7 @@
 面向 **Spring Boot 2.7 / Java 8+** 的轻量监测 Agent：业务侧加一个 Starter，把 Span 上报到监测中心，即可查看服务拓扑与调用链路。
 
 - 仓库分支：`2.7.x`
-- 当前版本：**`0.3.2`**
+- 当前版本：**`0.4.0`**（开发中，与主线 Agent 对齐；发 Central 前请 `mvn install`）
 - 监测中心（Docker / jar）请使用同仓库 **`main`** 分支发布的 `insight-server`（与本 Agent 协议兼容）
 
 ---
@@ -16,7 +16,7 @@
 <dependency>
   <groupId>io.github.iweidujiang</groupId>
   <artifactId>spring-insight-agent-starter-boot2</artifactId>
-  <version>0.3.2</version>
+  <version>0.4.0</version>
 </dependency>
 ```
 
@@ -25,7 +25,7 @@
 | `spring-insight-agent-starter-boot2` | **业务请只依赖这个** |
 | `insight-agent-boot2` | 采集核心（Starter 传递依赖） |
 
-> Maven Central 若尚未同步 `0.3.2`，可先用已发布的 `0.3.0-boot2`，或本分支 `mvn install` 后使用本地包。已发出的旧包版本仍带 `-boot2` 后缀，新版本起与主线数字一致。
+> Maven Central 若尚未同步 `0.4.0`，请本分支 `mvn install` 后使用本地包。已发出的旧包版本仍可能带 `-boot2` 后缀（如 `0.3.0-boot2`），新版本起与主线数字一致。
 
 ### 2. 配置
 
@@ -45,6 +45,7 @@ spring:
 | `spring.insight.server-url` | — | 监测中心根地址 |
 | `spring.insight.service-name` | 回退 `spring.application.name` | 上报服务名 |
 | `spring.insight.http-tracing-enabled` | `true` | MVC / WebFlux SERVER；WebClient / Gateway CLIENT |
+| `spring.insight.http-trace-propagation-enabled` | `true` | W3C `traceparent` 跨服务透传（Servlet + RestTemplate） |
 | `spring.insight.micrometer-enabled` | `true` | 桥接宿主 MeterRegistry |
 | `spring.insight.diagnostic-logs` | `false` | 请求级诊断日志 |
 
@@ -52,7 +53,7 @@ spring:
 
 ```bash
 docker run --rm -p 9966:9966 \
-  ghcr.io/iweidujiang/spring-insight-server:0.3.2
+  ghcr.io/iweidujiang/spring-insight-server:0.7.1
 ```
 
 或从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-*.jar`，JDK 17+ 执行 `java -jar`。

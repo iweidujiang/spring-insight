@@ -6,7 +6,7 @@
 
     <groupId>io.github.iweidujiang</groupId>
     <artifactId>spring-insight-boot2-parent</artifactId>
-    <version>0.3.2</version>
+    <version>0.4.0</version>
 
     <packaging>pom</packaging>
 
@@ -176,7 +176,7 @@
 
     <!--
       发布到 Maven Central：
-        1) 版本为非 SNAPSHOT（如 0.3.2）
+        1) 版本为非 SNAPSHOT（如 0.4.0）
         2) ~/.m2/settings.xml 配置 server id=central 的 Portal Token
         3) 本机 GPG 可用（可用 "-Dgpg.skip=true" 仅验证 sources/javadoc）
         4) mvn -Prelease clean deploy "-DskipTests"
