@@ -227,6 +227,18 @@
 # Agent
 
 
+## [Unreleased] / 开发中 `0.4.0`
+
+### 新增
+- **W3C `traceparent` 跨服务透传**（切片 1）：Servlet 入站提取 + RestTemplate/RestClient 出站注入；配置 `spring.insight.http-trace-propagation-enabled`（默认 true）
+- TraceId / SpanId 改为 W3C 长度（32 / 16 hex）
+
+### 坐标（开发中，发 Central 前用本地 `mvn install`）
+| 项 | 值 |
+|----|-----|
+| Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.4.0` |
+| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.4.0`（分支 `2.7.x`，须对齐 bump） |
+
 ---
 
 ## [0.3.2] — 2026-09-20
