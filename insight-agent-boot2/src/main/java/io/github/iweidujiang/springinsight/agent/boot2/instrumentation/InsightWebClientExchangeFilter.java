@@ -2,12 +2,14 @@ package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
 import io.github.iweidujiang.springinsight.agent.boot2.context.ReactiveTraceHolder;
+import io.github.iweidujiang.springinsight.agent.boot2.context.RemoteServiceResolver;
 import io.github.iweidujiang.springinsight.agent.boot2.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.boot2.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
@@ -72,7 +74,7 @@ public class InsightWebClientExchangeFilter implements ExchangeFilterFunction {
 
                 TraceSpan parent = parentOpt.get();
                 URI uri = request.url();
-                String remote = resolveRemoteService(uri);
+                String remote = resolveRemoteService(uri, request.headers().getFirst(HttpHeaders.HOST));
                 String path = uri.getPath() != null && !uri.getPath().isEmpty() ? uri.getPath() : "/";
                 String method = request.method().name();
                 String query = uri.getRawQuery();
@@ -156,19 +158,24 @@ public class InsightWebClientExchangeFilter implements ExchangeFilterFunction {
     }
 
     /**
-     * 解析 remoteService：host（含 lb://serviceId）。
-     *
+     * @param uri        请求 URI
+     * @param hostHeader Host 头
+     * @return 规范化 remoteService
+     */
+    static String resolveRemoteService(URI uri, String hostHeader) {
+        String logical = null;
+        if (uri != null && "lb".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null) {
+            logical = uri.getHost();
+        }
+        return RemoteServiceResolver.resolve(uri, hostHeader, logical);
+    }
+
+    /**
      * @param uri 请求 URI
-     * @return 服务名或 host
+     * @return 规范化 remoteService
      */
     static String resolveRemoteService(URI uri) {
-        if (uri == null) {
-            return "unknown";
-        }
-        if (uri.getHost() != null && !uri.getHost().trim().isEmpty()) {
-            return uri.getHost();
-        }
-        return "unknown";
+        return resolveRemoteService(uri, null);
     }
 
     /**

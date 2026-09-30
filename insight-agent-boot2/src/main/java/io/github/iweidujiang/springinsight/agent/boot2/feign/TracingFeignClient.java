@@ -5,6 +5,7 @@ import feign.Request;
 import feign.Request.Options;
 import feign.Response;
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
+import io.github.iweidujiang.springinsight.agent.boot2.context.RemoteServiceResolver;
 import io.github.iweidujiang.springinsight.agent.boot2.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.boot2.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
@@ -142,17 +143,16 @@ public class TracingFeignClient implements Client {
         if (request == null) {
             return "unknown";
         }
+        String logical = null;
         try {
             if (request.requestTemplate() != null && request.requestTemplate().feignTarget() != null) {
-                String name = request.requestTemplate().feignTarget().name();
-                if (name != null && !name.trim().isEmpty()) {
-                    return name.trim();
-                }
+                logical = request.requestTemplate().feignTarget().name();
             }
         } catch (Exception ignored) {
-            // 回退到 URL host
+            // 回退
         }
-        return resolveRemoteServiceFromUrl(request.url());
+        String hostHeader = firstHeader(request, "Host");
+        return RemoteServiceResolver.resolve(request.url(), hostHeader, logical);
     }
 
     /**
@@ -162,15 +162,7 @@ public class TracingFeignClient implements Client {
      * @return host 或 unknown
      */
     static String resolveRemoteServiceFromUrl(String url) {
-        try {
-            URI u = URI.create(url);
-            if (u.getHost() != null && !u.getHost().isEmpty()) {
-                return u.getHost();
-            }
-        } catch (Exception ignored) {
-            // ignore
-        }
-        return "unknown";
+        return RemoteServiceResolver.resolve(url, null, null);
     }
 
     /**
@@ -181,6 +173,14 @@ public class TracingFeignClient implements Client {
      */
     static String resolveRemoteService(String url) {
         return resolveRemoteServiceFromUrl(url);
+    }
+
+    private static String firstHeader(Request request, String name) {
+        Collection<String> values = request.headers().get(name);
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+        return values.iterator().next();
     }
 
     /**

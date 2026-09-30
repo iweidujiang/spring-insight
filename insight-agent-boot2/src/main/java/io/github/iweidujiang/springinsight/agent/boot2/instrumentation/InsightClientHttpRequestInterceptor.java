@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
+import io.github.iweidujiang.springinsight.agent.boot2.context.RemoteServiceResolver;
 import io.github.iweidujiang.springinsight.agent.boot2.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.boot2.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
@@ -79,7 +80,7 @@ public class InsightClientHttpRequestInterceptor implements ClientHttpRequestInt
         clientSpan.setSpanKind("CLIENT");
         clientSpan.setComponent(component);
         clientSpan.setOperationName(method + " " + compactOp(uri));
-        clientSpan.setRemoteService(resolveRemoteService(uri));
+        clientSpan.setRemoteService(resolveRemoteService(uri, request.getHeaders().getFirst("Host")));
         clientSpan.setRemoteEndpoint(path);
         clientSpan.addTag("http.method", method)
                 .addTag("http.path", path)
@@ -126,17 +127,24 @@ public class InsightClientHttpRequestInterceptor implements ClientHttpRequestInt
     }
 
     /**
+     * @param uri        请求 URI
+     * @param hostHeader Host 头
+     * @return 规范化 remoteService
+     */
+    static String resolveRemoteService(URI uri, String hostHeader) {
+        String logical = null;
+        if (uri != null && "lb".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null) {
+            logical = uri.getHost();
+        }
+        return RemoteServiceResolver.resolve(uri, hostHeader, logical);
+    }
+
+    /**
      * @param uri 请求 URI
-     * @return host；{@code lb://svc} 时 host 为服务名；无法解析时 {@code unknown}
+     * @return 规范化 remoteService
      */
     static String resolveRemoteService(URI uri) {
-        if (uri == null) {
-            return "unknown";
-        }
-        if (uri.getHost() != null && uri.getHost().trim().length() > 0) {
-            return uri.getHost();
-        }
-        return "unknown";
+        return resolveRemoteService(uri, null);
     }
 
     /**

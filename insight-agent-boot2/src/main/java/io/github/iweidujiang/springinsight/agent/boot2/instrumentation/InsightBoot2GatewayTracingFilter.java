@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
 import io.github.iweidujiang.springinsight.agent.boot2.context.ReactiveTraceHolder;
+import io.github.iweidujiang.springinsight.agent.boot2.context.RemoteServiceResolver;
 import io.github.iweidujiang.springinsight.agent.boot2.context.TraceSampler;
 import io.github.iweidujiang.springinsight.agent.boot2.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
@@ -168,27 +169,25 @@ public class InsightBoot2GatewayTracingFilter implements GlobalFilter, Ordered {
     }
 
     /**
-     * 解析 remoteService：优先路由 URI（lb 取 host 即服务名），其次 GATEWAY_REQUEST_URL。
+     * 解析 remoteService：优先路由 lb://，再 Host / URI（避开已解析 IP）。
      *
      * @param exchange 当前交换
      * @return 服务名或 host；无法解析时为 unknown
      */
     static String resolveRemoteService(ServerWebExchange exchange) {
+        String logical = null;
+        URI routeUri = null;
         Route route = exchange.getAttribute(GATEWAY_ROUTE_ATTR);
         if (route != null && route.getUri() != null) {
-            URI uri = route.getUri();
-            if ("lb".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null) {
-                return uri.getHost();
-            }
-            if (uri.getHost() != null && !uri.getHost().trim().isEmpty()) {
-                return uri.getHost();
+            routeUri = route.getUri();
+            if ("lb".equalsIgnoreCase(routeUri.getScheme()) && routeUri.getHost() != null) {
+                logical = routeUri.getHost();
             }
         }
         URI requestUrl = exchange.getAttribute(GATEWAY_REQUEST_URL_ATTR);
-        if (requestUrl != null && requestUrl.getHost() != null) {
-            return requestUrl.getHost();
-        }
-        return "unknown";
+        URI effective = requestUrl != null ? requestUrl : routeUri;
+        String hostHeader = exchange.getRequest().getHeaders().getFirst("Host");
+        return RemoteServiceResolver.resolve(effective, hostHeader, logical);
     }
 
     /**
