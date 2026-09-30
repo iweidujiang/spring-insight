@@ -70,7 +70,7 @@ public class InsightProperties {
      * 是否在 HTTP 出入站透传 W3C {@code traceparent}（跨服务共享 TraceId）。
      * <p>
      * 与 {@link #contextPropagationEnabled}（进程内线程池）独立；默认 true。
-     * 本切片先覆盖 Servlet 入站 + RestTemplate/RestClient 出站；Feign/WebClient/Gateway 后续补齐。
+     * 已覆盖：Servlet 入站、RestTemplate/RestClient 出站、OpenFeign 出站；WebClient/Gateway/WebFlux 入站后续补齐。
      * </p>
      */
     private boolean httpTracePropagationEnabled = true;

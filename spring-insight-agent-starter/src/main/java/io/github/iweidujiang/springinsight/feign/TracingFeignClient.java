@@ -6,6 +6,7 @@ import feign.Request.Options;
 import feign.Response;
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
+import io.github.iweidujiang.springinsight.agent.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import lombok.extern.slf4j.Slf4j;
@@ -13,13 +14,17 @@ import org.springframework.beans.factory.ObjectProvider;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
- * Feign {@link Client} 装饰器：在出站调用上创建 CLIENT Span，并填充 {@code remoteService} 供拓扑聚合。
+ * Feign {@link Client} 装饰器：出站 CLIENT Span + 可选 W3C {@code traceparent} 注入。
  *
- * @author 苏渡苇
- * @since 2026/7/28
+ * @since 2026-07-28
+ * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
  */
 @Slf4j
 public class TracingFeignClient implements Client {
@@ -34,9 +39,9 @@ public class TracingFeignClient implements Client {
     private final ObjectProvider<SpanReportingListener> spanReportingListener;
 
     /**
-     * @param delegate               原始 Client
-     * @param insightProperties      配置
-     * @param spanReportingListener  上报入口
+     * @param delegate              原始 Client
+     * @param insightProperties     配置
+     * @param spanReportingListener 上报入口
      */
     public TracingFeignClient(Client delegate,
                               ObjectProvider<InsightProperties> insightProperties,
@@ -47,7 +52,7 @@ public class TracingFeignClient implements Client {
     }
 
     /**
-     * 执行 Feign 请求：有父 Span 且开启 HTTP 追踪时创建子 CLIENT Span 并上报。
+     * 执行 Feign 请求：有父 Span 且开启 HTTP 追踪时创建子 CLIENT Span、注入透传头并上报。
      *
      * @param request Feign 请求
      * @param options 超时等选项
@@ -79,8 +84,18 @@ public class TracingFeignClient implements Client {
         clientSpan.setRemoteService(remote);
         clientSpan.setRemoteEndpoint(path);
 
+        Request outbound = request;
+        if (props.isHttpTracePropagationEnabled()) {
+            Optional<String> tp = W3cTracePropagator.formatTraceparent(
+                    clientSpan.getTraceId(), clientSpan.getSpanId());
+            if (tp.isPresent()) {
+                outbound = withHeader(request, W3cTracePropagator.TRACEPARENT_HEADER, tp.get());
+                clientSpan.addTag("insight.propagation", "w3c");
+            }
+        }
+
         try {
-            Response response = delegate.execute(request, options);
+            Response response = delegate.execute(outbound, options);
             int status = response.status();
             clientSpan.addTag("http.status_code", String.valueOf(status));
             if (status >= 400) {
@@ -95,6 +110,26 @@ public class TracingFeignClient implements Client {
             listener.reportSpan(TraceSpan.snapshot(clientSpan));
             throw e;
         }
+    }
+
+    /**
+     * 复制请求并覆盖/追加单个请求头（Feign {@link Request} 不可变）。
+     *
+     * @param request 原请求
+     * @param name    头名
+     * @param value   头值
+     * @return 带新头的请求
+     */
+    static Request withHeader(Request request, String name, String value) {
+        Map<String, Collection<String>> headers = new LinkedHashMap<>(request.headers());
+        headers.put(name, Collections.singletonList(value));
+        return Request.create(
+                request.httpMethod(),
+                request.url(),
+                headers,
+                request.body(),
+                request.charset(),
+                request.requestTemplate());
     }
 
     /**
