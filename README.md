@@ -13,7 +13,6 @@
 
 面向 **Spring Boot / Spring Cloud** 的轻量监测工具：**业务侧加一个 Starter 埋点上报，旁边用 Docker 起一个 `insight-server`，就能看服务拓扑和调用链路。**
 
-
 - 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
 - 当前发布：**Agent `0.4.0`**（Maven Central）+ **Server `0.7.1`**（GHCR / Release jar）
 - **运行时要求**：Spring Boot 3.x + JDK 17+
