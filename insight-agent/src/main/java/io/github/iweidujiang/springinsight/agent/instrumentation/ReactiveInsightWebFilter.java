@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.agent.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.context.ReactiveTraceHolder;
+import io.github.iweidujiang.springinsight.agent.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,10 @@ import java.util.Optional;
 
 /**
  * WebFlux / Gateway 入口 HTTP 追踪：Span 挂在 exchange 属性与 Reactor Context，
- * 避免 ThreadLocal 在事件循环线程切换时丢失。
+ * 避免 ThreadLocal 在事件循环线程切换时丢失；可选从入站 {@code traceparent} 延续上游 Trace。
+ *
+ * @since 2026-09-18
+ * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -36,6 +40,13 @@ public class ReactiveInsightWebFilter implements WebFilter {
     private final InsightProperties insightProperties;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
+    /**
+     * 创建 SERVER Span；开启透传时从请求头提取 W3C 上下文。
+     *
+     * @param exchange 当前交换
+     * @param chain    过滤器链
+     * @return 完成信号
+     */
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         if (!insightProperties.isHttpTracingEnabled()) {
@@ -51,7 +62,22 @@ public class ReactiveInsightWebFilter implements WebFilter {
 
         String method = request.getMethod().name();
         String operationName = method + " " + path;
-        TraceSpan span = new TraceSpan();
+
+        // 跨服务：读取 W3C traceparent，延续上游 TraceId（无头或关闭开关时仍新建根）
+        TraceSpan span;
+        if (insightProperties.isHttpTracePropagationEnabled()) {
+            Optional<W3cTracePropagator.RemoteContext> remote =
+                    W3cTracePropagator.extract(name -> request.getHeaders().getFirst(name));
+            if (remote.isPresent()) {
+                span = new TraceSpan(remote.get().traceId(), remote.get().parentSpanId());
+                span.addTag("insight.propagation", "w3c");
+            } else {
+                span = new TraceSpan();
+            }
+        } else {
+            span = new TraceSpan();
+        }
+
         span.setOperationName(operationName);
         span.setSpanKind("SERVER");
         span.setComponent("SpringWebFlux");
@@ -78,6 +104,12 @@ public class ReactiveInsightWebFilter implements WebFilter {
                 .contextWrite(ctx -> ReactiveTraceHolder.write(ctx, span));
     }
 
+    /**
+     * 结束并上报 SERVER Span。
+     *
+     * @param exchange 当前交换
+     * @param error    异常，可为 null
+     */
     private void finalizeSpan(ServerWebExchange exchange, Throwable error) {
         TraceSpan span = (TraceSpan) exchange.getAttributes().remove(SPAN_EXCHANGE_ATTR);
         if (span == null || span.isFinished()) {
