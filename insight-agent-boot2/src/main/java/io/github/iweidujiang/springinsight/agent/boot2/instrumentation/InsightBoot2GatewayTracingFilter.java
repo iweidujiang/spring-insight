@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
 import io.github.iweidujiang.springinsight.agent.boot2.context.ReactiveTraceHolder;
+import io.github.iweidujiang.springinsight.agent.boot2.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
 import org.slf4j.Logger;
@@ -12,11 +13,13 @@ import org.springframework.cloud.gateway.route.Route;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
 
 import java.net.URI;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -24,7 +27,7 @@ import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.G
 import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.GATEWAY_ROUTE_ATTR;
 
 /**
- * Gateway 出站追踪：代理下游时创建 CLIENT Span，并写入 remoteService 供拓扑聚合。
+ * Gateway 出站追踪：代理下游时创建 CLIENT Span，并可选注入 W3C {@code traceparent}。
  * <p>
  * 父 Span 取入口 {@link ReactiveInsightWebFilter} 挂在 exchange 上的 SERVER Span。
  * </p>
@@ -53,7 +56,7 @@ public class InsightBoot2GatewayTracingFilter implements GlobalFilter, Ordered {
     }
 
     /**
-     * 创建 Gateway 代理 CLIENT Span；路由解析后、写响应前执行。
+     * 创建 Gateway 代理 CLIENT Span，并按开关注入 {@code traceparent} 到出站请求。
      *
      * @param exchange 当前交换
      * @param chain    Gateway Filter 链
@@ -85,23 +88,38 @@ public class InsightBoot2GatewayTracingFilter implements GlobalFilter, Ordered {
                 .addTag("http.path", path)
                 .addTag("gateway.remote", remote);
 
-        exchange.getAttributes().put(CLIENT_SPAN_ATTR, clientSpan);
+        ServerWebExchange outboundExchange = exchange;
+        if (insightProperties.isHttpTracePropagationEnabled()) {
+            Optional<String> tp = W3cTracePropagator.formatTraceparent(
+                    clientSpan.getTraceId(), clientSpan.getSpanId());
+            if (tp.isPresent()) {
+                // 下游服务读该头延续同一 TraceId
+                ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                        .header(W3cTracePropagator.TRACEPARENT_HEADER, tp.get())
+                        .build();
+                outboundExchange = exchange.mutate().request(mutatedRequest).build();
+                clientSpan.addTag("insight.propagation", "w3c");
+            }
+        }
+
+        outboundExchange.getAttributes().put(CLIENT_SPAN_ATTR, clientSpan);
 
         // Context 保留 SERVER 父（无父时用 CLIENT），供同链出站读取
         final TraceSpan contextSpan = parent != null ? parent : clientSpan;
+        final ServerWebExchange toFilter = outboundExchange;
 
-        return chain.filter(exchange)
+        return chain.filter(toFilter)
                 .doOnError(new Consumer<Throwable>() {
                     @Override
                     public void accept(Throwable err) {
-                        finalizeClientSpan(exchange, err);
+                        finalizeClientSpan(toFilter, err);
                     }
                 })
                 .doFinally(new Consumer<SignalType>() {
                     @Override
                     public void accept(SignalType signal) {
                         if (signal != SignalType.ON_ERROR) {
-                            finalizeClientSpan(exchange, null);
+                            finalizeClientSpan(toFilter, null);
                         }
                     }
                 })

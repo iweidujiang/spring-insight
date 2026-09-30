@@ -26,7 +26,7 @@ public class InsightBoot2Properties {
     private boolean httpTracingEnabled = true;
     /**
      * 是否在 HTTP 出入站透传 W3C {@code traceparent}（跨服务共享 TraceId）。
-     * <p>默认 true；本切片覆盖 Servlet 入站 + RestTemplate 出站。</p>
+     * <p>默认 true；已覆盖 Servlet 入站、RestTemplate/OpenFeign/WebClient/Gateway 出站。</p>
      */
     private boolean httpTracePropagationEnabled = true;
     /** 是否桥接宿主 MeterRegistry（无 Micrometer/无 MeterRegistry 时自动跳过） */

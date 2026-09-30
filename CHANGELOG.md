@@ -3,9 +3,9 @@
 ## [Unreleased]
 
 ### 新增
-- **W3C `traceparent` 跨服务透传**：Servlet 入站提取；RestTemplate / OpenFeign / **WebClient** 出站注入；`spring.insight.http-trace-propagation-enabled`（默认 true）
+- **W3C `traceparent` 跨服务透传**：Servlet 入站提取；RestTemplate / OpenFeign / WebClient / **Gateway** 出站注入；`spring.insight.http-trace-propagation-enabled`（默认 true）
 - TraceId / SpanId 改为 W3C 长度（32 / 16 hex）
-- （待补）Gateway 出站；WebFlux 入站
+- （待补）WebFlux 入站提取
 
 ### 工程
 - 开发中版本升至 **`0.4.0`**（与主线 Agent 对齐；artifactId 仍为 `*-boot2`）
