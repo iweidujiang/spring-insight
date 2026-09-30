@@ -74,6 +74,17 @@ class InsightClientHttpRequestInterceptorTest {
         assertEquals("unknown", InsightClientHttpRequestInterceptor.resolveRemoteService(null));
     }
 
+    /**
+     * LoadBalancer 解析成 IP 后，仍用 Host 头恢复服务名。
+     */
+    @Test
+    void resolveRemoteService_prefersHostOverResolvedIp() {
+        assertEquals("sca-order", InsightClientHttpRequestInterceptor.resolveRemoteService(
+                URI.create("http://127.0.0.1:18080/api"), "sca-order:18080"));
+        assertEquals("127.0.0.1", InsightClientHttpRequestInterceptor.resolveRemoteService(
+                URI.create("http://127.0.0.1:18080/api"), null));
+    }
+
     @Test
     void compactOp_includesHostPathQuery() {
         assertEquals("sca-order/api/x?a=1", InsightClientHttpRequestInterceptor.compactOp(

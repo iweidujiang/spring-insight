@@ -5,6 +5,7 @@ import feign.Request;
 import feign.Request.Options;
 import feign.Response;
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
+import io.github.iweidujiang.springinsight.agent.context.RemoteServiceResolver;
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
@@ -73,8 +74,8 @@ public class TracingFeignClient implements Client {
         }
 
         String url = request.url();
-        // remoteService：拓扑边上的目标节点（当前取 URL host）
-        String remote = resolveRemoteService(url);
+        // remoteService：优先 Feign Target 名 / Host，避免 LB 解析后的 IP
+        String remote = resolveRemoteService(request);
         String path = safePath(url);
         TraceSpan parent = parentOpt.get();
         TraceSpan clientSpan = new TraceSpan(parent.getTraceId(), parent.getSpanId());
@@ -134,21 +135,37 @@ public class TracingFeignClient implements Client {
     }
 
     /**
-     * 从请求 URL 解析远程服务标识（host）。
+     * 解析远程服务标识：Feign Target 名 → Host 头 → URI host（规范化）。
      *
+     * @param request Feign 请求
+     * @return remoteService
+     */
+    static String resolveRemoteService(Request request) {
+        if (request == null) {
+            return "unknown";
+        }
+        String logical = null;
+        if (request.requestTemplate() != null && request.requestTemplate().feignTarget() != null) {
+            logical = request.requestTemplate().feignTarget().name();
+        }
+        String hostHeader = firstHeader(request, "Host");
+        return RemoteServiceResolver.resolve(request.url(), hostHeader, logical);
+    }
+
+    /**
      * @param url Feign 完整 URL
      * @return host；无法解析时返回 {@code unknown}
      */
     static String resolveRemoteService(String url) {
-        try {
-            URI u = URI.create(url);
-            if (u.getHost() != null && !u.getHost().isEmpty()) {
-                return u.getHost();
-            }
-        } catch (Exception ignored) {
-            // 忽略解析失败，返回 unknown
+        return RemoteServiceResolver.resolve(url, null, null);
+    }
+
+    private static String firstHeader(Request request, String name) {
+        Collection<String> values = request.headers().get(name);
+        if (values == null || values.isEmpty()) {
+            return null;
         }
-        return "unknown";
+        return values.iterator().next();
     }
 
     /**

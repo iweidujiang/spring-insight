@@ -232,6 +232,7 @@
 ### 新增
 - **W3C `traceparent` 跨服务透传**：Servlet / WebFlux 入站提取；RestTemplate/RestClient/OpenFeign/WebClient/Gateway 出站注入；配置 `spring.insight.http-trace-propagation-enabled`（默认 true）
 - **头部采样真正生效**：`spring.insight.sample-rate`（0～1，默认 1）；本地根按概率决策，入站跟随 `traceparent` flags，子 Span 继承；未采样不上报且出站 flags=`00`
+- **CLIENT `remoteService` 规范化**：优先 `lb://` / Feign Target / 非 IP Host 头，避免拓扑边落成 `127.0.0.1`
 - TraceId / SpanId 改为 W3C 长度（32 / 16 hex）
 
 ### 坐标（开发中，发 Central 前用本地 `mvn install`）

@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.agent.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.context.ReactiveTraceHolder;
+import io.github.iweidujiang.springinsight.agent.context.RemoteServiceResolver;
 import io.github.iweidujiang.springinsight.agent.context.TraceSampler;
 import io.github.iweidujiang.springinsight.agent.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
@@ -137,27 +138,25 @@ public class InsightGatewayTracingFilter implements GlobalFilter, Ordered {
     }
 
     /**
-     * 解析下游服务标识：优先路由 lb:// 服务名，其次已解析的请求 URL host。
+     * 解析下游服务标识：优先路由 {@code lb://} 服务名，再 Host / URI（避开已解析 IP）。
      *
      * @param exchange 当前交换
      * @return remoteService
      */
     static String resolveRemoteService(ServerWebExchange exchange) {
+        String logical = null;
+        URI routeUri = null;
         Route route = exchange.getAttribute(GATEWAY_ROUTE_ATTR);
         if (route != null && route.getUri() != null) {
-            URI uri = route.getUri();
-            if ("lb".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null) {
-                return uri.getHost();
-            }
-            if (uri.getHost() != null && !uri.getHost().isBlank()) {
-                return uri.getHost();
+            routeUri = route.getUri();
+            if ("lb".equalsIgnoreCase(routeUri.getScheme()) && routeUri.getHost() != null) {
+                logical = routeUri.getHost();
             }
         }
         URI requestUrl = exchange.getAttribute(GATEWAY_REQUEST_URL_ATTR);
-        if (requestUrl != null && requestUrl.getHost() != null) {
-            return requestUrl.getHost();
-        }
-        return "unknown";
+        URI effective = requestUrl != null ? requestUrl : routeUri;
+        String hostHeader = exchange.getRequest().getHeaders().getFirst("Host");
+        return RemoteServiceResolver.resolve(effective, hostHeader, logical);
     }
 
     /**

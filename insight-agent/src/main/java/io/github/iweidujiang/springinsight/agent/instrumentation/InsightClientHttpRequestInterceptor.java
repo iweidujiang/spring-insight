@@ -1,11 +1,13 @@
 package io.github.iweidujiang.springinsight.agent.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
+import io.github.iweidujiang.springinsight.agent.context.RemoteServiceResolver;
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
@@ -80,7 +82,7 @@ public class InsightClientHttpRequestInterceptor implements ClientHttpRequestInt
         clientSpan.setSpanKind("CLIENT");
         clientSpan.setComponent(component);
         clientSpan.setOperationName(method + " " + compactOp(uri));
-        clientSpan.setRemoteService(resolveRemoteService(uri));
+        clientSpan.setRemoteService(resolveRemoteService(uri, request.getHeaders().getFirst(HttpHeaders.HOST)));
         clientSpan.setRemoteEndpoint(path);
         clientSpan.addTag("http.method", method)
                 .addTag("http.path", path)
@@ -122,17 +124,24 @@ public class InsightClientHttpRequestInterceptor implements ClientHttpRequestInt
     }
 
     /**
+     * @param uri        请求 URI
+     * @param hostHeader Host 头，可为 null
+     * @return 规范化 remoteService
+     */
+    static String resolveRemoteService(URI uri, String hostHeader) {
+        String logical = null;
+        if (uri != null && "lb".equalsIgnoreCase(uri.getScheme()) && uri.getHost() != null) {
+            logical = uri.getHost();
+        }
+        return RemoteServiceResolver.resolve(uri, hostHeader, logical);
+    }
+
+    /**
      * @param uri 请求 URI
-     * @return host；{@code lb://svc} 时 host 为服务名；无法解析时 {@code unknown}
+     * @return 规范化 remoteService
      */
     static String resolveRemoteService(URI uri) {
-        if (uri == null) {
-            return "unknown";
-        }
-        if (uri.getHost() != null && !uri.getHost().isBlank()) {
-            return uri.getHost();
-        }
-        return "unknown";
+        return resolveRemoteService(uri, null);
     }
 
     /**
