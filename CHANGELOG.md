@@ -2,18 +2,15 @@
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-30
+
 ### 新增
 - **W3C `traceparent` 跨服务透传**：Servlet / WebFlux 入站提取；RestTemplate / OpenFeign / WebClient / Gateway 出站注入；`spring.insight.http-trace-propagation-enabled`（默认 true）
 - **头部采样真正生效**：`spring.insight.sample-rate`（0～1，默认 1）；本地根按概率，入站跟随 flags，子 Span 继承；未采样不上报且出站 flags=`00`
 - **CLIENT `remoteService` 规范化**：优先 `lb://` / Feign Target / 非 IP Host 头，避免拓扑边落成 `127.0.0.1`
 - TraceId / SpanId 改为 W3C 长度（32 / 16 hex）
 
-### 工程
-- 开发中版本升至 **`0.4.0`**（与主线 Agent 对齐；artifactId 仍为 `*-boot2`）
-
-## [0.4.0] — 开发中
-
-### 坐标（发 Central 前用本地 `mvn install`）
+### 坐标（已发 Central）
 | 项 | 值 |
 |----|-----|
 | Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.4.0` |

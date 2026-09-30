@@ -3,7 +3,7 @@
 面向 **Spring Boot 2.7 / Java 8+** 的轻量监测 Agent：业务侧加一个 Starter，把 Span 上报到监测中心，即可查看服务拓扑与调用链路。
 
 - 仓库分支：`2.7.x`
-- 当前版本：**`0.4.0`**（开发中，与主线 Agent 对齐；发 Central 前请 `mvn install`）
+- 当前版本：**`0.4.0`**（已发布 Maven Central，与主线 Agent 对齐）
 - 监测中心（Docker / jar）请使用同仓库 **`main`** 分支发布的 `insight-server`（与本 Agent 协议兼容）
 
 ---
@@ -25,7 +25,7 @@
 | `spring-insight-agent-starter-boot2` | **业务请只依赖这个** |
 | `insight-agent-boot2` | 采集核心（Starter 传递依赖） |
 
-> Maven Central 若尚未同步 `0.4.0`，请本分支 `mvn install` 后使用本地包。已发出的旧包版本仍可能带 `-boot2` 后缀（如 `0.3.0-boot2`），新版本起与主线数字一致。
+> 旧包版本仍可能带 `-boot2` 后缀（如 `0.3.0-boot2`）；自 `0.3.2` 起与主线数字一致。
 
 ### 2. 配置
 
@@ -46,6 +46,7 @@ spring:
 | `spring.insight.service-name` | 回退 `spring.application.name` | 上报服务名 |
 | `spring.insight.http-tracing-enabled` | `true` | MVC / WebFlux SERVER；WebClient / Gateway CLIENT |
 | `spring.insight.http-trace-propagation-enabled` | `true` | W3C `traceparent` 跨服务透传（Servlet 入站；RestTemplate / OpenFeign / WebClient 出站） |
+| `spring.insight.sample-rate` | `1` | 头部采样率（0～1）；未采样不上报、出站 flags=`00` |
 | `spring.insight.micrometer-enabled` | `true` | 桥接宿主 MeterRegistry |
 | `spring.insight.diagnostic-logs` | `false` | 请求级诊断日志 |
 
