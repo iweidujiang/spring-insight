@@ -227,7 +227,7 @@
 # Agent
 
 
-## [Unreleased] / 开发中 `0.4.0`
+## [0.4.0] — 2026-09-30
 
 ### 新增
 - **W3C `traceparent` 跨服务透传**：Servlet / WebFlux 入站提取；RestTemplate/RestClient/OpenFeign/WebClient/Gateway 出站注入；配置 `spring.insight.http-trace-propagation-enabled`（默认 true）
@@ -235,11 +235,11 @@
 - **CLIENT `remoteService` 规范化**：优先 `lb://` / Feign Target / 非 IP Host 头，避免拓扑边落成 `127.0.0.1`
 - TraceId / SpanId 改为 W3C 长度（32 / 16 hex）
 
-### 坐标（开发中，发 Central 前用本地 `mvn install`）
+### 坐标
 | 项 | 值 |
 |----|-----|
 | Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.4.0` |
-| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.4.0`（分支 `2.7.x`，须对齐 bump） |
+| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.4.0`（分支 `2.7.x`） |
 
 ---
 

@@ -15,7 +15,7 @@
 
 
 - 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
-- 开发中：**Agent `0.4.0`**（本地 / 待发 Central）+ 已发布 **Server `0.7.1`**（GHCR）；Central 上仍可暂用 `0.3.2`
+- 当前发布：**Agent `0.4.0`**（Maven Central）+ **Server `0.7.1`**（GHCR / Release jar）
 - **运行时要求**：Spring Boot 3.x + JDK 17+
 - 问题与建议欢迎开 Issue
 
@@ -132,7 +132,7 @@ Agent 与 Server **版本说明如下：**
 
 | 坐标 | 当前推荐 | 说明 |
 |------|----------|------|
-| `io.github.iweidujiang:spring-insight-agent-starter` | **`0.4.0`** | **业务侧依赖**（开发中；发 Central 前请 `mvn install`） |
+| `io.github.iweidujiang:spring-insight-agent-starter` | **`0.4.0`** | **业务侧依赖**（Maven Central） |
 | `io.github.iweidujiang:insight-agent` | **`0.4.0`** | 采集核心（由 Starter 传递） |
 | `ghcr.io/iweidujiang/spring-insight-server` | **`0.7.1`** | **监测中心镜像** |
 | Release `insight-server-*.jar` | 同上 | **无 Docker**：JDK 17+ 下 `java -jar` |
