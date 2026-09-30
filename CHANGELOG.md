@@ -230,9 +230,9 @@
 ## [Unreleased] / 开发中 `0.4.0`
 
 ### 新增
-- **W3C `traceparent` 跨服务透传**：Servlet 入站提取；RestTemplate/RestClient/**OpenFeign** 出站注入；配置 `spring.insight.http-trace-propagation-enabled`（默认 true）
+- **W3C `traceparent` 跨服务透传**：Servlet 入站提取；RestTemplate/RestClient/OpenFeign/**WebClient** 出站注入；配置 `spring.insight.http-trace-propagation-enabled`（默认 true）
 - TraceId / SpanId 改为 W3C 长度（32 / 16 hex）
-- （待补）WebClient / Gateway 出站；WebFlux 入站
+- （待补）Gateway 出站；WebFlux 入站
 
 ### 坐标（开发中，发 Central 前用本地 `mvn install`）
 | 项 | 值 |

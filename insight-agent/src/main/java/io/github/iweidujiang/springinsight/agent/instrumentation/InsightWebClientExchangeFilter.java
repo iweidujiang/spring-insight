@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.agent.instrumentation;
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.context.ReactiveTraceHolder;
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
+import io.github.iweidujiang.springinsight.agent.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import lombok.RequiredArgsConstructor;
@@ -18,11 +19,14 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * WebClient 出站追踪：创建 CLIENT Span 并填充 {@code remoteService} 供拓扑聚合。
+ * WebClient 出站追踪：CLIENT Span、{@code remoteService}，以及可选 W3C {@code traceparent} 注入。
  * <p>
  * 父 Span 优先取 Reactor {@link ReactiveTraceHolder}，其次 {@link TraceContext}（Servlet 线程池场景）。
  * 通过 {@code WebClient.Builder} 的 {@code WebClientCustomizer} 注入；手写 {@code WebClient.create()} 不会生效。
  * </p>
+ *
+ * @since 2026-09-18
+ * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -31,6 +35,13 @@ public class InsightWebClientExchangeFilter implements ExchangeFilterFunction {
     private final SpanReportingListener spanReportingListener;
     private final InsightProperties insightProperties;
 
+    /**
+     * 拦截 WebClient 出站：有父 Span 时创建 CLIENT 子 Span，并按开关注入 {@code traceparent}。
+     *
+     * @param request 出站请求
+     * @param next    下游交换函数
+     * @return 响应 Mono
+     */
     @Override
     public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
         if (!insightProperties.isHttpTracingEnabled()) {
@@ -61,14 +72,35 @@ public class InsightWebClientExchangeFilter implements ExchangeFilterFunction {
                     .addTag("http.path", path)
                     .addTag("http.query", query != null ? query : "");
 
+            ClientRequest outbound = request;
+            if (insightProperties.isHttpTracePropagationEnabled()) {
+                Optional<String> tp = W3cTracePropagator.formatTraceparent(
+                        clientSpan.getTraceId(), clientSpan.getSpanId());
+                if (tp.isPresent()) {
+                    // ClientRequest 不可变：复制并追加 traceparent
+                    outbound = ClientRequest.from(request)
+                            .header(W3cTracePropagator.TRACEPARENT_HEADER, tp.get())
+                            .build();
+                    clientSpan.addTag("insight.propagation", "w3c");
+                }
+            }
+
             AtomicBoolean reported = new AtomicBoolean(false);
 
-            return next.exchange(request)
+            return next.exchange(outbound)
                     .doOnSuccess(response -> finalizeSpan(clientSpan, response, null, reported))
                     .doOnError(error -> finalizeSpan(clientSpan, null, error, reported));
         });
     }
 
+    /**
+     * 结束并上报 CLIENT Span（成功 / 错误各至多一次）。
+     *
+     * @param span     CLIENT Span
+     * @param response 响应，可为 null
+     * @param error    异常，可为 null
+     * @param reported 是否已上报标志
+     */
     private void finalizeSpan(TraceSpan span, ClientResponse response, Throwable error, AtomicBoolean reported) {
         if (!reported.compareAndSet(false, true) || span.isFinished()) {
             return;
@@ -94,6 +126,10 @@ public class InsightWebClientExchangeFilter implements ExchangeFilterFunction {
         }
     }
 
+    /**
+     * @param uri 请求 URI
+     * @return host；{@code lb://svc} 时 host 为服务名；无法解析时 {@code unknown}
+     */
     static String resolveRemoteService(URI uri) {
         if (uri == null) {
             return "unknown";
@@ -105,6 +141,10 @@ public class InsightWebClientExchangeFilter implements ExchangeFilterFunction {
         return "unknown";
     }
 
+    /**
+     * @param uri 请求 URI
+     * @return {@code host+path(?query)}
+     */
     static String compactOp(URI uri) {
         if (uri == null) {
             return "";
