@@ -45,7 +45,7 @@ spring:
 | `spring.insight.server-url` | — | 监测中心根地址 |
 | `spring.insight.service-name` | 回退 `spring.application.name` | 上报服务名 |
 | `spring.insight.http-tracing-enabled` | `true` | MVC / WebFlux SERVER；WebClient / Gateway CLIENT |
-| `spring.insight.http-trace-propagation-enabled` | `true` | W3C `traceparent` 跨服务透传（Servlet + RestTemplate） |
+| `spring.insight.http-trace-propagation-enabled` | `true` | W3C `traceparent` 跨服务透传（Servlet 入站；RestTemplate / OpenFeign 出站） |
 | `spring.insight.micrometer-enabled` | `true` | 桥接宿主 MeterRegistry |
 | `spring.insight.diagnostic-logs` | `false` | 请求级诊断日志 |
 

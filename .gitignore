@@ -1,7 +1,9 @@
 target/
 *.class
 .idea/
+.cursor/
 *.iml
 .classpath
 .project
 .settings/
+docs/

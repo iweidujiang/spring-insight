@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### 新增
-- **W3C `traceparent` 跨服务透传**（切片 1）：Servlet 入站提取 + RestTemplate 出站注入；`spring.insight.http-trace-propagation-enabled`（默认 true）
+- **W3C `traceparent` 跨服务透传**：Servlet 入站提取；RestTemplate / **OpenFeign** 出站注入；`spring.insight.http-trace-propagation-enabled`（默认 true）
 - TraceId / SpanId 改为 W3C 长度（32 / 16 hex）
 
 ### 工程
