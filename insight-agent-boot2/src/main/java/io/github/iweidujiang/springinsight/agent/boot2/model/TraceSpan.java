@@ -48,6 +48,10 @@ public class TraceSpan {
     @JsonIgnore
     private volatile boolean finished = false;
 
+    /** 是否纳入采样；未采样不上报，出站 flags 写 00 */
+    @JsonIgnore
+    private volatile boolean sampled = true;
+
     @JsonIgnore
     private final Instant createTime = Instant.now();
 
@@ -221,6 +225,7 @@ public class TraceSpan {
             t.setTags(new HashMap<String, String>(s.getTags()));
         }
         t.finished = s.finished;
+        t.sampled = s.sampled;
         return t;
     }
 
@@ -267,4 +272,18 @@ public class TraceSpan {
     public Map<String, String> getTags() { return tags; }
     public void setTags(Map<String, String> tags) { this.tags = tags; }
     public Instant getCreateTime() { return createTime; }
+
+    /**
+     * @return 是否采样
+     */
+    public boolean isSampled() {
+        return sampled;
+    }
+
+    /**
+     * @param sampled 是否采样
+     */
+    public void setSampled(boolean sampled) {
+        this.sampled = sampled;
+    }
 }

@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
 import io.github.iweidujiang.springinsight.agent.boot2.context.ReactiveTraceHolder;
+import io.github.iweidujiang.springinsight.agent.boot2.context.TraceSampler;
 import io.github.iweidujiang.springinsight.agent.boot2.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
@@ -89,12 +90,15 @@ public class ReactiveInsightWebFilter implements WebFilter {
                     });
             if (remote.isPresent()) {
                 span = new TraceSpan(remote.get().getTraceId(), remote.get().getParentSpanId());
+                span.setSampled(remote.get().isSampled());
                 span.addTag("insight.propagation", "w3c");
             } else {
                 span = new TraceSpan();
+                span.setSampled(TraceSampler.decide(insightProperties.getSampleRate()));
             }
         } else {
             span = new TraceSpan();
+            span.setSampled(TraceSampler.decide(insightProperties.getSampleRate()));
         }
 
         span.setOperationName(operationName);

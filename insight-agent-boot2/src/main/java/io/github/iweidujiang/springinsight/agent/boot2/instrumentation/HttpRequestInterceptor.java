@@ -59,6 +59,7 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
         String operationName = request.getMethod() + " " + request.getRequestURI();
         String remoteTraceId = null;
         String remoteParentSpanId = null;
+        Boolean remoteSampled = null;
         if (insightProperties.isHttpTracePropagationEnabled()) {
             Optional<W3cTracePropagator.RemoteContext> remote = W3cTracePropagator.extract(
                     new W3cTracePropagator.HeaderGetter() {
@@ -70,9 +71,11 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
             if (remote.isPresent()) {
                 remoteTraceId = remote.get().getTraceId();
                 remoteParentSpanId = remote.get().getParentSpanId();
+                remoteSampled = Boolean.valueOf(remote.get().isSampled());
             }
         }
-        TraceSpan span = TraceContext.startSpan(operationName, remoteTraceId, remoteParentSpanId);
+        TraceSpan span = TraceContext.startSpan(
+                operationName, remoteTraceId, remoteParentSpanId, remoteSampled, insightProperties.getSampleRate());
         span.setSpanKind("SERVER");
         span.setComponent("SpringMVC");
         span.setServiceName(insightProperties.getServiceName());

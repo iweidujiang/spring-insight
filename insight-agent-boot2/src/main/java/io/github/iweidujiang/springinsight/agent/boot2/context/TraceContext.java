@@ -43,7 +43,7 @@ public final class TraceContext {
      * @return 压栈后的 Span
      */
     public static TraceSpan startSpan(String operationName) {
-        return startSpan(operationName, null, null);
+        return startSpan(operationName, null, null, null, 1.0d);
     }
 
     /**
@@ -55,15 +55,33 @@ public final class TraceContext {
      * @return 压栈后的 Span
      */
     public static TraceSpan startSpan(String operationName, String remoteTraceId, String remoteParentSpanId) {
+        return startSpan(operationName, remoteTraceId, remoteParentSpanId, null, 1.0d);
+    }
+
+    /**
+     * 开始 Span，并应用头部采样。
+     *
+     * @param operationName      操作名
+     * @param remoteTraceId      远程 TraceId
+     * @param remoteParentSpanId 远程 parent
+     * @param remoteSampled      远程是否采样；null 视为已采样
+     * @param sampleRate         本地根采样率
+     * @return 压栈后的 Span
+     */
+    public static TraceSpan startSpan(String operationName, String remoteTraceId, String remoteParentSpanId,
+                                      Boolean remoteSampled, double sampleRate) {
         Deque<TraceSpan> stack = SPAN_STACK.get();
         TraceSpan parent = stack.isEmpty() ? null : stack.peek();
         TraceSpan span;
         if (parent != null) {
             span = new TraceSpan(parent.getTraceId(), parent.getSpanId());
+            span.setSampled(parent.isSampled());
         } else if (StringUtils.hasText(remoteTraceId) && StringUtils.hasText(remoteParentSpanId)) {
             span = new TraceSpan(remoteTraceId.trim(), remoteParentSpanId.trim());
+            span.setSampled(remoteSampled == null || remoteSampled.booleanValue());
         } else {
             span = new TraceSpan();
+            span.setSampled(TraceSampler.decide(sampleRate));
         }
         span.setOperationName(operationName);
         stack.push(span);

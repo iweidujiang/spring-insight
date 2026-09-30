@@ -23,6 +23,7 @@ public final class W3cTracePropagator {
 
     private static final String VERSION = "00";
     private static final String FLAGS_SAMPLED = "01";
+    private static final String FLAGS_NOT_SAMPLED = "00";
 
     private static final Pattern TRACEPARENT = Pattern.compile(
             "^([0-9a-f]{2})-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$",
@@ -38,13 +39,25 @@ public final class W3cTracePropagator {
     }
 
     /**
-     * 将当前 Span 上下文编码为 {@code traceparent} 值。
+     * 将当前 Span 上下文编码为 {@code traceparent} 值（默认 sampled）。
      *
      * @param traceId TraceId
      * @param spanId  SpanId
      * @return 可写入请求头的字符串；入参无效时 empty
      */
     public static Optional<String> formatTraceparent(String traceId, String spanId) {
+        return formatTraceparent(traceId, spanId, true);
+    }
+
+    /**
+     * 将当前 Span 上下文编码为 {@code traceparent}，flags 反映采样决策。
+     *
+     * @param traceId TraceId
+     * @param spanId  SpanId
+     * @param sampled 是否采样
+     * @return 可写入请求头的字符串；入参无效时 empty
+     */
+    public static Optional<String> formatTraceparent(String traceId, String spanId, boolean sampled) {
         String tid = normalizeHexId(traceId, 32);
         String sid = normalizeHexId(spanId, 16);
         if (tid == null || sid == null) {
@@ -53,7 +66,8 @@ public final class W3cTracePropagator {
         if (ALL_ZERO_TRACE.equals(tid) || ALL_ZERO_SPAN.equals(sid)) {
             return Optional.empty();
         }
-        return Optional.of(VERSION + "-" + tid + "-" + sid + "-" + FLAGS_SAMPLED);
+        String flags = sampled ? FLAGS_SAMPLED : FLAGS_NOT_SAMPLED;
+        return Optional.of(VERSION + "-" + tid + "-" + sid + "-" + flags);
     }
 
     /**
@@ -76,10 +90,12 @@ public final class W3cTracePropagator {
         }
         String traceId = m.group(2).toLowerCase(Locale.ROOT);
         String parentId = m.group(3).toLowerCase(Locale.ROOT);
+        String flags = m.group(4).toLowerCase(Locale.ROOT);
         if (ALL_ZERO_TRACE.equals(traceId) || ALL_ZERO_SPAN.equals(parentId)) {
             return Optional.empty();
         }
-        return Optional.of(new RemoteContext(traceId, parentId));
+        boolean sampled = (Integer.parseInt(flags, 16) & 0x01) == 0x01;
+        return Optional.of(new RemoteContext(traceId, parentId, sampled));
     }
 
     /**
@@ -96,7 +112,7 @@ public final class W3cTracePropagator {
     }
 
     /**
-     * 将 Span 上下文写入 setter。
+     * 将 Span 上下文写入 setter（默认 sampled）。
      *
      * @param traceId      TraceId
      * @param spanId       当前 SpanId（下游 parent）
@@ -104,10 +120,23 @@ public final class W3cTracePropagator {
      * @return 是否成功写入
      */
     public static boolean inject(String traceId, String spanId, HeaderSetter headerSetter) {
+        return inject(traceId, spanId, true, headerSetter);
+    }
+
+    /**
+     * 将 Span 上下文写入 setter，flags 反映采样决策。
+     *
+     * @param traceId      TraceId
+     * @param spanId       SpanId
+     * @param sampled      是否采样
+     * @param headerSetter 头写入回调
+     * @return 是否成功写入
+     */
+    public static boolean inject(String traceId, String spanId, boolean sampled, HeaderSetter headerSetter) {
         if (headerSetter == null) {
             return false;
         }
-        Optional<String> value = formatTraceparent(traceId, spanId);
+        Optional<String> value = formatTraceparent(traceId, spanId, sampled);
         if (!value.isPresent()) {
             return false;
         }
@@ -175,14 +204,17 @@ public final class W3cTracePropagator {
     public static final class RemoteContext {
         private final String traceId;
         private final String parentSpanId;
+        private final boolean sampled;
 
         /**
          * @param traceId      远程 TraceId
          * @param parentSpanId 远端 SpanId
+         * @param sampled      上游是否采样
          */
-        public RemoteContext(String traceId, String parentSpanId) {
+        public RemoteContext(String traceId, String parentSpanId, boolean sampled) {
             this.traceId = traceId;
             this.parentSpanId = parentSpanId;
+            this.sampled = sampled;
         }
 
         /**
@@ -197,6 +229,13 @@ public final class W3cTracePropagator {
          */
         public String getParentSpanId() {
             return parentSpanId;
+        }
+
+        /**
+         * @return 是否采样
+         */
+        public boolean isSampled() {
+            return sampled;
         }
     }
 }

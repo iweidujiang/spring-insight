@@ -3,7 +3,8 @@
 ## [Unreleased]
 
 ### 新增
-- **W3C `traceparent` 跨服务透传**：Servlet / **WebFlux** 入站提取；RestTemplate / OpenFeign / WebClient / Gateway 出站注入；`spring.insight.http-trace-propagation-enabled`（默认 true）
+- **W3C `traceparent` 跨服务透传**：Servlet / WebFlux 入站提取；RestTemplate / OpenFeign / WebClient / Gateway 出站注入；`spring.insight.http-trace-propagation-enabled`（默认 true）
+- **头部采样真正生效**：`spring.insight.sample-rate`（0～1，默认 1）；本地根按概率，入站跟随 flags，子 Span 继承；未采样不上报且出站 flags=`00`
 - TraceId / SpanId 改为 W3C 长度（32 / 16 hex）
 
 ### 工程

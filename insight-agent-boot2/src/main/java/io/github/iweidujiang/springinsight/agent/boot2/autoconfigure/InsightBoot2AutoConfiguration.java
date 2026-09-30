@@ -99,7 +99,7 @@ public class InsightBoot2AutoConfiguration {
     @ConditionalOnMissingBean
     public SpanReportingListener spanReportingListener(AsyncSpanReporter asyncSpanReporter,
                                                        ObjectProvider<io.github.iweidujiang.springinsight.agent.boot2.micrometer.InsightMicrometerBridge> micrometerBridge) {
-        return new SpanReportingListener(asyncSpanReporter, micrometerBridge);
+        return new SpanReportingListener(asyncSpanReporter, micrometerBridge, properties);
     }
 
     /**

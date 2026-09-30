@@ -75,6 +75,7 @@ public class InsightClientHttpRequestInterceptor implements ClientHttpRequestInt
         String query = uri.getRawQuery();
 
         TraceSpan clientSpan = new TraceSpan(parent.getTraceId(), parent.getSpanId());
+        clientSpan.setSampled(parent.isSampled());
         clientSpan.setSpanKind("CLIENT");
         clientSpan.setComponent(component);
         clientSpan.setOperationName(method + " " + compactOp(uri));
@@ -88,6 +89,7 @@ public class InsightClientHttpRequestInterceptor implements ClientHttpRequestInt
             boolean injected = W3cTracePropagator.inject(
                     clientSpan.getTraceId(),
                     clientSpan.getSpanId(),
+                    clientSpan.isSampled(),
                     new W3cTracePropagator.HeaderSetter() {
                         @Override
                         public void set(String name, String value) {

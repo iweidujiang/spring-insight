@@ -41,6 +41,13 @@
       "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
     },
     {
+      "name": "spring.insight.sample-rate",
+      "type": "java.lang.Double",
+      "description": "头部采样率 0.0～1.0。本地根 Trace 按此概率上报；入站 traceparent 跟随上游 flags；子 Span 继承父。默认 1.0。",
+      "defaultValue": 1.0,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
       "name": "spring.insight.http-trace-propagation-enabled",
       "type": "java.lang.Boolean",
       "description": "是否在 HTTP 出入站透传 W3C traceparent（跨服务共享 TraceId）。已覆盖 Servlet/WebFlux 入站、RestTemplate/OpenFeign/WebClient/Gateway 出站。",

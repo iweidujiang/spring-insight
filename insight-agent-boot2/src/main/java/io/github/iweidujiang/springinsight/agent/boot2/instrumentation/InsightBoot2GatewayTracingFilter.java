@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
 import io.github.iweidujiang.springinsight.agent.boot2.context.ReactiveTraceHolder;
+import io.github.iweidujiang.springinsight.agent.boot2.context.TraceSampler;
 import io.github.iweidujiang.springinsight.agent.boot2.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
@@ -78,6 +79,11 @@ public class InsightBoot2GatewayTracingFilter implements GlobalFilter, Ordered {
         TraceSpan clientSpan = parent != null
                 ? new TraceSpan(parent.getTraceId(), parent.getSpanId())
                 : new TraceSpan();
+        if (parent != null) {
+            clientSpan.setSampled(parent.isSampled());
+        } else {
+            clientSpan.setSampled(TraceSampler.decide(insightProperties.getSampleRate()));
+        }
         clientSpan.setSpanKind("CLIENT");
         clientSpan.setComponent("SpringCloudGateway");
         clientSpan.setServiceName(insightProperties.getServiceName());
@@ -91,7 +97,7 @@ public class InsightBoot2GatewayTracingFilter implements GlobalFilter, Ordered {
         ServerWebExchange outboundExchange = exchange;
         if (insightProperties.isHttpTracePropagationEnabled()) {
             Optional<String> tp = W3cTracePropagator.formatTraceparent(
-                    clientSpan.getTraceId(), clientSpan.getSpanId());
+                    clientSpan.getTraceId(), clientSpan.getSpanId(), clientSpan.isSampled());
             if (tp.isPresent()) {
                 // 下游服务读该头延续同一 TraceId
                 ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()

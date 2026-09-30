@@ -25,6 +25,10 @@ public class InsightBoot2Properties {
     private String serviceInstance;
     private boolean httpTracingEnabled = true;
     /**
+     * 采样率（0.0 - 1.0）。头部采样：本地根按概率；入站跟随 flags；子 Span 继承。
+     */
+    private double sampleRate = 1.0;
+    /**
      * 是否在 HTTP 出入站透传 W3C {@code traceparent}（跨服务共享 TraceId）。
      * <p>默认 true；已覆盖 Servlet/WebFlux 入站、RestTemplate/OpenFeign/WebClient/Gateway 出站。</p>
      */
@@ -81,6 +85,20 @@ public class InsightBoot2Properties {
 
     public void setHttpTracingEnabled(boolean httpTracingEnabled) {
         this.httpTracingEnabled = httpTracingEnabled;
+    }
+
+    /**
+     * @return 采样率 0～1
+     */
+    public double getSampleRate() {
+        return sampleRate;
+    }
+
+    /**
+     * @param sampleRate 采样率
+     */
+    public void setSampleRate(double sampleRate) {
+        this.sampleRate = sampleRate;
     }
 
     /**
