@@ -60,15 +60,18 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
         // 跨服务：读取 W3C traceparent，延续上游 TraceId（无头或关闭开关时仍新建根）
         String remoteTraceId = null;
         String remoteParentSpanId = null;
+        Boolean remoteSampled = null;
         if (insightProperties.isHttpTracePropagationEnabled()) {
             Optional<W3cTracePropagator.RemoteContext> remote = W3cTracePropagator.extract(request::getHeader);
             if (remote.isPresent()) {
                 remoteTraceId = remote.get().traceId();
                 remoteParentSpanId = remote.get().parentSpanId();
+                remoteSampled = remote.get().sampled();
             }
         }
 
-        TraceSpan span = TraceContext.startSpan(operationName, remoteTraceId, remoteParentSpanId);
+        TraceSpan span = TraceContext.startSpan(
+                operationName, remoteTraceId, remoteParentSpanId, remoteSampled, insightProperties.getSampleRate());
 
         // 设置Span属性
         span.setSpanKind("SERVER");

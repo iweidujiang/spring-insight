@@ -77,6 +77,12 @@ public class TraceSpan {
     @JsonIgnore
     private volatile boolean finished = false;
 
+    /**
+     * 是否纳入采样（头部采样决策）；未采样的 Span 不上报，出站 flags 写 {@code 00}。
+     */
+    @JsonIgnore
+    private volatile boolean sampled = true;
+
     /** 创建时间（用于内部管理） */
     @JsonIgnore
     private final Instant createTime = Instant.now();
@@ -260,6 +266,7 @@ public class TraceSpan {
             t.setTags(new HashMap<>(s.getTags()));
         }
         t.finished = s.finished;
+        t.sampled = s.sampled;
         return t;
     }
 }

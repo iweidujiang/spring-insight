@@ -51,7 +51,8 @@ public class InsightProperties {
     private String serviceInstance;
 
     /**
-     * 采样率（0.0 - 1.0）；当前埋点侧尚未强制生效，预留配置
+     * 采样率（0.0 - 1.0）。头部采样：本地根 Trace 按此概率记录；入站 {@code traceparent} 跟随上游 flags；子 Span 继承父。
+     * <p>默认 1.0（全采）；0 表示不上报。未采样 Span 仍可能创建但不上报，出站 flags 写 {@code 00}。</p>
      */
     private double sampleRate = 1.0;
 

@@ -28,6 +28,29 @@ class W3cTracePropagatorTest {
         assertTrue(ctx.isPresent());
         assertEquals("4bf92f3577b34da6a3ce929d0e0e4736", ctx.get().traceId());
         assertEquals("00f067aa0ba902b7", ctx.get().parentSpanId());
+        assertTrue(ctx.get().sampled());
+    }
+
+    /**
+     * flags=00 解析为未采样。
+     */
+    @Test
+    void parse_notSampledFlag() {
+        Optional<W3cTracePropagator.RemoteContext> ctx = W3cTracePropagator.parseTraceparent(
+                "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00");
+        assertTrue(ctx.isPresent());
+        assertFalse(ctx.get().sampled());
+    }
+
+    /**
+     * format 可写入未采样 flags。
+     */
+    @Test
+    void format_notSampled() {
+        Optional<String> formatted = W3cTracePropagator.formatTraceparent(
+                "4bf92f3577b34da6a3ce929d0e0e4736", "00f067aa0ba902b7", false);
+        assertTrue(formatted.isPresent());
+        assertTrue(formatted.get().endsWith("-00"));
     }
 
     /**

@@ -26,6 +26,7 @@ public final class W3cTracePropagator {
 
     private static final String VERSION = "00";
     private static final String FLAGS_SAMPLED = "01";
+    private static final String FLAGS_NOT_SAMPLED = "00";
 
     private static final Pattern TRACEPARENT = Pattern.compile(
             "^([0-9a-f]{2})-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$",
@@ -41,13 +42,25 @@ public final class W3cTracePropagator {
     }
 
     /**
-     * 将当前 Span 上下文编码为 {@code traceparent} 值。
+     * 将当前 Span 上下文编码为 {@code traceparent} 值（默认 sampled={@code true}）。
      *
      * @param traceId 32 位十六进制 TraceId；非规范长度时尽量左补 0 / 截断以兼容旧 ID
      * @param spanId  16 位十六进制 SpanId；同上
      * @return 可写入请求头的字符串；入参无效时 empty
      */
     public static Optional<String> formatTraceparent(String traceId, String spanId) {
+        return formatTraceparent(traceId, spanId, true);
+    }
+
+    /**
+     * 将当前 Span 上下文编码为 {@code traceparent}，flags 反映采样决策。
+     *
+     * @param traceId TraceId
+     * @param spanId  SpanId
+     * @param sampled 是否采样（写入 flags {@code 01}/{@code 00}）
+     * @return 可写入请求头的字符串；入参无效时 empty
+     */
+    public static Optional<String> formatTraceparent(String traceId, String spanId, boolean sampled) {
         String tid = normalizeHexId(traceId, 32);
         String sid = normalizeHexId(spanId, 16);
         if (tid == null || sid == null) {
@@ -56,7 +69,8 @@ public final class W3cTracePropagator {
         if (ALL_ZERO_TRACE.equals(tid) || ALL_ZERO_SPAN.equals(sid)) {
             return Optional.empty();
         }
-        return Optional.of(VERSION + "-" + tid + "-" + sid + "-" + FLAGS_SAMPLED);
+        String flags = sampled ? FLAGS_SAMPLED : FLAGS_NOT_SAMPLED;
+        return Optional.of(VERSION + "-" + tid + "-" + sid + "-" + flags);
     }
 
     /**
@@ -81,10 +95,13 @@ public final class W3cTracePropagator {
         }
         String traceId = m.group(2).toLowerCase(Locale.ROOT);
         String parentId = m.group(3).toLowerCase(Locale.ROOT);
+        String flags = m.group(4).toLowerCase(Locale.ROOT);
         if (ALL_ZERO_TRACE.equals(traceId) || ALL_ZERO_SPAN.equals(parentId)) {
             return Optional.empty();
         }
-        return Optional.of(new RemoteContext(traceId, parentId));
+        // W3C：flags 最低位为 sampled
+        boolean sampled = (Integer.parseInt(flags, 16) & 0x01) == 0x01;
+        return Optional.of(new RemoteContext(traceId, parentId, sampled));
     }
 
     /**
@@ -101,18 +118,32 @@ public final class W3cTracePropagator {
     }
 
     /**
-     * 将 Span 上下文写入 setter（通常为 HTTP 请求头）。
+     * 将 Span 上下文写入 setter（通常为 HTTP 请求头）；默认 sampled。
      *
-     * @param traceId     TraceId
-     * @param spanId      当前（将作为下游 parent 的）SpanId
+     * @param traceId      TraceId
+     * @param spanId       当前（将作为下游 parent 的）SpanId
      * @param headerSetter 头名、头值写入回调
      * @return 是否成功写入
      */
     public static boolean inject(String traceId, String spanId, BiConsumer<String, String> headerSetter) {
+        return inject(traceId, spanId, true, headerSetter);
+    }
+
+    /**
+     * 将 Span 上下文写入 setter，flags 反映采样决策。
+     *
+     * @param traceId      TraceId
+     * @param spanId       SpanId
+     * @param sampled      是否采样
+     * @param headerSetter 头写入回调
+     * @return 是否成功写入
+     */
+    public static boolean inject(String traceId, String spanId, boolean sampled,
+                                 BiConsumer<String, String> headerSetter) {
         if (headerSetter == null) {
             return false;
         }
-        Optional<String> value = formatTraceparent(traceId, spanId);
+        Optional<String> value = formatTraceparent(traceId, spanId, sampled);
         if (value.isEmpty()) {
             return false;
         }
@@ -152,9 +183,10 @@ public final class W3cTracePropagator {
     /**
      * 入站解析得到的远程 Trace 上下文。
      *
-     * @param traceId         远程 TraceId（小写 32 hex）
-     * @param parentSpanId    远端 SpanId，作为本机 SERVER Span 的 parent
+     * @param traceId      远程 TraceId（小写 32 hex）
+     * @param parentSpanId 远端 SpanId，作为本机 SERVER Span 的 parent
+     * @param sampled      上游是否采样（flags 最低位）
      */
-    public record RemoteContext(String traceId, String parentSpanId) {
+    public record RemoteContext(String traceId, String parentSpanId, boolean sampled) {
     }
 }

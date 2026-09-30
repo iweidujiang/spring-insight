@@ -72,11 +72,12 @@ public class TraceContext {
      * @return 压栈后的 Span
      */
     public static TraceSpan startSpan(String operationName) {
-        return startSpan(operationName, null, null);
+        return startSpan(operationName, null, null, null, 1.0d);
     }
 
     /**
      * 开始 Span：优先挂到本地栈顶；栈空且提供远程上下文时延续跨服务 Trace。
+     * <p>兼容旧调用：远程默认视为已采样，本地根默认全采。</p>
      *
      * @param operationName      操作名
      * @param remoteTraceId      入站 {@code traceparent} 的 TraceId；无则 null
@@ -84,6 +85,21 @@ public class TraceContext {
      * @return 压栈后的 Span
      */
     public static TraceSpan startSpan(String operationName, String remoteTraceId, String remoteParentSpanId) {
+        return startSpan(operationName, remoteTraceId, remoteParentSpanId, null, 1.0d);
+    }
+
+    /**
+     * 开始 Span，并应用头部采样：子 Span 继承父；远程跟随 flags；本地根按 sampleRate 决策。
+     *
+     * @param operationName      操作名
+     * @param remoteTraceId      远程 TraceId；无则 null
+     * @param remoteParentSpanId 远程 parent SpanId；无则 null
+     * @param remoteSampled      远程是否采样；null 表示无远程或未知（按已采样）
+     * @param sampleRate         本地根采样率
+     * @return 压栈后的 Span
+     */
+    public static TraceSpan startSpan(String operationName, String remoteTraceId, String remoteParentSpanId,
+                                      Boolean remoteSampled, double sampleRate) {
         Deque<TraceSpan> stack = SPAN_STACK.get();
 
         TraceSpan parentSpan = stack.isEmpty() ? null : stack.peek();
@@ -92,17 +108,20 @@ public class TraceContext {
         if (parentSpan != null) {
             // 进程内子 Span：忽略远程头，挂本地父
             span = new TraceSpan(parentSpan.getTraceId(), parentSpan.getSpanId());
+            span.setSampled(parentSpan.isSampled());
             log.debug("[追踪上下文] 创建子Span: traceId={}, parentSpanId={}, spanId={}, operation={}",
                     span.getTraceId(), span.getParentSpanId(), span.getSpanId(), operationName);
         } else if (StringUtils.hasText(remoteTraceId) && StringUtils.hasText(remoteParentSpanId)) {
             // 跨服务延续：与上游共享 traceId，parent 为对端注入的 SpanId
             span = new TraceSpan(remoteTraceId.trim(), remoteParentSpanId.trim());
-            log.debug("[追踪上下文] 延续远程Span: traceId={}, parentSpanId={}, spanId={}, operation={}",
-                    span.getTraceId(), span.getParentSpanId(), span.getSpanId(), operationName);
+            span.setSampled(remoteSampled == null || remoteSampled);
+            log.debug("[追踪上下文] 延续远程Span: traceId={}, parentSpanId={}, spanId={}, operation={}, sampled={}",
+                    span.getTraceId(), span.getParentSpanId(), span.getSpanId(), operationName, span.isSampled());
         } else {
             span = new TraceSpan();
-            log.debug("[追踪上下文] 创建根Span: traceId={}, spanId={}, operation={}",
-                    span.getTraceId(), span.getSpanId(), operationName);
+            span.setSampled(TraceSampler.decide(sampleRate));
+            log.debug("[追踪上下文] 创建根Span: traceId={}, spanId={}, operation={}, sampled={}",
+                    span.getTraceId(), span.getSpanId(), operationName, span.isSampled());
         }
 
         span.setOperationName(operationName);

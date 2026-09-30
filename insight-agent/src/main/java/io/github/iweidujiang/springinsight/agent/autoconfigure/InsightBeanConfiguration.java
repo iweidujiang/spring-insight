@@ -127,7 +127,7 @@ public class InsightBeanConfiguration {
     public SpanReportingListener spanReportingListener(AsyncSpanReporter asyncSpanReporter,
                                                        ObjectProvider<InsightMicrometerBridge> micrometerBridge) {
         log.info("[Bean配置] Span报告监听器初始化完成");
-        return new SpanReportingListener(asyncSpanReporter, micrometerBridge);
+        return new SpanReportingListener(asyncSpanReporter, micrometerBridge, properties);
     }
 
     /**

@@ -63,6 +63,7 @@ public class InsightWebClientExchangeFilter implements ExchangeFilterFunction {
             String query = uri.getRawQuery();
 
             TraceSpan clientSpan = new TraceSpan(parent.getTraceId(), parent.getSpanId());
+            clientSpan.setSampled(parent.isSampled());
             clientSpan.setSpanKind("CLIENT");
             clientSpan.setComponent("WebClient");
             clientSpan.setOperationName(method + " " + compactOp(uri));
@@ -75,7 +76,7 @@ public class InsightWebClientExchangeFilter implements ExchangeFilterFunction {
             ClientRequest outbound = request;
             if (insightProperties.isHttpTracePropagationEnabled()) {
                 Optional<String> tp = W3cTracePropagator.formatTraceparent(
-                        clientSpan.getTraceId(), clientSpan.getSpanId());
+                        clientSpan.getTraceId(), clientSpan.getSpanId(), clientSpan.isSampled());
                 if (tp.isPresent()) {
                     // ClientRequest 不可变：复制并追加 traceparent
                     outbound = ClientRequest.from(request)

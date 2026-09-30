@@ -78,6 +78,7 @@ public class TracingFeignClient implements Client {
         String path = safePath(url);
         TraceSpan parent = parentOpt.get();
         TraceSpan clientSpan = new TraceSpan(parent.getTraceId(), parent.getSpanId());
+        clientSpan.setSampled(parent.isSampled());
         clientSpan.setSpanKind("CLIENT");
         clientSpan.setComponent("OpenFeign");
         clientSpan.setOperationName(request.httpMethod().name() + " " + compactOp(url));
@@ -87,7 +88,7 @@ public class TracingFeignClient implements Client {
         Request outbound = request;
         if (props.isHttpTracePropagationEnabled()) {
             Optional<String> tp = W3cTracePropagator.formatTraceparent(
-                    clientSpan.getTraceId(), clientSpan.getSpanId());
+                    clientSpan.getTraceId(), clientSpan.getSpanId(), clientSpan.isSampled());
             if (tp.isPresent()) {
                 outbound = withHeader(request, W3cTracePropagator.TRACEPARENT_HEADER, tp.get());
                 clientSpan.addTag("insight.propagation", "w3c");

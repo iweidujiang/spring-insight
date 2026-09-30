@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.agent.listener;
 
+import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.collector.AsyncSpanReporter;
 import io.github.iweidujiang.springinsight.agent.micrometer.InsightMicrometerBridge;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
@@ -27,15 +28,19 @@ import java.util.concurrent.atomic.AtomicLong;
 public class SpanReportingListener {
     private final AsyncSpanReporter asyncSpanReporter;
     private final ObjectProvider<InsightMicrometerBridge> micrometerBridge;
+    private final InsightProperties insightProperties;
 
     // 上报统计
     private final AtomicLong totalReportedSpans = new AtomicLong(0);
     private final AtomicLong lastReportTime = new AtomicLong(System.currentTimeMillis());
+    private final AtomicLong totalDroppedUnsampled = new AtomicLong(0);
 
     public SpanReportingListener(AsyncSpanReporter asyncSpanReporter,
-                                 ObjectProvider<InsightMicrometerBridge> micrometerBridge) {
+                                 ObjectProvider<InsightMicrometerBridge> micrometerBridge,
+                                 InsightProperties insightProperties) {
         this.asyncSpanReporter = asyncSpanReporter;
         this.micrometerBridge = micrometerBridge;
+        this.insightProperties = insightProperties;
     }
 
     /**
@@ -43,11 +48,8 @@ public class SpanReportingListener {
      */
     @PostConstruct
     public void init() {
-        log.info("[Span监听器] 初始化完成，已连接上报器");
-
-        // 可以在这里注册各种Span完成事件的钩子
-        // 例如：注册到全局的Span完成回调机制中
-        // 目前我们通过 TraceContext 和 HttpRequestInterceptor 直接调用上报
+        log.info("[Span监听器] 初始化完成，已连接上报器，sample-rate={}",
+                insightProperties != null ? insightProperties.getSampleRate() : 1.0);
     }
 
     /**
@@ -57,6 +59,12 @@ public class SpanReportingListener {
     public void reportSpan(TraceSpan span) {
         if (span == null) {
             log.warn("[Span监听器] 尝试上报空的Span，已忽略");
+            return;
+        }
+        if (!span.isSampled()) {
+            totalDroppedUnsampled.incrementAndGet();
+            log.debug("[Span监听器] 未采样 Span 已丢弃: spanId={}, operation={}",
+                    span.getSpanId(), span.getOperationName());
             return;
         }
         log.debug("[Span监听器] Span准备上报: spanId={}, operation={}", span.getSpanId(), span.getOperationName());
@@ -123,6 +131,7 @@ public class SpanReportingListener {
     public ReportingStats getStats() {
         ReportingStats stats = new ReportingStats();
         stats.setTotalReportedSpans(totalReportedSpans.get());
+        stats.setTotalDroppedUnsampled(totalDroppedUnsampled.get());
         stats.setQueueSize(asyncSpanReporter.getQueueSize());
         stats.setReporterMetrics(asyncSpanReporter.getMetrics());
         return stats;
@@ -148,13 +157,14 @@ public class SpanReportingListener {
     @Data
     public static class ReportingStats {
         private long totalReportedSpans;
+        private long totalDroppedUnsampled;
         private int queueSize;
         private AsyncSpanReporter.ReporterMetrics reporterMetrics;
 
         @Override
         public String toString() {
-            return String.format("总上报Span数=%d, 当前队列大小=%d, 上报器状态=[%s]",
-                    totalReportedSpans, queueSize, reporterMetrics);
+            return String.format("总上报Span数=%d, 未采样丢弃=%d, 当前队列大小=%d, 上报器状态=[%s]",
+                    totalReportedSpans, totalDroppedUnsampled, queueSize, reporterMetrics);
         }
     }
 }
