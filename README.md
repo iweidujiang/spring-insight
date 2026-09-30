@@ -60,7 +60,7 @@ docker compose -f compose.dev.yaml up -d --build
 ```
 
 浏览器打开：<http://localhost:9966/>  
-本地 Compose 默认打开控制台登录：用户名 `admin`，密码 `insight`。改密码或关闭：在仓库根目录建 `.env`，设置 `INSIGHT_UI_PASSWORD`，或 `INSIGHT_UI_AUTH_ENABLED=false`，然后重新 `up -d`。  
+本地 Compose 默认打开控制台登录：用户名 `admin`，密码 `1`。改密码或关闭：在仓库根目录建 `.env`，设置 `INSIGHT_UI_PASSWORD`，或 `INSIGHT_UI_AUTH_ENABLED=false`，然后重新 `up -d`。  
 告警 / AI / Webhook / SMTP 等在控制台侧栏 **「设置」** 页配置（写入数据目录 `runtime-settings.json`，重启不丢）。
 ### 2. 业务服务接入
 
