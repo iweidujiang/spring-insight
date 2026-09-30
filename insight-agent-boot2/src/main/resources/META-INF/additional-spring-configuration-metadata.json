@@ -43,7 +43,7 @@
     {
       "name": "spring.insight.http-trace-propagation-enabled",
       "type": "java.lang.Boolean",
-      "description": "是否在 HTTP 出入站透传 W3C traceparent（跨服务共享 TraceId）。已覆盖 Servlet 入站、RestTemplate/OpenFeign 出站。",
+      "description": "是否在 HTTP 出入站透传 W3C traceparent（跨服务共享 TraceId）。已覆盖 Servlet 入站、RestTemplate/OpenFeign/WebClient 出站。",
       "defaultValue": true,
       "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
     },

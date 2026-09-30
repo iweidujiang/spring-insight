@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
 import io.github.iweidujiang.springinsight.agent.boot2.context.ReactiveTraceHolder;
 import io.github.iweidujiang.springinsight.agent.boot2.context.TraceContext;
+import io.github.iweidujiang.springinsight.agent.boot2.context.W3cTracePropagator;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
 import org.slf4j.Logger;
@@ -20,7 +21,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 /**
- * WebClient 出站 CLIENT Span：填充 remoteService 供拓扑；父 Span 优先 Reactor Context，其次 ThreadLocal。
+ * WebClient 出站 CLIENT Span + 可选 W3C {@code traceparent} 注入（Boot2）。
+ * <p>
+ * 父 Span 优先 Reactor Context，其次 ThreadLocal；须经 {@code WebClient.Builder} 注入。
+ * </p>
  *
  * @since 2026-09-07
  * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
@@ -43,7 +47,7 @@ public class InsightWebClientExchangeFilter implements ExchangeFilterFunction {
     }
 
     /**
-     * 在存在父 Span 时创建 CLIENT 子 Span 并上报。
+     * 在存在父 Span 时创建 CLIENT 子 Span，并按开关注入 {@code traceparent}。
      *
      * @param request 出站请求
      * @param next    下游 ExchangeFunction
@@ -84,9 +88,23 @@ public class InsightWebClientExchangeFilter implements ExchangeFilterFunction {
                         .addTag("http.path", path)
                         .addTag("http.query", query != null ? query : "");
 
-                final AtomicBoolean reported = new AtomicBoolean(false);
+                ClientRequest outbound = request;
+                if (insightProperties.isHttpTracePropagationEnabled()) {
+                    Optional<String> tp = W3cTracePropagator.formatTraceparent(
+                            clientSpan.getTraceId(), clientSpan.getSpanId());
+                    if (tp.isPresent()) {
+                        // ClientRequest 不可变：复制并追加 traceparent
+                        outbound = ClientRequest.from(request)
+                                .header(W3cTracePropagator.TRACEPARENT_HEADER, tp.get())
+                                .build();
+                        clientSpan.addTag("insight.propagation", "w3c");
+                    }
+                }
 
-                return next.exchange(request)
+                final AtomicBoolean reported = new AtomicBoolean(false);
+                final ClientRequest toSend = outbound;
+
+                return next.exchange(toSend)
                         .doOnSuccess(new java.util.function.Consumer<ClientResponse>() {
                             @Override
                             public void accept(ClientResponse response) {
