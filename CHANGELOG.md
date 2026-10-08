@@ -15,6 +15,9 @@
 
 ## [Unreleased]
 
+### 体验
+- **容量与保留面板（B1）**：设置页「数据」展示占用进度、时间保留策略与落盘路径；`GET /api/v1/ui/storage/summary` 增加 `maxAgeHours` / `retentionEnabled` / `usageRatio` 等字段
+
 ---
 
 ## [0.7.1] — 2026-09-28

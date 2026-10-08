@@ -32,15 +32,32 @@ public class InsightStorageController {
     private final InsightServerStorageProperties storageProperties;
 
     /**
-     * @return 容量摘要
+     * @return 容量与保留策略摘要
      */
     @GetMapping("/summary")
     public Map<String, Object> summary() {
+        int stored = persistenceService.getStoredSpanCount();
+        int max = storageProperties.getMaxSpans();
+        int maxAgeHours = storageProperties.getRetention() != null
+                ? storageProperties.getRetention().getMaxAgeHours()
+                : 0;
+        String mode = persistenceService.getStorageMode();
+
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("mode", persistenceService.getStorageMode());
-        body.put("stored", persistenceService.getStoredSpanCount());
-        body.put("max", storageProperties.getMaxSpans());
+        body.put("mode", mode);
+        body.put("stored", stored);
+        body.put("max", max);
         body.put("evicted", persistenceService.getEvictedSpanCount());
+        body.put("maxAgeHours", maxAgeHours);
+        body.put("retentionEnabled", maxAgeHours > 0);
+        body.put("usageRatio", max > 0 ? Math.min(1.0, (double) stored / max) : 0.0);
+        if ("file".equalsIgnoreCase(mode)) {
+            body.put("filePath", storageProperties.getFilePath());
+        } else if ("sqlite".equalsIgnoreCase(mode)) {
+            body.put("sqlitePath", storageProperties.getSqlite() != null
+                    ? storageProperties.getSqlite().getPath()
+                    : null);
+        }
         return body;
     }
 

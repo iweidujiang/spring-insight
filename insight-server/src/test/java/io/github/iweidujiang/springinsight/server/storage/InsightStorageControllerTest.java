@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -36,7 +37,7 @@ class InsightStorageControllerTest {
     }
 
     /**
-     * 摘要字段齐全。
+     * 摘要含容量与保留策略字段。
      */
     @Test
     void summaryHasCapacityFields() {
@@ -44,6 +45,30 @@ class InsightStorageControllerTest {
         assertEquals("memory", body.get("mode"));
         assertEquals(0, body.get("stored"));
         assertEquals(500, body.get("max"));
+        assertEquals(0, body.get("maxAgeHours"));
+        assertFalse((Boolean) body.get("retentionEnabled"));
+        assertEquals(0.0, ((Number) body.get("usageRatio")).doubleValue(), 1e-9);
+        assertFalse(body.containsKey("filePath"));
+        assertFalse(body.containsKey("sqlitePath"));
+    }
+
+    /**
+     * 启用时间保留时 summary 暴露策略；file 模式带路径。
+     */
+    @Test
+    void summaryExposesRetentionAndPath() {
+        props.getRetention().setMaxAgeHours(48);
+        props.setMode("file");
+        props.setFilePath("./data/test-spans.json");
+        TraceSpanPersistenceService persistence =
+                new TraceSpanPersistenceService(new InMemorySpanStore(props, "file"));
+        controller = new InsightStorageController(persistence, props);
+
+        Map<String, Object> body = controller.summary();
+        assertEquals("file", body.get("mode"));
+        assertEquals(48, body.get("maxAgeHours"));
+        assertTrue((Boolean) body.get("retentionEnabled"));
+        assertEquals("./data/test-spans.json", body.get("filePath"));
     }
 
     /**

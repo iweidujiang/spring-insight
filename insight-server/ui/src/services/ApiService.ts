@@ -257,18 +257,26 @@ export class ApiService {
     })
   }
 
-  /** 存储容量摘要 */
+  /** 存储容量与保留策略摘要 */
   static async getStorageSummary(): Promise<{
     mode: string
     stored: number
     max: number
     evicted: number
+    maxAgeHours: number
+    retentionEnabled: boolean
+    usageRatio: number
+    filePath?: string
+    sqlitePath?: string
   }> {
     return requestWithDefault('/storage/summary', {
       mode: '',
       stored: 0,
       max: 0,
-      evicted: 0
+      evicted: 0,
+      maxAgeHours: 0,
+      retentionEnabled: false,
+      usageRatio: 0
     })
   }
 

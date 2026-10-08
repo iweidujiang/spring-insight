@@ -6,7 +6,7 @@
           <i class="fa fa-cog me-2"></i>设置
         </h2>
         <p class="page-description mb-0">
-          告警推送、链路 AI 解读与存储清理
+          告警推送、链路 AI 解读与容量保留
           <template v-if="section !== 'data'">
             · 保存后即时生效，写入
             <code v-if="settingsPath">{{ settingsPath }}</code>
@@ -257,29 +257,56 @@
           </p>
         </section>
 
-        <!-- 数据 -->
+        <!-- 容量与保留 -->
         <section v-show="section === 'data'" class="si-settings__card si-settings__card--danger">
           <header class="si-settings__card-head">
             <div>
-              <h3 class="si-settings__card-title"><i class="fa fa-database me-2"></i>数据清理</h3>
+              <h3 class="si-settings__card-title"><i class="fa fa-database me-2"></i>容量与保留</h3>
               <p class="si-settings__card-desc">
-                查看存储占用，并按范围删除 Span。清除不可恢复；按服务精确匹配时，相关 Trace 可能不完整。
+                查看占用与自动保留策略，并按范围删除 Span。清除不可恢复；按服务精确匹配时，相关 Trace 可能不完整。
               </p>
             </div>
           </header>
 
-          <div class="si-settings__storage">
-            <div class="si-settings__storage-item">
-              <span class="si-settings__storage-label">存储模式</span>
-              <strong>{{ storage.mode || '—' }}</strong>
+          <div class="si-settings__capacity">
+            <div class="si-settings__usage">
+              <div class="si-settings__usage-head">
+                <span>已存 / 上限</span>
+                <strong>{{ storage.stored }} / {{ storage.max }}（{{ usagePercentLabel }}）</strong>
+              </div>
+              <div
+                class="si-settings__usage-bar"
+                role="progressbar"
+                :aria-valuenow="usagePercent"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                :aria-label="`存储占用 ${usagePercentLabel}`"
+              >
+                <div
+                  class="si-settings__usage-fill"
+                  :class="{ 'is-warn': usagePercent >= 80, 'is-danger': usagePercent >= 95 }"
+                  :style="{ width: usagePercent + '%' }"
+                />
+              </div>
             </div>
-            <div class="si-settings__storage-item">
-              <span class="si-settings__storage-label">已存 / 上限</span>
-              <strong>{{ storage.stored }} / {{ storage.max }}</strong>
-            </div>
-            <div class="si-settings__storage-item">
-              <span class="si-settings__storage-label">累计裁剪</span>
-              <strong>{{ storage.evicted }}</strong>
+
+            <div class="si-settings__storage">
+              <div class="si-settings__storage-item">
+                <span class="si-settings__storage-label">存储模式</span>
+                <strong>{{ storage.mode || '—' }}</strong>
+              </div>
+              <div class="si-settings__storage-item">
+                <span class="si-settings__storage-label">累计裁剪</span>
+                <strong>{{ storage.evicted }}</strong>
+              </div>
+              <div class="si-settings__storage-item si-settings__storage-item--wide">
+                <span class="si-settings__storage-label">保留策略</span>
+                <strong>{{ retentionLabel }}</strong>
+              </div>
+              <div v-if="storagePathLabel" class="si-settings__storage-item si-settings__storage-item--wide">
+                <span class="si-settings__storage-label">落盘路径</span>
+                <strong class="si-settings__path">{{ storagePathLabel }}</strong>
+              </div>
             </div>
           </div>
 
@@ -391,7 +418,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { ApiService, type RuntimeSettingsSaveBody } from '../services/ApiService'
 
 type SettingsSection = 'alert' | 'ai' | 'data'
@@ -400,7 +427,7 @@ type ClearScope = 'all' | 'older_than' | 'service'
 const sections: { id: SettingsSection; label: string; icon: string; desc: string }[] = [
   { id: 'alert', label: '告警推送', icon: 'fa-bell', desc: 'Webhook / 邮件通知规则' },
   { id: 'ai', label: 'AI 解读', icon: 'fa-magic', desc: '配置模型，解读链路与错误' },
-  { id: 'data', label: '数据清理', icon: 'fa-database', desc: '查看占用，删除已存 Span' }
+  { id: 'data', label: '容量与保留', icon: 'fa-database', desc: '占用、保留策略与清理' }
 ]
 
 const section = ref<SettingsSection>('alert')
@@ -416,7 +443,39 @@ const apiKeyConfigured = ref(false)
 const clearOlderHours = ref(24)
 const clearServiceName = ref('')
 const serviceNames = ref<string[]>([])
-const storage = reactive({ mode: '', stored: 0, max: 0, evicted: 0 })
+const storage = reactive({
+  mode: '',
+  stored: 0,
+  max: 0,
+  evicted: 0,
+  maxAgeHours: 0,
+  retentionEnabled: false,
+  usageRatio: 0,
+  filePath: '',
+  sqlitePath: ''
+})
+
+const usagePercent = computed(() => {
+  const ratio = Number(storage.usageRatio)
+  if (Number.isFinite(ratio) && ratio >= 0) {
+    return Math.min(100, Math.round(ratio * 100))
+  }
+  if (storage.max > 0) {
+    return Math.min(100, Math.round((storage.stored / storage.max) * 100))
+  }
+  return 0
+})
+const usagePercentLabel = computed(() => `${usagePercent.value}%`)
+const retentionLabel = computed(() =>
+  storage.retentionEnabled && storage.maxAgeHours > 0
+    ? `自动保留最近 ${storage.maxAgeHours} 小时（超时裁剪）`
+    : '未按时间裁剪，仅条数上限'
+)
+const storagePathLabel = computed(() => {
+  if (storage.mode === 'file' && storage.filePath) return storage.filePath
+  if (storage.mode === 'sqlite' && storage.sqlitePath) return storage.sqlitePath
+  return ''
+})
 const clearDialog = reactive({
   open: false,
   scope: 'all' as ClearScope,
@@ -470,6 +529,11 @@ async function refreshStorage() {
   storage.stored = Number(s.stored ?? 0)
   storage.max = Number(s.max ?? 0)
   storage.evicted = Number(s.evicted ?? 0)
+  storage.maxAgeHours = Number(s.maxAgeHours ?? 0)
+  storage.retentionEnabled = !!s.retentionEnabled
+  storage.usageRatio = Number(s.usageRatio ?? 0)
+  storage.filePath = s.filePath || ''
+  storage.sqlitePath = s.sqlitePath || ''
 }
 
 async function load() {
@@ -812,12 +876,62 @@ onUnmounted(() => {
   word-break: break-all;
 }
 
-/* —— 数据清理 —— */
+/* —— 容量与保留 —— */
+.si-settings__capacity {
+  margin-bottom: 1rem;
+}
+
+.si-settings__usage {
+  margin-bottom: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(185, 28, 28, 0.14);
+  background: rgba(255, 252, 250, 0.75);
+}
+
+.si-settings__usage-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  margin-bottom: 0.55rem;
+  font-size: 0.82rem;
+  color: var(--si-ink-soft);
+}
+
+.si-settings__usage-head strong {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--si-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.si-settings__usage-bar {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.si-settings__usage-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #0f766e;
+  transition: width 0.25s ease;
+}
+
+.si-settings__usage-fill.is-warn {
+  background: #b45309;
+}
+
+.si-settings__usage-fill.is-danger {
+  background: #b91c1c;
+}
+
 .si-settings__storage {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.65rem;
-  margin-bottom: 1rem;
 }
 
 @media (max-width: 700px) {
@@ -836,6 +950,10 @@ onUnmounted(() => {
   background: rgba(255, 252, 250, 0.75);
 }
 
+.si-settings__storage-item--wide {
+  grid-column: 1 / -1;
+}
+
 .si-settings__storage-label {
   font-size: 0.68rem;
   font-weight: 700;
@@ -850,6 +968,11 @@ onUnmounted(() => {
   font-weight: 700;
   color: var(--si-ink);
   font-variant-numeric: tabular-nums;
+}
+
+.si-settings__path {
+  font-size: 0.9rem !important;
+  word-break: break-all;
 }
 
 .si-settings__actions {
