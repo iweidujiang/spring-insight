@@ -21,7 +21,7 @@
         <div class="si-toolbar-inner">
           <div>
             <label class="form-label" for="hours-topology">时间范围</label>
-            <select id="hours-topology" class="form-select" style="min-width: 11rem" v-model.number="hours" @change="loadData">
+            <select id="hours-topology" class="form-select" style="min-width: 11rem" v-model.number="hours" @change="onHoursChange">
               <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
           </div>
@@ -278,12 +278,19 @@ import { ApiService, type AiExplainResult } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { formatDuration } from '../utils/traceTimeline'
 import { TIME_RANGE_OPTIONS, emptyRequestsMessage } from '../utils/timeRange'
+import {
+  mergeQuery,
+  persistHours,
+  persistService,
+  resolveHours
+} from '../utils/insightQuery'
 
 const router = useRouter()
 const route = useRoute()
 const loading = ref(true)
 const currentTime = ref('')
 const hours = ref(72)
+let syncingSelection = false
 const dependencies = ref<any[]>([])
 const serviceNames = ref<string[]>([])
 const serviceLatency = ref<any[]>([])
@@ -380,32 +387,69 @@ const updateCurrentTime = () => {
   currentTime.value = new Date().toTimeString().split(' ')[0]
 }
 
-const goDashboard = () => router.push('/')
+const goDashboard = () => router.push({ path: '/', query: { hours: String(hours.value) } })
 const goServiceTraces = (serviceName: string) => {
   if (!serviceName) return
+  persistService(serviceName)
   router.push({ path: '/traces', query: { service: serviceName, hours: String(hours.value) } })
 }
 const goTraceDetail = (traceId: string) => {
   if (!traceId) return
-  router.push({ name: 'trace-detail', params: { traceId } })
+  router.push({ name: 'trace-detail', params: { traceId }, query: { hours: String(hours.value) } })
+}
+
+const syncContextToRoute = async () => {
+  if (syncingSelection) return
+  const patch: Record<string, string | null> = {
+    hours: String(hours.value)
+  }
+  if (selection.value.kind === 'node' && selection.value.service) {
+    persistService(selection.value.service)
+    patch.service = selection.value.service
+    patch.source = null
+    patch.target = null
+  } else if (selection.value.kind === 'edge' && selection.value.service && selection.value.peer) {
+    persistService(selection.value.service)
+    patch.service = selection.value.service
+    patch.source = selection.value.service
+    patch.target = selection.value.peer
+  } else {
+    patch.service = null
+    patch.source = null
+    patch.target = null
+  }
+  persistHours(hours.value)
+  await router.replace({ path: route.path, query: mergeQuery(route.query, patch) })
 }
 
 const clearSelection = () => {
   selection.value = { kind: null, service: '' }
   edgeExplain.value = null
   updateChart()
+  void syncContextToRoute()
 }
 
 const selectNode = (service: string) => {
   selection.value = { kind: 'node', service }
   edgeExplain.value = null
   updateChart()
+  void syncContextToRoute()
 }
 
 const selectEdge = (source: string, target: string) => {
   selection.value = { kind: 'edge', service: source, peer: target }
   edgeExplain.value = null
   updateChart()
+  void syncContextToRoute()
+}
+
+const onHoursChange = async () => {
+  persistHours(hours.value)
+  await router.replace({
+    path: route.path,
+    query: mergeQuery(route.query, { hours: String(hours.value) })
+  })
+  await loadData()
 }
 
 async function explainEdge(source: string, target: string) {
@@ -508,14 +552,28 @@ const loadData = async () => {
   }
 }
 
-/** 支持从 AI 证据跳转：?source=&target= */
+/** 支持深链：?service= 或 AI 证据 ?source=&target= */
 const applyRouteSelection = () => {
-  const source = String(route.query.source || '')
-  const target = String(route.query.target || '')
-  if (source && target && findEdge(source, target)) {
-    selectEdge(source, target)
-  } else if (source && serviceNames.value.includes(source)) {
-    selectNode(source)
+  syncingSelection = true
+  try {
+    const source = String(route.query.source || '')
+    const target = String(route.query.target || '')
+    const service = String(route.query.service || '')
+    if (source && target && findEdge(source, target)) {
+      selection.value = { kind: 'edge', service: source, peer: target }
+      edgeExplain.value = null
+      updateChart()
+    } else if (service && serviceNames.value.includes(service)) {
+      selection.value = { kind: 'node', service }
+      edgeExplain.value = null
+      updateChart()
+    } else if (source && serviceNames.value.includes(source)) {
+      selection.value = { kind: 'node', service: source }
+      edgeExplain.value = null
+      updateChart()
+    }
+  } finally {
+    syncingSelection = false
   }
 }
 
@@ -525,10 +583,13 @@ onMounted(async () => {
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
   window.addEventListener('resize', handleResize)
-  // 路由带 hours 时先对齐时间窗
-  const qHours = Number(route.query.hours)
-  if (Number.isFinite(qHours) && qHours >= 0) {
-    hours.value = qHours
+  hours.value = resolveHours(route.query, 72)
+  persistHours(hours.value)
+  if (route.query.hours == null || route.query.hours === '') {
+    await router.replace({
+      path: route.path,
+      query: mergeQuery(route.query, { hours: String(hours.value) })
+    })
   }
   await loadData()
 })

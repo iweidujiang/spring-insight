@@ -28,7 +28,7 @@
             :key="item.to"
             class="si-sidebar__link"
             :class="{ active: isActive(item) }"
-            :to="item.to"
+            :to="navLocation(item.to)"
             @click="closeNav"
           >
             <i class="fa" :class="item.icon"></i>
@@ -88,6 +88,7 @@ import { useRoute, useRouter } from 'vue-router'
 import InsightMark from './components/InsightMark.vue'
 import NotificationComponent from './components/NotificationComponent.vue'
 import { fetchAuthStatus, getUiToken, getUiUsername, logout } from './services/AuthService'
+import { buildNavLocation } from './utils/insightQuery'
 
 const route = useRoute()
 const router = useRouter()
@@ -143,6 +144,7 @@ const navGroups = [
 ]
 
 const isActive = (item: { match: (p: string) => boolean }) => item.match(route.path)
+const navLocation = (path: string) => buildNavLocation(path)
 const closeNav = () => {
   navOpen.value = false
 }

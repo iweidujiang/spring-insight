@@ -196,6 +196,7 @@ import {
   emptyNoMatchMessage,
   EMPTY_HINT_RELAX
 } from '../utils/timeRange'
+import { persistHours, persistService, resolveHours, resolveService } from '../utils/insightQuery'
 
 const router = useRouter()
 const route = useRoute()
@@ -255,9 +256,12 @@ const updateCurrentTime = () => {
 }
 
 const syncQueryToRoute = () => {
-  const q: Record<string, string> = {}
+  persistHours(hours.value)
+  persistService(selectedService.value)
+  const q: Record<string, string> = {
+    hours: String(hours.value)
+  }
   if (selectedService.value) q.service = selectedService.value
-  if (hours.value !== 24) q.hours = String(hours.value)
   if (statusFilter.value !== 'all') q.status = statusFilter.value
   if (minDurationMs.value > 0) q.minDurationMs = String(minDurationMs.value)
   if (pathPrefix.value.trim()) q.pathPrefix = pathPrefix.value.trim()
@@ -269,8 +273,11 @@ const syncQueryToRoute = () => {
 const applyRouteQuery = () => {
   syncingFromRoute = true
   const q = route.query
-  selectedService.value = typeof q.service === 'string' ? q.service : ''
-  hours.value = q.hours != null && String(q.hours) !== '' ? Number(q.hours) : 24
+  hours.value = resolveHours(q, 24)
+  // URL 显式带 service（含空）时以 URL 为准；否则用 session 记忆（侧栏跨页）
+  selectedService.value = 'service' in q
+    ? (typeof q.service === 'string' ? q.service : '')
+    : resolveService(q)
   limit.value = Number(q.limit) > 0 ? Number(q.limit) : 50
   minDurationMs.value = Number(q.minDurationMs) > 0 ? Number(q.minDurationMs) : 0
   if (typeof q.status === 'string' && (q.status === 'error' || q.status === 'ok' || q.status === 'all')) {
@@ -280,6 +287,8 @@ const applyRouteQuery = () => {
   }
   pathPrefix.value = typeof q.pathPrefix === 'string' ? q.pathPrefix : ''
   query.value = typeof q.q === 'string' ? q.q : ''
+  persistHours(hours.value)
+  persistService(selectedService.value)
   syncingFromRoute = false
 }
 

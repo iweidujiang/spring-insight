@@ -19,7 +19,7 @@
       </div>
       <div class="si-dashboard__actions">
         <label class="si-dashboard__hours visually-hidden" for="dashboard-hours">时间范围</label>
-        <select id="dashboard-hours" class="form-select form-select-sm si-dashboard__hours" v-model.number="hours" @change="loadData">
+        <select id="dashboard-hours" class="form-select form-select-sm si-dashboard__hours" v-model.number="hours" @change="onHoursChange">
           <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
         <button class="btn btn-primary btn-sm si-dashboard__btn" @click="loadData" :disabled="loading">
@@ -231,7 +231,7 @@
           </div>
           <div v-else class="si-dashboard__diag-empty si-dashboard__diag-empty--rich">
             <p class="mb-1">{{ emptyLatencySampleMessage(hours) }}</p>
-            <button type="button" class="btn btn-sm btn-outline-primary" @click="hours = 0; loadData()">扩大到全部已存</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="expandAllStored">扩大到全部已存</button>
           </div>
         </div>
         <div class="si-dashboard__diag-panel">
@@ -388,7 +388,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
@@ -402,8 +402,10 @@ import {
   emptyLatencySampleMessage,
   emptyInRangeShort
 } from '../utils/timeRange'
+import { mergeQuery, persistHours, resolveHours } from '../utils/insightQuery'
 
 const router = useRouter()
+const route = useRoute()
 
 const loading = ref(true)
 const hours = ref(72)
@@ -829,6 +831,24 @@ const refreshServiceRankChart = () => {
   updateCharts()
 }
 
+const syncHoursToRoute = async () => {
+  persistHours(hours.value)
+  await router.replace({
+    path: route.path,
+    query: mergeQuery(route.query, { hours: String(hours.value) })
+  })
+}
+
+const onHoursChange = async () => {
+  await syncHoursToRoute()
+  await loadData()
+}
+
+const expandAllStored = async () => {
+  hours.value = 0
+  await onHoursChange()
+}
+
 const loadData = async () => {
   try {
     loading.value = true
@@ -893,6 +913,11 @@ onMounted(async () => {
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
   window.addEventListener('resize', handleResize)
+  hours.value = resolveHours(route.query, 72)
+  persistHours(hours.value)
+  if (route.query.hours == null || route.query.hours === '') {
+    await syncHoursToRoute()
+  }
   await loadData()
 })
 

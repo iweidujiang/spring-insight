@@ -15,7 +15,7 @@
           id="hours-select-err"
           class="form-select form-select-sm si-err-hours"
           v-model.number="hours"
-          @change="loadData"
+          @change="onHoursChange"
         >
           <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
@@ -279,6 +279,7 @@ import * as echarts from 'echarts'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import { TIME_RANGE_OPTIONS, formatHoursLabel } from '../utils/timeRange'
+import { mergeQuery, persistHours, resolveHours } from '../utils/insightQuery'
 
 const route = useRoute()
 const router = useRouter()
@@ -491,6 +492,15 @@ const downloadErrorData = () => {
   URL.revokeObjectURL(url)
 }
 
+const onHoursChange = async () => {
+  persistHours(hours.value)
+  await router.replace({
+    path: route.path,
+    query: mergeQuery(route.query, { hours: String(hours.value) })
+  })
+  await loadData()
+}
+
 const loadData = async () => {
   try {
     loading.value = true
@@ -522,9 +532,13 @@ onMounted(async () => {
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
   window.addEventListener('resize', handleResize)
-  const qHours = Number(route.query.hours)
-  if (Number.isFinite(qHours) && qHours >= 0) {
-    hours.value = qHours
+  hours.value = resolveHours(route.query, 24)
+  persistHours(hours.value)
+  if (route.query.hours == null || route.query.hours === '') {
+    await router.replace({
+      path: route.path,
+      query: mergeQuery(route.query, { hours: String(hours.value) })
+    })
   }
   await refreshAiStatus()
   await loadData()
