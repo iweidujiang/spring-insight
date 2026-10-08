@@ -89,14 +89,17 @@ public class TraceSpanPersistenceService {
      * @param status        all|error|ok
      * @param query         可选模糊匹配
      * @param minDurationMs 耗时下限
+     * @param pathPrefix    可选根操作路径前缀（如 {@code /api/orders}）
      * @return 摘要行
      */
     public List<Map<String, Object>> getRecentTraceSummaries(
-            int lastHours, int limit, String serviceName, String status, String query, long minDurationMs) {
+            int lastHours, int limit, String serviceName, String status, String query,
+            long minDurationMs, String pathPrefix) {
         long sinceTime = sinceEpochMillis(lastHours);
         String svc = serviceName != null ? serviceName.trim() : "";
         String st = status != null ? status.trim().toLowerCase() : "all";
         String q = query != null ? query.trim().toLowerCase() : "";
+        String pathPref = normalizePathPrefix(pathPrefix);
         long minDur = Math.max(0L, minDurationMs);
         int max = Math.max(1, limit);
 
@@ -190,6 +193,9 @@ public class TraceSpanPersistenceService {
             if (durationMs < minDur) {
                 continue;
             }
+            if (!pathPref.isEmpty() && !operationPathMatchesPrefix(rootOp, pathPref)) {
+                continue;
+            }
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("traceId", acc.traceId());
             row.put("serviceName", rootSvc);
@@ -209,6 +215,53 @@ public class TraceSpanPersistenceService {
             return out.subList(0, max);
         }
         return out;
+    }
+
+    /**
+     * 规范化路径前缀：去空白；无前导 {@code /} 时补上（纯方法名如 GET 不处理）。
+     */
+    static String normalizePathPrefix(String pathPrefix) {
+        if (pathPrefix == null) {
+            return "";
+        }
+        String p = pathPrefix.trim();
+        if (p.isEmpty()) {
+            return "";
+        }
+        // 允许用户粘贴 "GET /api/x"：只取路径部分
+        int sp = p.indexOf(' ');
+        if (sp > 0 && p.substring(0, sp).matches("(?i)GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS")) {
+            p = p.substring(sp + 1).trim();
+        }
+        if (p.isEmpty()) {
+            return "";
+        }
+        if (!p.startsWith("/")) {
+            p = "/" + p;
+        }
+        return p.toLowerCase();
+    }
+
+    /**
+     * 根操作名是否匹配路径前缀（{@code GET /api/orders/1} 匹配 {@code /api/orders}）。
+     */
+    static boolean operationPathMatchesPrefix(String operationName, String normalizedPrefix) {
+        if (normalizedPrefix == null || normalizedPrefix.isEmpty()) {
+            return true;
+        }
+        if (operationName == null || operationName.isBlank()) {
+            return false;
+        }
+        String op = operationName.trim();
+        int sp = op.indexOf(' ');
+        String path = sp > 0 ? op.substring(sp + 1).trim() : op;
+        if (path.isEmpty()) {
+            return false;
+        }
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+        return path.toLowerCase().startsWith(normalizedPrefix);
     }
 
     /**

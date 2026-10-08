@@ -189,6 +189,7 @@ export class ApiService {
     status?: string
     q?: string
     minDurationMs?: number
+    pathPrefix?: string
   } = {}): Promise<any[]> {
     const qs = new URLSearchParams()
     qs.set('hours', String(params.hours ?? 24))
@@ -198,6 +199,9 @@ export class ApiService {
     if (params.q && params.q.trim()) qs.set('q', params.q.trim())
     if (params.minDurationMs && params.minDurationMs > 0) {
       qs.set('minDurationMs', String(params.minDurationMs))
+    }
+    if (params.pathPrefix && params.pathPrefix.trim()) {
+      qs.set('pathPrefix', params.pathPrefix.trim())
     }
     return requestWithDefault<any[]>(`/traces/recent?${qs.toString()}`, [])
   }

@@ -17,6 +17,7 @@
 
 ### 体验
 - **容量与保留面板（B1）**：设置页「数据」展示占用进度、时间保留策略与落盘路径；`GET /api/v1/ui/storage/summary` 增加 `maxAgeHours` / `retentionEnabled` / `usageRatio` 等字段
+- **Trace 列表筛选增强（B7）**：支持路径前缀 `pathPrefix`，可与服务 / 状态 / 最慢起 / 关键字组合；筛选写入地址栏
 
 ---
 

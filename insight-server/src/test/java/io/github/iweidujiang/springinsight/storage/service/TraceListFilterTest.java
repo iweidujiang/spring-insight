@@ -1,0 +1,84 @@
+package io.github.iweidujiang.springinsight.storage.service;
+
+import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
+import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Trace 列表筛选：路径前缀与组合条件。
+ *
+ * @since 2026-10-08
+ * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
+ */
+class TraceListFilterTest {
+
+    @Test
+    void normalizePathPrefixStripsMethodAndAddsSlash() {
+        assertEquals("/api/orders", TraceSpanPersistenceService.normalizePathPrefix("GET /api/orders"));
+        assertEquals("/api/orders", TraceSpanPersistenceService.normalizePathPrefix("api/orders"));
+        assertEquals("", TraceSpanPersistenceService.normalizePathPrefix("  "));
+    }
+
+    @Test
+    void operationPathMatchesPrefix() {
+        assertTrue(TraceSpanPersistenceService.operationPathMatchesPrefix(
+                "GET /api/orders/1", "/api/orders"));
+        assertFalse(TraceSpanPersistenceService.operationPathMatchesPrefix(
+                "GET /api/users", "/api/orders"));
+        assertTrue(TraceSpanPersistenceService.operationPathMatchesPrefix(
+                "POST /api/orders", "/api/orders"));
+    }
+
+    @Test
+    void pathPrefixFiltersRecentSummaries() {
+        long now = System.currentTimeMillis();
+        TraceSpanPersistenceService persistence = persistence(
+                span("order", "t-order", "GET /api/orders/9", true, now - 1_000, 120),
+                span("user", "t-user", "GET /api/users/1", true, now - 2_000, 80),
+                span("order", "t-err", "POST /api/orders", false, now - 3_000, 900)
+        );
+
+        List<Map<String, Object>> byPath = persistence.getRecentTraceSummaries(
+                24, 50, null, "all", null, 0, "/api/orders");
+        assertEquals(2, byPath.size());
+        assertTrue(byPath.stream().allMatch(r ->
+                String.valueOf(r.get("operationName")).contains("/api/orders")));
+
+        List<Map<String, Object>> combo = persistence.getRecentTraceSummaries(
+                24, 50, "order", "error", null, 500, "/api/orders");
+        assertEquals(1, combo.size());
+        assertEquals("t-err", combo.get(0).get("traceId"));
+    }
+
+    private static TraceSpanPersistenceService persistence(TraceSpan... spans) {
+        InsightServerStorageProperties storage = new InsightServerStorageProperties();
+        InMemorySpanStore store = new InMemorySpanStore(storage, "memory");
+        TraceSpanPersistenceService persistence = new TraceSpanPersistenceService(store);
+        persistence.saveTraceSpans(List.of(spans));
+        return persistence;
+    }
+
+    private static TraceSpan span(
+            String service, String traceId, String op, boolean ok, long startMs, long durationMs) {
+        TraceSpan s = new TraceSpan();
+        s.setServiceName(service);
+        s.setTraceId(traceId);
+        s.setSpanId(traceId + "-root");
+        s.setParentSpanId(null);
+        s.setSuccess(ok);
+        s.setStatusCode(ok ? "OK" : "ERROR");
+        s.setStartTime(startMs);
+        s.setEndTime(startMs + durationMs);
+        s.setDurationMs(durationMs);
+        s.setOperationName(op);
+        return s;
+    }
+}

@@ -62,6 +62,18 @@
               <option :value="3000">≥3s</option>
             </select>
           </div>
+          <div class="col-lg-2 col-md-4 col-sm-6">
+            <label for="path-prefix-input" class="form-label">路径前缀</label>
+            <input
+              id="path-prefix-input"
+              class="form-control"
+              type="search"
+              v-model="pathPrefix"
+              placeholder="/api/orders"
+              @keyup.enter="onFilterChange"
+              @change="onFilterChange"
+            />
+          </div>
           <div class="col-lg-1 col-md-4 col-sm-6">
             <label for="limit-select" class="form-label">数量</label>
             <select id="limit-select" class="form-select" v-model.number="limit" @change="onFilterChange">
@@ -197,6 +209,7 @@ const hours = ref(24)
 const limit = ref(50)
 const statusFilter = ref('all')
 const minDurationMs = ref(0)
+const pathPrefix = ref('')
 const query = ref('')
 const copyHint = ref('')
 const autoRefresh = ref(false)
@@ -247,6 +260,7 @@ const syncQueryToRoute = () => {
   if (hours.value !== 24) q.hours = String(hours.value)
   if (statusFilter.value !== 'all') q.status = statusFilter.value
   if (minDurationMs.value > 0) q.minDurationMs = String(minDurationMs.value)
+  if (pathPrefix.value.trim()) q.pathPrefix = pathPrefix.value.trim()
   if (limit.value !== 50) q.limit = String(limit.value)
   if (query.value.trim()) q.q = query.value.trim()
   router.replace({ path: '/traces', query: q })
@@ -264,6 +278,7 @@ const applyRouteQuery = () => {
   } else {
     statusFilter.value = 'all'
   }
+  pathPrefix.value = typeof q.pathPrefix === 'string' ? q.pathPrefix : ''
   query.value = typeof q.q === 'string' ? q.q : ''
   syncingFromRoute = false
 }
@@ -277,7 +292,8 @@ const loadData = async () => {
       service: selectedService.value || undefined,
       status: statusFilter.value,
       q: query.value,
-      minDurationMs: minDurationMs.value
+      minDurationMs: minDurationMs.value,
+      pathPrefix: pathPrefix.value
     })
   } catch (error) {
     console.error('加载链路数据失败:', error)
@@ -306,6 +322,7 @@ const resetFilters = () => {
   limit.value = 50
   statusFilter.value = 'all'
   minDurationMs.value = 0
+  pathPrefix.value = ''
   query.value = ''
   onFilterChange()
 }

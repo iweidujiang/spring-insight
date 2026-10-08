@@ -70,11 +70,12 @@ public class CollectorApiController {
             @RequestParam(value = "service", required = false) String service,
             @RequestParam(value = "status", defaultValue = "all") String status,
             @RequestParam(value = "q", required = false) String q,
-            @RequestParam(value = "minDurationMs", defaultValue = "0") long minDurationMs) {
+            @RequestParam(value = "minDurationMs", defaultValue = "0") long minDurationMs,
+            @RequestParam(value = "pathPrefix", required = false) String pathPrefix) {
 
         try {
             var traces = traceSpanPersistenceService.getRecentTraceSummaries(
-                    hours, limit, service, status, q, minDurationMs);
+                    hours, limit, service, status, q, minDurationMs, pathPrefix);
             return ResponseEntity.ok(traces);
         } catch (Exception e) {
             log.error("获取最近链路失败", e);
@@ -173,11 +174,12 @@ public class CollectorApiController {
             @RequestParam(value = "limit", defaultValue = "100") int limit,
             @RequestParam(value = "status", defaultValue = "all") String status,
             @RequestParam(value = "q", required = false) String q,
-            @RequestParam(value = "minDurationMs", defaultValue = "0") long minDurationMs) {
+            @RequestParam(value = "minDurationMs", defaultValue = "0") long minDurationMs,
+            @RequestParam(value = "pathPrefix", required = false) String pathPrefix) {
 
         try {
             var traces = traceSpanPersistenceService.getRecentTraceSummaries(
-                    hours, limit, serviceName, status, q, minDurationMs);
+                    hours, limit, serviceName, status, q, minDurationMs, pathPrefix);
             return ResponseEntity.ok(traces);
         } catch (Exception e) {
             log.error("获取服务{}的链路失败", serviceName, e);
