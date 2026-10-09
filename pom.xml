@@ -62,7 +62,7 @@
 
     <properties>
         <!-- Agent：与 Central 已发版对齐；有埋点变更再 bump 并 deploy -->
-        <agent.version>0.4.0</agent.version>
+        <agent.version>0.4.1</agent.version>
         <!-- Server / 父 POM：可随控制台发版独立 bump（GHCR） -->
         <server.version>0.8.0</server.version>
 
