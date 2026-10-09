@@ -133,27 +133,26 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
         span.addTag("http.status_code", String.valueOf(response.getStatus()))
                 .addTag("http.response_size", String.valueOf(response.getBufferSize()));
 
-        // 结束Span
-        Optional<TraceSpan> endedSpan = TraceContext.endSpan(errorCode, errorMessage);
+        // 始终以请求属性上的 SERVER Span 为准结束并上报。
+        // 不可只依赖 TraceContext.endSpan()：异步派发 / 栈漂移时 ThreadLocal 可能为空，
+        // 此时 endSpan 为空、随后 clear() 又不上报，会导致入口 /order/create 丢失，
+        // 列表与瀑布根落成最早的出站 CLIENT（如 GET sca-product/...）。
+        if (!span.isFinished()) {
+            span.finish(errorCode, errorMessage);
+        }
+        reportSpanToListener(TraceSpan.snapshot(span));
 
-        // 将结束的Span报告给监听器
-        endedSpan.ifPresent(s -> {
-            log.debug("[HTTP拦截器] 准备上报已结束的Span: {}", s.getSpanId());
-            reportSpanToListener(s);
-        });
-
-        // 记录请求完成日志
         log.debug("[HTTP拦截器] 请求完成: traceId={}, spanId={}, uri={}, status={}, duration={}ms",
                 span.getTraceId(), span.getSpanId(), request.getRequestURI(),
                 response.getStatus(), span.getDurationMs());
 
-        // 清理当前线程的追踪上下文（防止内存泄漏）
+        // 清理当前线程的追踪上下文（防止内存泄漏；剩余栈内 Span 不再二次上报）
         TraceContext.clear();
     }
 
-    // 新增私有方法
     private void reportSpanToListener(TraceSpan span) {
         if (spanReportingListener != null) {
+            log.debug("[HTTP拦截器] 准备上报已结束的Span: {}", span.getSpanId());
             spanReportingListener.reportSpan(span);
             log.debug("[HTTP拦截器] Span已提交给上报监听器: spanId={}", span.getSpanId());
         } else {

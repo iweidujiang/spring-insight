@@ -44,9 +44,11 @@ class TraceListFilterTest {
         TraceSpan entry = span("sca-order", "t-x", "POST /order/create", true, now - 200, 200);
         entry.setSpanId("root-span");
         entry.setParentSpanId("remote-from-gateway");
+        entry.setSpanKind("SERVER");
         TraceSpan child = span("sca-order", "t-x", "GET /product/1", true, now - 100, 80);
         child.setSpanId("child-span");
         child.setParentSpanId("root-span");
+        child.setSpanKind("CLIENT");
 
         TraceSpanPersistenceService persistence = persistence(entry, child);
         List<Map<String, Object>> rows = persistence.getRecentTraceSummaries(
@@ -54,6 +56,25 @@ class TraceListFilterTest {
         assertEquals(1, rows.size());
         assertEquals("POST /order/create", rows.get(0).get("operationName"));
         assertEquals("sca-order", rows.get(0).get("serviceName"));
+    }
+
+    @Test
+    void pickRootPrefersServerWhenBothHaveRemoteParent() {
+        long now = System.currentTimeMillis();
+        TraceSpan client = span("sca-order", "t-y", "GET sca-product/product/price/1", true, now - 200, 215);
+        client.setSpanId("client-1");
+        client.setParentSpanId("missing-server");
+        client.setSpanKind("CLIENT");
+        TraceSpan server = span("sca-order", "t-y", "POST /order/create", true, now - 199, 670);
+        server.setSpanId("server-1");
+        server.setParentSpanId("remote-from-gateway");
+        server.setSpanKind("SERVER");
+
+        TraceSpanPersistenceService persistence = persistence(client, server);
+        List<Map<String, Object>> rows = persistence.getRecentTraceSummaries(
+                24, 10, null, "all", null, 0, null);
+        assertEquals(1, rows.size());
+        assertEquals("POST /order/create", rows.get(0).get("operationName"));
     }
 
     @Test

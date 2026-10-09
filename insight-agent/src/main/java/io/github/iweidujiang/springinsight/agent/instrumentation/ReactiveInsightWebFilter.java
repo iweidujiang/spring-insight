@@ -133,7 +133,7 @@ public class ReactiveInsightWebFilter implements WebFilter {
             span.finish(null, null);
         }
 
-        spanReportingListener.reportSpan(span);
+        spanReportingListener.reportSpan(TraceSpan.snapshot(span));
     }
 
     private static String clientIp(ServerHttpRequest request) {

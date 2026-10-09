@@ -217,6 +217,7 @@ public class TraceSpanPersistenceService {
     /**
      * 选取 Trace 展示用根 Span：优先无 parent；否则 parent 不在本 Trace 内（跨服务入站）；
      * 再否则取最早开始的 Span（避免列表落成 {@code (unknown)}）。
+     * 同级时优先 {@code SERVER}，避免入口与首个出站 CLIENT 同时缺本地 parent 时误选 CLIENT。
      */
     static TraceSpan pickTraceRootSpan(List<TraceSpan> spans) {
         if (spans == null || spans.isEmpty()) {
@@ -230,6 +231,7 @@ public class TraceSpanPersistenceService {
         }
         TraceSpan best = null;
         int bestRank = Integer.MAX_VALUE;
+        int bestKindRank = Integer.MAX_VALUE;
         long bestStart = Long.MAX_VALUE;
         for (TraceSpan s : spans) {
             String parent = s.getParentSpanId();
@@ -241,10 +243,14 @@ public class TraceSpanPersistenceService {
             } else {
                 rank = 2;
             }
+            int kindRank = "SERVER".equalsIgnoreCase(s.getSpanKind()) ? 0 : 1;
             long start = n(s.getStartTime());
-            if (rank < bestRank || (rank == bestRank && start < bestStart)) {
+            if (rank < bestRank
+                    || (rank == bestRank && kindRank < bestKindRank)
+                    || (rank == bestRank && kindRank == bestKindRank && start < bestStart)) {
                 best = s;
                 bestRank = rank;
+                bestKindRank = kindRank;
                 bestStart = start;
             }
         }

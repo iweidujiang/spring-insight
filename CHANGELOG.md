@@ -15,16 +15,12 @@
 
 ## [Unreleased]
 
----
-
-## [0.8.0] — 2026-10-09
-
 ### 体验
 - **体验债清扫（0.8.1 预备）**：观测页加载失败可见提示；Trace / 拓扑深链目标缺失时降级说明；设置页容量 ≥80% / ≥95% 醒目警告；Trace 缺失空状态文案统一
 
 ### 修复
 - **SPA 刷新**：`/settings` 纳入 History 回退（刷新不再 500）；`favicon.ico` 缺失不再记成未捕获 500
-- **链路列表根操作名**：入站 Span 带远程 parent 时仍取本 Trace 入口操作（避免列表显示 `(unknown)`）
+- **链路列表根操作名**：入站 Span 带远程 parent 时仍取本 Trace 入口操作（避免列表显示 `(unknown)`）；同级候选时优先 `SERVER`，避免误选首个出站 CLIENT
 
 ---
 
@@ -256,6 +252,12 @@
 
 # Agent
 
+## [Unreleased]
+
+### 修复
+- **Servlet 入口 SERVER Span 必上报**：`HttpRequestInterceptor.afterCompletion` 以请求属性上的 Span 结束并快照上报，不再仅依赖 ThreadLocal `endSpan`（异步派发 / 栈漂移时不再丢失 `/order/create` 导致列表与瀑布根落成出站 CLIENT）
+
+---
 
 ## [0.4.0] — 2026-09-30
 
