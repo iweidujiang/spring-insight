@@ -36,6 +36,8 @@
       <span class="ms-2">加载中…</span>
     </div>
 
+    <div v-if="loadError" class="alert alert-danger py-2 mx-3 mb-0" role="alert">{{ loadError }}</div>
+
     <div v-show="!loading" class="si-dashboard__content" :class="{ 'si-dashboard__content--mesh': isMesh }">
       <!-- KPI：多服务有边时收成细条，把高度留给拓扑 -->
       <section
@@ -400,7 +402,8 @@ import {
   formatHoursLabel,
   emptyRequestsMessage,
   emptyLatencySampleMessage,
-  emptyInRangeShort
+  emptyInRangeShort,
+  loadFailedMessage
 } from '../utils/timeRange'
 import { mergeQuery, persistHours, resolveHours } from '../utils/insightQuery'
 
@@ -408,6 +411,7 @@ const router = useRouter()
 const route = useRoute()
 
 const loading = ref(true)
+const loadError = ref('')
 const hours = ref(72)
 const currentTime = ref('')
 const services = ref<string[]>([])
@@ -852,6 +856,7 @@ const expandAllStored = async () => {
 const loadData = async () => {
   try {
     loading.value = true
+    loadError.value = ''
     const h = hours.value
     const [serviceNames, serviceDeps, serviceStatsData, latencyData, errorAnalysisData, collectorStatsData, recent, period] = await Promise.all([
       ApiService.getServiceNames(),
@@ -875,6 +880,7 @@ const loadData = async () => {
     totalSpans.value = serviceStatsData.reduce((sum: number, s: any) => sum + (s.totalSpans || 0), 0)
   } catch (error) {
     console.error('加载仪表盘数据失败:', error)
+    loadError.value = loadFailedMessage('仪表盘')
   } finally {
     loading.value = false
     await nextTick()

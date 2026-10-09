@@ -61,6 +61,8 @@
 
     <div v-if="copyHint" class="alert alert-success py-2 mb-3" role="status">{{ copyHint }}</div>
     <div v-if="explainHint" class="alert alert-warning py-2 mb-3" role="status">{{ explainHint }}</div>
+    <div v-if="loadError" class="alert alert-danger py-2 mb-3" role="alert">{{ loadError }}</div>
+    <div v-if="deeplinkHint" class="alert alert-warning py-2 mb-3" role="status">{{ deeplinkHint }}</div>
 
     <div v-if="loading" class="loading-spinner">
       <i class="fa fa-spinner fa-spin"></i>
@@ -71,7 +73,8 @@
       <div v-if="spans.length === 0" class="card stat-card">
         <div class="card-body text-center text-muted py-5">
           <i class="fa fa-info-circle fa-2x mb-2 d-block"></i>
-          暂无该 Trace 的 Span 数据
+          <p class="mb-1">{{ TRACE_NOT_FOUND }}</p>
+          <p class="small mb-0">{{ EMPTY_HINT_RELAX }}</p>
         </div>
       </div>
 
@@ -264,6 +267,12 @@ import {
   type TraceSpanLike,
   type WaterfallRow
 } from '../utils/traceTimeline'
+import {
+  deeplinkMissMessage,
+  EMPTY_HINT_RELAX,
+  loadFailedMessage,
+  TRACE_NOT_FOUND
+} from '../utils/timeRange'
 
 const route = useRoute()
 const router = useRouter()
@@ -273,6 +282,8 @@ const loading = ref(true)
 const selectedSpanId = ref<string | null>(null)
 const copyHint = ref('')
 const explainHint = ref('')
+const loadError = ref('')
+const deeplinkHint = ref('')
 const explainResult = ref<AiExplainResult | null>(null)
 const explainMeta = ref('')
 const explaining = ref(false)
@@ -413,6 +424,8 @@ const load = async () => {
   const id = String(route.params.traceId || '')
   traceId.value = id
   selectedSpanId.value = null
+  loadError.value = ''
+  deeplinkHint.value = ''
   if (!id) {
     spans.value = []
     loading.value = false
@@ -425,12 +438,19 @@ const load = async () => {
     const byQuery = spanFromQuery
       ? spans.value.find((s) => s.spanId === spanFromQuery)
       : null
+    if (spanFromQuery && spans.value.length > 0 && !byQuery) {
+      deeplinkHint.value = deeplinkMissMessage('span', spanFromQuery)
+    }
     const firstError = spans.value.find((s) =>
       s.success === false || (s.statusCode && !['OK', '0', '200'].includes(String(s.statusCode).toUpperCase()))
     )
     const root = spans.value.find((s) => !s.parentSpanId) || spans.value[0]
     selectedSpanId.value = (byQuery || firstError || root)?.spanId || null
     await scrollSelectedIntoView()
+  } catch (e) {
+    console.error('加载链路详情失败:', e)
+    spans.value = []
+    loadError.value = loadFailedMessage('链路详情')
   } finally {
     loading.value = false
   }

@@ -42,6 +42,9 @@
       </div>
     </div>
 
+    <div v-if="loadError" class="alert alert-danger py-2 mb-3" role="alert">{{ loadError }}</div>
+    <div v-if="deeplinkHint" class="alert alert-warning py-2 mb-3" role="status">{{ deeplinkHint }}</div>
+
     <div v-if="loading" class="loading-spinner">
       <i class="fa fa-spinner fa-spin"></i>
       <span class="ms-2">正在加载拓扑数据...</span>
@@ -277,7 +280,12 @@ import AiExplainPanel from '../components/AiExplainPanel.vue'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { formatDuration } from '../utils/traceTimeline'
-import { TIME_RANGE_OPTIONS, emptyRequestsMessage } from '../utils/timeRange'
+import {
+  TIME_RANGE_OPTIONS,
+  emptyRequestsMessage,
+  deeplinkMissMessage,
+  loadFailedMessage
+} from '../utils/timeRange'
 import {
   mergeQuery,
   persistHours,
@@ -288,6 +296,8 @@ import {
 const router = useRouter()
 const route = useRoute()
 const loading = ref(true)
+const loadError = ref('')
+const deeplinkHint = ref('')
 const currentTime = ref('')
 const hours = ref(72)
 let syncingSelection = false
@@ -530,6 +540,8 @@ const syncChart = async () => {
 const loadData = async () => {
   try {
     loading.value = true
+    loadError.value = ''
+    deeplinkHint.value = ''
     selection.value = { kind: null, service: '' }
     edgeExplain.value = null
     const h = hours.value
@@ -545,6 +557,7 @@ const loadData = async () => {
     recentTraces.value = Array.isArray(recent) ? recent : []
   } catch (error) {
     console.error('加载拓扑数据失败:', error)
+    loadError.value = loadFailedMessage('服务拓扑')
   } finally {
     loading.value = false
     await syncChart()
@@ -559,18 +572,30 @@ const applyRouteSelection = () => {
     const source = String(route.query.source || '')
     const target = String(route.query.target || '')
     const service = String(route.query.service || '')
-    if (source && target && findEdge(source, target)) {
-      selection.value = { kind: 'edge', service: source, peer: target }
-      edgeExplain.value = null
-      updateChart()
-    } else if (service && serviceNames.value.includes(service)) {
-      selection.value = { kind: 'node', service }
-      edgeExplain.value = null
-      updateChart()
-    } else if (source && serviceNames.value.includes(source)) {
-      selection.value = { kind: 'node', service: source }
-      edgeExplain.value = null
-      updateChart()
+    if (source && target) {
+      if (findEdge(source, target)) {
+        selection.value = { kind: 'edge', service: source, peer: target }
+        edgeExplain.value = null
+        updateChart()
+      } else {
+        deeplinkHint.value = deeplinkMissMessage('edge', `${source} → ${target}`)
+      }
+    } else if (service) {
+      if (serviceNames.value.includes(service)) {
+        selection.value = { kind: 'node', service }
+        edgeExplain.value = null
+        updateChart()
+      } else {
+        deeplinkHint.value = deeplinkMissMessage('service', service)
+      }
+    } else if (source) {
+      if (serviceNames.value.includes(source)) {
+        selection.value = { kind: 'node', service: source }
+        edgeExplain.value = null
+        updateChart()
+      } else {
+        deeplinkHint.value = deeplinkMissMessage('service', source)
+      }
     }
   } finally {
     syncingSelection = false

@@ -45,6 +45,8 @@
       分类优先读 http.status_code，其次异常类名 · {{ formatHoursLabel(hours) }}
     </p>
 
+    <div v-if="loadError" class="alert alert-danger py-2 mb-3" role="alert">{{ loadError }}</div>
+
     <div v-if="loading" class="loading-spinner">
       <i class="fa fa-spinner fa-spin"></i>
       <span class="ms-2">正在加载错误分析数据…</span>
@@ -278,12 +280,13 @@ import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
-import { TIME_RANGE_OPTIONS, formatHoursLabel } from '../utils/timeRange'
+import { TIME_RANGE_OPTIONS, formatHoursLabel, loadFailedMessage } from '../utils/timeRange'
 import { mergeQuery, persistHours, resolveHours } from '../utils/insightQuery'
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(true)
+const loadError = ref('')
 const explaining = ref(false)
 const explainResult = ref<AiExplainResult | null>(null)
 const aiReady = ref(false)
@@ -504,6 +507,7 @@ const onHoursChange = async () => {
 const loadData = async () => {
   try {
     loading.value = true
+    loadError.value = ''
     const breakdown = await ApiService.getErrorBreakdown(hours.value)
     errorAnalysis.value = breakdown.byService
     byStatusCode.value = breakdown.byStatusCode
@@ -513,6 +517,7 @@ const loadData = async () => {
     exportPayload.value = breakdown
   } catch (error) {
     console.error('加载错误分析数据失败:', error)
+    loadError.value = loadFailedMessage('错误分析')
   } finally {
     loading.value = false
     await ensureCharts()

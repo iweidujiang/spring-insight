@@ -269,6 +269,14 @@
           </header>
 
           <div class="si-settings__capacity">
+            <div
+              v-if="capacityWarn"
+              class="alert py-2 mb-2"
+              :class="usagePercent >= 95 ? 'alert-danger' : 'alert-warning'"
+              role="status"
+            >
+              <i class="fa fa-exclamation-triangle me-1"></i>{{ capacityWarn }}
+            </div>
             <div class="si-settings__usage">
               <div class="si-settings__usage-head">
                 <span>已存 / 上限</span>
@@ -420,6 +428,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { ApiService, type RuntimeSettingsSaveBody } from '../services/ApiService'
+import { capacityWarnMessage } from '../utils/timeRange'
 
 type SettingsSection = 'alert' | 'ai' | 'data'
 type ClearScope = 'all' | 'older_than' | 'service'
@@ -466,6 +475,7 @@ const usagePercent = computed(() => {
   return 0
 })
 const usagePercentLabel = computed(() => `${usagePercent.value}%`)
+const capacityWarn = computed(() => capacityWarnMessage(usagePercent.value))
 const retentionLabel = computed(() =>
   storage.retentionEnabled && storage.maxAgeHours > 0
     ? `自动保留最近 ${storage.maxAgeHours} 小时（超时裁剪）`

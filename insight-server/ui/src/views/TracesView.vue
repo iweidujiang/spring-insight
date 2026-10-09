@@ -109,6 +109,7 @@
     <div v-if="copyHint" class="alert alert-success py-2 si-copy-hint" role="status">
       {{ copyHint }}
     </div>
+    <div v-if="loadError" class="alert alert-danger py-2 mb-3" role="alert">{{ loadError }}</div>
 
     <div v-if="loading" class="loading-spinner">
       <i class="fa fa-spinner fa-spin"></i>
@@ -194,7 +195,8 @@ import { formatDuration } from '../utils/traceTimeline'
 import {
   TIME_RANGE_OPTIONS,
   emptyNoMatchMessage,
-  EMPTY_HINT_RELAX
+  EMPTY_HINT_RELAX,
+  loadFailedMessage
 } from '../utils/timeRange'
 import { persistHours, persistService, resolveHours, resolveService } from '../utils/insightQuery'
 
@@ -213,6 +215,7 @@ const minDurationMs = ref(0)
 const pathPrefix = ref('')
 const query = ref('')
 const copyHint = ref('')
+const loadError = ref('')
 const autoRefresh = ref(false)
 
 let timeInterval: number | null = null
@@ -295,6 +298,7 @@ const applyRouteQuery = () => {
 const loadData = async () => {
   try {
     loading.value = true
+    loadError.value = ''
     traces.value = await ApiService.getRecentTraces({
       hours: hours.value,
       limit: limit.value,
@@ -307,6 +311,7 @@ const loadData = async () => {
   } catch (error) {
     console.error('加载链路数据失败:', error)
     traces.value = []
+    loadError.value = loadFailedMessage('链路列表')
   } finally {
     loading.value = false
   }
