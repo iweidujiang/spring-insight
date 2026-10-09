@@ -25,6 +25,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       SPRING_INSIGHT_SERVER_STORAGE_MODE: ${INSIGHT_STORAGE_MODE:-sqlite}
+      SPRING_INSIGHT_SERVER_STORAGE_MAX_SPANS: "20"
       SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH: /data/spans.json
       SPRING_INSIGHT_SERVER_STORAGE_FLUSH_DELAY_MS: "2000"
       SPRING_INSIGHT_SERVER_STORAGE_SQLITE_PATH: /data/insight.db

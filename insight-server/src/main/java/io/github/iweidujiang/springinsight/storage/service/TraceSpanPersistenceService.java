@@ -109,9 +109,8 @@ public class TraceSpanPersistenceService {
                 long maxEnd,
                 int spanCount,
                 boolean hasError,
-                String rootService,
-                String rootOperation,
-                java.util.LinkedHashSet<String> services
+                java.util.LinkedHashSet<String> services,
+                List<TraceSpan> spans
         ) {}
 
         Map<String, Acc> byTrace = new LinkedHashMap<>();
@@ -133,33 +132,30 @@ public class TraceSpanPersistenceService {
                 if (s.getServiceName() != null && !s.getServiceName().isBlank()) {
                     services.add(s.getServiceName());
                 }
-                boolean root = s.getParentSpanId() == null || s.getParentSpanId().isBlank();
+                List<TraceSpan> spans = new ArrayList<>();
+                spans.add(s);
                 byTrace.put(s.getTraceId(), new Acc(
                         s.getTraceId(),
                         start,
                         Math.max(start, end),
                         1,
                         isError(s),
-                        root ? s.getServiceName() : null,
-                        root ? s.getOperationName() : null,
-                        services
+                        services,
+                        spans
                 ));
             } else {
-                boolean root = s.getParentSpanId() == null || s.getParentSpanId().isBlank();
                 if (s.getServiceName() != null && !s.getServiceName().isBlank()) {
                     acc.services().add(s.getServiceName());
                 }
+                acc.spans().add(s);
                 byTrace.put(s.getTraceId(), new Acc(
                         acc.traceId(),
                         Math.min(acc.minStart(), start),
                         Math.max(acc.maxEnd(), Math.max(start, end)),
                         acc.spanCount() + 1,
                         acc.hasError() || isError(s),
-                        root && (acc.rootService() == null || acc.rootService().isBlank())
-                                ? s.getServiceName() : acc.rootService(),
-                        root && (acc.rootOperation() == null || acc.rootOperation().isBlank())
-                                ? s.getOperationName() : acc.rootOperation(),
-                        acc.services()
+                        acc.services(),
+                        acc.spans()
                 ));
             }
         }
@@ -175,8 +171,9 @@ public class TraceSpanPersistenceService {
             if ("ok".equals(st) && acc.hasError()) {
                 continue;
             }
-            String rootOp = acc.rootOperation() != null ? acc.rootOperation() : "";
-            String rootSvc = acc.rootService() != null ? acc.rootService() : "";
+            TraceSpan root = pickTraceRootSpan(acc.spans());
+            String rootOp = root != null && root.getOperationName() != null ? root.getOperationName() : "";
+            String rootSvc = root != null && root.getServiceName() != null ? root.getServiceName() : "";
             if (rootSvc.isBlank() && !acc.services().isEmpty()) {
                 rootSvc = acc.services().iterator().next();
             }
@@ -215,6 +212,43 @@ public class TraceSpanPersistenceService {
             return out.subList(0, max);
         }
         return out;
+    }
+
+    /**
+     * 选取 Trace 展示用根 Span：优先无 parent；否则 parent 不在本 Trace 内（跨服务入站）；
+     * 再否则取最早开始的 Span（避免列表落成 {@code (unknown)}）。
+     */
+    static TraceSpan pickTraceRootSpan(List<TraceSpan> spans) {
+        if (spans == null || spans.isEmpty()) {
+            return null;
+        }
+        Set<String> ids = new HashSet<>();
+        for (TraceSpan s : spans) {
+            if (s.getSpanId() != null && !s.getSpanId().isBlank()) {
+                ids.add(s.getSpanId());
+            }
+        }
+        TraceSpan best = null;
+        int bestRank = Integer.MAX_VALUE;
+        long bestStart = Long.MAX_VALUE;
+        for (TraceSpan s : spans) {
+            String parent = s.getParentSpanId();
+            int rank;
+            if (parent == null || parent.isBlank()) {
+                rank = 0;
+            } else if (!ids.contains(parent)) {
+                rank = 1;
+            } else {
+                rank = 2;
+            }
+            long start = n(s.getStartTime());
+            if (rank < bestRank || (rank == bestRank && start < bestStart)) {
+                best = s;
+                bestRank = rank;
+                bestStart = start;
+            }
+        }
+        return best;
     }
 
     /**

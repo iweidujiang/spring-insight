@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -124,6 +125,25 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         log.debug("[全局异常处理] 404: {}", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    /**
+     * 静态资源未找到（如 favicon）；返回 404，勿落成 500。
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResource(
+            NoResourceFoundException ex, HttpServletRequest request) {
+        String path = request.getRequestURI();
+        if (path != null && path.endsWith("favicon.ico")) {
+            return ResponseEntity.notFound().build();
+        }
+        Map<String, Object> response = createErrorResponse(
+                HttpStatus.NOT_FOUND,
+                "资源不存在",
+                path
+        );
+        log.debug("[全局异常处理] 静态资源 404: {}", path);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 

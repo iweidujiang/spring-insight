@@ -32,6 +32,7 @@ public class ServerSpaController {
             "/traces",
             "/traces/**",
             "/error-analysis",
+            "/settings",
             "/about",
             "/login"
     })

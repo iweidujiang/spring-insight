@@ -38,6 +38,25 @@ class TraceListFilterTest {
     }
 
     @Test
+    void pickRootWhenAllSpansHaveRemoteParent() {
+        long now = System.currentTimeMillis();
+        // 入站根带远程 parent（W3C 透传常见），子 Span parent 指向本 Trace
+        TraceSpan entry = span("sca-order", "t-x", "POST /order/create", true, now - 200, 200);
+        entry.setSpanId("root-span");
+        entry.setParentSpanId("remote-from-gateway");
+        TraceSpan child = span("sca-order", "t-x", "GET /product/1", true, now - 100, 80);
+        child.setSpanId("child-span");
+        child.setParentSpanId("root-span");
+
+        TraceSpanPersistenceService persistence = persistence(entry, child);
+        List<Map<String, Object>> rows = persistence.getRecentTraceSummaries(
+                24, 10, null, "all", null, 0, null);
+        assertEquals(1, rows.size());
+        assertEquals("POST /order/create", rows.get(0).get("operationName"));
+        assertEquals("sca-order", rows.get(0).get("serviceName"));
+    }
+
+    @Test
     void pathPrefixFiltersRecentSummaries() {
         long now = System.currentTimeMillis();
         TraceSpanPersistenceService persistence = persistence(
