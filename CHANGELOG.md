@@ -15,10 +15,24 @@
 
 ## [Unreleased]
 
+---
+
+## [0.8.0] — 2026-10-09
+
 ### 体验
 - **容量与保留面板（B1）**：设置页「数据」展示占用进度、时间保留策略与落盘路径；`GET /api/v1/ui/storage/summary` 增加 `maxAgeHours` / `retentionEnabled` / `usageRatio` 等字段
 - **Trace 列表筛选增强（B7）**：支持路径前缀 `pathPrefix`，可与服务 / 状态 / 最慢起 / 关键字组合；筛选写入地址栏
 - **全局时间窗与深链（B2）**：仪表盘 / 拓扑 / 错误分析 / 链路共享 `hours`（URL + session）；侧栏跳转携带时间窗；拓扑选中服务写入 `service` 可分享复现
+
+### 兼容
+- **Agent 可不升**：业务侧可继续使用 Central `spring-insight-agent-starter:0.4.0`（或更早协议兼容包）上报到本版 Server
+- 本版仅 Server / 控制台；无 Agent 埋点变更
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.4.0`（本版可不升） |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.8.0` |
 
 ---
 
