@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### 修复
+- **Servlet 入口 SERVER Span 必上报**：`HttpRequestInterceptor.afterCompletion` 以请求属性上的 Span 结束并快照上报，不再仅依赖 ThreadLocal `endSpan`（异步派发 / 栈漂移时不再丢失入口操作名，导致列表与瀑布根落成出站 CLIENT）
+
 ## [0.4.0] — 2026-09-30
 
 ### 新增

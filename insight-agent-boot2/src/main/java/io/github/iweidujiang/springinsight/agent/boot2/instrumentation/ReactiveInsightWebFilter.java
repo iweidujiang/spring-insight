@@ -169,7 +169,7 @@ public class ReactiveInsightWebFilter implements WebFilter {
             span.finish();
         }
 
-        spanReportingListener.reportSpan(span);
+        spanReportingListener.reportSpan(TraceSpan.snapshot(span));
     }
 
     /**

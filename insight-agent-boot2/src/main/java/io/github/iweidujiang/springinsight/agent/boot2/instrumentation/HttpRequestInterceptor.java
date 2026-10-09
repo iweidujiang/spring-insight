@@ -133,10 +133,14 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
             errorMessage = "HTTP Status: " + response.getStatus();
         }
         span.addTag("http.status_code", String.valueOf(response.getStatus()));
-        Optional<TraceSpan> ended = TraceContext.endSpan(errorCode, errorMessage);
-        if (ended.isPresent()) {
-            spanReportingListener.reportSpan(ended.get());
+        // 始终以请求属性上的 SERVER Span 为准结束并上报。
+        // 不可只依赖 TraceContext.endSpan()：异步派发 / 栈漂移时 ThreadLocal 可能为空，
+        // 此时 endSpan 为空、随后 clear() 又不上报，会导致入口 Span 丢失，
+        // 列表与瀑布根落成最早的出站 CLIENT。
+        if (!span.isFinished()) {
+            span.finish(errorCode, errorMessage);
         }
+        spanReportingListener.reportSpan(TraceSpan.snapshot(span));
         TraceContext.clear();
     }
 
