@@ -61,6 +61,33 @@ function isError(span: TraceSpanLike): boolean {
   return code !== '' && code !== 'OK' && code !== '0' && code !== '200'
 }
 
+/** 规范化 spanKind，未知时返回空串 */
+export function normalizeSpanKind(kind: unknown): string {
+  const k = String(kind || '').trim().toUpperCase()
+  return k || ''
+}
+
+/**
+ * 瀑布左侧操作文案：保留原始 operationName；
+ * CLIENT 且有 remoteService 时追加「 → 下游」，便于区分网关同名 SERVER/CLIENT。
+ */
+export function formatWaterfallOpLabel(span: TraceSpanLike): string {
+  const op = String(span.operationName || '').trim() || '-'
+  const kind = normalizeSpanKind(span.spanKind)
+  if (kind !== 'CLIENT') {
+    return op
+  }
+  const remote = String(span.remoteService || '').trim()
+  if (!remote || remote === 'unknown') {
+    return op
+  }
+  // 操作名已含目标服务时不再重复（如 Feign：GET sca-product/...）
+  if (op.toLowerCase().includes(remote.toLowerCase())) {
+    return op
+  }
+  return `${op} → ${remote}`
+}
+
 /** 根据 parentSpanId 计算深度；找不到父节点时深度为 0 */
 function computeDepths(spans: TraceSpanLike[]): Map<string, number> {
   const byId = new Map<string, TraceSpanLike>()

@@ -17,6 +17,7 @@
 
 ### 体验
 - **体验债清扫（0.8.1 预备）**：观测页加载失败可见提示；Trace / 拓扑深链目标缺失时降级说明；设置页容量 ≥80% / ≥95% 醒目警告；Trace 缺失空状态文案统一
+- **调用时间线可读性**：瀑布行展示 `SERVER`/`CLIENT` 角标；Gateway 等同名 CLIENT 追加 `→ remoteService`（不改库内 operationName）
 
 ### 修复
 - **SPA 刷新**：`/settings` 纳入 History 回退（刷新不再 500）；`favicon.ico` 缺失不再记成未捕获 500

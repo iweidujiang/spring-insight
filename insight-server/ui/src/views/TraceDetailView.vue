@@ -109,7 +109,7 @@
                 <i class="fa fa-align-left me-2"></i>调用时间线
               </h3>
               <span class="trace-waterfall-hint">
-                缩进=父子 · 橙边=关键路径 · 红条=异常
+                缩进=父子 · 角标=SERVER/CLIENT · CLIENT 可带 →下游 · 橙边=关键路径 · 红条=异常
               </span>
             </div>
 
@@ -140,8 +140,15 @@
                 @click="selectSpan(row.span.spanId)"
               >
                 <div class="trace-waterfall__meta" :style="{ paddingLeft: `${10 + row.depth * 14}px` }">
-                  <span class="trace-waterfall__svc" :style="{ color: row.color }">{{ row.span.serviceName || '-' }}</span>
-                  <span class="trace-waterfall__op" :title="row.span.operationName">{{ row.span.operationName || '-' }}</span>
+                  <div class="trace-waterfall__svc-row">
+                    <span class="trace-waterfall__svc" :style="{ color: row.color }">{{ row.span.serviceName || '-' }}</span>
+                    <span
+                      v-if="normalizeSpanKind(row.span.spanKind)"
+                      class="trace-waterfall__kind"
+                      :class="'is-' + normalizeSpanKind(row.span.spanKind).toLowerCase()"
+                    >{{ normalizeSpanKind(row.span.spanKind) }}</span>
+                  </div>
+                  <span class="trace-waterfall__op" :title="waterfallOpTitle(row)">{{ formatWaterfallOpLabel(row.span) }}</span>
                 </div>
                 <div class="trace-waterfall__track">
                   <div
@@ -264,6 +271,8 @@ import AiExplainPanel from '../components/AiExplainPanel.vue'
 import {
   buildTraceTimeline,
   formatDuration,
+  formatWaterfallOpLabel,
+  normalizeSpanKind,
   type TraceSpanLike,
   type WaterfallRow
 } from '../utils/traceTimeline'
@@ -412,12 +421,22 @@ const runExplain = async () => {
   }
 }
 
+const waterfallOpTitle = (row: WaterfallRow) => {
+  const kind = normalizeSpanKind(row.span.spanKind)
+  const label = formatWaterfallOpLabel(row.span)
+  const remote = String(row.span.remoteService || '').trim()
+  const bits = [row.span.operationName || '-', kind || null, remote ? `remote=${remote}` : null].filter(Boolean)
+  return bits.join(' · ')
+}
+
 const barTitle = (row: WaterfallRow) => {
   const flags = [
     row.isOnCriticalPath ? '关键路径' : '',
     row.isError ? '异常' : ''
   ].filter(Boolean).join(' · ')
-  return `${row.span.serviceName} · ${row.span.operationName}\n偏移 +${formatDuration(row.offsetMs)} · 耗时 ${formatDuration(row.durationMs)}${flags ? `\n${flags}` : ''}`
+  const kind = normalizeSpanKind(row.span.spanKind)
+  const label = formatWaterfallOpLabel(row.span)
+  return `${row.span.serviceName}${kind ? ` [${kind}]` : ''} · ${label}\n偏移 +${formatDuration(row.offsetMs)} · 耗时 ${formatDuration(row.durationMs)}${flags ? `\n${flags}` : ''}`
 }
 
 const load = async () => {
@@ -691,10 +710,46 @@ onMounted(async () => {
   min-width: 0;
 }
 
+.trace-waterfall__svc-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
 .trace-waterfall__svc {
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-waterfall__kind {
+  flex: 0 0 auto;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  padding: 0.14rem 0.28rem;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  color: var(--si-muted);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.trace-waterfall__kind.is-server {
+  color: #0f766e;
+  border-color: rgba(15, 118, 110, 0.28);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.trace-waterfall__kind.is-client {
+  color: #1d4ed8;
+  border-color: rgba(29, 78, 216, 0.28);
+  background: rgba(29, 78, 216, 0.08);
 }
 
 .trace-waterfall__op {
