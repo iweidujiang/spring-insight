@@ -20,9 +20,9 @@
 ## [0.8.1] — 2026-10-10
 
 ### 体验
-- **体验债清扫**：观测页加载失败可见提示；Trace / 拓扑深链目标缺失时降级说明；设置页容量 ≥80% / ≥95% 醒目警告；Trace 缺失空状态文案统一
+- 观测页加载失败可见提示；Trace / 拓扑深链目标缺失时降级说明；设置页容量 ≥80% / ≥95% 醒目警告；Trace 缺失空状态文案统一
 - **调用时间线可读性**：瀑布行展示 `SERVER`/`CLIENT` 角标；Gateway 等同名 CLIENT 追加 `→ remoteService`（不改库内 operationName）
-- **服务详情薄版（B5）**：`/services/:name?hours=`；近窗 Span/错误/p95、慢操作 Top、出入站依赖、最近 Trace；拓扑 / 仪表盘节点与错误分析可进入
+- **服务详情**：`/services/:name?hours=`；近窗 Span/错误/p95、慢操作 Top、出入站依赖、最近 Trace；拓扑 / 仪表盘节点与错误分析可进入
 - **仪表盘时段摘要**：改为与 KPI 同系卡片（弱化横幅）；要点改为轻量标签；操作钮收进顶栏
 - **服务详情刷新钮**：修复 flex 压窄导致「刷新」竖排变形
 
@@ -46,9 +46,9 @@
 ## [0.8.0] — 2026-10-09
 
 ### 体验
-- **容量与保留面板（B1）**：设置页「数据」展示占用进度、时间保留策略与落盘路径；`GET /api/v1/ui/storage/summary` 增加 `maxAgeHours` / `retentionEnabled` / `usageRatio` 等字段
-- **Trace 列表筛选增强（B7）**：支持路径前缀 `pathPrefix`，可与服务 / 状态 / 最慢起 / 关键字组合；筛选写入地址栏
-- **全局时间窗与深链（B2）**：仪表盘 / 拓扑 / 错误分析 / 链路共享 `hours`（URL + session）；侧栏跳转携带时间窗；拓扑选中服务写入 `service` 可分享复现
+- **容量与保留面板**：设置页「数据」展示占用进度、时间保留策略与落盘路径；`GET /api/v1/ui/storage/summary` 增加 `maxAgeHours` / `retentionEnabled` / `usageRatio` 等字段
+- **Trace 列表筛选增强**：支持路径前缀 `pathPrefix`，可与服务 / 状态 / 最慢起 / 关键字组合；筛选写入地址栏
+- **全局时间窗与深链**：仪表盘 / 拓扑 / 错误分析 / 链路共享 `hours`（URL + session）；侧栏跳转携带时间窗；拓扑选中服务写入 `service` 可分享复现
 
 ### 兼容
 - **Agent 可不升**：业务侧可继续使用 Central `spring-insight-agent-starter:0.4.0`（或更早协议兼容包）上报到本版 Server
