@@ -78,6 +78,39 @@ class TraceListFilterTest {
     }
 
     @Test
+    void serviceDetailSummaryAggregatesKpisAndSlowOps() {
+        long now = System.currentTimeMillis();
+        TraceSpan fast = span("sca-order", "t1", "GET /order/ping", true, now - 1_000, 20);
+        TraceSpan slow = span("sca-order", "t2", "GET /order/create", true, now - 2_000, 500);
+        TraceSpan err = span("sca-order", "t3", "GET /order/create", false, now - 3_000, 800);
+        err.setRemoteService("sca-product");
+        TraceSpan other = span("sca-user", "t4", "GET /user/score/1", true, now - 500, 40);
+
+        TraceSpanPersistenceService persistence = persistence(fast, slow, err, other);
+        Map<String, Object> summary = persistence.getServiceDetailSummary("sca-order", 24, 10, 5);
+
+        assertEquals(true, summary.get("found"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> kpis = (Map<String, Object>) summary.get("kpis");
+        assertEquals(3, ((Number) kpis.get("span_count")).intValue());
+        assertEquals(1, ((Number) kpis.get("error_count")).intValue());
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> slowOps = (List<Map<String, Object>>) summary.get("slowOperations");
+        assertFalse(slowOps.isEmpty());
+        assertEquals("GET /order/create", slowOps.get(0).get("operationName"));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> outbound = (List<Map<String, Object>>) summary.get("outbound");
+        assertEquals(1, outbound.size());
+        assertEquals("sca-product", outbound.get(0).get("target_service"));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> recent = (List<Map<String, Object>>) summary.get("recentTraces");
+        assertEquals(3, recent.size());
+    }
+
+    @Test
     void pathPrefixFiltersRecentSummaries() {
         long now = System.currentTimeMillis();
         TraceSpanPersistenceService persistence = persistence(

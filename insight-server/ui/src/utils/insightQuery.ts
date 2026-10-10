@@ -4,7 +4,7 @@ import type { LocationQuery, RouteLocationRaw } from 'vue-router'
 const HOURS_KEY = 'si.ui.hours'
 const SERVICE_KEY = 'si.ui.service'
 
-const OBSERVATION_PATHS = new Set(['/', '/topology', '/traces', '/error-analysis'])
+const OBSERVATION_PATHS = new Set(['/', '/topology', '/traces', '/error-analysis', '/services'])
 
 /**
  * 从 sessionStorage 读取上次时间窗；无效则 null。

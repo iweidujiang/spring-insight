@@ -124,6 +124,87 @@ export class ApiService {
     return rows.map(normalizeLatencyRow)
   }
 
+  /** 单服务详情摘要（KPI / 慢操作 / 依赖 / 最近 Trace） */
+  static async getServiceSummary(
+    serviceName: string,
+    hours: number = 24,
+    recentLimit: number = 15,
+    slowOpLimit: number = 10
+  ): Promise<{
+    serviceName: string
+    hours: number
+    found: boolean
+    kpis: {
+      spanCount: number
+      errorCount: number
+      errorRate: number
+      avgMs: number
+      p50Ms: number
+      p95Ms: number
+      maxMs: number
+    }
+    slowOperations: Array<{
+      operationName: string
+      spanCount: number
+      errorCount: number
+      avgMs: number
+      p95Ms: number
+      maxMs: number
+    }>
+    outbound: any[]
+    inbound: any[]
+    recentTraces: any[]
+  }> {
+    const encoded = encodeURIComponent(serviceName)
+    const qs = new URLSearchParams({
+      hours: String(hours),
+      recentLimit: String(recentLimit),
+      slowOpLimit: String(slowOpLimit)
+    })
+    const raw = await requestWithDefault<any>(`/services/${encoded}/summary?${qs.toString()}`, {})
+    const k = raw.kpis ?? {}
+    return {
+      serviceName: String(raw.serviceName ?? serviceName),
+      hours: Number(raw.hours ?? hours),
+      found: Boolean(raw.found),
+      kpis: {
+        spanCount: Number(k.span_count ?? k.spanCount ?? 0),
+        errorCount: Number(k.error_count ?? k.errorCount ?? 0),
+        errorRate: Number(k.error_rate ?? k.errorRate ?? 0),
+        avgMs: Number(k.avg_ms ?? k.avgMs ?? 0),
+        p50Ms: Number(k.p50_ms ?? k.p50Ms ?? 0),
+        p95Ms: Number(k.p95_ms ?? k.p95Ms ?? 0),
+        maxMs: Number(k.max_ms ?? k.maxMs ?? 0)
+      },
+      slowOperations: Array.isArray(raw.slowOperations)
+        ? raw.slowOperations.map((row: any) => ({
+            operationName: String(row.operationName ?? row.operation_name ?? ''),
+            spanCount: Number(row.span_count ?? row.spanCount ?? 0),
+            errorCount: Number(row.error_count ?? row.errorCount ?? 0),
+            avgMs: Number(row.avg_ms ?? row.avgMs ?? 0),
+            p95Ms: Number(row.p95_ms ?? row.p95Ms ?? 0),
+            maxMs: Number(row.max_ms ?? row.maxMs ?? 0)
+          }))
+        : Array.isArray(raw.slow_operations)
+          ? raw.slow_operations.map((row: any) => ({
+              operationName: String(row.operationName ?? row.operation_name ?? ''),
+              spanCount: Number(row.span_count ?? row.spanCount ?? 0),
+              errorCount: Number(row.error_count ?? row.errorCount ?? 0),
+              avgMs: Number(row.avg_ms ?? row.avgMs ?? 0),
+              p95Ms: Number(row.p95_ms ?? row.p95Ms ?? 0),
+              maxMs: Number(row.max_ms ?? row.maxMs ?? 0)
+            }))
+          : [],
+      outbound: Array.isArray(raw.outbound) ? raw.outbound.map(normalizeDependency) : [],
+      inbound: Array.isArray(raw.inbound) ? raw.inbound.map(normalizeDependency) : [],
+      recentTraces: Array.isArray(raw.recentTraces)
+        ? raw.recentTraces
+        : Array.isArray(raw.recent_traces)
+          ? raw.recent_traces
+          : []
+    }
+  }
+
   static async getErrorAnalysis(hours: number = 24): Promise<any[]> {
     const rows = await requestWithDefault<any[]>(`/errors/analysis?hours=${hours}`, [])
     return rows.map(normalizeErrorRow)

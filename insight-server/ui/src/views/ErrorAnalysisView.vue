@@ -449,7 +449,12 @@ const refreshCharts = () => {
 }
 
 const viewServiceDetails = (serviceName: string) => {
-  router.push({ path: '/traces', query: { service: serviceName, status: 'error', hours: String(hours.value) } })
+  const name = String(serviceName || '').trim()
+  if (!name) return
+  router.push({
+    path: `/services/${encodeURIComponent(name)}`,
+    query: { hours: String(hours.value) }
+  })
 }
 
 const viewCategoryTraces = (key: string) => {

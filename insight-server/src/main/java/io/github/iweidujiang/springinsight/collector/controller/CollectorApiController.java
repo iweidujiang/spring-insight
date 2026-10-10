@@ -165,6 +165,30 @@ public class CollectorApiController {
     }
 
     /**
+     * 单服务详情摘要：近窗 KPI、慢操作 Top、出入站依赖边、最近 Trace。
+     *
+     * @param serviceName 服务名
+     * @param hours       时间窗小时
+     * @param recentLimit 最近 Trace 条数
+     * @param slowOpLimit 慢操作 Top 条数
+     * @return summary JSON
+     */
+    @GetMapping("/services/{serviceName}/summary")
+    public ResponseEntity<?> getServiceSummary(
+            @PathVariable("serviceName") String serviceName,
+            @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "recentLimit", defaultValue = "15") int recentLimit,
+            @RequestParam(value = "slowOpLimit", defaultValue = "10") int slowOpLimit) {
+        try {
+            return ResponseEntity.ok(traceSpanPersistenceService.getServiceDetailSummary(
+                    serviceName, hours, recentLimit, slowOpLimit));
+        } catch (Exception e) {
+            log.error("获取服务{}详情摘要失败", serviceName, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
      * 获取指定服务参与的链路（按 Trace 聚合）
      */
     @GetMapping("/services/{serviceName}/traces")

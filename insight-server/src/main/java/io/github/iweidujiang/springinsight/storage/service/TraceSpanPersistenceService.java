@@ -827,6 +827,158 @@ public class TraceSpanPersistenceService {
     }
 
     /**
+     * 单服务详情摘要（近窗 KPI + 慢操作 Top + 依赖边 + 最近 Trace）。
+     *
+     * @param serviceName 服务名
+     * @param lastHours   时间窗小时；{@code <=0} 不限
+     * @param recentLimit 最近 Trace 条数
+     * @param slowOpLimit 慢操作 Top 条数
+     * @return 含 {@code found}；窗口内无该服务 Span 时 KPI/慢操作为空，{@code found=false}
+     */
+    public Map<String, Object> getServiceDetailSummary(String serviceName, int lastHours,
+                                                       int recentLimit, int slowOpLimit) {
+        String svc = serviceName == null ? "" : serviceName.trim();
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("serviceName", svc);
+        body.put("hours", lastHours);
+        if (svc.isEmpty()) {
+            body.put("found", false);
+            body.put("kpis", emptyServiceKpis());
+            body.put("slowOperations", List.of());
+            body.put("outbound", List.of());
+            body.put("inbound", List.of());
+            body.put("recentTraces", List.of());
+            return body;
+        }
+
+        long sinceTime = sinceEpochMillis(lastHours);
+        List<Long> durations = new ArrayList<>();
+        long errorCount = 0L;
+        Map<String, List<Long>> opDurations = new HashMap<>();
+        Map<String, long[]> opErrors = new HashMap<>();
+
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (s == null || n(s.getStartTime()) < sinceTime) {
+                continue;
+            }
+            if (!svc.equals(s.getServiceName())) {
+                continue;
+            }
+            long dur = n(s.getDurationMs());
+            if (dur <= 0 && s.getEndTime() != null) {
+                dur = Math.max(0L, n(s.getEndTime()) - n(s.getStartTime()));
+            }
+            dur = Math.max(0L, dur);
+            durations.add(dur);
+            if (isError(s)) {
+                errorCount++;
+            }
+            String op = s.getOperationName() != null && !s.getOperationName().isBlank()
+                    ? s.getOperationName().trim() : "(unknown)";
+            opDurations.computeIfAbsent(op, x -> new ArrayList<>()).add(dur);
+            long[] ea = opErrors.computeIfAbsent(op, x -> new long[]{0L});
+            if (isError(s)) {
+                ea[0]++;
+            }
+        }
+
+        boolean found = !durations.isEmpty();
+        body.put("found", found);
+        body.put("kpis", found ? buildServiceKpis(svc, durations, errorCount) : emptyServiceKpis());
+        body.put("slowOperations", buildSlowOperations(opDurations, opErrors, slowOpLimit));
+
+        List<Map<String, Object>> outbound = new ArrayList<>();
+        List<Map<String, Object>> inbound = new ArrayList<>();
+        for (Map<String, Object> edge : getServiceDependencies(lastHours)) {
+            String src = String.valueOf(edge.getOrDefault("source_service", ""));
+            String tgt = String.valueOf(edge.getOrDefault("target_service", ""));
+            if (svc.equals(src)) {
+                outbound.add(edge);
+            }
+            if (svc.equals(tgt)) {
+                inbound.add(edge);
+            }
+        }
+        outbound.sort((a, b) -> Long.compare(
+                ((Number) b.get("call_count")).longValue(),
+                ((Number) a.get("call_count")).longValue()));
+        inbound.sort((a, b) -> Long.compare(
+                ((Number) b.get("call_count")).longValue(),
+                ((Number) a.get("call_count")).longValue()));
+        body.put("outbound", outbound);
+        body.put("inbound", inbound);
+        body.put("recentTraces", getRecentTraceSummaries(
+                lastHours, Math.max(1, recentLimit), svc, "all", null, 0L, null));
+        return body;
+    }
+
+    private static Map<String, Object> emptyServiceKpis() {
+        Map<String, Object> kpis = new LinkedHashMap<>();
+        kpis.put("span_count", 0);
+        kpis.put("error_count", 0);
+        kpis.put("error_rate", 0.0);
+        kpis.put("avg_ms", 0.0);
+        kpis.put("p50_ms", 0L);
+        kpis.put("p95_ms", 0L);
+        kpis.put("max_ms", 0L);
+        return kpis;
+    }
+
+    private static Map<String, Object> buildServiceKpis(String serviceName, List<Long> durations, long errorCount) {
+        List<Long> durs = new ArrayList<>(durations);
+        durs.sort(Long::compareTo);
+        int n = durs.size();
+        long sum = 0L;
+        for (Long d : durs) {
+            sum += d;
+        }
+        Map<String, Object> kpis = new LinkedHashMap<>();
+        kpis.put("service_name", serviceName);
+        kpis.put("span_count", n);
+        kpis.put("error_count", errorCount);
+        kpis.put("error_rate", n == 0 ? 0.0 : Math.round((errorCount * 10000.0 / n)) / 100.0);
+        kpis.put("avg_ms", n == 0 ? 0.0 : Math.round((sum / (double) n) * 100.0) / 100.0);
+        kpis.put("p50_ms", percentile(durs, 0.50));
+        kpis.put("p95_ms", percentile(durs, 0.95));
+        kpis.put("max_ms", n == 0 ? 0L : durs.get(n - 1));
+        return kpis;
+    }
+
+    private static List<Map<String, Object>> buildSlowOperations(
+            Map<String, List<Long>> opDurations, Map<String, long[]> opErrors, int limit) {
+        int max = Math.max(1, Math.min(limit, 50));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Map.Entry<String, List<Long>> e : opDurations.entrySet()) {
+            List<Long> durs = new ArrayList<>(e.getValue());
+            if (durs.isEmpty()) {
+                continue;
+            }
+            durs.sort(Long::compareTo);
+            int n = durs.size();
+            long sum = 0L;
+            for (Long d : durs) {
+                sum += d;
+            }
+            long err = opErrors.containsKey(e.getKey()) ? opErrors.get(e.getKey())[0] : 0L;
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("operationName", e.getKey());
+            row.put("span_count", n);
+            row.put("error_count", err);
+            row.put("avg_ms", Math.round((sum / (double) n) * 100.0) / 100.0);
+            row.put("p95_ms", percentile(durs, 0.95));
+            row.put("max_ms", durs.get(n - 1));
+            rows.add(row);
+        }
+        rows.sort((a, b) -> Long.compare(
+                ((Number) b.get("p95_ms")).longValue(),
+                ((Number) a.get("p95_ms")).longValue()));
+        if (rows.size() > max) {
+            return new ArrayList<>(rows.subList(0, max));
+        }
+        return rows;
+    }
+
+    /**
      * 按服务名精确删除 Span。
      *
      * @param serviceName 服务名

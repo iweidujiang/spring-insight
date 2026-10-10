@@ -31,6 +31,8 @@ public class ServerSpaController {
             "/topology",
             "/traces",
             "/traces/**",
+            "/services",
+            "/services/**",
             "/error-analysis",
             "/settings",
             "/about",

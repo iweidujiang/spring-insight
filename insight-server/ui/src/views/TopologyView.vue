@@ -62,7 +62,8 @@
             链路追踪可看这个应用的每次请求。
           </p>
           <div class="si-topo-solo__actions">
-            <button type="button" class="btn btn-primary btn-sm" @click="goServiceTraces(soloName)">查看链路</button>
+            <button type="button" class="btn btn-primary btn-sm" @click="goServiceDetail(soloName)">服务详情</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" @click="goServiceTraces(soloName)">查看链路</button>
             <button type="button" class="btn btn-outline-secondary btn-sm" @click="goDashboard">回仪表盘</button>
           </div>
         </div>
@@ -168,7 +169,10 @@
                 <div><dt>错误</dt><dd :class="{ 'text-danger': nodeErrorCount(selection.service) > 0 }">{{ nodeErrorCount(selection.service) }}</dd></div>
               </dl>
               <div class="si-topo-rail__actions">
-                <button type="button" class="btn btn-primary btn-sm w-100" @click="goServiceTraces(selection.service)">
+                <button type="button" class="btn btn-primary btn-sm w-100" @click="goServiceDetail(selection.service)">
+                  服务详情
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-sm w-100" @click="goServiceTraces(selection.service)">
                   查看该服务链路
                 </button>
                 <button type="button" class="btn btn-outline-secondary btn-sm w-100" @click="clearSelection">
@@ -402,6 +406,15 @@ const goServiceTraces = (serviceName: string) => {
   if (!serviceName) return
   persistService(serviceName)
   router.push({ path: '/traces', query: { service: serviceName, hours: String(hours.value) } })
+}
+const goServiceDetail = (serviceName: string) => {
+  const name = String(serviceName || '').trim()
+  if (!name) return
+  persistService(name)
+  router.push({
+    path: `/services/${encodeURIComponent(name)}`,
+    query: { hours: String(hours.value) }
+  })
 }
 const goTraceDetail = (traceId: string) => {
   if (!traceId) return
