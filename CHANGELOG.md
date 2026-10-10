@@ -15,8 +15,12 @@
 
 ## [Unreleased]
 
+---
+
+## [0.8.1] — 2026-10-10
+
 ### 体验
-- **体验债清扫（0.8.1 预备）**：观测页加载失败可见提示；Trace / 拓扑深链目标缺失时降级说明；设置页容量 ≥80% / ≥95% 醒目警告；Trace 缺失空状态文案统一
+- **体验债清扫**：观测页加载失败可见提示；Trace / 拓扑深链目标缺失时降级说明；设置页容量 ≥80% / ≥95% 醒目警告；Trace 缺失空状态文案统一
 - **调用时间线可读性**：瀑布行展示 `SERVER`/`CLIENT` 角标；Gateway 等同名 CLIENT 追加 `→ remoteService`（不改库内 operationName）
 - **服务详情薄版（B5）**：`/services/:name?hours=`；近窗 Span/错误/p95、慢操作 Top、出入站依赖、最近 Trace；拓扑 / 仪表盘节点与错误分析可进入
 - **仪表盘时段摘要**：改为与 KPI 同系卡片（弱化横幅）；要点改为轻量标签；操作钮收进顶栏
@@ -25,6 +29,17 @@
 ### 修复
 - **SPA 刷新**：`/settings` 纳入 History 回退（刷新不再 500）；`favicon.ico` 缺失不再记成未捕获 500
 - **链路列表根操作名**：入站 Span 带远程 parent 时仍取本 Trace 入口操作（避免列表显示 `(unknown)`）；同级候选时优先 `SERVER`，避免误选首个出站 CLIENT
+
+### 兼容
+- **Agent 可不升**：业务侧可继续使用 Central `spring-insight-agent-starter:0.4.0` 上报；推荐配套 **`0.4.1`**（入口 SERVER 上报修复）
+- 本版仅 Server / 控制台；无 Agent 埋点变更（相对 0.8.0）
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.4.1`（推荐；`0.4.0` 仍可上报） |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.8.1` |
+| Release jar | `insight-server-0.8.1.jar` |
 
 ---
 
