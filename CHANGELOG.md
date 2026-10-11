@@ -278,8 +278,18 @@
 
 ## [Unreleased]
 
+---
+
+## [0.4.2] — 2026-10-11
+
 ### 修复
 - **Servlet 入站残留栈清理**：`HttpRequestInterceptor.preHandle` 发现 ThreadLocal 栈未空时强制 `clear()` 再开新 Trace；`afterCompletion` 以 `finally` 清栈。避免异步派发/异常导致多次 HTTP 请求合并成同一 TraceId（列表只显示一行）
+
+### 坐标
+| 项 | 值 |
+|----|-----|
+| Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.4.2` |
+| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.4.2`（分支 `2.7.x`，需另行发版） |
 
 ---
 
