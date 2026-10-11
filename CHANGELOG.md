@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### 修复
+- **Servlet 入站残留栈清理**：`HttpRequestInterceptor.preHandle` 发现 ThreadLocal 栈未空时强制 `clear()` 再开新 Trace；`afterCompletion` 以 `finally` 清栈。避免异步派发/异常导致多次 HTTP 请求合并成同一 TraceId（列表只显示一行）
+
 ## [0.4.1] — 2026-10-09
 
 ### 修复

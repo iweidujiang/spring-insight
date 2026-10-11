@@ -86,6 +86,40 @@ class HttpRequestInterceptorTest {
     }
 
     @Test
+    void preHandle_clearsLeftoverStackSoNewRequestGetsNewTraceId() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        HttpServletResponse response = mock(HttpServletResponse.class);
+        final Map<String, Object> attrs = new HashMap<String, Object>();
+        when(request.getAttribute(anyString())).thenAnswer(new Answer<Object>() {
+            @Override
+            public Object answer(org.mockito.invocation.InvocationOnMock inv) {
+                return attrs.get(inv.getArgument(0));
+            }
+        });
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(org.mockito.invocation.InvocationOnMock inv) {
+                attrs.put(inv.getArgument(0), inv.getArgument(1));
+                return null;
+            }
+        }).when(request).setAttribute(anyString(), any());
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getRequestURI()).thenReturn("/order/create");
+        when(request.getQueryString()).thenReturn(null);
+        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+
+        TraceSpan leftover = TraceContext.startSpan("LEAKED");
+        String oldTraceId = leftover.getTraceId();
+        assertEquals(1, TraceContext.getStackDepth());
+
+        assertTrue(interceptor.preHandle(request, response, new Object()));
+        TraceSpan created = (TraceSpan) attrs.get("X-Insight-Boot2-Span");
+        assertEquals(1, TraceContext.getStackDepth());
+        assertTrue(created.getTraceId() != null && !created.getTraceId().equals(oldTraceId));
+        assertEquals("GET /order/create", created.getOperationName());
+    }
+
+    @Test
     void afterCompletion_reportsServerSpanWhenStackIntact() {
         HttpServletRequest request = mock(HttpServletRequest.class);
         HttpServletResponse response = mock(HttpServletResponse.class);

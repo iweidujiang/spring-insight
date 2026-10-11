@@ -56,6 +56,18 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
         if (!insightProperties.isEnabled()) {
             return true;
         }
+        // 上一请求若未清栈（异步派发 / 上报异常等），新入站会挂到旧 TraceId 下，
+        // 链路列表就会把多次 HTTP 请求合并成一行。
+        if (TraceContext.getStackDepth() > 0) {
+            if (insightProperties.isDiagnosticLogs()) {
+                log.warn("[Boot2-HTTP] 入站前发现残留 Trace 栈(depth={})，强制清理: uri={}",
+                        TraceContext.getStackDepth(), request.getRequestURI());
+            } else {
+                log.debug("[Boot2-HTTP] 入站前清理残留 Trace 栈: depth={}, uri={}",
+                        TraceContext.getStackDepth(), request.getRequestURI());
+            }
+            TraceContext.clear();
+        }
         String operationName = request.getMethod() + " " + request.getRequestURI();
         String remoteTraceId = null;
         String remoteParentSpanId = null;
@@ -119,29 +131,32 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception ex) {
         TraceSpan span = (TraceSpan) request.getAttribute(TRACE_SPAN_ATTR);
-        if (span == null) {
+        try {
+            if (span == null) {
+                return;
+            }
+            String errorCode = null;
+            String errorMessage = null;
+            if (ex != null) {
+                errorCode = "EXCEPTION";
+                errorMessage = ex.getClass().getName() + ": " + ex.getMessage();
+            } else if (response.getStatus() >= 400) {
+                errorCode = "HTTP_" + response.getStatus();
+                errorMessage = "HTTP Status: " + response.getStatus();
+            }
+            span.addTag("http.status_code", String.valueOf(response.getStatus()));
+            // 始终以请求属性上的 SERVER Span 为准结束并上报。
+            // 不可只依赖 TraceContext.endSpan()：异步派发 / 栈漂移时 ThreadLocal 可能为空，
+            // 此时 endSpan 为空、随后 clear() 又不上报，会导致入口 Span 丢失，
+            // 列表与瀑布根落成最早的出站 CLIENT。
+            if (!span.isFinished()) {
+                span.finish(errorCode, errorMessage);
+            }
+            spanReportingListener.reportSpan(TraceSpan.snapshot(span));
+        } finally {
+            // 无论上报是否异常，都必须清栈，避免污染后续请求
             TraceContext.clear();
-            return;
         }
-        String errorCode = null;
-        String errorMessage = null;
-        if (ex != null) {
-            errorCode = "EXCEPTION";
-            errorMessage = ex.getClass().getName() + ": " + ex.getMessage();
-        } else if (response.getStatus() >= 400) {
-            errorCode = "HTTP_" + response.getStatus();
-            errorMessage = "HTTP Status: " + response.getStatus();
-        }
-        span.addTag("http.status_code", String.valueOf(response.getStatus()));
-        // 始终以请求属性上的 SERVER Span 为准结束并上报。
-        // 不可只依赖 TraceContext.endSpan()：异步派发 / 栈漂移时 ThreadLocal 可能为空，
-        // 此时 endSpan 为空、随后 clear() 又不上报，会导致入口 Span 丢失，
-        // 列表与瀑布根落成最早的出站 CLIENT。
-        if (!span.isFinished()) {
-            span.finish(errorCode, errorMessage);
-        }
-        spanReportingListener.reportSpan(TraceSpan.snapshot(span));
-        TraceContext.clear();
     }
 
     /**

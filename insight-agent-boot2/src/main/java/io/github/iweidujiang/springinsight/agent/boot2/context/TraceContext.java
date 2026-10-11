@@ -102,6 +102,15 @@ public final class TraceContext {
         return Optional.of(span);
     }
 
+    /**
+     * 当前线程 Trace 栈深度（诊断 / 入站残留检测用）。
+     *
+     * @return 栈内 Span 数量
+     */
+    public static int getStackDepth() {
+        return SPAN_STACK.get().size();
+    }
+
     public static void clear() {
         Deque<TraceSpan> stack = SPAN_STACK.get();
         while (!stack.isEmpty()) {
