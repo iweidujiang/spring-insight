@@ -55,6 +55,14 @@
                 </a>
               </dd>
             </div>
+            <div>
+              <dt>OpenAPI</dt>
+              <dd class="si-about__openapi">
+                <a href="/v3/api-docs" target="_blank" rel="noopener noreferrer">/v3/api-docs</a>
+                <span class="text-muted">·</span>
+                <a href="/swagger-ui.html" target="_blank" rel="noopener noreferrer">Swagger UI</a>
+              </dd>
+            </div>
           </dl>
         </div>
       </div>
@@ -98,6 +106,7 @@ const features = [
   { title: '错误分析', desc: '识别高错误率服务并跳转相关链路', icon: 'fa-exclamation-triangle', color: '#b91c1c' },
   { title: '控制台设置', desc: '告警 Webhook/邮件与 AI 解释在页面配置，即时生效', icon: 'fa-cog', color: '#0f766e' },
   { title: '独立 Server', desc: '业务侧仅依赖 Agent，监测中心进程隔离', icon: 'fa-server', color: '#b45309' },
+  { title: 'OpenAPI', desc: '只读 /v3/api-docs 与 Swagger UI，便于对接与自检', icon: 'fa-book', color: '#0f766e' },
   { title: '性能洞察', desc: '平均耗时、调用次数等指标辅助定位瓶颈', icon: 'fa-line-chart', color: '#1d4ed8' }
 ]
 

@@ -70,6 +70,18 @@ spring:
 server:
   port: 9966
 
+# OpenAPI（springdoc）：只读文档，不改变业务 API
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  show-actuator: false
+  packages-to-scan: io.github.iweidujiang.springinsight
+  paths-to-match: /api/**
+
 management:
   endpoints:
     web:

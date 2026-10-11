@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.server.storage;
 
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -26,6 +27,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/ui/storage")
 @RequiredArgsConstructor
+@Tag(name = "Storage", description = "容量摘要与清理")
 public class InsightStorageController {
 
     private final TraceSpanPersistenceService persistenceService;

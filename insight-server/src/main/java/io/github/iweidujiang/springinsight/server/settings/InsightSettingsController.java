@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.server.settings;
 import io.github.iweidujiang.springinsight.server.alert.InsightAlertEvaluator;
 import io.github.iweidujiang.springinsight.server.alert.InsightAlertWebhookSender;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/ui/settings")
 @RequiredArgsConstructor
+@Tag(name = "Settings", description = "运行时设置与 Webhook 预览")
 public class InsightSettingsController {
 
     private final InsightRuntimeSettingsService settingsService;

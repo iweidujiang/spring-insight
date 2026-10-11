@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.server.ai;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/ui")
 @RequiredArgsConstructor
+@Tag(name = "AI", description = "Trace / 告警 AI 解读（默认关）")
 public class InsightAiController {
 
     private final InsightAiExplainService explainService;

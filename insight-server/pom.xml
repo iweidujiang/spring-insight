@@ -54,6 +54,12 @@
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
+        <!-- OpenAPI 3：只读文档 /v3/api-docs + Swagger UI -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+
         <!-- sqlite 存储模式 -->
         <dependency>
             <groupId>org.xerial</groupId>

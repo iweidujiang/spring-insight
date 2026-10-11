@@ -1,11 +1,5 @@
-import axios, { AxiosRequestConfig, AxiosError } from 'axios'
+import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios'
 import { getUiToken, setUiToken } from './AuthService'
-
-export interface ApiResponse<T> {
-  data: T
-  status: number
-  statusText: string
-}
 
 const apiClient = axios.create({
   baseURL: '/api/v1/ui',

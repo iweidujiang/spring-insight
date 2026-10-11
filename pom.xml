@@ -79,6 +79,8 @@
         <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
         <maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
         <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
+        <!-- Server OpenAPI（springdoc；Boot 3.5 用 2.9.x） -->
+        <springdoc.version>2.9.1</springdoc.version>
     </properties>
 
     <dependencyManagement>
@@ -105,6 +107,12 @@
                 <groupId>io.github.iweidujiang</groupId>
                 <artifactId>insight-server</artifactId>
                 <version>${server.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
             </dependency>
 
             <dependency>

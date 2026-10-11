@@ -66,8 +66,10 @@ public class InsightServerApplication {
                 控制台 UI: http://localhost:{}/
                 上报地址: http://localhost:{}/api/v1/spans/batch
                 健康检查: http://localhost:{}/api/v1/health
+                OpenAPI:   http://localhost:{}/v3/api-docs
+                Swagger UI: http://localhost:{}/swagger-ui.html
                 外部访问: http://{}:{}/
                 ===========================================================""",
-                startupMs, appName, port, port, port, hostAddress, port);
+                startupMs, appName, port, port, port, port, port, hostAddress, port);
     }
 }

@@ -178,6 +178,13 @@ java -jar insight-server/target/insight-server.jar
 存储只在 **Server** 侧配置，业务微服务不要配 `spring.insight.server.storage.*`。  
 健康检查：`GET /api/v1/health`（含 `storageMode`、`storedSpans`）。
 
+**OpenAPI（只读）**：Server 启动后可查看机器可读文档与 Swagger UI（不改变业务 API）：
+
+| 地址 | 说明 |
+|------|------|
+| `GET /v3/api-docs` | OpenAPI 3 JSON（springdoc） |
+| `/swagger-ui.html` | 交互文档 UI |
+
 演示工程：[spring-insight-sca-demo](https://github.com/iweidujiang/spring-insight-sca-demo)（Nacos + 若干微服务）。
 
 ---

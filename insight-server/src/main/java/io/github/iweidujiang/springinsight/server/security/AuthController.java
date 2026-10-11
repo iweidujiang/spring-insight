@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.server.security;
 
 import io.github.iweidujiang.springinsight.server.config.InsightServerSecurityProperties;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +22,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/v1/auth")
+@Tag(name = "Auth", description = "控制台登录（可选）")
 public class AuthController {
 
     private final InsightServerSecurityProperties securityProperties;

@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.server.insight;
 
 import io.github.iweidujiang.springinsight.server.ai.InsightAiExplainService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,6 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/ui/insights")
 @RequiredArgsConstructor
+@Tag(name = "Insights", description = "时段摘要与环比")
 public class InsightPeriodInsightController {
 
     private final InsightPeriodInsightService periodInsightService;

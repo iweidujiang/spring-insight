@@ -4,6 +4,7 @@ import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorS
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +30,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/ui")
+@Tag(name = "Console", description = "控制台查询（拓扑 / Trace / 服务等）")
 public class CollectorApiController {
 
     private final TraceSpanPersistenceService traceSpanPersistenceService;

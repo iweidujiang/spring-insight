@@ -6,6 +6,7 @@ import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorS
 import io.github.iweidujiang.springinsight.server.CompanionAgentVersion;
 import io.github.iweidujiang.springinsight.server.ServerVersion;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -33,6 +34,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1")
+@Tag(name = "Ingest", description = "Agent 上报与健康检查")
 public class CollectorController {
 
     private final TraceSpanCollectorService traceSpanCollectorService;
