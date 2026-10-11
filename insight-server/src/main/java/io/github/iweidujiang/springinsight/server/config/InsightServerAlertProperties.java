@@ -25,12 +25,13 @@ public class InsightServerAlertProperties {
     private String webhookUrl = "";
 
     /**
-     * 指标：{@code error_rate}（百分比）或 {@code error_count}（窗口内错误 Span 数）
+     * 指标：{@code error_rate}（百分比）、{@code error_count}（窗口内错误 Span 数）、
+     * {@code latency_p95}（窗口内 p95 耗时，毫秒）
      */
     private String metric = "error_rate";
 
     /**
-     * 阈值：error_rate 时为百分比；error_count 时为次数
+     * 阈值：error_rate 为百分比；error_count 为次数；latency_p95 为毫秒
      */
     private double threshold = 10.0;
 
@@ -43,6 +44,26 @@ public class InsightServerAlertProperties {
      * 同一服务重复告警冷却（分钟）
      */
     private int cooldownMinutes = 30;
+
+    /**
+     * 是否启用静默时段（时段内不推送，扫描仍执行但不 deliver）
+     */
+    private boolean quietHoursEnabled = false;
+
+    /**
+     * 静默开始（本地时区），{@code HH:mm}，如 {@code 22:00}
+     */
+    private String quietHoursStart = "22:00";
+
+    /**
+     * 静默结束（本地时区），{@code HH:mm}；可跨午夜（如 22:00→08:00）
+     */
+    private String quietHoursEnd = "08:00";
+
+    /**
+     * 静默时段时区；空则用 JVM 默认时区
+     */
+    private String quietHoursZone = "";
 
     /**
      * SMTP 邮件通道（可填真实邮箱；默认关）

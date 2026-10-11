@@ -25,6 +25,12 @@ public class InsightRuntimeSettings {
         private double threshold = 10.0;
         private int windowMinutes = 15;
         private int cooldownMinutes = 30;
+        /** 静默时段（本地时区 HH:mm；可跨午夜） */
+        private boolean quietHoursEnabled = false;
+        private String quietHoursStart = "22:00";
+        private String quietHoursEnd = "08:00";
+        /** 空 = JVM 默认时区 */
+        private String quietHoursZone = "";
         private EmailSettings email = new EmailSettings();
     }
 

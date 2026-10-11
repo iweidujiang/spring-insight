@@ -65,7 +65,7 @@
             <div>
               <h3 class="si-settings__card-title"><i class="fa fa-bell me-2"></i>告警推送</h3>
               <p class="si-settings__card-desc">
-                按错误率或错误次数扫描，超阈值时通过 Webhook 或邮件通知。
+                按错误率 / 错误次数 / p95 延迟扫描，超阈值时通过 Webhook 或邮件通知；可设静默时段。
               </p>
             </div>
             <div class="form-check form-switch mb-0">
@@ -77,24 +77,49 @@
           <div class="si-settings__fields">
             <div class="si-settings__field si-settings__field--full">
               <label class="form-label" for="alert-webhook">Webhook URL</label>
-              <input
-                id="alert-webhook"
-                v-model="form.alert.webhookUrl"
-                class="form-control"
-                type="url"
-                placeholder="https://… 或 http://host.docker.internal:…"
-              />
+              <div class="si-settings__webhook-row">
+                <input
+                  id="alert-webhook"
+                  v-model="form.alert.webhookUrl"
+                  class="form-control"
+                  type="url"
+                  placeholder="https://… 或 http://host.docker.internal:…"
+                />
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  :disabled="previewing"
+                  title="只生成样本 JSON，不发送"
+                  @click="previewWebhook(false)"
+                >
+                  <i class="fa fa-eye me-1"></i>预览
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-outline-primary btn-sm"
+                  :disabled="previewing || !form.alert.webhookUrl.trim()"
+                  title="向当前 URL 发送一条带 preview=true 的样本（不计冷却）"
+                  @click="previewWebhook(true)"
+                >
+                  <i class="fa fa-paper-plane me-1"></i>试发
+                </button>
+              </div>
+              <pre v-if="previewResult" class="si-settings__preview mt-2 mb-0">{{ previewResult }}</pre>
             </div>
 
             <div class="si-settings__field">
               <label class="form-label" for="alert-metric">指标</label>
               <select id="alert-metric" v-model="form.alert.metric" class="form-select">
                 <option value="error_rate">error_rate（%）</option>
-                <option value="error_count">error_count</option>
+                <option value="error_count">error_count（次）</option>
+                <option value="latency_p95">latency_p95（毫秒）</option>
               </select>
             </div>
             <div class="si-settings__field">
-              <label class="form-label" for="alert-threshold">阈值</label>
+              <label class="form-label" for="alert-threshold">
+                阈值
+                <span class="text-muted small">{{ thresholdHint }}</span>
+              </label>
               <input id="alert-threshold" v-model.number="form.alert.threshold" class="form-control" type="number" min="0" step="0.1" />
             </div>
             <div class="si-settings__field">
@@ -104,6 +129,38 @@
             <div class="si-settings__field">
               <label class="form-label" for="alert-cooldown">冷却（分钟）</label>
               <input id="alert-cooldown" v-model.number="form.alert.cooldownMinutes" class="form-control" type="number" min="0" />
+            </div>
+          </div>
+
+          <div class="si-settings__block">
+            <header class="si-settings__block-head">
+              <div>
+                <h4 class="si-settings__block-title"><i class="fa fa-moon-o me-1"></i>静默时段</h4>
+                <p class="si-settings__block-desc">时段内不推送（可跨午夜，如 22:00→08:00）。</p>
+              </div>
+              <div class="form-check form-switch mb-0">
+                <input id="quiet-enabled" v-model="form.alert.quietHoursEnabled" class="form-check-input" type="checkbox" />
+                <label class="form-check-label" for="quiet-enabled">启用静默</label>
+              </div>
+            </header>
+            <div class="si-settings__fields">
+              <div class="si-settings__field">
+                <label class="form-label" for="quiet-start">开始（HH:mm）</label>
+                <input id="quiet-start" v-model="form.alert.quietHoursStart" class="form-control" placeholder="22:00" />
+              </div>
+              <div class="si-settings__field">
+                <label class="form-label" for="quiet-end">结束（HH:mm）</label>
+                <input id="quiet-end" v-model="form.alert.quietHoursEnd" class="form-control" placeholder="08:00" />
+              </div>
+              <div class="si-settings__field si-settings__field--wide">
+                <label class="form-label" for="quiet-zone">时区（可选）</label>
+                <input
+                  id="quiet-zone"
+                  v-model="form.alert.quietHoursZone"
+                  class="form-control"
+                  placeholder="留空=服务器默认，例 Asia/Shanghai"
+                />
+              </div>
             </div>
           </div>
 
@@ -493,6 +550,16 @@ const clearDialog = reactive({
   body: ''
 })
 
+const previewing = ref(false)
+const previewResult = ref('')
+
+const thresholdHint = computed(() => {
+  const m = form.alert.metric
+  if (m === 'latency_p95') return '（毫秒）'
+  if (m === 'error_count') return '（次）'
+  return '（%）'
+})
+
 const form = reactive<RuntimeSettingsSaveBody>({
   alert: {
     enabled: false,
@@ -501,6 +568,10 @@ const form = reactive<RuntimeSettingsSaveBody>({
     threshold: 10,
     windowMinutes: 15,
     cooldownMinutes: 30,
+    quietHoursEnabled: false,
+    quietHoursStart: '22:00',
+    quietHoursEnd: '08:00',
+    quietHoursZone: '',
     email: {
       enabled: false,
       host: '',
@@ -558,6 +629,10 @@ async function load() {
     form.alert.threshold = Number(data.alert?.threshold ?? 10)
     form.alert.windowMinutes = Number(data.alert?.windowMinutes ?? 15)
     form.alert.cooldownMinutes = Number(data.alert?.cooldownMinutes ?? 30)
+    form.alert.quietHoursEnabled = !!data.alert?.quietHoursEnabled
+    form.alert.quietHoursStart = data.alert?.quietHoursStart || '22:00'
+    form.alert.quietHoursEnd = data.alert?.quietHoursEnd || '08:00'
+    form.alert.quietHoursZone = data.alert?.quietHoursZone || ''
     const email = data.alert?.email
     form.alert.email.enabled = !!email?.enabled
     form.alert.email.host = email?.host || ''
@@ -611,6 +686,28 @@ async function onSave() {
     showMsg(msg, false)
   } finally {
     saving.value = false
+  }
+}
+
+async function previewWebhook(send: boolean) {
+  previewing.value = true
+  previewResult.value = ''
+  try {
+    const res = await ApiService.previewAlertWebhook({
+      send,
+      webhookUrl: form.alert.webhookUrl.trim() || undefined
+    })
+    previewResult.value = JSON.stringify(res, null, 2)
+    if (send) {
+      showMsg(res.ok ? `试发成功（HTTP ${res.statusCode ?? '—'}）` : `试发失败：${res.error || '非 2xx'}`, !!res.ok)
+    } else {
+      showMsg('已生成预览 payload（未发送）', true)
+    }
+  } catch (e: any) {
+    const msg = e?.response?.data?.message || e?.message || '预览失败'
+    showMsg(msg, false)
+  } finally {
+    previewing.value = false
   }
 }
 
@@ -843,6 +940,39 @@ onUnmounted(() => {
 
 .si-settings__field--full {
   grid-column: 1 / -1;
+}
+
+.si-settings__webhook-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
+.si-settings__webhook-row .form-control {
+  flex: 1 1 16rem;
+  min-width: 12rem;
+}
+
+.si-settings__webhook-row .btn {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.si-settings__preview {
+  max-height: 14rem;
+  overflow: auto;
+  padding: 0.65rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: var(--si-paper, #fafaf8);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--si-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .si-settings__field--wide {

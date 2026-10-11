@@ -84,6 +84,65 @@ class InsightAlertSchedulerTest {
     }
 
     /**
+     * latency_p95 超阈值发送；payload type 为 latency_threshold。
+     *
+     * @throws IOException 起本地 HTTP 失败
+     */
+    @Test
+    void scanPostsLatencyP95() throws IOException {
+        AtomicInteger hits = new AtomicInteger();
+        AtomicReference<String> body = new AtomicReference<>();
+        int port = startHook(204, hits, body);
+
+        InsightServerAlertProperties props = baseProps(port, "latency_p95", 100.0, 30);
+        lastMetrics = new InsightAlertMetrics(new SimpleMeterRegistry());
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAlert()).thenReturn(props);
+        InsightAlertScheduler scheduler = new InsightAlertScheduler(
+                settings,
+                storeWithSlowSpan(250L),
+                new InsightAlertWebhookSender(new ObjectMapper()),
+                new InsightAlertEmailSender(),
+                lastMetrics,
+                mockAi());
+        scheduler.scan();
+
+        assertEquals(1, hits.get());
+        assertTrue(body.get().contains("\"metric\":\"latency_p95\""));
+        assertTrue(body.get().contains("\"type\":\"latency_threshold\""));
+        assertEquals(1.0, lastMetrics.count("success"));
+    }
+
+    /**
+     * 静默时段内不推送。
+     *
+     * @throws IOException 起本地 HTTP 失败
+     */
+    @Test
+    void quietHoursSkipDeliver() throws IOException {
+        AtomicInteger hits = new AtomicInteger();
+        int port = startHook(204, hits, new AtomicReference<>());
+        InsightServerAlertProperties props = baseProps(port, "error_rate", 10.0, 30);
+        props.setQuietHoursEnabled(true);
+        // 起止相同 = 全天静默
+        props.setQuietHoursStart("00:00");
+        props.setQuietHoursEnd("00:00");
+        lastMetrics = new InsightAlertMetrics(new SimpleMeterRegistry());
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAlert()).thenReturn(props);
+        InsightAlertScheduler scheduler = new InsightAlertScheduler(
+                settings,
+                storeWithOneError(),
+                new InsightAlertWebhookSender(new ObjectMapper()),
+                new InsightAlertEmailSender(),
+                lastMetrics,
+                mockAi());
+        scheduler.scan();
+        assertEquals(0, hits.get());
+        assertEquals(1.0, lastMetrics.count("quiet"));
+    }
+
+    /**
      * 非 2xx 记 failure，且下一轮仍会重试（不进入冷却）。
      *
      * @throws IOException 起本地 HTTP 失败
@@ -161,6 +220,20 @@ class InsightAlertSchedulerTest {
         ok.setStatusCode("OK");
         ok.setStartTime(System.currentTimeMillis());
         persistence.saveTraceSpans(List.of(err, ok));
+        return persistence;
+    }
+
+    private static TraceSpanPersistenceService storeWithSlowSpan(long durationMs) {
+        InsightServerStorageProperties storage = new InsightServerStorageProperties();
+        InMemorySpanStore store = new InMemorySpanStore(storage, "memory");
+        TraceSpanPersistenceService persistence = new TraceSpanPersistenceService(store);
+        TraceSpan slow = new TraceSpan();
+        slow.setServiceName("sca-order");
+        slow.setSuccess(true);
+        slow.setStatusCode("OK");
+        slow.setStartTime(System.currentTimeMillis());
+        slow.setDurationMs(durationMs);
+        persistence.saveTraceSpans(List.of(slow));
         return persistence;
     }
 

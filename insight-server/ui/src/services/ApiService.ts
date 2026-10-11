@@ -342,6 +342,27 @@ export class ApiService {
     })
   }
 
+  /** 告警 Webhook 预览；send=true 时真正 POST 样本（不计冷却） */
+  static async previewAlertWebhook(body: {
+    send?: boolean
+    webhookUrl?: string
+  }): Promise<{
+    payload: Record<string, unknown>
+    webhookUrl?: string
+    dryRun?: boolean
+    sent?: boolean
+    ok?: boolean
+    statusCode?: number
+    error?: string
+    responseBody?: string
+    message?: string
+  }> {
+    return request('/settings/alert/webhook-preview', {
+      method: 'POST',
+      data: body || {}
+    })
+  }
+
   /** 存储容量与保留策略摘要 */
   static async getStorageSummary(): Promise<{
     mode: string
@@ -607,6 +628,10 @@ export interface RuntimeSettingsView {
     threshold: number
     windowMinutes: number
     cooldownMinutes: number
+    quietHoursEnabled?: boolean
+    quietHoursStart?: string
+    quietHoursEnd?: string
+    quietHoursZone?: string
     email: {
       enabled: boolean
       host: string
@@ -643,6 +668,10 @@ export interface RuntimeSettingsSaveBody {
     threshold: number
     windowMinutes: number
     cooldownMinutes: number
+    quietHoursEnabled: boolean
+    quietHoursStart: string
+    quietHoursEnd: string
+    quietHoursZone: string
     email: {
       enabled: boolean
       host: string

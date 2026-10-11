@@ -27,6 +27,7 @@ public class InsightAlertMetrics {
         counter("email", "success");
         counter("email", "failure");
         counter("all", "cooldown");
+        counter("all", "quiet");
         counter("all", "success");
         counter("all", "failure");
     }

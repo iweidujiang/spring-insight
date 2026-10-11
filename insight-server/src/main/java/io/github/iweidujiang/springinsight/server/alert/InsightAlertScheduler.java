@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -20,9 +21,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 定时扫描服务错误窗口，超阈值则推送 Webhook 和/或邮件；可选附带 AI 短解读。
+ * 定时扫描服务错误 / p95 延迟窗口，超阈值则推送 Webhook 和/或邮件；可选附带 AI 短解读。
  * <p>
  * 是否启用以 {@link InsightRuntimeSettingsService#effectiveAlert()} 为准（控制台可改，无需重启）。
+ * 静默时段内跳过推送（仍可扫描）。
  * </p>
  *
  * @since 2026-09-18
@@ -50,7 +52,7 @@ public class InsightAlertScheduler {
 
     /**
      * @param settingsService     运行时设置
-     * @param persistenceService  错误聚合
+     * @param persistenceService  聚合
      * @param webhookSender       Webhook
      * @param emailSender         邮件
      * @param metrics             结果计数
@@ -107,7 +109,7 @@ public class InsightAlertScheduler {
     }
 
     /**
-     * 按窗口聚合错误，对超阈值且不在冷却期的服务推送已配置通道。
+     * 按窗口聚合指标，对超阈值且不在冷却期的服务推送已配置通道。
      */
     void scan() {
         InsightServerAlertProperties properties = settingsService.effectiveAlert();
@@ -122,16 +124,32 @@ public class InsightAlertScheduler {
         }
         warnedNotReady.set(false);
         if (!InsightAlertEvaluator.supportedMetric(properties)) {
-            log.warn("[告警] 不支持的 metric={}，仅接受 error_rate / error_count", properties.normalizedMetric());
+            log.warn("[告警] 不支持的 metric={}，仅接受 error_rate / error_count / latency_p95",
+                    properties.normalizedMetric());
+            return;
+        }
+
+        ZonedDateTime nowZdt = ZonedDateTime.now(InsightAlertEvaluator.resolveZone(properties.getQuietHoursZone()));
+        if (InsightAlertEvaluator.inQuietHours(properties, nowZdt)) {
+            log.debug("[告警] 静默时段内跳过推送");
+            metrics.record("quiet");
             return;
         }
 
         int windowMinutes = properties.getWindowMinutes() > 0 ? properties.getWindowMinutes() : 15;
         long since = Instant.now().minus(windowMinutes, ChronoUnit.MINUTES).toEpochMilli();
-        List<Map<String, Object>> rows = persistenceService.findHighErrorServicesSince(since);
         long now = System.currentTimeMillis();
         String at = Instant.ofEpochMilli(now).truncatedTo(ChronoUnit.SECONDS).toString();
 
+        if (InsightAlertEvaluator.isLatencyMetric(properties)) {
+            scanLatency(properties, since, now, at);
+        } else {
+            scanErrors(properties, since, now, at);
+        }
+    }
+
+    private void scanErrors(InsightServerAlertProperties properties, long since, long now, String at) {
+        List<Map<String, Object>> rows = persistenceService.findHighErrorServicesSince(since);
         for (Map<String, Object> row : rows) {
             String service = String.valueOf(row.get("service_name"));
             long errorCalls = ((Number) row.get("error_calls")).longValue();
@@ -139,24 +157,44 @@ public class InsightAlertScheduler {
             if (!InsightAlertEvaluator.exceeds(properties, errorCalls, errorRate)) {
                 continue;
             }
-            Long fired = lastFiredAt.get(service);
-            if (InsightAlertEvaluator.inCooldown(fired == null ? 0L : fired, properties.getCooldownMinutes(), now)) {
-                metrics.record("cooldown");
-                log.debug("[告警] 冷却中跳过: service={}", service);
+            double value = InsightAlertEvaluator.metricValue(properties, errorCalls, errorRate);
+            tryDeliver(properties, service, value, now, at);
+        }
+    }
+
+    private void scanLatency(InsightServerAlertProperties properties, long since, long now, String at) {
+        List<Map<String, Object>> rows = persistenceService.getServiceLatencySummariesSince(since, 50);
+        for (Map<String, Object> row : rows) {
+            String service = String.valueOf(row.get("service_name"));
+            long p95 = ((Number) row.get("p95_ms")).longValue();
+            if (!InsightAlertEvaluator.exceedsLatency(properties, p95)) {
                 continue;
             }
-            double value = InsightAlertEvaluator.metricValue(properties, errorCalls, errorRate);
-            Map<String, Object> payload = InsightAlertEvaluator.payload(properties, service, value, at);
-            attachAiIfNeeded(payload, properties, service, value);
-            boolean delivered = deliver(properties, payload);
-            if (delivered) {
-                lastFiredAt.put(service, now);
-                metrics.record("success");
-                log.info("[告警] 已推送: service={}, metric={}, value={}, aiAttached={}",
-                        service, properties.normalizedMetric(), value, payload.getOrDefault("aiAttached", false));
-            } else {
-                metrics.record("failure");
-            }
+            tryDeliver(properties, service, p95, now, at);
+        }
+    }
+
+    private void tryDeliver(InsightServerAlertProperties properties,
+                            String service,
+                            double value,
+                            long now,
+                            String at) {
+        Long fired = lastFiredAt.get(service);
+        if (InsightAlertEvaluator.inCooldown(fired == null ? 0L : fired, properties.getCooldownMinutes(), now)) {
+            metrics.record("cooldown");
+            log.debug("[告警] 冷却中跳过: service={}", service);
+            return;
+        }
+        Map<String, Object> payload = InsightAlertEvaluator.payload(properties, service, value, at);
+        attachAiIfNeeded(payload, properties, service, value);
+        boolean delivered = deliver(properties, payload);
+        if (delivered) {
+            lastFiredAt.put(service, now);
+            metrics.record("success");
+            log.info("[告警] 已推送: service={}, metric={}, value={}, aiAttached={}",
+                    service, properties.normalizedMetric(), value, payload.getOrDefault("aiAttached", false));
+        } else {
+            metrics.record("failure");
         }
     }
 
@@ -182,7 +220,6 @@ public class InsightAlertScheduler {
             if (ai == null || Boolean.TRUE.equals(ai.get("skipped"))) {
                 return;
             }
-            // 只合并对外字段，避免 skipReason 等内部键进入 Webhook
             copyAiField(payload, ai, "aiAttached");
             copyAiField(payload, ai, "aiDegraded");
             copyAiField(payload, ai, "aiSummary");

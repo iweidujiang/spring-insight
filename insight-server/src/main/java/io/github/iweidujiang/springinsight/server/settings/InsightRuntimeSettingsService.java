@@ -129,6 +129,14 @@ public class InsightRuntimeSettingsService {
         out.setThreshold(patch.getThreshold());
         out.setWindowMinutes(patch.getWindowMinutes());
         out.setCooldownMinutes(patch.getCooldownMinutes());
+        out.setQuietHoursEnabled(patch.isQuietHoursEnabled());
+        if (StringUtils.hasText(patch.getQuietHoursStart())) {
+            out.setQuietHoursStart(patch.getQuietHoursStart().trim());
+        }
+        if (StringUtils.hasText(patch.getQuietHoursEnd())) {
+            out.setQuietHoursEnd(patch.getQuietHoursEnd().trim());
+        }
+        out.setQuietHoursZone(nullToEmpty(patch.getQuietHoursZone()));
         if (patch.getEmail() != null) {
             InsightRuntimeSettings.EmailSettings e = deepCopyEmail(out.getEmail());
             InsightRuntimeSettings.EmailSettings p = patch.getEmail();
@@ -177,6 +185,10 @@ public class InsightRuntimeSettingsService {
         m.put("threshold", a.getThreshold());
         m.put("windowMinutes", a.getWindowMinutes());
         m.put("cooldownMinutes", a.getCooldownMinutes());
+        m.put("quietHoursEnabled", a.isQuietHoursEnabled());
+        m.put("quietHoursStart", nullToEmpty(a.getQuietHoursStart()));
+        m.put("quietHoursEnd", nullToEmpty(a.getQuietHoursEnd()));
+        m.put("quietHoursZone", nullToEmpty(a.getQuietHoursZone()));
         InsightRuntimeSettings.EmailSettings e = a.getEmail() != null ? a.getEmail() : new InsightRuntimeSettings.EmailSettings();
         Map<String, Object> email = new LinkedHashMap<>();
         email.put("enabled", e.isEnabled());
@@ -216,6 +228,10 @@ public class InsightRuntimeSettingsService {
         a.setThreshold(p.getThreshold());
         a.setWindowMinutes(p.getWindowMinutes());
         a.setCooldownMinutes(p.getCooldownMinutes());
+        a.setQuietHoursEnabled(p.isQuietHoursEnabled());
+        a.setQuietHoursStart(nullToEmpty(p.getQuietHoursStart()));
+        a.setQuietHoursEnd(nullToEmpty(p.getQuietHoursEnd()));
+        a.setQuietHoursZone(nullToEmpty(p.getQuietHoursZone()));
         InsightServerAlertProperties.Email pe = p.getEmail() != null ? p.getEmail() : new InsightServerAlertProperties.Email();
         InsightRuntimeSettings.EmailSettings e = new InsightRuntimeSettings.EmailSettings();
         e.setEnabled(pe.isEnabled());
@@ -255,6 +271,10 @@ public class InsightRuntimeSettingsService {
         p.setThreshold(a.getThreshold());
         p.setWindowMinutes(a.getWindowMinutes());
         p.setCooldownMinutes(a.getCooldownMinutes());
+        p.setQuietHoursEnabled(a.isQuietHoursEnabled());
+        p.setQuietHoursStart(nullToEmpty(a.getQuietHoursStart()));
+        p.setQuietHoursEnd(nullToEmpty(a.getQuietHoursEnd()));
+        p.setQuietHoursZone(nullToEmpty(a.getQuietHoursZone()));
         InsightRuntimeSettings.EmailSettings e = a.getEmail() != null ? a.getEmail() : new InsightRuntimeSettings.EmailSettings();
         InsightServerAlertProperties.Email pe = new InsightServerAlertProperties.Email();
         pe.setEnabled(e.isEnabled());
@@ -304,6 +324,10 @@ public class InsightRuntimeSettingsService {
         c.setThreshold(a.getThreshold());
         c.setWindowMinutes(a.getWindowMinutes());
         c.setCooldownMinutes(a.getCooldownMinutes());
+        c.setQuietHoursEnabled(a.isQuietHoursEnabled());
+        c.setQuietHoursStart(a.getQuietHoursStart());
+        c.setQuietHoursEnd(a.getQuietHoursEnd());
+        c.setQuietHoursZone(a.getQuietHoursZone());
         c.setEmail(deepCopyEmail(a.getEmail()));
         return c;
     }

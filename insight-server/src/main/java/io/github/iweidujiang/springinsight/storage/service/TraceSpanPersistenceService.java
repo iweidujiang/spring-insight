@@ -549,7 +549,18 @@ public class TraceSpanPersistenceService {
      * @return 延迟摘要
      */
     public List<Map<String, Object>> getServiceLatencySummaries(int lastHours, int limit) {
-        long sinceTime = sinceEpochMillis(lastHours);
+        return getServiceLatencySummariesSince(sinceEpochMillis(lastHours), limit);
+    }
+
+    /**
+     * 与 {@link #getServiceLatencySummaries(int, int)} 同一趟快照聚合，供告警按分钟窗口复用。
+     *
+     * @param sinceEpochMs 含该时刻及之后的 Span；{@code <=0} 不限
+     * @param limit        最多返回服务数（按 p95 降序截断）
+     * @return 含 {@code service_name} / {@code p95_ms} / {@code span_count} 等
+     */
+    public List<Map<String, Object>> getServiceLatencySummariesSince(long sinceEpochMs, int limit) {
+        long sinceTime = sinceEpochMs;
         int max = Math.max(1, limit);
 
         record Acc(List<Long> durations, long errorCount) {}
