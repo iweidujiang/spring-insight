@@ -57,6 +57,19 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
         // 构建操作名称：方法 + 路径
         String operationName = request.getMethod() + " " + request.getRequestURI();
 
+        // 上一请求若未清栈（异步派发 / 上报异常等），新入站会挂到旧 TraceId 下，
+        // 链路列表就会把多次 HTTP 请求合并成一行。
+        if (TraceContext.getStackDepth() > 0) {
+            if (insightProperties.isDiagnosticLogs()) {
+                log.warn("[HTTP拦截器] 入站前发现残留 Trace 栈(depth={})，强制清理: uri={}",
+                        TraceContext.getStackDepth(), request.getRequestURI());
+            } else {
+                log.debug("[HTTP拦截器] 入站前清理残留 Trace 栈: depth={}, uri={}",
+                        TraceContext.getStackDepth(), request.getRequestURI());
+            }
+            TraceContext.clear();
+        }
+
         // 跨服务：读取 W3C traceparent，延续上游 TraceId（无头或关闭开关时仍新建根）
         String remoteTraceId = null;
         String remoteParentSpanId = null;
@@ -109,45 +122,47 @@ public class HttpRequestInterceptor implements HandlerInterceptor {
                                 Object handler, Exception ex) {
 
         TraceSpan span = (TraceSpan) request.getAttribute(TRACE_SPAN_ATTR);
-        if (span == null) {
-            log.warn("[HTTP拦截器] 请求完成，但未找到对应的TraceSpan: uri={}", request.getRequestURI());
-            return;
+        try {
+            if (span == null) {
+                log.warn("[HTTP拦截器] 请求完成，但未找到对应的TraceSpan: uri={}", request.getRequestURI());
+                return;
+            }
+
+            // 根据异常和状态码判断请求是否成功
+            String errorCode = null;
+            String errorMessage = null;
+
+            if (ex != null) {
+                // 有异常，请求失败
+                errorCode = "EXCEPTION";
+                errorMessage = ex.getClass().getName() + ": " + ex.getMessage();
+                log.debug("[HTTP拦截器] 请求处理异常: traceId={}, error={}", span.getTraceId(), errorMessage);
+            } else if (response.getStatus() >= 400) {
+                // HTTP状态码表示错误
+                errorCode = "HTTP_" + response.getStatus();
+                errorMessage = "HTTP Status: " + response.getStatus();
+            }
+
+            // 添加响应相关标签
+            span.addTag("http.status_code", String.valueOf(response.getStatus()))
+                    .addTag("http.response_size", String.valueOf(response.getBufferSize()));
+
+            // 始终以请求属性上的 SERVER Span 为准结束并上报。
+            // 不可只依赖 TraceContext.endSpan()：异步派发 / 栈漂移时 ThreadLocal 可能为空，
+            // 此时 endSpan 为空、随后 clear() 又不上报，会导致入口 /order/create 丢失，
+            // 列表与瀑布根落成最早的出站 CLIENT（如 GET sca-product/...）。
+            if (!span.isFinished()) {
+                span.finish(errorCode, errorMessage);
+            }
+            reportSpanToListener(TraceSpan.snapshot(span));
+
+            log.debug("[HTTP拦截器] 请求完成: traceId={}, spanId={}, uri={}, status={}, duration={}ms",
+                    span.getTraceId(), span.getSpanId(), request.getRequestURI(),
+                    response.getStatus(), span.getDurationMs());
+        } finally {
+            // 无论上报是否异常，都必须清栈，避免污染后续请求
+            TraceContext.clear();
         }
-
-        // 根据异常和状态码判断请求是否成功
-        String errorCode = null;
-        String errorMessage = null;
-
-        if (ex != null) {
-            // 有异常，请求失败
-            errorCode = "EXCEPTION";
-            errorMessage = ex.getClass().getName() + ": " + ex.getMessage();
-            log.debug("[HTTP拦截器] 请求处理异常: traceId={}, error={}", span.getTraceId(), errorMessage);
-        } else if (response.getStatus() >= 400) {
-            // HTTP状态码表示错误
-            errorCode = "HTTP_" + response.getStatus();
-            errorMessage = "HTTP Status: " + response.getStatus();
-        }
-
-        // 添加响应相关标签
-        span.addTag("http.status_code", String.valueOf(response.getStatus()))
-                .addTag("http.response_size", String.valueOf(response.getBufferSize()));
-
-        // 始终以请求属性上的 SERVER Span 为准结束并上报。
-        // 不可只依赖 TraceContext.endSpan()：异步派发 / 栈漂移时 ThreadLocal 可能为空，
-        // 此时 endSpan 为空、随后 clear() 又不上报，会导致入口 /order/create 丢失，
-        // 列表与瀑布根落成最早的出站 CLIENT（如 GET sca-product/...）。
-        if (!span.isFinished()) {
-            span.finish(errorCode, errorMessage);
-        }
-        reportSpanToListener(TraceSpan.snapshot(span));
-
-        log.debug("[HTTP拦截器] 请求完成: traceId={}, spanId={}, uri={}, status={}, duration={}ms",
-                span.getTraceId(), span.getSpanId(), request.getRequestURI(),
-                response.getStatus(), span.getDurationMs());
-
-        // 清理当前线程的追踪上下文（防止内存泄漏；剩余栈内 Span 不再二次上报）
-        TraceContext.clear();
     }
 
     private void reportSpanToListener(TraceSpan span) {

@@ -6,17 +6,10 @@
           <i class="fa fa-list-ul me-2"></i>链路追踪
         </h2>
         <p class="page-description mb-0">
-          一行一次请求。点整行看详情；筛选会写入地址栏，便于分享
+          一行 = 一次请求（一个 TraceId）。点整行看详情；勾选两条可对比
         </p>
       </div>
       <div class="si-page__toolbar">
-        <label class="si-auto-refresh form-check">
-          <input class="form-check-input" type="checkbox" v-model="autoRefresh" />
-          <span class="form-check-label">自动刷新</span>
-        </label>
-        <button class="btn btn-primary" @click="loadData" :disabled="loading">
-          <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
-        </button>
         <span class="badge bg-info">
           <i class="fa fa-clock me-1"></i>{{ currentTime }}
         </span>
@@ -69,7 +62,7 @@
               class="form-control"
               type="search"
               v-model="pathPrefix"
-              placeholder="/api/orders"
+              placeholder="留空不限，例 /order"
               @keyup.enter="onFilterChange"
               @change="onFilterChange"
             />
@@ -118,14 +111,44 @@
 
     <div v-else class="card stat-card si-table-panel">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <h5 class="card-title mb-0">最近请求</h5>
-          <span class="badge bg-primary">{{ traces.length }} 条</span>
+        <div class="si-trace-list-bar mb-2">
+          <div class="si-trace-list-bar__title">
+            <h5 class="card-title mb-0">最近请求</h5>
+            <span class="badge bg-primary">{{ traces.length }} 条</span>
+          </div>
+          <div class="si-trace-list-bar__actions">
+            <button
+              type="button"
+              class="btn btn-outline-primary btn-sm"
+              :disabled="selectedIds.length !== 2"
+              @click="goCompare"
+              :title="selectedIds.length === 2 ? '对比已选两条 Trace' : '请勾选恰好两条 Trace'"
+            >
+              <i class="fa fa-columns me-1"></i>对比 ({{ selectedIds.length }}/2)
+            </button>
+            <button
+              v-if="selectedIds.length"
+              type="button"
+              class="btn btn-outline-secondary btn-sm"
+              @click="clearSelection"
+            >
+              清除选择
+            </button>
+            <label class="si-auto-refresh form-check mb-0">
+              <input class="form-check-input" type="checkbox" v-model="autoRefresh" />
+              <span class="form-check-label">自动刷新</span>
+            </label>
+            <button type="button" class="btn btn-primary btn-sm" @click="loadData" :disabled="loading">
+              <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i>
+              <span>刷新</span>
+            </button>
+          </div>
         </div>
         <div class="table-responsive">
           <table class="table table-hover mb-0 si-trace-table si-data-table">
             <thead class="table-light">
               <tr>
+                <th class="si-trace-col-check"></th>
                 <th class="si-trace-col-op">请求</th>
                 <th class="si-trace-col-dur">耗时</th>
                 <th class="si-trace-col-status">状态</th>
@@ -139,9 +162,20 @@
                 v-for="(trace, index) in traces"
                 :key="`${trace.traceId}-${index}`"
                 class="fade-in si-trace-row"
+                :class="{ 'si-trace-row--selected': isSelected(trace.traceId) }"
                 :style="{ animationDelay: `${Math.min(index, 20) * 0.03}s` }"
                 @click="viewTraceDetail(trace.traceId)"
               >
+                <td class="si-trace-check" @click.stop>
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    :checked="isSelected(trace.traceId)"
+                    :disabled="!isSelected(trace.traceId) && selectedIds.length >= 2"
+                    @change="toggleSelect(trace.traceId)"
+                    :aria-label="`选择 ${trace.traceId}`"
+                  />
+                </td>
                 <td class="si-trace-op">
                   <div class="si-trace-op__inner">
                     <span class="si-http-method" :data-method="traceMethod(trace)">{{ traceMethod(trace) || 'REQ' }}</span>
@@ -171,7 +205,7 @@
                 </td>
               </tr>
               <tr v-if="traces.length === 0">
-                <td colspan="6" class="text-center text-muted">
+                <td colspan="7" class="text-center text-muted">
                   <div class="py-4">
                     <i class="fa fa-info-circle fa-2x mb-2"></i>
                     <p class="mb-0">{{ emptyNoMatchMessage(hours) }}</p>
@@ -217,6 +251,8 @@ const query = ref('')
 const copyHint = ref('')
 const loadError = ref('')
 const autoRefresh = ref(false)
+/** 最多选 2 条 Trace 用于对比 */
+const selectedIds = ref<string[]>([])
 
 let timeInterval: number | null = null
 let copyTimer: number | null = null
@@ -252,6 +288,33 @@ const durationShare = (trace: any) => {
   const max = traces.value.reduce((n, item) => Math.max(n, Number(item?.durationMs) || 0), 0)
   if (max <= 0) return 8
   return Math.max(8, Math.round(((Number(trace?.durationMs) || 0) / max) * 100))
+}
+
+const isSelected = (traceId: string) => selectedIds.value.includes(String(traceId || ''))
+
+const toggleSelect = (traceId: string) => {
+  const id = String(traceId || '').trim()
+  if (!id) return
+  const idx = selectedIds.value.indexOf(id)
+  if (idx >= 0) {
+    selectedIds.value = selectedIds.value.filter((x) => x !== id)
+    return
+  }
+  if (selectedIds.value.length >= 2) return
+  selectedIds.value = [...selectedIds.value, id]
+}
+
+const clearSelection = () => {
+  selectedIds.value = []
+}
+
+const goCompare = () => {
+  if (selectedIds.value.length !== 2) return
+  const [a, b] = selectedIds.value
+  router.push({
+    path: '/traces/compare',
+    query: { a, b, hours: String(hours.value) }
+  })
 }
 
 const updateCurrentTime = () => {
@@ -415,6 +478,47 @@ onUnmounted(() => {
 
 .si-trace-row {
   cursor: pointer;
+}
+
+.si-trace-row--selected {
+  background: rgba(15, 118, 110, 0.07);
+}
+
+.si-trace-col-check {
+  width: 2.25rem;
+}
+
+.si-trace-check {
+  vertical-align: middle;
+}
+
+.si-trace-list-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem 0.85rem;
+}
+
+.si-trace-list-bar__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.si-trace-list-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.si-trace-list-bar__actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .si-trace-col-op {

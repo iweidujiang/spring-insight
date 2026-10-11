@@ -15,6 +15,11 @@
 
 ## [Unreleased]
 
+### 体验
+- **Trace 对比（B3，0.9.0 预备）**：链路列表勾选至多 2 条 → `/traces/compare?a=&b=`；并排瀑布 + 按服务/操作的 max 耗时差分表
+- **链路列表工具栏**：对比 / 自动刷新 / 刷新挪到「最近请求」标题行右侧（页头只留时钟）
+- **Trace 对比可读性**：并排瀑布服务名/操作名字号加大；操作耗时差分默认收起，点击标题展开；交换/刷新挪到瀑布上方
+
 ---
 
 ## [0.8.1] — 2026-10-10
@@ -272,6 +277,9 @@
 # Agent
 
 ## [Unreleased]
+
+### 修复
+- **Servlet 入站残留栈清理**：`HttpRequestInterceptor.preHandle` 发现 ThreadLocal 栈未空时强制 `clear()` 再开新 Trace；`afterCompletion` 以 `finally` 清栈。避免异步派发/异常导致多次 HTTP 请求合并成同一 TraceId（列表只显示一行）
 
 ---
 

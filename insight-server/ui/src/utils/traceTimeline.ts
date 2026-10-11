@@ -240,3 +240,73 @@ export function formatDuration(ms: number): string {
   if (ms < 10_000) return `${(ms / 1000).toFixed(2)}s`
   return `${(ms / 1000).toFixed(1)}s`
 }
+
+/** Trace 对比：按服务+操作聚合后的差分行 */
+export interface OpDiffRow {
+  serviceName: string
+  operationName: string
+  leftCount: number
+  rightCount: number
+  leftMaxMs: number
+  rightMaxMs: number
+  /** rightMax - leftMax */
+  deltaMs: number
+  onlyLeft: boolean
+  onlyRight: boolean
+}
+
+type OpAgg = { count: number; maxMs: number }
+
+function aggregateByOp(spans: TraceSpanLike[]): Map<string, OpAgg> {
+  const map = new Map<string, OpAgg>()
+  for (const s of spans) {
+    const svc = String(s.serviceName || '').trim() || 'unknown'
+    const op = String(s.operationName || '').trim() || '(unknown)'
+    const key = `${svc}\0${op}`
+    const dur = Math.max(0, n(s.durationMs))
+    const cur = map.get(key)
+    if (!cur) {
+      map.set(key, { count: 1, maxMs: dur })
+    } else {
+      cur.count += 1
+      if (dur > cur.maxMs) cur.maxMs = dur
+    }
+  }
+  return map
+}
+
+/**
+ * 对比两条 Trace 的操作耗时（按 service + operationName 聚合，取 max）。
+ * 按 |delta| 降序，便于一眼看到变慢/变快的操作。
+ */
+export function buildOpDurationDiff(
+  leftSpans: TraceSpanLike[],
+  rightSpans: TraceSpanLike[],
+  limit = 40
+): OpDiffRow[] {
+  const left = aggregateByOp(leftSpans || [])
+  const right = aggregateByOp(rightSpans || [])
+  const keys = new Set<string>([...left.keys(), ...right.keys()])
+  const rows: OpDiffRow[] = []
+  for (const key of keys) {
+    const [serviceName, operationName] = key.split('\0')
+    const l = left.get(key)
+    const r = right.get(key)
+    const leftMaxMs = l?.maxMs ?? 0
+    const rightMaxMs = r?.maxMs ?? 0
+    rows.push({
+      serviceName,
+      operationName,
+      leftCount: l?.count ?? 0,
+      rightCount: r?.count ?? 0,
+      leftMaxMs,
+      rightMaxMs,
+      deltaMs: rightMaxMs - leftMaxMs,
+      onlyLeft: !!l && !r,
+      onlyRight: !!r && !l
+    })
+  }
+  rows.sort((a, b) => Math.abs(b.deltaMs) - Math.abs(a.deltaMs))
+  const max = Math.max(1, Math.min(limit, 100))
+  return rows.length > max ? rows.slice(0, max) : rows
+}

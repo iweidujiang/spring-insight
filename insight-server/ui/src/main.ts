@@ -5,6 +5,7 @@ import DashboardView from './views/DashboardView.vue'
 import TopologyView from './views/TopologyView.vue'
 import TracesView from './views/TracesView.vue'
 import TraceDetailView from './views/TraceDetailView.vue'
+import TraceCompareView from './views/TraceCompareView.vue'
 import ErrorAnalysisView from './views/ErrorAnalysisView.vue'
 import ServiceDetailView from './views/ServiceDetailView.vue'
 import SettingsView from './views/SettingsView.vue'
@@ -43,6 +44,12 @@ const router = createRouter({
       name: 'traces',
       component: TracesView,
       meta: { title: '链路追踪' }
+    },
+    {
+      path: '/traces/compare',
+      name: 'trace-compare',
+      component: TraceCompareView,
+      meta: { title: 'Trace 对比' }
     },
     {
       path: '/traces/:traceId',
