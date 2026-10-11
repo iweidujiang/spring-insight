@@ -15,12 +15,27 @@
 
 ## [Unreleased]
 
+---
+
+## [0.9.0] — 2026-10-11
+
 ### 体验
-- **Trace 对比（B3，0.9.0 预备）**：链路列表勾选至多 2 条 → `/traces/compare?a=&b=`；并排瀑布 + 按服务/操作的 max 耗时差分表
+- **Trace 对比（B3）**：链路列表勾选至多 2 条 → `/traces/compare?a=&b=`；并排瀑布 + 按服务/操作的 max 耗时差分表
 - **链路列表工具栏**：对比 / 自动刷新 / 刷新挪到「最近请求」标题行右侧（页头只留时钟）
 - **Trace 对比可读性**：并排瀑布服务名/操作名字号加大；操作耗时差分默认收起，点击标题展开；交换/刷新挪到瀑布上方
-- **告警增强（B4，0.9.0 预备）**：指标新增 `latency_p95`（毫秒）；静默时段（可跨午夜 / 可选时区）；设置页 Webhook「预览 / 试发」（样本带 `preview=true`，不计冷却）
-- **OpenAPI（B6，0.9.0 预备）**：springdoc 暴露只读 `GET /v3/api-docs` 与 `/swagger-ui.html`；README / 启动日志 / 关于页链到文档地址
+- **告警增强（B4）**：指标新增 `latency_p95`（毫秒）；静默时段（可跨午夜 / 可选时区）；设置页 Webhook「预览 / 试发」（样本带 `preview=true`，不计冷却）
+- **OpenAPI（B6）**：springdoc 暴露只读 `GET /v3/api-docs` 与 `/swagger-ui.html`；README / 启动日志 / 关于页链到文档地址
+
+### 兼容
+- **Agent 可不升**：业务侧可继续使用 Central `spring-insight-agent-starter:0.4.1` 上报；推荐配套 **`0.4.2`**（入站残留栈清理）
+- 本版仅 Server / 控制台；无 Agent 埋点变更（相对 0.8.1）
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.4.2`（推荐；`0.4.1` / `0.4.0` 仍可上报） |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:0.9.0` |
+| Release jar | `insight-server-0.9.0.jar` |
 
 ---
 
