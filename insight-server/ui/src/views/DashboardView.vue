@@ -6,7 +6,7 @@
           <i class="fa fa-tachometer me-2"></i>监控仪表盘
         </h2>
         <p class="si-dashboard__subtitle">
-          {{ isSolo ? '单应用 · 请求、延迟与错误' : isMesh ? '多服务 · 拓扑为主' : '多服务 · 等待调用边' }}
+          {{ isSolo ? '单应用 · 请求、延迟与错误' : '健康度 · 异常 · 依赖一览' }}
         </p>
       </div>
       <div class="si-dashboard__status" v-show="!loading">
@@ -38,13 +38,8 @@
 
     <div v-if="loadError" class="alert alert-danger py-2 mx-3 mb-0" role="alert">{{ loadError }}</div>
 
-    <div v-show="!loading" class="si-dashboard__content" :class="{ 'si-dashboard__content--mesh': isMesh }">
-      <!-- KPI：多服务有边时收成细条，把高度留给拓扑 -->
-      <section
-        class="si-dashboard__kpis"
-        :class="{ 'si-dashboard__kpis--compact': isMesh || isSolo }"
-        aria-label="关键指标"
-      >
+    <div v-show="!loading" class="si-dashboard__content">
+      <section class="si-dashboard__kpis" aria-label="关键指标">
         <button
           v-for="(stat, index) in stats"
           :key="index"
@@ -60,19 +55,15 @@
                   {{ stat.title }}
                 </div>
                 <div class="si-dashboard__kpi-value">{{ stat.value }}</div>
-                <div v-if="!isMesh && !isSolo" class="si-dashboard__kpi-hint">{{ stat.hint }}</div>
+                <div class="si-dashboard__kpi-hint">{{ stat.hint }}</div>
               </div>
-              <i v-if="!isMesh" :class="`fa ${stat.icon} si-dashboard__kpi-icon text-${stat.color}`"></i>
+              <i :class="`fa ${stat.icon} si-dashboard__kpi-icon text-${stat.color}`"></i>
             </div>
           </div>
         </button>
       </section>
 
-      <section
-        class="si-period"
-        :class="{ 'si-period--compact': isMesh }"
-        aria-label="时段摘要"
-      >
+      <section class="si-period" aria-label="时段摘要">
         <header class="si-period__head">
           <div class="si-period__meta">
             <span class="si-period__kicker">时段摘要</span>
@@ -121,7 +112,7 @@
       </section>
 
       <section
-        v-if="collectorStats && !isMesh"
+        v-if="collectorStats"
         class="si-dashboard__collector-strip"
         aria-label="采集器状态"
       >
@@ -134,6 +125,9 @@
           </span>
           <span><em>运行</em>{{ collectorStats.runningHours ?? 0 }}h</span>
         </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary py-0 ms-auto" @click="goTopology()">
+          打开拓扑
+        </button>
       </section>
 
       <section v-if="isSolo" class="si-app" aria-label="单应用概览">
@@ -195,101 +189,57 @@
         </div>
       </section>
 
-      <!-- 多服务尚无调用边：矮诊断条 + 提示 -->
-      <section v-if="isWaitingEdges" class="si-dashboard__diag si-dashboard__diag--slim" aria-label="服务健康">
-        <div class="si-dashboard__diag-panel">
-          <div class="si-dashboard__diag-head">
-            <span><i class="fa fa-heartbeat me-2"></i>服务健康快照</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goSlowTraces()">看慢链路</button>
-          </div>
-          <div v-if="healthSnapshot.length > 0" class="table-responsive si-dashboard__diag-scroll">
-            <table class="table table-hover mb-0 si-dashboard__diag-table si-data-table">
-              <thead class="table-light">
-                <tr>
-                  <th>服务</th>
-                  <th>均耗时</th>
-                  <th>p95</th>
-                  <th>错误</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="row in healthSnapshot"
-                  :key="'health-' + row.serviceName"
-                  class="si-dashboard__diag-row"
-                  @click="goServiceSlow(row)"
-                >
-                  <td class="text-truncate" style="max-width: 9rem" :title="row.serviceName">{{ row.serviceName }}</td>
-                  <td>{{ formatMs(row.avgMs) }}</td>
-                  <td :class="row.p95Ms >= 1000 ? 'text-danger fw-bold' : row.p95Ms >= 500 ? 'text-warning' : ''">
-                    {{ formatMs(row.p95Ms) }}
-                  </td>
-                  <td :class="(row.errorCount || 0) > 0 ? 'text-danger' : 'text-muted'">
-                    {{ row.errorCount || 0 }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-else class="si-dashboard__diag-empty si-dashboard__diag-empty--rich">
-            <p class="mb-1">{{ emptyLatencySampleMessage(hours) }}</p>
-            <button type="button" class="btn btn-sm btn-outline-primary" @click="expandAllStored">扩大到全部已存</button>
-          </div>
-        </div>
-        <div class="si-dashboard__diag-panel">
-          <div class="si-dashboard__diag-head">
-            <span><i class="fa fa-lightbulb-o me-2"></i>怎样出现调用边</span>
-            <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goTopology()">打开拓扑</button>
-          </div>
-          <ul class="si-dashboard__edge-tips">
-            <li>出站走 OpenFeign、<code>WebClient.Builder</code>、Gateway 或 <code>RestTemplateBuilder</code></li>
-            <li>Agent 写入 <code>remoteService</code> 后，刷新即可在主图看到「调用方 → 被调用方」</li>
-          </ul>
-          <div v-if="errorAnalysis && errorAnalysis.length > 0" class="si-dashboard__diag-foot">
-            <button type="button" class="btn btn-sm btn-outline-danger py-0" @click="goErrors">
-              {{ errorAnalysis.length }} 个异常服务 · 去错误分析
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- 有调用边：拓扑主舞台 + 窄辅栏 -->
-      <section v-if="isMesh" class="si-dashboard__body si-dashboard__body--mesh">
-        <div class="chart-container si-dashboard__panel si-dashboard__chart-topology si-dashboard__hero">
-          <div class="si-dashboard__chart-head">
-            <div>
-              <h6 class="si-dashboard__panel-title mb-0">
-                <i class="fa fa-sitemap me-2"></i>服务依赖拓扑
-              </h6>
-              <p class="si-dashboard__panel-desc mb-0">
-                箭头指向被调用方 · 点击节点 / 边下钻链路 · {{ hoursLabel }}
-                <span v-if="collectorStats" class="si-dashboard__inline-meta">
-                  · Collector {{ collectorStats.totalReceivedSpans ?? 0 }} Span
-                </span>
-              </p>
+      <section v-else class="si-overview" aria-label="服务概览">
+        <div class="si-overview__grid">
+          <div class="si-overview__panel">
+            <div class="si-overview__head">
+              <span><i class="fa fa-heartbeat me-2"></i>服务健康</span>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goSlowTraces()">慢链路</button>
             </div>
-            <div class="d-flex align-items-center gap-2">
-              <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTopology">完整拓扑</button>
-              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshTopologyChart">
-                <i class="fa fa-refresh"></i>
-              </button>
+            <div v-if="healthSnapshot.length > 0" class="table-responsive si-overview__scroll">
+              <table class="table table-hover mb-0 si-dashboard__diag-table si-data-table">
+                <thead class="table-light">
+                  <tr>
+                    <th>服务</th>
+                    <th>均耗时</th>
+                    <th>p95</th>
+                    <th>错误</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="row in healthSnapshot"
+                    :key="'health-' + row.serviceName"
+                    class="si-dashboard__diag-row"
+                    @click="goServiceSlow(row)"
+                  >
+                    <td class="text-truncate" style="max-width: 9rem" :title="row.serviceName">{{ row.serviceName }}</td>
+                    <td>{{ formatMs(row.avgMs) }}</td>
+                    <td :class="row.p95Ms >= 1000 ? 'text-danger fw-bold' : row.p95Ms >= 500 ? 'text-warning' : ''">
+                      {{ formatMs(row.p95Ms) }}
+                    </td>
+                    <td :class="(row.errorCount || 0) > 0 ? 'text-danger' : 'text-muted'">
+                      {{ row.errorCount || 0 }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-else class="si-dashboard__diag-empty si-dashboard__diag-empty--rich">
+              <p class="mb-1">{{ emptyLatencySampleMessage(hours) }}</p>
+              <button type="button" class="btn btn-sm btn-outline-primary" @click="expandAllStored">扩大到全部已存</button>
             </div>
           </div>
-          <div class="si-dashboard__hero-body">
-            <div id="topology-chart" class="si-dashboard__chart-canvas"></div>
-          </div>
-        </div>
 
-        <aside class="si-dashboard__rail">
-          <div class="si-dashboard__rail-card">
-            <div class="si-dashboard__rail-head">
+          <div class="si-overview__panel">
+            <div class="si-overview__head">
               <span>慢服务 <PercentileHelp /></span>
               <button type="button" class="btn btn-sm btn-link py-0" @click="goSlowTraces()">更多</button>
             </div>
             <ul v-if="slowServices.length" class="si-dashboard__rail-list">
               <li
-                v-for="row in slowServices.slice(0, 5)"
-                :key="'rail-slow-' + row.serviceName"
+                v-for="row in slowServices.slice(0, 6)"
+                :key="'slow-' + row.serviceName"
                 @click="goServiceSlow(row)"
               >
                 <span class="si-dashboard__rail-name" :title="row.serviceName">{{ row.serviceName }}</span>
@@ -301,15 +251,15 @@
             <div v-else class="si-dashboard__rail-empty">{{ emptyInRangeShort(hours, '延迟样本') }}</div>
           </div>
 
-          <div class="si-dashboard__rail-card">
-            <div class="si-dashboard__rail-head">
+          <div class="si-overview__panel">
+            <div class="si-overview__head">
               <span>热点依赖</span>
-              <button type="button" class="btn btn-sm btn-link py-0" @click="goTopology()">全部</button>
+              <button type="button" class="btn btn-sm btn-link py-0" @click="goTopology()">拓扑图</button>
             </div>
             <ul v-if="hotDependencies.length" class="si-dashboard__rail-list">
               <li
-                v-for="(dep, idx) in hotDependencies.slice(0, 5)"
-                :key="'rail-hot-' + idx"
+                v-for="(dep, idx) in hotDependencies.slice(0, 6)"
+                :key="'hot-' + idx"
                 @click="goHotDependency(dep)"
               >
                 <span class="si-dashboard__rail-dep" :title="`${dep.sourceService} → ${dep.targetService}`">
@@ -318,71 +268,61 @@
                 <em>{{ dep.callCount }}</em>
               </li>
             </ul>
-            <div v-else class="si-dashboard__rail-empty">{{ emptyInRangeShort(hours, '依赖') }}</div>
-          </div>
-
-          <div class="chart-container si-dashboard__panel si-dashboard__chart-rank si-dashboard__rail-rank">
-            <div class="si-dashboard__chart-head">
-              <div>
-                <h6 class="si-dashboard__panel-title mb-0">请求排名</h6>
-                <p class="si-dashboard__panel-desc mb-0">按 Span · 点柱筛选</p>
-              </div>
+            <div v-else class="si-dashboard__rail-empty">
+              <p class="mb-1">{{ emptyInRangeShort(hours, '依赖') }}</p>
+              <p class="small text-muted mb-0">跨服务调用出现后可在此与拓扑图查看</p>
             </div>
-            <div id="service-rank-chart" class="si-dashboard__chart-canvas"></div>
-          </div>
-
-          <button
-            v-if="errorAnalysis && errorAnalysis.length > 0"
-            type="button"
-            class="btn btn-sm btn-outline-danger w-100"
-            @click="goErrors"
-          >
-            {{ errorAnalysis.length }} 个异常服务
-          </button>
-        </aside>
-      </section>
-
-      <!-- 多服务无边：保留拓扑画布 + 排名 -->
-      <section v-if="isWaitingEdges" class="si-dashboard__body">
-        <div class="chart-container si-dashboard__panel si-dashboard__chart-topology si-dashboard__hero">
-          <div class="si-dashboard__chart-head">
-            <div>
-              <h6 class="si-dashboard__panel-title mb-0">
-                <i class="fa fa-sitemap me-2"></i>已监控服务
-              </h6>
-              <p class="si-dashboard__panel-desc mb-0">
-                {{ services.length }} 个服务 · 暂无跨服务边 · {{ hoursLabel }}
-              </p>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-              <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTopology">完整拓扑</button>
-              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshTopologyChart">
-                <i class="fa fa-refresh"></i>
-              </button>
-            </div>
-          </div>
-          <div class="si-dashboard__hero-body">
-            <div id="topology-chart" class="si-dashboard__chart-canvas"></div>
           </div>
         </div>
 
-        <aside class="si-dashboard__rail">
-          <div class="chart-container si-dashboard__panel si-dashboard__chart-rank">
-            <div class="si-dashboard__chart-head">
-              <div>
-                <h6 class="si-dashboard__panel-title mb-0">请求排名</h6>
-                <p class="si-dashboard__panel-desc mb-0">按 Span 量 Top</p>
-              </div>
-              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshServiceRankChart">
+        <div class="si-overview__bottom">
+          <div class="si-overview__panel si-overview__panel--traces">
+            <div class="si-overview__head">
+              <span><i class="fa fa-list me-2"></i>最近请求</span>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goTraces()">全部链路</button>
+            </div>
+            <div v-if="recentTraces.length === 0" class="si-dashboard__diag-empty">{{ emptyRequestsMessage(hours) }}</div>
+            <ul v-else class="si-app__list">
+              <li
+                v-for="tr in recentTraces.slice(0, 10)"
+                :key="tr.traceId"
+                class="si-app__row"
+                @click="goTraceDetail(tr.traceId)"
+              >
+                <span class="si-http-method" :data-method="traceMethod(tr)">{{ traceMethod(tr) || 'REQ' }}</span>
+                <span class="si-app__path" :title="tracePath(tr)">{{ tracePath(tr) }}</span>
+                <span class="text-muted small text-truncate" style="max-width: 7rem">{{ tr.serviceName || '—' }}</span>
+                <span class="si-dur si-app__dur">
+                  <span class="si-dur__track">
+                    <i class="si-dur__bar" :style="{ width: durationShare(tr) + '%' }"></i>
+                  </span>
+                  <em class="si-dur__val">{{ formatMs(tr.durationMs || 0) }}</em>
+                </span>
+                <span class="badge" :class="traceFailed(tr) ? 'bg-danger' : 'bg-success'">
+                  {{ traceFailed(tr) ? '失败' : '成功' }}
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="si-overview__panel si-overview__panel--rank">
+            <div class="si-overview__head">
+              <span>请求排名</span>
+              <button type="button" class="btn btn-sm btn-outline-primary py-0" @click="refreshServiceRankChart">
                 <i class="fa fa-refresh"></i>
               </button>
             </div>
-            <div id="service-rank-chart" class="si-dashboard__chart-canvas"></div>
-            <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-2" @click="goTraces()">
-              查看链路列表
+            <div id="service-rank-chart" class="si-overview__rank-canvas"></div>
+            <button
+              v-if="errorAnalysis && errorAnalysis.length > 0"
+              type="button"
+              class="btn btn-sm btn-outline-danger w-100 mt-2"
+              @click="goErrors"
+            >
+              {{ errorAnalysis.length }} 个异常服务 · 错误分析
             </button>
           </div>
-        </aside>
+        </div>
       </section>
     </div>
   </div>
@@ -395,7 +335,6 @@ import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import { ApiService, type AiExplainResult, type PeriodInsight, type PeriodInsightLink } from '../services/ApiService'
-import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { formatDuration } from '../utils/traceTimeline'
 import {
   TIME_RANGE_OPTIONS,
@@ -426,17 +365,12 @@ const periodInsight = ref<PeriodInsight | null>(null)
 const periodExplain = ref<AiExplainResult | null>(null)
 const periodExplaining = ref(false)
 
-let topologyChart: echarts.ECharts | null = null
 let serviceRankChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
 
 const hasDependencies = computed(() => dependencies.value.length > 0)
-/** 只有一个应用、还没有调用边时，首页改看请求而不是空拓扑 */
+/** 只有一个应用且尚无调用边：首页用单应用请求列表 */
 const isSolo = computed(() => !hasDependencies.value && services.value.length === 1)
-/** 有跨服务调用边：拓扑占主舞台 */
-const isMesh = computed(() => hasDependencies.value)
-/** 多个服务但还没有调用边（含尚未接入任何服务） */
-const isWaitingEdges = computed(() => !isSolo.value && !isMesh.value)
 
 const soloProfile = computed(() => {
   const name = services.value[0] || ''
@@ -499,7 +433,7 @@ const periodBullets = computed((): PeriodBullet[] => {
   const cur = p?.current
   if (!p || !cur || cur.spanCount <= 0) return []
 
-  const max = isMesh.value ? 3 : 5
+  const max = 5
   const out: PeriodBullet[] = []
   const delta = p.delta
   const links = p.links
@@ -580,7 +514,7 @@ const periodActions = computed(() => {
   if (links.hotEdge) {
     acts.push({ key: 'edge', label: '热点依赖', run: () => followPeriodLink(links.hotEdge) })
   }
-  return acts.slice(0, isMesh.value ? 2 : 4)
+  return acts.slice(0, 4)
 })
 
 const followPeriodLink = (link?: PeriodInsightLink) => {
@@ -711,133 +645,92 @@ const goHotDependency = (dep: { sourceService: string; targetService?: string })
   goTraces({ service: dep.sourceService })
 }
 
-const mountTopologyChart = () => {
-  const topologyChartDom = document.getElementById('topology-chart')
-  if (!topologyChartDom || topologyChart) return
-  topologyChart = echarts.init(topologyChartDom)
-  topologyChart.setOption(buildTopologyOption([], { compact: false }))
-  topologyChart.on('click', (params: any) => {
-    const hit = resolveTopologyClick(params)
-    if (hit?.kind === 'node' && hit.service) {
-      router.push({
-        path: `/services/${encodeURIComponent(hit.service)}`,
-        query: { hours: String(hours.value) }
-      })
-      return
-    }
-    if (hit?.service) {
-      goTraces({ service: hit.service })
-    }
-  })
-}
-
 const mountRankChart = () => {
   const serviceRankChartDom = document.getElementById('service-rank-chart')
   if (!serviceRankChartDom || serviceRankChart) return
   serviceRankChart = echarts.init(serviceRankChartDom)
-    serviceRankChart.setOption({
-      backgroundColor: 'transparent',
-      textStyle: { color: '#6b7f76' },
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        backgroundColor: 'rgba(255, 252, 250, 0.96)',
-        borderColor: 'rgba(20, 83, 45, 0.15)',
-        textStyle: { color: '#15241f' },
-        formatter: (params: any) => {
-          const data = params[0]
-          return `${data.name}<br/>请求数量: ${data.value} 条`
-        }
-      },
-      grid: { left: 8, right: 28, bottom: 8, top: 12, containLabel: true },
-      xAxis: {
-        type: 'value',
-        name: '请求',
-        nameTextStyle: { fontSize: 10, color: '#6b7f76' },
-        axisLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.25)' } },
-        splitLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.1)' } },
-        axisLabel: { fontSize: 10, color: '#6b7f76' }
-      },
-      yAxis: {
-        type: 'category',
-        data: [],
-        axisLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.25)' } },
-        axisLabel: {
-          fontSize: 11,
-          color: '#15241f',
-          width: 100,
-          overflow: 'truncate',
-          ellipsis: '…'
-        }
-      },
-      series: [{
-        name: '请求数量',
-        type: 'bar',
-        data: [],
-        barMaxWidth: 18,
-        itemStyle: {
-          color: (params: any) => {
-            const colorList = ['#0f766e', '#15803d', '#0d9488', '#b45309', '#b91c1c', '#1d4ed8', '#c2410c', '#047857']
-            return colorList[params.dataIndex % colorList.length]
-          },
-          borderRadius: [0, 4, 4, 0]
-        },
-        label: { show: true, position: 'right', formatter: '{c}', fontSize: 10, color: '#3d524a' }
-      }]
-    })
-    serviceRankChart.on('click', (params: any) => {
-      const name = params?.name
-      if (typeof name === 'string' && name) {
-        router.push({
-          path: `/services/${encodeURIComponent(name)}`,
-          query: { hours: String(hours.value) }
-        })
+  serviceRankChart.setOption({
+    backgroundColor: 'transparent',
+    textStyle: { color: '#6b7f76' },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      backgroundColor: 'rgba(255, 252, 250, 0.96)',
+      borderColor: 'rgba(20, 83, 45, 0.15)',
+      textStyle: { color: '#15241f' },
+      formatter: (params: any) => {
+        const data = params[0]
+        return `${data.name}<br/>请求数量: ${data.value} 条`
       }
-    })
+    },
+    grid: { left: 8, right: 28, bottom: 8, top: 12, containLabel: true },
+    xAxis: {
+      type: 'value',
+      name: '请求',
+      nameTextStyle: { fontSize: 10, color: '#6b7f76' },
+      axisLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.25)' } },
+      splitLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.1)' } },
+      axisLabel: { fontSize: 10, color: '#6b7f76' }
+    },
+    yAxis: {
+      type: 'category',
+      data: [],
+      axisLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.25)' } },
+      axisLabel: {
+        fontSize: 11,
+        color: '#15241f',
+        width: 100,
+        overflow: 'truncate',
+        ellipsis: '…'
+      }
+    },
+    series: [{
+      name: '请求数量',
+      type: 'bar',
+      data: [],
+      barMaxWidth: 18,
+      itemStyle: {
+        color: (params: any) => {
+          const colorList = ['#0f766e', '#15803d', '#0d9488', '#b45309', '#b91c1c', '#1d4ed8', '#c2410c', '#047857']
+          return colorList[params.dataIndex % colorList.length]
+        },
+        borderRadius: [0, 4, 4, 0]
+      },
+      label: { show: true, position: 'right', formatter: '{c}', fontSize: 10, color: '#3d524a' }
+    }]
+  })
+  serviceRankChart.on('click', (params: any) => {
+    const name = params?.name
+    if (typeof name === 'string' && name) {
+      router.push({
+        path: `/services/${encodeURIComponent(name)}`,
+        query: { hours: String(hours.value) }
+      })
+    }
+  })
 }
 
 const updateCharts = () => {
-  if (topologyChart) {
-    const spanByService: Record<string, number> = {}
-    serviceStats.value.forEach((s: any) => {
-      if (s.serviceName) spanByService[s.serviceName] = s.totalSpans || 1
-    })
-    topologyChart.setOption(
-      buildTopologyOption(dependencies.value, {
-        compact: !hasDependencies.value && services.value.length > 0,
-        standaloneServices: services.value,
-        spanByService
-      }),
-      { notMerge: true }
-    )
-  }
-
-  if (serviceRankChart) {
-    const serviceNames: string[] = []
-    const callCounts: number[] = []
-    const sorted = [...serviceStats.value].sort((a, b) => (b.totalSpans || 0) - (a.totalSpans || 0)).slice(0, 8)
-    sorted.forEach((s: any) => {
-      serviceNames.push(s.serviceName)
-      callCounts.push(s.totalSpans || 0)
-    })
-    serviceRankChart.setOption({
-      graphic: serviceNames.length === 0
-        ? [{
-            type: 'text',
-            left: 'center',
-            top: 'center',
-            style: { text: '暂无排名数据', fill: '#6b7f76', fontSize: 12, textAlign: 'center' }
-          }]
-        : [],
-      yAxis: { data: serviceNames },
-      series: [{ data: callCounts }]
-    })
-  }
-}
-
-const refreshTopologyChart = () => {
-  topologyChart?.resize()
-  updateCharts()
+  if (!serviceRankChart) return
+  const serviceNames: string[] = []
+  const callCounts: number[] = []
+  const sorted = [...serviceStats.value].sort((a, b) => (b.totalSpans || 0) - (a.totalSpans || 0)).slice(0, 8)
+  sorted.forEach((s: any) => {
+    serviceNames.push(s.serviceName)
+    callCounts.push(s.totalSpans || 0)
+  })
+  serviceRankChart.setOption({
+    graphic: serviceNames.length === 0
+      ? [{
+          type: 'text',
+          left: 'center',
+          top: 'center',
+          style: { text: '暂无排名数据', fill: '#6b7f76', fontSize: 12, textAlign: 'center' }
+        }]
+      : [],
+    yAxis: { data: serviceNames },
+    series: [{ data: callCounts }]
+  })
 }
 
 const refreshServiceRankChart = () => {
@@ -898,30 +791,18 @@ const loadData = async () => {
   }
 }
 
-/** 单应用不挂拓扑图；进入多服务视图后再创建，DOM 切换时先 dispose。 */
+/** 多服务概览挂请求排名图；单应用不挂。 */
 const syncCharts = async () => {
-  if (isSolo.value) {
-    topologyChart?.dispose()
-    topologyChart = null
-    serviceRankChart?.dispose()
-    serviceRankChart = null
-    return
-  }
-  // v-if 切换后旧实例可能绑在已卸载节点上
-  topologyChart?.dispose()
-  topologyChart = null
   serviceRankChart?.dispose()
   serviceRankChart = null
+  if (isSolo.value) return
   await nextTick()
-  mountTopologyChart()
   mountRankChart()
   updateCharts()
-  topologyChart?.resize()
   serviceRankChart?.resize()
 }
 
 const handleResize = () => {
-  topologyChart?.resize()
   serviceRankChart?.resize()
 }
 
@@ -938,7 +819,6 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  topologyChart?.dispose()
   serviceRankChart?.dispose()
   if (timeInterval) clearInterval(timeInterval)
   window.removeEventListener('resize', handleResize)
@@ -965,8 +845,9 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  overflow: hidden;
+  gap: 0.75rem;
+  overflow: auto;
+  padding-bottom: 0.75rem;
 }
 
 .si-dashboard__top {
@@ -1446,7 +1327,75 @@ onUnmounted(() => {
   margin-right: 0.35rem;
 }
 
-/* 拓扑主、排名辅 */
+.si-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.si-overview__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.si-overview__bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+  gap: 0.75rem;
+  min-height: 14rem;
+}
+
+.si-overview__panel {
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--box-shadow);
+  padding: 0.65rem 0.85rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.si-overview__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--si-ink);
+}
+
+.si-overview__scroll {
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.si-overview__panel--traces .si-app__list {
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.si-overview__rank-canvas {
+  flex: 1;
+  min-height: 12rem;
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .si-overview__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .si-overview__bottom {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 拓扑主、排名辅（遗留样式，首页已不再使用拓扑舞台） */
 .si-dashboard__body {
   flex: 1;
   min-height: 0;
