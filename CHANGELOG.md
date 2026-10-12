@@ -16,7 +16,8 @@
 ## [Unreleased]
 
 ### 变更
-- **拓扑不含 JDBC 库节点**：依赖边 / 时段热边跳过 `component=JDBC`；库调用改由后续「数据库」页展示（本刀仅出拓扑）
+- **拓扑不含 JDBC 库节点**：依赖边 / 时段热边跳过 `component=JDBC`；库调用改由「数据库」页展示
+- **JDBC 汇总 API**：`GET /api/v1/ui/jdbc/summary`（`hours` / `service` / `recentLimit`）返回 KPI、按库聚合与最近 JDBC Span
 
 ---
 

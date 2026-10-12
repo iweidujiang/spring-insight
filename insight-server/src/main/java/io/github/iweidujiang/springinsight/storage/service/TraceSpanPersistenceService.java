@@ -363,6 +363,141 @@ public class TraceSpanPersistenceService {
     }
 
     /**
+     * JDBC 追踪汇总（数据库页）：仅 {@code component=JDBC}。
+     *
+     * @param lastHours   时间窗小时；{@code <=0} 不限
+     * @param serviceName 可选业务服务过滤（Span.serviceName）
+     * @param recentLimit 最近 JDBC Span 条数
+     * @return hours / kpis / byRemote / recent
+     */
+    public Map<String, Object> getJdbcSummary(int lastHours, String serviceName, int recentLimit) {
+        long sinceTime = sinceEpochMillis(lastHours);
+        String svc = serviceName != null ? serviceName.trim() : "";
+        int recentMax = Math.max(1, Math.min(recentLimit, 200));
+
+        List<Long> durations = new ArrayList<>();
+        long errorCount = 0L;
+        long slowCount = 0L;
+        Map<String, long[]> byRemoteAgg = new HashMap<>(); // [count, err, slow, durSum]
+        Map<String, Long> byRemoteMax = new HashMap<>();
+        List<TraceSpan> jdbcSpans = new ArrayList<>();
+
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (s == null || !isJdbcComponent(s)) {
+                continue;
+            }
+            if (n(s.getStartTime()) < sinceTime) {
+                continue;
+            }
+            if (!svc.isEmpty() && (s.getServiceName() == null || !svc.equals(s.getServiceName()))) {
+                continue;
+            }
+            long dur = n(s.getDurationMs());
+            if (dur <= 0 && s.getEndTime() != null) {
+                dur = Math.max(0L, n(s.getEndTime()) - n(s.getStartTime()));
+            }
+            dur = Math.max(0L, dur);
+            durations.add(dur);
+            boolean err = isError(s);
+            if (err) {
+                errorCount++;
+            }
+            boolean slow = isJdbcSlow(s);
+            if (slow) {
+                slowCount++;
+            }
+            String remote = s.getRemoteService();
+            if (remote == null || remote.isBlank()) {
+                remote = "(unknown)";
+            }
+            long[] a = byRemoteAgg.computeIfAbsent(remote, x -> new long[]{0L, 0L, 0L, 0L});
+            a[0]++;
+            if (err) {
+                a[1]++;
+            }
+            if (slow) {
+                a[2]++;
+            }
+            a[3] += dur;
+            byRemoteMax.merge(remote, dur, Math::max);
+            jdbcSpans.add(s);
+        }
+
+        Map<String, Object> kpis = new LinkedHashMap<>();
+        kpis.put("spanCount", durations.size());
+        kpis.put("errorCount", errorCount);
+        kpis.put("slowCount", slowCount);
+        if (durations.isEmpty()) {
+            kpis.put("avgMs", 0.0);
+            kpis.put("p95Ms", 0L);
+            kpis.put("maxMs", 0L);
+        } else {
+            List<Long> sorted = new ArrayList<>(durations);
+            sorted.sort(Long::compareTo);
+            long sum = 0L;
+            for (Long d : sorted) {
+                sum += d;
+            }
+            kpis.put("avgMs", Math.round((sum / (double) sorted.size()) * 100.0) / 100.0);
+            kpis.put("p95Ms", percentile(sorted, 0.95));
+            kpis.put("maxMs", sorted.get(sorted.size() - 1));
+        }
+
+        List<Map<String, Object>> byRemote = new ArrayList<>();
+        for (Map.Entry<String, long[]> e : byRemoteAgg.entrySet()) {
+            long cnt = e.getValue()[0];
+            if (cnt <= 0) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("remoteService", e.getKey());
+            row.put("callCount", cnt);
+            row.put("errorCount", e.getValue()[1]);
+            row.put("slowCount", e.getValue()[2]);
+            row.put("avgMs", Math.round((e.getValue()[3] / (double) cnt) * 100.0) / 100.0);
+            row.put("maxMs", byRemoteMax.getOrDefault(e.getKey(), 0L));
+            byRemote.add(row);
+        }
+        byRemote.sort((a, b) -> Long.compare(
+                ((Number) b.get("callCount")).longValue(),
+                ((Number) a.get("callCount")).longValue()));
+
+        jdbcSpans.sort((a, b) -> Long.compare(n(b.getStartTime()), n(a.getStartTime())));
+        List<Map<String, Object>> recent = new ArrayList<>();
+        int n = Math.min(recentMax, jdbcSpans.size());
+        for (int i = 0; i < n; i++) {
+            TraceSpan s = jdbcSpans.get(i);
+            long dur = n(s.getDurationMs());
+            if (dur <= 0 && s.getEndTime() != null) {
+                dur = Math.max(0L, n(s.getEndTime()) - n(s.getStartTime()));
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("traceId", s.getTraceId());
+            row.put("spanId", s.getSpanId());
+            row.put("serviceName", s.getServiceName());
+            row.put("operationName", s.getOperationName());
+            row.put("remoteService", s.getRemoteService());
+            row.put("startTime", s.getStartTime());
+            row.put("durationMs", Math.max(0L, dur));
+            row.put("statusCode", s.getStatusCode());
+            row.put("errorCode", s.getErrorCode());
+            row.put("success", s.getSuccess());
+            row.put("slow", isJdbcSlow(s));
+            row.put("sqlType", tagValue(s, "db.sql_type"));
+            row.put("sql", tagValue(s, "db.sql"));
+            recent.add(row);
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("hours", lastHours);
+        body.put("serviceName", svc);
+        body.put("kpis", kpis);
+        body.put("byRemote", byRemote);
+        body.put("recent", recent);
+        return body;
+    }
+
+    /**
      * @return 全量按服务计数
      */
     public List<Map<String, Object>> getSpanCountByService() {
@@ -1093,6 +1228,17 @@ public class TraceSpanPersistenceService {
         }
         String c = s.getComponent();
         return c != null && "JDBC".equalsIgnoreCase(c.trim());
+    }
+
+    private static boolean isJdbcSlow(TraceSpan s) {
+        return "true".equalsIgnoreCase(tagValue(s, "db.slow"));
+    }
+
+    private static String tagValue(TraceSpan s, String key) {
+        if (s == null || s.getTags() == null || key == null) {
+            return null;
+        }
+        return s.getTags().get(key);
     }
 
     private static long sinceEpochMillis(int lastHours) {

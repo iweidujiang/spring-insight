@@ -137,6 +137,56 @@ class TraceListFilterTest {
     }
 
     @Test
+    void jdbcSummary_aggregatesByRemoteAndRecent() {
+        long now = System.currentTimeMillis();
+        TraceSpan http = span("provider", "t-http", "GET /api/jdbc/slow", true, now - 2_000, 100);
+        http.setComponent("Servlet");
+
+        TraceSpan slow = span("provider", "t-jdbc", "DB CALL", true, now - 1_000, 600);
+        slow.setComponent("JDBC");
+        slow.setRemoteService("h2:mem:boot2_provider_demo");
+        slow.setTags(Map.of("db.slow", "true", "db.sql_type", "CALL", "db.sql", "CALL SLEEP_MS(600)"));
+
+        TraceSpan err = span("provider", "t-jdbc-err", "DB SELECT", false, now - 500, 20);
+        err.setComponent("JDBC");
+        err.setRemoteService("h2:mem:boot2_provider_demo");
+        err.setTags(Map.of("db.sql_type", "SELECT", "db.sql", "SELECT * FROM missing"));
+
+        TraceSpan otherSvc = span("other", "t-other", "DB SELECT", true, now - 300, 50);
+        otherSvc.setComponent("JDBC");
+        otherSvc.setRemoteService("mysql:app");
+
+        TraceSpanPersistenceService persistence = persistence(http, slow, err, otherSvc);
+        Map<String, Object> all = persistence.getJdbcSummary(24, null, 10);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> kpis = (Map<String, Object>) all.get("kpis");
+        assertEquals(3, ((Number) kpis.get("spanCount")).intValue());
+        assertEquals(1, ((Number) kpis.get("errorCount")).intValue());
+        assertEquals(1, ((Number) kpis.get("slowCount")).intValue());
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> byRemote = (List<Map<String, Object>>) all.get("byRemote");
+        assertEquals(2, byRemote.size());
+        assertEquals("h2:mem:boot2_provider_demo", byRemote.get(0).get("remoteService"));
+        assertEquals(2, ((Number) byRemote.get(0).get("callCount")).intValue());
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> recent = (List<Map<String, Object>>) all.get("recent");
+        assertEquals(3, recent.size());
+        assertTrue(recent.stream().noneMatch(r -> "GET /api/jdbc/slow".equals(r.get("operationName"))));
+        assertEquals("CALL SLEEP_MS(600)", recent.stream()
+                .filter(r -> Boolean.TRUE.equals(r.get("slow")))
+                .findFirst()
+                .orElseThrow()
+                .get("sql"));
+
+        Map<String, Object> filtered = persistence.getJdbcSummary(24, "provider", 10);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> fk = (Map<String, Object>) filtered.get("kpis");
+        assertEquals(2, ((Number) fk.get("spanCount")).intValue());
+    }
+
+    @Test
     void serviceDependencies_excludesJdbcRemoteEdges() {
         long now = System.currentTimeMillis();
         TraceSpan http = span("boot2-demo-consumer", "t1", "GET /call-jdbc-slow", true, now - 1_000, 800);

@@ -150,6 +150,27 @@ public class CollectorApiController {
     }
 
     /**
+     * JDBC 追踪汇总（数据库页）：KPI、按库聚合、最近 Span。
+     *
+     * @param hours       时间窗小时
+     * @param service     可选业务服务名
+     * @param recentLimit 最近 JDBC Span 条数
+     * @return summary JSON
+     */
+    @GetMapping("/jdbc/summary")
+    public ResponseEntity<?> getJdbcSummary(
+            @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "service", required = false) String service,
+            @RequestParam(value = "recentLimit", defaultValue = "50") int recentLimit) {
+        try {
+            return ResponseEntity.ok(traceSpanPersistenceService.getJdbcSummary(hours, service, recentLimit));
+        } catch (Exception e) {
+            log.error("获取 JDBC 汇总失败", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
      * 错误分析增强：按 HTTP 状态码 / 异常类聚合（含服务级摘要）。
      *
      * @param hours 时间窗口小时
