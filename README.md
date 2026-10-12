@@ -46,6 +46,8 @@ spring:
 | `spring.insight.service-name` | 回退 `spring.application.name` | 上报服务名 |
 | `spring.insight.http-tracing-enabled` | `true` | MVC / WebFlux SERVER；WebClient / Gateway CLIENT |
 | `spring.insight.http-trace-propagation-enabled` | `true` | W3C `traceparent` 跨服务透传（Servlet 入站；RestTemplate / OpenFeign / WebClient 出站） |
+| `spring.insight.jdbc-tracing-enabled` | `false` | JDBC 追踪（包装 DataSource）；错误始终上报，成功仅慢 SQL |
+| `spring.insight.jdbc-slow-threshold-ms` | `500` | 慢 SQL 阈值（毫秒）；`<=0` 表示成功也上报 |
 | `spring.insight.sample-rate` | `1` | 头部采样率（0～1）；未采样不上报、出站 flags=`00` |
 | `spring.insight.micrometer-enabled` | `true` | 桥接宿主 MeterRegistry |
 | `spring.insight.diagnostic-logs` | `false` | 请求级诊断日志 |
@@ -63,7 +65,7 @@ docker run --rm -p 9966:9966 \
 
 ## 能力
 
-Servlet MVC SERVER Span、OpenFeign CLIENT（`remoteService` 优先 `@FeignClient` name）、RestTemplate CLIENT（须 `RestTemplateBuilder`）、HttpURLConnection 批量上报、可选 Micrometer（`spring.insight.*`）、WebFlux 入口、WebClient / Gateway 出站 CLIENT。
+Servlet MVC SERVER Span、OpenFeign CLIENT（`remoteService` 优先 `@FeignClient` name）、RestTemplate CLIENT（须 `RestTemplateBuilder`）、可选 JDBC CLIENT（默认关，包装 DataSource）、HttpURLConnection 批量上报、可选 Micrometer（`spring.insight.*`）、WebFlux 入口、WebClient / Gateway 出站 CLIENT。
 
 ---
 

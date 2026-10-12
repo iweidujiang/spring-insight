@@ -55,6 +55,20 @@
       "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
     },
     {
+      "name": "spring.insight.jdbc-tracing-enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 JDBC 追踪（包装 DataSource；默认关）。错误始终上报；成功仅当耗时达到 spring.insight.jdbc-slow-threshold-ms。兼容旧键 spring.insight.db-metrics.enabled。",
+      "defaultValue": false,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
+      "name": "spring.insight.jdbc-slow-threshold-ms",
+      "type": "java.lang.Long",
+      "description": "JDBC 慢 SQL 阈值（毫秒）。成功且低于阈值不上报；<=0 表示成功也上报。错误始终上报。",
+      "defaultValue": 500,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
       "name": "spring.insight.micrometer-enabled",
       "type": "java.lang.Boolean",
       "description": "是否将 Span/上报队列桥接到宿主 MeterRegistry（无 Micrometer 或无 Registry 时自动跳过）。",

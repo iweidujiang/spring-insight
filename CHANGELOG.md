@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### 新增
+- **JDBC 追踪**（默认关）：包装 Spring `DataSource`，出站 CLIENT Span；错误始终上报，成功仅当耗时 ≥ `spring.insight.jdbc-slow-threshold-ms`（默认 500ms，`<=0` 则成功也上报）。配置 `spring.insight.jdbc-tracing-enabled=true`；兼容旧键 `spring.insight.db-metrics.enabled`
+
 ## [0.4.2] — 2026-10-11
 
 ### 修复

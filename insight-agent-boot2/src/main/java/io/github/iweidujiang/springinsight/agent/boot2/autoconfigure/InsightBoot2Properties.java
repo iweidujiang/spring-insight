@@ -33,6 +33,15 @@ public class InsightBoot2Properties {
      * <p>默认 true；已覆盖 Servlet/WebFlux 入站、RestTemplate/OpenFeign/WebClient/Gateway 出站。</p>
      */
     private boolean httpTracePropagationEnabled = true;
+    /**
+     * 是否启用 JDBC 出站 CLIENT Span（DataSource 包装；默认关）。
+     * 错误始终上报；成功仅当耗时 ≥ {@link #jdbcSlowThresholdMs}（阈值为 0 时成功也全报）。
+     */
+    private boolean jdbcTracingEnabled = false;
+    /**
+     * JDBC 慢 SQL 阈值（毫秒）。成功且耗时低于阈值时不上报；{@code <=0} 表示成功也上报。
+     */
+    private long jdbcSlowThresholdMs = 500L;
     /** 是否桥接宿主 MeterRegistry（无 Micrometer/无 MeterRegistry 时自动跳过） */
     private boolean micrometerEnabled = true;
     private boolean diagnosticLogs = false;
@@ -113,6 +122,34 @@ public class InsightBoot2Properties {
      */
     public void setHttpTracePropagationEnabled(boolean httpTracePropagationEnabled) {
         this.httpTracePropagationEnabled = httpTracePropagationEnabled;
+    }
+
+    /**
+     * @return 是否启用 JDBC 追踪
+     */
+    public boolean isJdbcTracingEnabled() {
+        return jdbcTracingEnabled;
+    }
+
+    /**
+     * @param jdbcTracingEnabled 是否启用 JDBC 追踪
+     */
+    public void setJdbcTracingEnabled(boolean jdbcTracingEnabled) {
+        this.jdbcTracingEnabled = jdbcTracingEnabled;
+    }
+
+    /**
+     * @return 慢 SQL 阈值（毫秒）
+     */
+    public long getJdbcSlowThresholdMs() {
+        return jdbcSlowThresholdMs;
+    }
+
+    /**
+     * @param jdbcSlowThresholdMs 慢 SQL 阈值；{@code <=0} 表示成功也上报
+     */
+    public void setJdbcSlowThresholdMs(long jdbcSlowThresholdMs) {
+        this.jdbcSlowThresholdMs = jdbcSlowThresholdMs;
     }
 
     /**
