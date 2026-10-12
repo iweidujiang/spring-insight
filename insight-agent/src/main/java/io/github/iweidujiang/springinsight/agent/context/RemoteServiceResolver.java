@@ -114,7 +114,7 @@ public final class RemoteServiceResolver {
      * @param host 候选 host
      * @return 是否为 IP 字面量或 localhost
      */
-    static boolean isIpOrLocalhost(String host) {
+    public static boolean isIpOrLocalhost(String host) {
         if (!StringUtils.hasText(host)) {
             return false;
         }

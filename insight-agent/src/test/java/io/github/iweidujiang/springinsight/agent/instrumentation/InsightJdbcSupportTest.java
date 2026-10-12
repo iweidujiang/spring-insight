@@ -120,4 +120,18 @@ class InsightJdbcSupportTest {
         assertEquals("orders-db", captor.getValue().getRemoteService());
         assertEquals("SELECT", captor.getValue().getTags().get("db.sql_type"));
     }
+
+    @Test
+    void resolveRemoteFromUrl_shortLogicalNames() {
+        assertEquals("h2:mem:sca_user_demo", InsightJdbcSupport.resolveRemoteFromUrl(
+                "jdbc:h2:mem:sca_user_demo;MODE=MySQL;DB_CLOSE_DELAY=-1"));
+        assertEquals("orders-db:3306", InsightJdbcSupport.resolveRemoteFromUrl(
+                "jdbc:mysql://orders-db:3306/app"));
+        assertEquals("mysql:app", InsightJdbcSupport.resolveRemoteFromUrl(
+                "jdbc:mysql://127.0.0.1:3306/app"));
+        assertEquals("mysql:app", InsightJdbcSupport.resolveRemoteFromUrl(
+                "jdbc:mysql://localhost:3306/app"));
+        assertEquals("sqlite:demo.db", InsightJdbcSupport.resolveRemoteFromUrl(
+                "jdbc:sqlite:demo.db"));
+    }
 }

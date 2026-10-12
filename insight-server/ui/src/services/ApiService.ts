@@ -128,6 +128,8 @@ export class ApiService {
     serviceName: string
     hours: number
     found: boolean
+    /** 仅作为 remoteService 出现的外部依赖（如 JDBC），无本地 SERVER Span */
+    external: boolean
     kpis: {
       spanCount: number
       errorCount: number
@@ -161,6 +163,7 @@ export class ApiService {
       serviceName: String(raw.serviceName ?? serviceName),
       hours: Number(raw.hours ?? hours),
       found: Boolean(raw.found),
+      external: Boolean(raw.external),
       kpis: {
         spanCount: Number(k.span_count ?? k.spanCount ?? 0),
         errorCount: Number(k.error_count ?? k.errorCount ?? 0),

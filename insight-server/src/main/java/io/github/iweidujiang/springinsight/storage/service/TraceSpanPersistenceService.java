@@ -162,7 +162,8 @@ public class TraceSpanPersistenceService {
 
         List<Map<String, Object>> out = new ArrayList<>();
         for (Acc acc : byTrace.values()) {
-            if (!svc.isEmpty() && !acc.services().contains(svc)) {
+            // 服务过滤：本地 serviceName，或仅作为 remoteService 出现的外部依赖（如 JDBC 库名）
+            if (!svc.isEmpty() && !acc.services().contains(svc) && !spansTouchRemote(acc.spans(), svc)) {
                 continue;
             }
             if ("error".equals(st) && !acc.hasError()) {
@@ -839,12 +840,16 @@ public class TraceSpanPersistenceService {
 
     /**
      * 单服务详情摘要（近窗 KPI + 慢操作 Top + 依赖边 + 最近 Trace）。
+     * <p>
+     * 若窗口内无该 {@code serviceName} 的本地 Span，但存在以它为 {@code remoteService} 的
+     * CLIENT Span（如 JDBC / 外部依赖），则按外部依赖汇总（{@code external=true}）。
+     * </p>
      *
-     * @param serviceName 服务名
+     * @param serviceName 服务名或外部依赖名
      * @param lastHours   时间窗小时；{@code <=0} 不限
      * @param recentLimit 最近 Trace 条数
      * @param slowOpLimit 慢操作 Top 条数
-     * @return 含 {@code found}；窗口内无该服务 Span 时 KPI/慢操作为空，{@code found=false}
+     * @return 含 {@code found}；窗口内无匹配 Span 时 KPI/慢操作为空，{@code found=false}
      */
     public Map<String, Object> getServiceDetailSummary(String serviceName, int lastHours,
                                                        int recentLimit, int slowOpLimit) {
@@ -852,6 +857,7 @@ public class TraceSpanPersistenceService {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("serviceName", svc);
         body.put("hours", lastHours);
+        body.put("external", false);
         if (svc.isEmpty()) {
             body.put("found", false);
             body.put("kpis", emptyServiceKpis());
@@ -875,26 +881,33 @@ public class TraceSpanPersistenceService {
             if (!svc.equals(s.getServiceName())) {
                 continue;
             }
-            long dur = n(s.getDurationMs());
-            if (dur <= 0 && s.getEndTime() != null) {
-                dur = Math.max(0L, n(s.getEndTime()) - n(s.getStartTime()));
-            }
-            dur = Math.max(0L, dur);
-            durations.add(dur);
+            accumulateServiceOpStats(s, durations, opDurations, opErrors);
             if (isError(s)) {
                 errorCount++;
             }
-            String op = s.getOperationName() != null && !s.getOperationName().isBlank()
-                    ? s.getOperationName().trim() : "(unknown)";
-            opDurations.computeIfAbsent(op, x -> new ArrayList<>()).add(dur);
-            long[] ea = opErrors.computeIfAbsent(op, x -> new long[]{0L});
-            if (isError(s)) {
-                ea[0]++;
+        }
+
+        boolean localFound = !durations.isEmpty();
+        if (!localFound) {
+            // 外部依赖：统计指向该 remote 的 CLIENT Span
+            for (TraceSpan s : spanStore.snapshot()) {
+                if (s == null || n(s.getStartTime()) < sinceTime) {
+                    continue;
+                }
+                if (!svc.equals(s.getRemoteService())) {
+                    continue;
+                }
+                accumulateServiceOpStats(s, durations, opDurations, opErrors);
+                if (isError(s)) {
+                    errorCount++;
+                }
             }
         }
 
         boolean found = !durations.isEmpty();
+        boolean external = found && !localFound;
         body.put("found", found);
+        body.put("external", external);
         body.put("kpis", found ? buildServiceKpis(svc, durations, errorCount) : emptyServiceKpis());
         body.put("slowOperations", buildSlowOperations(opDurations, opErrors, slowOpLimit));
 
@@ -921,6 +934,38 @@ public class TraceSpanPersistenceService {
         body.put("recentTraces", getRecentTraceSummaries(
                 lastHours, Math.max(1, recentLimit), svc, "all", null, 0L, null));
         return body;
+    }
+
+    private static void accumulateServiceOpStats(
+            TraceSpan s,
+            List<Long> durations,
+            Map<String, List<Long>> opDurations,
+            Map<String, long[]> opErrors) {
+        long dur = n(s.getDurationMs());
+        if (dur <= 0 && s.getEndTime() != null) {
+            dur = Math.max(0L, n(s.getEndTime()) - n(s.getStartTime()));
+        }
+        dur = Math.max(0L, dur);
+        durations.add(dur);
+        String op = s.getOperationName() != null && !s.getOperationName().isBlank()
+                ? s.getOperationName().trim() : "(unknown)";
+        opDurations.computeIfAbsent(op, x -> new ArrayList<>()).add(dur);
+        long[] ea = opErrors.computeIfAbsent(op, x -> new long[]{0L});
+        if (isError(s)) {
+            ea[0]++;
+        }
+    }
+
+    private static boolean spansTouchRemote(List<TraceSpan> spans, String remote) {
+        if (spans == null || remote == null || remote.isBlank()) {
+            return false;
+        }
+        for (TraceSpan s : spans) {
+            if (s != null && remote.equals(s.getRemoteService())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static Map<String, Object> emptyServiceKpis() {

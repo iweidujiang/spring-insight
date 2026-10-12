@@ -111,6 +111,32 @@ class TraceListFilterTest {
     }
 
     @Test
+    void filterByRemoteService_includesJdbcCalleeTraces() {
+        long now = System.currentTimeMillis();
+        TraceSpan server = span("sca-user", "t-jdbc", "GET /user/jdbc/slow", true, now - 1_000, 700);
+        server.setSpanKind("SERVER");
+        TraceSpan jdbc = span("sca-user", "t-jdbc", "DB CALL", true, now - 900, 600);
+        jdbc.setSpanId("t-jdbc-client");
+        jdbc.setParentSpanId(server.getSpanId());
+        jdbc.setSpanKind("CLIENT");
+        jdbc.setComponent("JDBC");
+        jdbc.setRemoteService("h2:mem:sca_user_demo");
+
+        TraceSpanPersistenceService persistence = persistence(server, jdbc);
+        List<Map<String, Object>> byRemote = persistence.getRecentTraceSummaries(
+                24, 10, "h2:mem:sca_user_demo", "all", null, 0, null);
+        assertEquals(1, byRemote.size());
+        assertEquals("t-jdbc", byRemote.get(0).get("traceId"));
+
+        Map<String, Object> summary = persistence.getServiceDetailSummary("h2:mem:sca_user_demo", 24, 10, 5);
+        assertEquals(true, summary.get("found"));
+        assertEquals(true, summary.get("external"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> kpis = (Map<String, Object>) summary.get("kpis");
+        assertEquals(1, ((Number) kpis.get("span_count")).intValue());
+    }
+
+    @Test
     void pathPrefixFiltersRecentSummaries() {
         long now = System.currentTimeMillis();
         TraceSpanPersistenceService persistence = persistence(

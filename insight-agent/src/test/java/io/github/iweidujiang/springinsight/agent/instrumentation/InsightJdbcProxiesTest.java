@@ -76,4 +76,24 @@ class InsightJdbcProxiesTest {
         assertEquals(1, TraceContext.getStackDepth());
         verify(ps).execute();
     }
+
+    @Test
+    void h2MemUrl_usesShortRemoteService() throws Exception {
+        Connection raw = mock(Connection.class);
+        DatabaseMetaData meta = mock(DatabaseMetaData.class);
+        when(raw.getMetaData()).thenReturn(meta);
+        when(meta.getURL()).thenReturn("jdbc:h2:mem:sca_user_demo;MODE=MySQL;DB_CLOSE_DELAY=-1");
+
+        PreparedStatement ps = mock(PreparedStatement.class);
+        when(raw.prepareStatement("SELECT 1")).thenReturn(ps);
+        when(ps.execute()).thenReturn(true);
+
+        TraceContext.startSpan("HTTP GET /user/jdbc/slow");
+        Connection wrapped = InsightJdbcProxies.wrapConnection(raw, listener, properties);
+        assertTrue(wrapped.prepareStatement("SELECT 1").execute());
+
+        ArgumentCaptor<TraceSpan> captor = ArgumentCaptor.forClass(TraceSpan.class);
+        verify(listener).reportSpan(captor.capture());
+        assertEquals("h2:mem:sca_user_demo", captor.getValue().getRemoteService());
+    }
 }
