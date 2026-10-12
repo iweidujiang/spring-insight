@@ -77,6 +77,21 @@ public class InsightProperties {
     private boolean httpTracePropagationEnabled = true;
 
     /**
+     * 是否启用 JDBC 出站 CLIENT Span（DataSource 包装；默认关）。
+     * <p>
+     * 错误始终上报；成功仅当耗时 ≥ {@link #jdbcSlowThresholdMs}（阈值为 0 时成功也全报）。
+     * 兼容旧开关 {@code spring.insight.db-metrics.enabled=true}（见自动配置条件）。
+     * </p>
+     */
+    private boolean jdbcTracingEnabled = false;
+
+    /**
+     * JDBC 慢 SQL 阈值（毫秒）。成功且耗时低于阈值时不上报；{@code <=0} 表示成功也上报。
+     * <p>默认 500；错误不受此限制。</p>
+     */
+    private long jdbcSlowThresholdMs = 500L;
+
+    /**
      * 是否将 Span / 上报队列指标桥接到宿主 {@code MeterRegistry}（Actuator / Prometheus）。
      * <p>仅当 classpath 存在 Micrometer 且容器中有 MeterRegistry 时生效；默认 true。</p>
      */

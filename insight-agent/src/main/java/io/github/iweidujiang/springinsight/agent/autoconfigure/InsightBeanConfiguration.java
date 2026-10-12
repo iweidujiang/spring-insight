@@ -4,7 +4,6 @@ import io.github.iweidujiang.springinsight.agent.collector.AsyncSpanReporter;
 import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsCollector;
 import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsReporter;
 import io.github.iweidujiang.springinsight.agent.context.TraceContext;
-import io.github.iweidujiang.springinsight.agent.instrumentation.DbCallAspect;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.micrometer.InsightMicrometerBridge;
 import io.github.iweidujiang.springinsight.agent.sink.HttpInsightBatchSink;
@@ -198,45 +197,6 @@ public class InsightBeanConfiguration {
         return reporter;
     }
     
-    /**
-     * 数据库调用切面 Bean
-     */
-    @Bean
-    @ConditionalOnMissingBean
-    @ConditionalOnProperty(prefix = "spring.insight.db-metrics", name = "enabled", havingValue = "true", matchIfMissing = false)
-    public DbCallAspect dbCallAspect(SpanReportingListener spanReportingListener) {
-        String serviceInstance = properties.getServiceInstance();
-        if (serviceInstance == null || serviceInstance.trim().isEmpty()) {
-            serviceInstance = "localhost:" + getServerPort();
-        }
-        
-        String hostIp = "127.0.0.1";
-        try {
-            java.net.InetAddress localHost = java.net.InetAddress.getLocalHost();
-            hostIp = localHost.getHostAddress();
-        } catch (java.net.UnknownHostException e) {
-            log.warn("[Bean配置] 无法获取主机IP，使用默认值: 127.0.0.1");
-        }
-        
-        int hostPort;
-        try {
-            hostPort = Integer.parseInt(getServerPort());
-        } catch (NumberFormatException e) {
-            log.warn("[Bean配置] 无法解析服务器端口，使用默认值: 8080");
-            hostPort = 8080;
-        }
-        
-        DbCallAspect dbCallAspect = new DbCallAspect(
-                spanReportingListener,
-                properties.getServiceName(),
-                serviceInstance,
-                hostIp,
-                hostPort
-        );
-        log.info("[Bean配置] 数据库调用切面初始化完成");
-        return dbCallAspect;
-    }
-
     /**
      * 应用关闭时清理资源的钩子
      */

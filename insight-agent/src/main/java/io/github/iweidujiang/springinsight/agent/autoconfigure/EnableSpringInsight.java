@@ -60,8 +60,9 @@ public @interface EnableSpringInsight {
     boolean jvmMetricsEnabled() default false;
 
     /**
-     * 是否启用数据库调用监控（映射到 {@code spring.insight.db-metrics.enabled}）。
-     * 默认关闭：普通 Spring AOP 难以稳定拦截 {@code java.sql.*}，需显式评估后再开。
+     * 是否启用 JDBC 追踪（映射到 {@code spring.insight.jdbc-tracing-enabled}）。
+     * 默认关闭；开启后包装 DataSource，上报慢 SQL / 错误 CLIENT Span。
+     * <p>历史属性名 {@code dbMetricsEnabled} 保留兼容。</p>
      */
     boolean dbMetricsEnabled() default false;
 }

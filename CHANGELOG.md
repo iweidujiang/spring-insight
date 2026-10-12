@@ -20,11 +20,11 @@
 ## [0.9.0] — 2026-10-11
 
 ### 体验
-- **Trace 对比（B3）**：链路列表勾选至多 2 条 → `/traces/compare?a=&b=`；并排瀑布 + 按服务/操作的 max 耗时差分表
+- **Trace 对比**：链路列表勾选至多 2 条 → `/traces/compare?a=&b=`；并排瀑布 + 按服务/操作的 max 耗时差分表
 - **链路列表工具栏**：对比 / 自动刷新 / 刷新挪到「最近请求」标题行右侧（页头只留时钟）
 - **Trace 对比可读性**：并排瀑布服务名/操作名字号加大；操作耗时差分默认收起，点击标题展开；交换/刷新挪到瀑布上方
-- **告警增强（B4）**：指标新增 `latency_p95`（毫秒）；静默时段（可跨午夜 / 可选时区）；设置页 Webhook「预览 / 试发」（样本带 `preview=true`，不计冷却）
-- **OpenAPI（B6）**：springdoc 暴露只读 `GET /v3/api-docs` 与 `/swagger-ui.html`；README / 启动日志 / 关于页链到文档地址
+- **告警增强**：指标新增 `latency_p95`（毫秒）；静默时段（可跨午夜 / 可选时区）；设置页 Webhook「预览 / 试发」（样本带 `preview=true`，不计冷却）
+- **OpenAPI**：springdoc 暴露只读 `GET /v3/api-docs` 与 `/swagger-ui.html`；README / 启动日志 / 关于页链到文档地址
 
 ### 兼容
 - **Agent 可不升**：业务侧可继续使用 Central `spring-insight-agent-starter:0.4.1` 上报；推荐配套 **`0.4.2`**（入站残留栈清理）
@@ -294,6 +294,9 @@
 # Agent
 
 ## [Unreleased]
+
+### 新增
+- **JDBC 追踪**：`spring.insight.jdbc-tracing-enabled`（默认关）包装 Spring `DataSource`；错误始终上报 CLIENT Span；成功仅当耗时 ≥ `jdbc-slow-threshold-ms`（默认 500，≤0 则成功也全报）。旧键 `db-metrics.enabled` / `@EnableSpringInsight.dbMetricsEnabled` 仍可开启。不再注册无效的 `java.sql.*` Aspect。
 
 ---
 

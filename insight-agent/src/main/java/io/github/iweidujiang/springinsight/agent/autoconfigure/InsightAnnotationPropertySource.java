@@ -60,6 +60,9 @@ public class InsightAnnotationPropertySource implements EnvironmentPostProcessor
         // JVM / DB 开关与 @ConditionalOnProperty 前缀对齐
         properties.setProperty("spring.insight.jvm-metrics.enabled",
                 String.valueOf(annotation.jvmMetricsEnabled()));
+        // 兼容旧注解属性名；实际走 jdbc-tracing-enabled（DataSource 包装）
+        properties.setProperty("spring.insight.jdbc-tracing-enabled",
+                String.valueOf(annotation.dbMetricsEnabled()));
         properties.setProperty("spring.insight.db-metrics.enabled",
                 String.valueOf(annotation.dbMetricsEnabled()));
 

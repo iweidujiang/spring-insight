@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * B6：springdoc 暴露只读 OpenAPI 文档。
+ * springdoc 暴露只读 OpenAPI 文档。
  *
  * @since 2026-10-11
  * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang

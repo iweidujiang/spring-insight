@@ -82,6 +82,9 @@ public class InsightAgentAutoConfigurationImportSelector
                 && ClassUtils.isPresent("org.springframework.boot.web.client.RestClientCustomizer", cl)) {
             imports.add(InsightRestClientAutoConfiguration.class.getName());
         }
+        if (ClassUtils.isPresent("javax.sql.DataSource", cl)) {
+            imports.add(InsightJdbcAutoConfiguration.class.getName());
+        }
         return imports.toArray(String[]::new);
     }
 

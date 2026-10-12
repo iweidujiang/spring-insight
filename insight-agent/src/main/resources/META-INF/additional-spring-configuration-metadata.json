@@ -22,10 +22,29 @@
       "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightJvmMetricsProperties"
     },
     {
+      "name": "spring.insight.jdbc-tracing-enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 JDBC CLIENT Span（包装 DataSource）。默认 false。错误始终上报；成功仅当耗时 ≥ jdbc-slow-threshold-ms。",
+      "defaultValue": false,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
+    },
+    {
+      "name": "spring.insight.jdbc-slow-threshold-ms",
+      "type": "java.lang.Long",
+      "description": "JDBC 慢 SQL 阈值（毫秒）。成功且低于阈值不上报；≤0 表示成功也全报。默认 500。",
+      "defaultValue": 500,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
+    },
+    {
       "name": "spring.insight.db-metrics.enabled",
       "type": "java.lang.Boolean",
-      "description": "是否启用 JDBC 调用 Aspect。默认 false（普通 Spring AOP 对 java.sql.* 往往无效）。",
-      "defaultValue": false
+      "description": "已弃用：请改用 spring.insight.jdbc-tracing-enabled。true 时仍开启 JDBC 包装。",
+      "defaultValue": false,
+      "deprecated": true,
+      "deprecation": {
+        "reason": "改用 DataSource 包装的 jdbc-tracing-enabled",
+        "replacement": "spring.insight.jdbc-tracing-enabled"
+      }
     },
     {
       "name": "spring.insight.sample-rate",
