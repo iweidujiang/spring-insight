@@ -93,7 +93,7 @@ spring:
 |------|------|
 | HTTP / Feign / WebClient / Gateway / RestTemplate / RestClient 采集 | Agent 采 Span 并批量上报；success 与 HTTP 状态对齐；线程池可透传 Trace；WebFlux 走 Reactor Context；出站带 `remoteService` |
 | JDBC 追踪（默认关） | `spring.insight.jdbc-tracing-enabled=true` 包装 DataSource；错误 / 慢 SQL（默认 ≥500ms）上报 CLIENT Span；控制台「数据库」页汇总 |
-| Redis 追踪（默认关） | `spring.insight.redis-tracing-enabled=true` 包装 RedisConnectionFactory；错误 / 慢命令（默认 ≥500ms）上报 CLIENT Span；拓扑不画 Redis 节点（Server 侧排除待对齐） |
+| Redis 追踪（默认关） | `spring.insight.redis-tracing-enabled=true` 包装 RedisConnectionFactory；错误 / 慢命令（默认 ≥500ms）上报 CLIENT Span；拓扑不画 Redis 节点 |
 | 服务依赖拓扑 | 谁调用了谁（箭头与次数）；点击节点/边可下钻链路（不含 JDBC 库节点） |
 | 链路列表 / Trace 详情 | 按 Trace 聚合，可搜索筛选；详情含瀑布时间线、tags、错误信息 |
 | 延迟与错误摘要 | 仪表盘慢/错 Top（含 p50/p95），可点进已筛 Trace |

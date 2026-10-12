@@ -320,7 +320,7 @@ public class TraceSpanPersistenceService {
 
     /**
      * 服务间依赖边汇总（拓扑用）。
-     * <p>不含 {@code component=JDBC}：库依赖不进服务拓扑，改由数据库页展示。</p>
+     * <p>不含 {@code component=JDBC}/{@code REDIS}：库 / 缓存不进服务拓扑。</p>
      *
      * @param lastHours 时间窗口
      * @return 依赖边汇总
@@ -333,7 +333,7 @@ public class TraceSpanPersistenceService {
             if (n(s.getStartTime()) < sinceTime) {
                 continue;
             }
-            if (isJdbcComponent(s)) {
+            if (isTopologyExcludedRemote(s)) {
                 continue;
             }
             String remote = s.getRemoteService();
@@ -818,8 +818,8 @@ public class TraceSpanPersistenceService {
                 }
                 durationsByService.computeIfAbsent(name, x -> new ArrayList<>()).add(Math.max(0L, dur));
             }
-            // 热边与拓扑一致：不把 JDBC 库当成服务下游
-            if (!isJdbcComponent(s)) {
+            // 热边与拓扑一致：不把 JDBC / Redis 当成服务下游
+            if (!isTopologyExcludedRemote(s)) {
                 String remote = s.getRemoteService();
                 if (remote != null && !remote.isBlank()) {
                     String src = name != null ? name : "";
@@ -1217,7 +1217,7 @@ public class TraceSpanPersistenceService {
     }
 
     /**
-     * JDBC CLIENT Span（拓扑 / 热边排除用）。
+     * JDBC CLIENT Span（数据库页 / 汇总用）。
      *
      * @param s Span
      * @return {@code component} 是否为 JDBC（忽略大小写）
@@ -1228,6 +1228,24 @@ public class TraceSpanPersistenceService {
         }
         String c = s.getComponent();
         return c != null && "JDBC".equalsIgnoreCase(c.trim());
+    }
+
+    /**
+     * 不进入服务拓扑 / 热边的出站依赖（库、缓存等基础设施）。
+     *
+     * @param s Span
+     * @return 是否排除
+     */
+    static boolean isTopologyExcludedRemote(TraceSpan s) {
+        if (s == null) {
+            return false;
+        }
+        String c = s.getComponent();
+        if (c == null || c.isBlank()) {
+            return false;
+        }
+        String n = c.trim();
+        return "JDBC".equalsIgnoreCase(n) || "REDIS".equalsIgnoreCase(n);
     }
 
     private static boolean isJdbcSlow(TraceSpan s) {

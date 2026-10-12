@@ -213,6 +213,31 @@ class TraceListFilterTest {
     }
 
     @Test
+    void serviceDependencies_excludesRedisRemoteEdges() {
+        long now = System.currentTimeMillis();
+        TraceSpan http = span("order", "t-redis", "GET /order/1", true, now - 1_000, 80);
+        http.setSpanKind("CLIENT");
+        http.setComponent("OpenFeign");
+        http.setRemoteService("user");
+
+        TraceSpan redis = span("order", "t-redis", "REDIS GET", true, now - 900, 12);
+        redis.setSpanKind("CLIENT");
+        redis.setComponent("REDIS");
+        redis.setRemoteService("cache.internal:6379");
+
+        TraceSpanPersistenceService persistence = persistence(http, redis);
+        List<Map<String, Object>> deps = persistence.getServiceDependencies(24);
+        assertEquals(1, deps.size());
+        assertEquals("user", deps.get(0).get("target_service"));
+
+        Map<String, Object> window = persistence.summarizeWindow(now - 3_600_000L, now + 1_000L, 10);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> hotEdges = (List<Map<String, Object>>) window.get("hotEdges");
+        assertEquals(1, hotEdges.size());
+        assertEquals("user", hotEdges.get(0).get("targetService"));
+    }
+
+    @Test
     void pathPrefixFiltersRecentSummaries() {
         long now = System.currentTimeMillis();
         TraceSpanPersistenceService persistence = persistence(
