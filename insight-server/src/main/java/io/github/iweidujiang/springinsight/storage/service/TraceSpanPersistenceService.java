@@ -319,6 +319,9 @@ public class TraceSpanPersistenceService {
     }
 
     /**
+     * 服务间依赖边汇总（拓扑用）。
+     * <p>不含 {@code component=JDBC}：库依赖不进服务拓扑，改由数据库页展示。</p>
+     *
      * @param lastHours 时间窗口
      * @return 依赖边汇总
      */
@@ -328,6 +331,9 @@ public class TraceSpanPersistenceService {
         Map<Key, long[]> agg = new HashMap<>();
         for (TraceSpan s : spanStore.snapshot()) {
             if (n(s.getStartTime()) < sinceTime) {
+                continue;
+            }
+            if (isJdbcComponent(s)) {
                 continue;
             }
             String remote = s.getRemoteService();
@@ -677,13 +683,16 @@ public class TraceSpanPersistenceService {
                 }
                 durationsByService.computeIfAbsent(name, x -> new ArrayList<>()).add(Math.max(0L, dur));
             }
-            String remote = s.getRemoteService();
-            if (remote != null && !remote.isBlank()) {
-                String src = name != null ? name : "";
-                String key = src + "\0" + remote;
-                long[] a = edgeAgg.computeIfAbsent(key, x -> new long[]{0L, 0L});
-                a[0]++;
-                a[1] += n(s.getDurationMs());
+            // 热边与拓扑一致：不把 JDBC 库当成服务下游
+            if (!isJdbcComponent(s)) {
+                String remote = s.getRemoteService();
+                if (remote != null && !remote.isBlank()) {
+                    String src = name != null ? name : "";
+                    String key = src + "\0" + remote;
+                    long[] a = edgeAgg.computeIfAbsent(key, x -> new long[]{0L, 0L});
+                    a[0]++;
+                    a[1] += n(s.getDurationMs());
+                }
             }
             String tid = s.getTraceId();
             if (tid != null && !tid.isBlank()) {
@@ -1070,6 +1079,20 @@ public class TraceSpanPersistenceService {
             return true;
         }
         return Boolean.FALSE.equals(s.getSuccess());
+    }
+
+    /**
+     * JDBC CLIENT Span（拓扑 / 热边排除用）。
+     *
+     * @param s Span
+     * @return {@code component} 是否为 JDBC（忽略大小写）
+     */
+    static boolean isJdbcComponent(TraceSpan s) {
+        if (s == null) {
+            return false;
+        }
+        String c = s.getComponent();
+        return c != null && "JDBC".equalsIgnoreCase(c.trim());
     }
 
     private static long sinceEpochMillis(int lastHours) {

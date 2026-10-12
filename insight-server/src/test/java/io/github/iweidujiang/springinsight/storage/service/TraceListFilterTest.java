@@ -137,6 +137,32 @@ class TraceListFilterTest {
     }
 
     @Test
+    void serviceDependencies_excludesJdbcRemoteEdges() {
+        long now = System.currentTimeMillis();
+        TraceSpan http = span("boot2-demo-consumer", "t1", "GET /call-jdbc-slow", true, now - 1_000, 800);
+        http.setSpanKind("CLIENT");
+        http.setComponent("OpenFeign");
+        http.setRemoteService("boot2-demo-provider");
+
+        TraceSpan jdbc = span("boot2-demo-provider", "t1", "DB CALL", true, now - 900, 600);
+        jdbc.setSpanKind("CLIENT");
+        jdbc.setComponent("JDBC");
+        jdbc.setRemoteService("h2:mem:boot2_provider_demo");
+
+        TraceSpanPersistenceService persistence = persistence(http, jdbc);
+        List<Map<String, Object>> deps = persistence.getServiceDependencies(24);
+        assertEquals(1, deps.size());
+        assertEquals("boot2-demo-consumer", deps.get(0).get("source_service"));
+        assertEquals("boot2-demo-provider", deps.get(0).get("target_service"));
+
+        Map<String, Object> window = persistence.summarizeWindow(now - 3_600_000L, now + 1_000L, 10);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> hotEdges = (List<Map<String, Object>>) window.get("hotEdges");
+        assertEquals(1, hotEdges.size());
+        assertEquals("boot2-demo-provider", hotEdges.get(0).get("targetService"));
+    }
+
+    @Test
     void pathPrefixFiltersRecentSummaries() {
         long now = System.currentTimeMillis();
         TraceSpanPersistenceService persistence = persistence(
