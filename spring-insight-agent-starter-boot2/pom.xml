@@ -19,7 +19,6 @@
         <dependency>
             <groupId>io.github.iweidujiang</groupId>
             <artifactId>insight-agent-boot2</artifactId>
-            <!-- 显式版本：避免消费方/IDE 在 parent BOM 解析异常时丢掉传递依赖 -->
             <version>${project.version}</version>
         </dependency>
         <dependency>
