@@ -1,12 +1,14 @@
 package io.github.iweidujiang.springinsight.agent.boot2.instrumentation;
 
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
+import io.github.iweidujiang.springinsight.agent.boot2.context.RemoteServiceResolver;
 import io.github.iweidujiang.springinsight.agent.boot2.context.TraceContext;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.boot2.model.TraceSpan;
 import org.springframework.util.StringUtils;
 
 import java.sql.SQLException;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -76,10 +78,111 @@ public final class InsightJdbcSupport {
     }
 
     /**
+     * 从 JDBC URL 解析拓扑用 {@code remoteService}（短逻辑名，避免整段 URL / 本机 IP）。
+     *
+     * @param jdbcUrl 连接 URL，可为 null
+     * @return remoteService；无法识别时为空串
+     */
+    public static String resolveRemoteFromUrl(String jdbcUrl) {
+        if (!StringUtils.hasText(jdbcUrl)) {
+            return "";
+        }
+        String url = jdbcUrl.trim();
+        String lower = url.toLowerCase(Locale.ROOT);
+        if (!lower.startsWith("jdbc:")) {
+            return shorten(url, 64);
+        }
+        if (lower.startsWith("jdbc:h2:mem:")) {
+            String name = firstSegment(url.substring("jdbc:h2:mem:".length()), ";?");
+            return StringUtils.hasText(name) ? "h2:mem:" + name : "h2:mem";
+        }
+        if (lower.startsWith("jdbc:h2:")) {
+            String rest = url.substring("jdbc:h2:".length());
+            String path = firstSegment(rest, ";?");
+            String leaf = lastPathLeaf(path);
+            return StringUtils.hasText(leaf) ? "h2:" + leaf : "h2";
+        }
+        if (lower.startsWith("jdbc:sqlite:")) {
+            String path = firstSegment(url.substring("jdbc:sqlite:".length()), ";?");
+            String leaf = lastPathLeaf(path);
+            return StringUtils.hasText(leaf) ? "sqlite:" + leaf : "sqlite";
+        }
+
+        int scheme = url.indexOf("://");
+        if (scheme < 0) {
+            String afterJdbc = url.substring(5);
+            int colon = afterJdbc.indexOf(':');
+            String sub = colon > 0 ? afterJdbc.substring(0, colon) : afterJdbc;
+            return StringUtils.hasText(sub) ? sub.toLowerCase(Locale.ROOT) : "";
+        }
+
+        String subProtocol = url.substring(5, scheme).toLowerCase(Locale.ROOT);
+        String authorityAndPath = url.substring(scheme + 3);
+        int at = authorityAndPath.lastIndexOf('@');
+        if (at >= 0) {
+            authorityAndPath = authorityAndPath.substring(at + 1);
+        }
+        String hostPort = firstSegment(authorityAndPath, "/?");
+        String dbName = "";
+        int slash = authorityAndPath.indexOf('/');
+        if (slash >= 0) {
+            dbName = firstSegment(authorityAndPath.substring(slash + 1), "?;");
+        }
+        String host = hostPort;
+        int colon = hostPort.indexOf(':');
+        if (colon > 0 && hostPort.indexOf(':', colon + 1) < 0 && !hostPort.startsWith("[")) {
+            host = hostPort.substring(0, colon);
+        }
+        if (RemoteServiceResolver.isIpOrLocalhost(host)) {
+            if (StringUtils.hasText(dbName)) {
+                return subProtocol + ":" + dbName;
+            }
+            return subProtocol;
+        }
+        if (StringUtils.hasText(hostPort)) {
+            return hostPort;
+        }
+        if (StringUtils.hasText(dbName)) {
+            return subProtocol + ":" + dbName;
+        }
+        return subProtocol;
+    }
+
+    private static String firstSegment(String raw, String delimiters) {
+        if (raw == null) {
+            return "";
+        }
+        String s = raw.trim();
+        for (int i = 0; i < s.length(); i++) {
+            if (delimiters.indexOf(s.charAt(i)) >= 0) {
+                return s.substring(0, i).trim();
+            }
+        }
+        return s;
+    }
+
+    private static String lastPathLeaf(String path) {
+        if (!StringUtils.hasText(path)) {
+            return "";
+        }
+        String p = path.replace('\\', '/');
+        int slash = p.lastIndexOf('/');
+        String leaf = slash >= 0 ? p.substring(slash + 1) : p;
+        if (leaf.startsWith("~")) {
+            leaf = leaf.substring(1);
+        }
+        return leaf;
+    }
+
+    private static String shorten(String s, int max) {
+        return s.length() <= max ? s : s.substring(0, max);
+    }
+
+    /**
      * 执行 JDBC 调用并按需上报 CLIENT Span（无父 Span 时直接执行、不上报）。
      *
      * @param sql      SQL 文本（可空）
-     * @param remote   可选 remoteService（如 JDBC URL host）
+     * @param remote   可选 remoteService（逻辑库名 / host，勿传整段 JDBC URL）
      * @param props    配置
      * @param listener 上报
      * @param action   实际 JDBC 调用
@@ -110,6 +213,10 @@ public final class InsightJdbcSupport {
         span.setOperationName("DB " + type);
         if (StringUtils.hasText(remote)) {
             span.setRemoteService(remote);
+            int colon = remote.indexOf(':');
+            if (colon > 0) {
+                span.addTag("db.system", remote.substring(0, colon));
+            }
         }
         if (StringUtils.hasText(truncated)) {
             span.setRemoteEndpoint(truncated.length() > 120 ? truncated.substring(0, 120) + "…" : truncated);

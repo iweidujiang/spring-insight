@@ -1,9 +1,18 @@
 # Changelog
 
-## [Unreleased]
+## [Unreleased] → 目标坐标 `0.5.0`
 
 ### 新增
 - **JDBC 追踪**（默认关）：包装 Spring `DataSource`，出站 CLIENT Span；错误始终上报，成功仅当耗时 ≥ `spring.insight.jdbc-slow-threshold-ms`（默认 500ms，`<=0` 则成功也上报）。配置 `spring.insight.jdbc-tracing-enabled=true`；兼容旧键 `spring.insight.db-metrics.enabled`
+
+### 修复
+- **JDBC `remoteService` 短名**：`jdbc:h2:mem:…` → `h2:mem:…`；本机 IP 库改为 `mysql:<库名>` 等，避免拓扑落成整段 JDBC URL 或 `127.0.0.1`
+
+### 坐标（待发 Central）
+| 项 | 值 |
+|----|-----|
+| Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.5.0` |
+| Agent | `io.github.iweidujiang:insight-agent-boot2:0.5.0` |
 
 ## [0.4.2] — 2026-10-11
 

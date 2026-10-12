@@ -48,22 +48,7 @@ public final class InsightJdbcProxies {
 
     private static String resolveRemote(Connection connection) {
         try {
-            String url = connection.getMetaData().getURL();
-            if (!StringUtils.hasText(url)) {
-                return "";
-            }
-            int scheme = url.indexOf("://");
-            if (scheme < 0) {
-                return url.length() > 64 ? url.substring(0, 64) : url;
-            }
-            String rest = url.substring(scheme + 3);
-            int slash = rest.indexOf('/');
-            String hostPort = slash >= 0 ? rest.substring(0, slash) : rest;
-            int q = hostPort.indexOf('?');
-            if (q >= 0) {
-                hostPort = hostPort.substring(0, q);
-            }
-            return hostPort;
+            return InsightJdbcSupport.resolveRemoteFromUrl(connection.getMetaData().getURL());
         } catch (Exception e) {
             return "";
         }

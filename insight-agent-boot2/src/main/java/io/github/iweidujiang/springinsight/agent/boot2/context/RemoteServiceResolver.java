@@ -103,7 +103,7 @@ public final class RemoteServiceResolver {
      * @param host 候选
      * @return 是否 IP / localhost
      */
-    static boolean isIpOrLocalhost(String host) {
+    public static boolean isIpOrLocalhost(String host) {
         if (!StringUtils.hasText(host)) {
             return false;
         }
