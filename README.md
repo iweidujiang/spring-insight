@@ -3,8 +3,8 @@
 面向 **Spring Boot 2.7 / Java 8+** 的轻量监测 Agent：业务侧加一个 Starter，把 Span 上报到监测中心，即可查看服务拓扑与调用链路。
 
 - 仓库分支：`2.7.x`
-- 当前版本：**`0.5.0`**（与主线 Agent 对齐；发 Central 后生效）
-- 监测中心（Docker / jar）请使用同仓库 **`main`** 分支发布的 `insight-server`（与本 Agent 协议兼容）
+- 当前版本：**`0.5.0`**（Maven Central；与主线 Boot3 Agent 同号）
+- 监测中心（Docker / jar）请使用同仓库 **`main`** 分支发布的 `insight-server`（推荐 `0.9.0+`，与本 Agent 协议兼容）
 
 ---
 
@@ -58,7 +58,7 @@ spring:
 
 ```bash
 docker run --rm -p 9966:9966 \
-  ghcr.io/iweidujiang/spring-insight-server:0.7.1
+  ghcr.io/iweidujiang/spring-insight-server:0.9.0
 ```
 
 或从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-*.jar`，JDK 17+ 执行 `java -jar`。
