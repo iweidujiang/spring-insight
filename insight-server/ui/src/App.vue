@@ -126,6 +126,7 @@ const navGroups = [
       { to: '/', label: '仪表盘', icon: 'fa-tachometer', match: (p: string) => p === '/' },
       { to: '/topology', label: '拓扑图', icon: 'fa-sitemap', match: (p: string) => p === '/topology' },
       { to: '/traces', label: '链路追踪', icon: 'fa-list-ul', match: (p: string) => p === '/traces' || p.startsWith('/traces/') },
+      { to: '/jdbc', label: '数据库', icon: 'fa-database', match: (p: string) => p === '/jdbc' },
       { to: '/error-analysis', label: '错误分析', icon: 'fa-exclamation-triangle', match: (p: string) => p === '/error-analysis' }
     ]
   },

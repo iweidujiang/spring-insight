@@ -92,8 +92,8 @@ spring:
 | 能力 | 说明 |
 |------|------|
 | HTTP / Feign / WebClient / Gateway / RestTemplate / RestClient 采集 | Agent 采 Span 并批量上报；success 与 HTTP 状态对齐；线程池可透传 Trace；WebFlux 走 Reactor Context；出站带 `remoteService` |
-| JDBC 追踪（默认关） | `spring.insight.jdbc-tracing-enabled=true` 包装 DataSource；错误 / 慢 SQL（默认 ≥500ms）上报 CLIENT Span，不做完整数据库监测 |
-| 服务依赖拓扑 | 谁调用了谁（箭头与次数）；点击节点/边可下钻链路 |
+| JDBC 追踪（默认关） | `spring.insight.jdbc-tracing-enabled=true` 包装 DataSource；错误 / 慢 SQL（默认 ≥500ms）上报 CLIENT Span；控制台「数据库」页汇总 |
+| 服务依赖拓扑 | 谁调用了谁（箭头与次数）；点击节点/边可下钻链路（不含 JDBC 库节点） |
 | 链路列表 / Trace 详情 | 按 Trace 聚合，可搜索筛选；详情含瀑布时间线、tags、错误信息 |
 | 延迟与错误摘要 | 仪表盘慢/错 Top（含 p50/p95），可点进已筛 Trace |
 | Micrometer 联动 | 宿主有 MeterRegistry 时导出 `spring.insight.*`（Span Timer / 上报队列） |
@@ -112,6 +112,10 @@ spring:
 
 ### 服务拓扑
 <img width="2328" height="1228" alt="局部截取_20260910_151452" src="https://github.com/user-attachments/assets/2e6ba9d2-4bbf-4e67-91ce-93ab89b1a18c" />
+
+### 数据库
+
+侧栏 **「数据库」**（`/jdbc`）：按时间窗 / 业务服务查看 JDBC KPI、按库聚合与最近慢 / 错误 SQL，可点进对应 Trace。拓扑图不再展示库节点。
 
 ### 链路追踪
 <img width="2325" height="717" alt="局部截取_20260910_151551" src="https://github.com/user-attachments/assets/83af472c-0919-49e9-bd5d-fcb635a8abd4" />

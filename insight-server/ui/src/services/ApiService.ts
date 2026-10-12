@@ -202,6 +202,103 @@ export class ApiService {
     }
   }
 
+  /** JDBC 追踪汇总（数据库页）：KPI / 按库 / 最近 Span */
+  static async getJdbcSummary(
+    hours: number = 24,
+    service?: string,
+    recentLimit: number = 50
+  ): Promise<{
+    hours: number
+    serviceName: string
+    kpis: {
+      spanCount: number
+      errorCount: number
+      slowCount: number
+      avgMs: number
+      p95Ms: number
+      maxMs: number
+    }
+    byRemote: Array<{
+      remoteService: string
+      callCount: number
+      errorCount: number
+      slowCount: number
+      avgMs: number
+      maxMs: number
+    }>
+    recent: Array<{
+      traceId: string
+      spanId: string
+      serviceName: string
+      operationName: string
+      remoteService: string
+      startTime: number
+      durationMs: number
+      statusCode: string
+      errorCode: string
+      success: boolean | null
+      slow: boolean
+      sqlType: string | null
+      sql: string | null
+    }>
+  }> {
+    const qs = new URLSearchParams({
+      hours: String(hours),
+      recentLimit: String(recentLimit)
+    })
+    if (service && service.trim()) qs.set('service', service.trim())
+    const raw = await requestWithDefault<any>(`/jdbc/summary?${qs.toString()}`, {})
+    const k = raw.kpis ?? {}
+    return {
+      hours: Number(raw.hours ?? hours),
+      serviceName: String(raw.serviceName ?? service ?? ''),
+      kpis: {
+        spanCount: Number(k.spanCount ?? k.span_count ?? 0),
+        errorCount: Number(k.errorCount ?? k.error_count ?? 0),
+        slowCount: Number(k.slowCount ?? k.slow_count ?? 0),
+        avgMs: Number(k.avgMs ?? k.avg_ms ?? 0),
+        p95Ms: Number(k.p95Ms ?? k.p95_ms ?? 0),
+        maxMs: Number(k.maxMs ?? k.max_ms ?? 0)
+      },
+      byRemote: Array.isArray(raw.byRemote)
+        ? raw.byRemote.map((row: any) => ({
+            remoteService: String(row.remoteService ?? row.remote_service ?? ''),
+            callCount: Number(row.callCount ?? row.call_count ?? 0),
+            errorCount: Number(row.errorCount ?? row.error_count ?? 0),
+            slowCount: Number(row.slowCount ?? row.slow_count ?? 0),
+            avgMs: Number(row.avgMs ?? row.avg_ms ?? 0),
+            maxMs: Number(row.maxMs ?? row.max_ms ?? 0)
+          }))
+        : Array.isArray(raw.by_remote)
+          ? raw.by_remote.map((row: any) => ({
+              remoteService: String(row.remoteService ?? row.remote_service ?? ''),
+              callCount: Number(row.callCount ?? row.call_count ?? 0),
+              errorCount: Number(row.errorCount ?? row.error_count ?? 0),
+              slowCount: Number(row.slowCount ?? row.slow_count ?? 0),
+              avgMs: Number(row.avgMs ?? row.avg_ms ?? 0),
+              maxMs: Number(row.maxMs ?? row.max_ms ?? 0)
+            }))
+          : [],
+      recent: Array.isArray(raw.recent)
+        ? raw.recent.map((row: any) => ({
+            traceId: String(row.traceId ?? row.trace_id ?? ''),
+            spanId: String(row.spanId ?? row.span_id ?? ''),
+            serviceName: String(row.serviceName ?? row.service_name ?? ''),
+            operationName: String(row.operationName ?? row.operation_name ?? ''),
+            remoteService: String(row.remoteService ?? row.remote_service ?? ''),
+            startTime: Number(row.startTime ?? row.start_time ?? 0),
+            durationMs: Number(row.durationMs ?? row.duration_ms ?? 0),
+            statusCode: String(row.statusCode ?? row.status_code ?? ''),
+            errorCode: String(row.errorCode ?? row.error_code ?? ''),
+            success: row.success == null ? null : Boolean(row.success),
+            slow: Boolean(row.slow),
+            sqlType: row.sqlType ?? row.sql_type ?? null,
+            sql: row.sql ?? null
+          }))
+        : []
+    }
+  }
+
   static async getErrorAnalysis(hours: number = 24): Promise<any[]> {
     const rows = await requestWithDefault<any[]>(`/errors/analysis?hours=${hours}`, [])
     return rows.map(normalizeErrorRow)

@@ -4,7 +4,7 @@ import type { LocationQuery, RouteLocationRaw } from 'vue-router'
 const HOURS_KEY = 'si.ui.hours'
 const SERVICE_KEY = 'si.ui.service'
 
-const OBSERVATION_PATHS = new Set(['/', '/topology', '/traces', '/error-analysis', '/services'])
+const OBSERVATION_PATHS = new Set(['/', '/topology', '/traces', '/jdbc', '/error-analysis', '/services'])
 
 /**
  * 从 sessionStorage 读取上次时间窗；无效则 null。
@@ -100,6 +100,7 @@ export function mergeQuery(
 
 /**
  * 侧栏导航：观测页带上记住的 hours（及 traces/topology 的 service），便于跨页复现。
+ * <p>数据库页不带 service：JDBC Span 记在执行 SQL 的服务上，与入口 consumer 常不一致。</p>
  */
 export function buildNavLocation(path: string): RouteLocationRaw {
   if (!OBSERVATION_PATHS.has(path)) return path
