@@ -21,6 +21,8 @@
 - **JDBC 汇总 API**：`GET /api/v1/ui/jdbc/summary`（`hours` / `service` / `recentLimit`）返回 KPI、按库聚合与最近 JDBC Span
 - **数据库页**：侧栏「数据库」→ `/jdbc`；按服务 / 时间窗看 KPI、按库聚合与最近 JDBC Span（可点进 Trace）
 - **仪表盘精简**：首页不再内嵌拓扑图；以 KPI、时段摘要、健康/慢服务/热点依赖与最近请求为主，拓扑改侧栏入口
+- **Redis 汇总 API**：`GET /api/v1/ui/redis/summary`（`hours` / `service` / `recentLimit`）返回 KPI、按实例聚合与最近 REDIS Span
+- **缓存页**：侧栏「缓存」→ `/redis`；按服务 / 时间窗看 KPI、按 Redis 实例与最近命令（可点进 Trace）
 
 ### 兼容
 - 推荐配套 Agent **`0.5.0`**（JDBC / Redis 追踪）；仅 HTTP 上报时 `0.4.x` 仍可用

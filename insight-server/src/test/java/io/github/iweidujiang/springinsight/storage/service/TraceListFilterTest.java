@@ -187,6 +187,56 @@ class TraceListFilterTest {
     }
 
     @Test
+    void redisSummary_aggregatesByRemoteAndRecent() {
+        long now = System.currentTimeMillis();
+        TraceSpan http = span("order", "t-http", "GET /order/1", true, now - 2_000, 40);
+        http.setComponent("Servlet");
+
+        TraceSpan slow = span("order", "t-redis", "REDIS GET", true, now - 1_000, 80);
+        slow.setComponent("REDIS");
+        slow.setRemoteService("redis:6379");
+        slow.setTags(Map.of("redis.slow", "true", "redis.command", "GET", "redis.key", "order:1"));
+
+        TraceSpan err = span("order", "t-redis-err", "REDIS SET", false, now - 500, 5);
+        err.setComponent("REDIS");
+        err.setRemoteService("redis:6379");
+        err.setTags(Map.of("redis.command", "SET", "redis.key", "order:1"));
+
+        TraceSpan otherSvc = span("cart", "t-other", "REDIS GET", true, now - 300, 3);
+        otherSvc.setComponent("REDIS");
+        otherSvc.setRemoteService("redis-cache");
+
+        TraceSpanPersistenceService persistence = persistence(http, slow, err, otherSvc);
+        Map<String, Object> all = persistence.getRedisSummary(24, null, 10);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> kpis = (Map<String, Object>) all.get("kpis");
+        assertEquals(3, ((Number) kpis.get("spanCount")).intValue());
+        assertEquals(1, ((Number) kpis.get("errorCount")).intValue());
+        assertEquals(1, ((Number) kpis.get("slowCount")).intValue());
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> byRemote = (List<Map<String, Object>>) all.get("byRemote");
+        assertEquals(2, byRemote.size());
+        assertEquals("redis:6379", byRemote.get(0).get("remoteService"));
+        assertEquals(2, ((Number) byRemote.get(0).get("callCount")).intValue());
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> recent = (List<Map<String, Object>>) all.get("recent");
+        assertEquals(3, recent.size());
+        assertTrue(recent.stream().noneMatch(r -> "GET /order/1".equals(r.get("operationName"))));
+        assertEquals("order:1", recent.stream()
+                .filter(r -> Boolean.TRUE.equals(r.get("slow")))
+                .findFirst()
+                .orElseThrow()
+                .get("key"));
+
+        Map<String, Object> filtered = persistence.getRedisSummary(24, "order", 10);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> fk = (Map<String, Object>) filtered.get("kpis");
+        assertEquals(2, ((Number) fk.get("spanCount")).intValue());
+    }
+
+    @Test
     void serviceDependencies_excludesJdbcRemoteEdges() {
         long now = System.currentTimeMillis();
         TraceSpan http = span("boot2-demo-consumer", "t1", "GET /call-jdbc-slow", true, now - 1_000, 800);

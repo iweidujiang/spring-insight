@@ -498,6 +498,141 @@ public class TraceSpanPersistenceService {
     }
 
     /**
+     * Redis 出站汇总（缓存页）：KPI、按 remote 聚合、最近 REDIS Span。
+     *
+     * @param lastHours   时间窗小时；{@code <=0} 不限
+     * @param serviceName 可选业务服务名（执行 Redis 命令的服务）
+     * @param recentLimit 最近 REDIS Span 条数
+     * @return hours / kpis / byRemote / recent
+     */
+    public Map<String, Object> getRedisSummary(int lastHours, String serviceName, int recentLimit) {
+        long sinceTime = sinceEpochMillis(lastHours);
+        String svc = serviceName != null ? serviceName.trim() : "";
+        int recentMax = Math.max(1, Math.min(recentLimit, 200));
+
+        List<Long> durations = new ArrayList<>();
+        long errorCount = 0L;
+        long slowCount = 0L;
+        Map<String, long[]> byRemoteAgg = new HashMap<>();
+        Map<String, Long> byRemoteMax = new HashMap<>();
+        List<TraceSpan> redisSpans = new ArrayList<>();
+
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (s == null || !isRedisComponent(s)) {
+                continue;
+            }
+            if (n(s.getStartTime()) < sinceTime) {
+                continue;
+            }
+            if (!svc.isEmpty() && (s.getServiceName() == null || !svc.equals(s.getServiceName()))) {
+                continue;
+            }
+            long dur = n(s.getDurationMs());
+            if (dur <= 0 && s.getEndTime() != null) {
+                dur = Math.max(0L, n(s.getEndTime()) - n(s.getStartTime()));
+            }
+            dur = Math.max(0L, dur);
+            durations.add(dur);
+            boolean err = isError(s);
+            if (err) {
+                errorCount++;
+            }
+            boolean slow = isRedisSlow(s);
+            if (slow) {
+                slowCount++;
+            }
+            String remote = s.getRemoteService();
+            if (remote == null || remote.isBlank()) {
+                remote = "(unknown)";
+            }
+            long[] a = byRemoteAgg.computeIfAbsent(remote, x -> new long[]{0L, 0L, 0L, 0L});
+            a[0]++;
+            if (err) {
+                a[1]++;
+            }
+            if (slow) {
+                a[2]++;
+            }
+            a[3] += dur;
+            byRemoteMax.merge(remote, dur, Math::max);
+            redisSpans.add(s);
+        }
+
+        Map<String, Object> kpis = new LinkedHashMap<>();
+        kpis.put("spanCount", durations.size());
+        kpis.put("errorCount", errorCount);
+        kpis.put("slowCount", slowCount);
+        if (durations.isEmpty()) {
+            kpis.put("avgMs", 0.0);
+            kpis.put("p95Ms", 0L);
+            kpis.put("maxMs", 0L);
+        } else {
+            List<Long> sorted = new ArrayList<>(durations);
+            sorted.sort(Long::compareTo);
+            long sum = 0L;
+            for (Long d : sorted) {
+                sum += d;
+            }
+            kpis.put("avgMs", Math.round((sum / (double) sorted.size()) * 100.0) / 100.0);
+            kpis.put("p95Ms", percentile(sorted, 0.95));
+            kpis.put("maxMs", sorted.get(sorted.size() - 1));
+        }
+
+        List<Map<String, Object>> byRemote = new ArrayList<>();
+        for (Map.Entry<String, long[]> e : byRemoteAgg.entrySet()) {
+            long cnt = e.getValue()[0];
+            if (cnt <= 0) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("remoteService", e.getKey());
+            row.put("callCount", cnt);
+            row.put("errorCount", e.getValue()[1]);
+            row.put("slowCount", e.getValue()[2]);
+            row.put("avgMs", Math.round((e.getValue()[3] / (double) cnt) * 100.0) / 100.0);
+            row.put("maxMs", byRemoteMax.getOrDefault(e.getKey(), 0L));
+            byRemote.add(row);
+        }
+        byRemote.sort((a, b) -> Long.compare(
+                ((Number) b.get("callCount")).longValue(),
+                ((Number) a.get("callCount")).longValue()));
+
+        redisSpans.sort((a, b) -> Long.compare(n(b.getStartTime()), n(a.getStartTime())));
+        List<Map<String, Object>> recent = new ArrayList<>();
+        int n = Math.min(recentMax, redisSpans.size());
+        for (int i = 0; i < n; i++) {
+            TraceSpan s = redisSpans.get(i);
+            long dur = n(s.getDurationMs());
+            if (dur <= 0 && s.getEndTime() != null) {
+                dur = Math.max(0L, n(s.getEndTime()) - n(s.getStartTime()));
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("traceId", s.getTraceId());
+            row.put("spanId", s.getSpanId());
+            row.put("serviceName", s.getServiceName());
+            row.put("operationName", s.getOperationName());
+            row.put("remoteService", s.getRemoteService());
+            row.put("startTime", s.getStartTime());
+            row.put("durationMs", Math.max(0L, dur));
+            row.put("statusCode", s.getStatusCode());
+            row.put("errorCode", s.getErrorCode());
+            row.put("success", s.getSuccess());
+            row.put("slow", isRedisSlow(s));
+            row.put("command", tagValue(s, "redis.command"));
+            row.put("key", tagValue(s, "redis.key"));
+            recent.add(row);
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("hours", lastHours);
+        body.put("serviceName", svc);
+        body.put("kpis", kpis);
+        body.put("byRemote", byRemote);
+        body.put("recent", recent);
+        return body;
+    }
+
+    /**
      * @return 全量按服务计数
      */
     public List<Map<String, Object>> getSpanCountByService() {
@@ -1231,6 +1366,20 @@ public class TraceSpanPersistenceService {
     }
 
     /**
+     * Redis CLIENT Span（缓存页 / 汇总用）。
+     *
+     * @param s Span
+     * @return {@code component} 是否为 REDIS（忽略大小写）
+     */
+    static boolean isRedisComponent(TraceSpan s) {
+        if (s == null) {
+            return false;
+        }
+        String c = s.getComponent();
+        return c != null && "REDIS".equalsIgnoreCase(c.trim());
+    }
+
+    /**
      * 不进入服务拓扑 / 热边的出站依赖（库、缓存等基础设施）。
      *
      * @param s Span
@@ -1250,6 +1399,10 @@ public class TraceSpanPersistenceService {
 
     private static boolean isJdbcSlow(TraceSpan s) {
         return "true".equalsIgnoreCase(tagValue(s, "db.slow"));
+    }
+
+    private static boolean isRedisSlow(TraceSpan s) {
+        return "true".equalsIgnoreCase(tagValue(s, "redis.slow"));
     }
 
     private static String tagValue(TraceSpan s, String key) {

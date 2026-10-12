@@ -6,7 +6,7 @@
           <i class="fa fa-database me-2"></i>数据库
         </h2>
         <p class="page-description mb-0">
-          JDBC 出站调用汇总；拓扑不再展示库节点，请在此查看慢 SQL / 错误
+          JDBC 出站调用汇总，可在此查看慢 SQL / 错误
         </p>
       </div>
       <div class="si-page__toolbar">

@@ -35,6 +35,7 @@ public class ServerSpaController {
             "/services/**",
             "/error-analysis",
             "/jdbc",
+            "/redis",
             "/settings",
             "/about",
             "/login"

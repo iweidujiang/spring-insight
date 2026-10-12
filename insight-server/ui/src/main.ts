@@ -8,6 +8,7 @@ import TraceDetailView from './views/TraceDetailView.vue'
 import TraceCompareView from './views/TraceCompareView.vue'
 import ErrorAnalysisView from './views/ErrorAnalysisView.vue'
 import JdbcView from './views/JdbcView.vue'
+import RedisView from './views/RedisView.vue'
 import ServiceDetailView from './views/ServiceDetailView.vue'
 import SettingsView from './views/SettingsView.vue'
 import AboutView from './views/AboutView.vue'
@@ -69,6 +70,12 @@ const router = createRouter({
       name: 'jdbc',
       component: JdbcView,
       meta: { title: '数据库' }
+    },
+    {
+      path: '/redis',
+      name: 'redis',
+      component: RedisView,
+      meta: { title: '缓存' }
     },
     {
       path: '/services/:serviceName',
