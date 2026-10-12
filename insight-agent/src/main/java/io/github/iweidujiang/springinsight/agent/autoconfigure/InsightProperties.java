@@ -92,6 +92,21 @@ public class InsightProperties {
     private long jdbcSlowThresholdMs = 500L;
 
     /**
+     * 是否启用 Redis 出站 CLIENT Span（包装 {@code RedisConnectionFactory}；默认关）。
+     * <p>
+     * 错误始终上报；成功仅当耗时 ≥ {@link #redisSlowThresholdMs}（阈值为 0 时成功也全报）。
+     * 覆盖 {@code RedisTemplate} / {@code StringRedisTemplate} 等走连接工厂的同步调用；不含 Reactive。
+     * </p>
+     */
+    private boolean redisTracingEnabled = false;
+
+    /**
+     * Redis 慢命令阈值（毫秒）。成功且耗时低于阈值时不上报；{@code <=0} 表示成功也上报。
+     * <p>默认 500；错误不受此限制。</p>
+     */
+    private long redisSlowThresholdMs = 500L;
+
+    /**
      * 是否将 Span / 上报队列指标桥接到宿主 {@code MeterRegistry}（Actuator / Prometheus）。
      * <p>仅当 classpath 存在 Micrometer 且容器中有 MeterRegistry 时生效；默认 true。</p>
      */

@@ -36,6 +36,20 @@
       "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
     },
     {
+      "name": "spring.insight.redis-tracing-enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 Redis CLIENT Span（包装 RedisConnectionFactory）。默认 false。错误始终上报；成功仅当耗时 ≥ redis-slow-threshold-ms。覆盖 RedisTemplate 等同步用法；不含 Reactive。",
+      "defaultValue": false,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
+    },
+    {
+      "name": "spring.insight.redis-slow-threshold-ms",
+      "type": "java.lang.Long",
+      "description": "Redis 慢命令阈值（毫秒）。成功且低于阈值不上报；≤0 表示成功也全报。默认 500。",
+      "defaultValue": 500,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
+    },
+    {
       "name": "spring.insight.db-metrics.enabled",
       "type": "java.lang.Boolean",
       "description": "已弃用：请改用 spring.insight.jdbc-tracing-enabled。true 时仍开启 JDBC 包装。",

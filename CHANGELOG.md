@@ -302,6 +302,7 @@
 
 ### 新增
 - **JDBC 追踪**：`spring.insight.jdbc-tracing-enabled`（默认关）包装 Spring `DataSource`；错误始终上报 CLIENT Span；成功仅当耗时 ≥ `jdbc-slow-threshold-ms`（默认 500，≤0 则成功也全报）。旧键 `db-metrics.enabled` / `@EnableSpringInsight.dbMetricsEnabled` 仍可开启。不再注册无效的 `java.sql.*` Aspect。
+- **Redis 追踪**：`spring.insight.redis-tracing-enabled`（默认关）包装 `RedisConnectionFactory`；错误始终上报 CLIENT Span（`component=REDIS`）；成功仅当耗时 ≥ `redis-slow-threshold-ms`（默认 500）。覆盖 `RedisTemplate` 等同步用法；不含 Reactive。
 
 ### 修复
 - **JDBC `remoteService` 短名**：`jdbc:h2:mem:…` → `h2:mem:…`；本机 IP 的 MySQL 等改为 `mysql:<库名>`，避免拓扑落成整段 JDBC URL 或 `127.0.0.1`

@@ -85,6 +85,9 @@ public class InsightAgentAutoConfigurationImportSelector
         if (ClassUtils.isPresent("javax.sql.DataSource", cl)) {
             imports.add(InsightJdbcAutoConfiguration.class.getName());
         }
+        if (ClassUtils.isPresent("org.springframework.data.redis.connection.RedisConnectionFactory", cl)) {
+            imports.add(InsightRedisAutoConfiguration.class.getName());
+        }
         return imports.toArray(String[]::new);
     }
 

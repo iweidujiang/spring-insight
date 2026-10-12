@@ -93,6 +93,7 @@ spring:
 |------|------|
 | HTTP / Feign / WebClient / Gateway / RestTemplate / RestClient 采集 | Agent 采 Span 并批量上报；success 与 HTTP 状态对齐；线程池可透传 Trace；WebFlux 走 Reactor Context；出站带 `remoteService` |
 | JDBC 追踪（默认关） | `spring.insight.jdbc-tracing-enabled=true` 包装 DataSource；错误 / 慢 SQL（默认 ≥500ms）上报 CLIENT Span；控制台「数据库」页汇总 |
+| Redis 追踪（默认关） | `spring.insight.redis-tracing-enabled=true` 包装 RedisConnectionFactory；错误 / 慢命令（默认 ≥500ms）上报 CLIENT Span；拓扑不画 Redis 节点（Server 侧排除待对齐） |
 | 服务依赖拓扑 | 谁调用了谁（箭头与次数）；点击节点/边可下钻链路（不含 JDBC 库节点） |
 | 链路列表 / Trace 详情 | 按 Trace 聚合，可搜索筛选；详情含瀑布时间线、tags、错误信息 |
 | 延迟与错误摘要 | 仪表盘慢/错 Top（含 p50/p95），可点进已筛 Trace |
@@ -206,6 +207,8 @@ spring:
     context-propagation-enabled: true  # @Async / 线程池透传 Trace
     jdbc-tracing-enabled: false        # JDBC 追踪（慢 SQL / 错误）；默认关
     # jdbc-slow-threshold-ms: 500
+    redis-tracing-enabled: false       # Redis 追踪（慢命令 / 错误）；默认关
+    # redis-slow-threshold-ms: 500
     micrometer-enabled: true           # 有 MeterRegistry 时导出 spring.insight.*
     diagnostic-logs: false             # 排查上报时可临时打开
 ```
@@ -226,7 +229,7 @@ Spring Insight 定位是**轻量辅助排查**，不是 OpenTelemetry / SkyWalki
 
 - Span 默认有条数上限；不配落盘时重启会清空（Docker 推荐挂卷 + `file`）
 - 告警为简易阈值 + Webhook/邮件；无多租户、OIDC、密钥保险箱（可选 Token / 简易登录见 0.2 运维文档）
-- JVM 指标默认关闭（实验）；JDBC 追踪默认关闭（`jdbc-tracing-enabled`，DataSource 包装）
+- JVM 指标默认关闭（实验）；JDBC / Redis 追踪默认关闭（`jdbc-tracing-enabled` / `redis-tracing-enabled`）
 
 欢迎 Issue / PR。
 
