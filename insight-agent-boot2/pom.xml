@@ -50,6 +50,14 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Redis：provided+optional，仅宿主引入 spring-data-redis / starter-data-redis 时启用包装 -->
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
+
         <!-- WebFlux / WebClient：optional，宿主引入 webflux 时启用 -->
         <dependency>
             <groupId>org.springframework</groupId>

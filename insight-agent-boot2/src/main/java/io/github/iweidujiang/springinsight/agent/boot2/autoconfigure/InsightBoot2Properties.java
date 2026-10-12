@@ -42,6 +42,15 @@ public class InsightBoot2Properties {
      * JDBC 慢 SQL 阈值（毫秒）。成功且耗时低于阈值时不上报；{@code <=0} 表示成功也上报。
      */
     private long jdbcSlowThresholdMs = 500L;
+    /**
+     * 是否启用 Redis 出站 CLIENT Span（包装 RedisConnectionFactory；默认关）。
+     * 错误始终上报；成功仅当耗时 ≥ {@link #redisSlowThresholdMs}（阈值为 0 时成功也全报）。
+     */
+    private boolean redisTracingEnabled = false;
+    /**
+     * Redis 慢命令阈值（毫秒）。成功且耗时低于阈值时不上报；{@code <=0} 表示成功也上报。
+     */
+    private long redisSlowThresholdMs = 500L;
     /** 是否桥接宿主 MeterRegistry（无 Micrometer/无 MeterRegistry 时自动跳过） */
     private boolean micrometerEnabled = true;
     private boolean diagnosticLogs = false;
@@ -150,6 +159,34 @@ public class InsightBoot2Properties {
      */
     public void setJdbcSlowThresholdMs(long jdbcSlowThresholdMs) {
         this.jdbcSlowThresholdMs = jdbcSlowThresholdMs;
+    }
+
+    /**
+     * @return 是否启用 Redis 追踪
+     */
+    public boolean isRedisTracingEnabled() {
+        return redisTracingEnabled;
+    }
+
+    /**
+     * @param redisTracingEnabled 是否启用 Redis 追踪
+     */
+    public void setRedisTracingEnabled(boolean redisTracingEnabled) {
+        this.redisTracingEnabled = redisTracingEnabled;
+    }
+
+    /**
+     * @return Redis 慢命令阈值（毫秒）
+     */
+    public long getRedisSlowThresholdMs() {
+        return redisSlowThresholdMs;
+    }
+
+    /**
+     * @param redisSlowThresholdMs 慢命令阈值；{@code <=0} 表示成功也上报
+     */
+    public void setRedisSlowThresholdMs(long redisSlowThresholdMs) {
+        this.redisSlowThresholdMs = redisSlowThresholdMs;
     }
 
     /**
