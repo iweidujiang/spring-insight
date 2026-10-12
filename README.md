@@ -14,7 +14,7 @@
 面向 **Spring Boot / Spring Cloud** 的轻量监测工具：**业务侧加一个 Starter 埋点上报，旁边用 Docker 起一个 `insight-server`，就能看服务拓扑和调用链路。**
 
 - 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
-- 当前版本线：**Agent `0.5.0`**（本仓库 / 发 Central 后生效；Central 现网仍为 `0.4.2`）+ **Server `0.9.0`**（GHCR / Release jar）
+- 当前版本线：**Agent `0.5.0`**（Maven Central；Boot2 见分支 `2.7.x`）+ **Server `0.9.0`**（GHCR / Release jar）
 - **运行时要求**：Spring Boot 3.x + JDK 17+
 - 问题与建议欢迎开 Issue
 
@@ -137,8 +137,9 @@ Agent 与 Server **版本说明如下：**
 
 | 坐标 | 当前推荐 | 说明 |
 |------|----------|------|
-| `io.github.iweidujiang:spring-insight-agent-starter` | **`0.5.0`** | **业务侧依赖**（发 Central 前请本地 `mvn install`） |
+| `io.github.iweidujiang:spring-insight-agent-starter` | **`0.5.0`** | **业务侧依赖**（Boot3 / JDK 17+，Maven Central） |
 | `io.github.iweidujiang:insight-agent` | **`0.5.0`** | 采集核心（由 Starter 传递） |
+| `io.github.iweidujiang:spring-insight-agent-starter-boot2` | **`0.5.0`** | Boot2 / JDK 8（分支 `2.7.x` 发 Central） |
 | `ghcr.io/iweidujiang/spring-insight-server` | **`0.9.0`** | **监测中心镜像** |
 | Release `insight-server-*.jar` | 同上 | **无 Docker**：JDK 17+ 下 `java -jar` |
 

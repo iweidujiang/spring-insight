@@ -21,6 +21,9 @@
 - **JDBC 汇总 API**：`GET /api/v1/ui/jdbc/summary`（`hours` / `service` / `recentLimit`）返回 KPI、按库聚合与最近 JDBC Span
 - **数据库页**：侧栏「数据库」→ `/jdbc`；按服务 / 时间窗看 KPI、按库聚合与最近 JDBC Span（可点进 Trace）
 
+### 兼容
+- 推荐配套 Agent **`0.5.0`**（JDBC / Redis 追踪）；仅 HTTP 上报时 `0.4.x` 仍可用
+
 ---
 
 ## [0.9.0] — 2026-10-11
@@ -299,20 +302,25 @@
 
 # Agent
 
-## [Unreleased] → 目标坐标 `0.5.0`
+## [Unreleased]
+
+（暂无）
+
+---
+
+## [0.5.0] — 2026-10-12
 
 ### 新增
 - **JDBC 追踪**：`spring.insight.jdbc-tracing-enabled`（默认关）包装 Spring `DataSource`；错误始终上报 CLIENT Span；成功仅当耗时 ≥ `jdbc-slow-threshold-ms`（默认 500，≤0 则成功也全报）。旧键 `db-metrics.enabled` / `@EnableSpringInsight.dbMetricsEnabled` 仍可开启。不再注册无效的 `java.sql.*` Aspect。
 - **Redis 追踪**：`spring.insight.redis-tracing-enabled`（默认关）包装 `RedisConnectionFactory`；错误始终上报 CLIENT Span（`component=REDIS`）；成功仅当耗时 ≥ `redis-slow-threshold-ms`（默认 500）。覆盖 `RedisTemplate` 等同步用法；不含 Reactive。
 
-### 修复
-- **JDBC `remoteService` 短名**：`jdbc:h2:mem:…` → `h2:mem:…`；本机 IP 的 MySQL 等改为 `mysql:<库名>`，避免拓扑落成整段 JDBC URL 或 `127.0.0.1`
-
-### 坐标（待发 Central）
+### 坐标
 | 项 | 值 |
 |----|-----|
 | Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.5.0` |
-| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.5.0`（分支 `2.7.x`，需另行对齐发版） |
+| Agent | `io.github.iweidujiang:insight-agent:0.5.0` |
+| Boot2 Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.5.0`（分支 `2.7.x`，需另行 deploy） |
+| Boot2 Agent | `io.github.iweidujiang:insight-agent-boot2:0.5.0`（同上） |
 
 ---
 
