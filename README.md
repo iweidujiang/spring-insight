@@ -11,14 +11,25 @@
   <a href="https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.5.0"><img src="https://img.shields.io/badge/Agent-0.5.0-blue.svg" alt="Agent" /></a>
 </p>
 
-面向 **Spring Boot / Spring Cloud** 的轻量监测工具：**业务侧加一个 Starter 埋点上报，旁边用 Docker 起一个 `insight-server`，就能看服务拓扑和调用链路。**
+**Lightweight APM / distributed tracing for Spring Boot.**
 
-- 仓库：[https://github.com/iweidujiang/spring-insight](https://github.com/iweidujiang/spring-insight)
-- 当前版本线：**Agent `0.5.0`**（Maven Central；Boot2 见分支 `2.7.x`）+ **Server `1.0.0`**（GHCR / Release jar）
-- **运行时要求**：Spring Boot 3.x + JDK 17+
-- 问题与建议欢迎开 Issue
+Spring Boot 轻量级链路追踪与性能观测工具：接入简单、零配置起步、自带 UI，适合本地开发、联调排查和小规模微服务观测。
+
+[GitHub stars](https://github.com/iweidujiang/spring-insight/stargazers)
 
 ---
+## 为什么需要 Spring Insight
+
+SkyWalking、Zipkin、Micrometer Tracing 等方案能力很强，但接入成本往往不低：需要配置采集器、对接后端存储、理解 Trace/Span/Metrics 约定，甚至在多服务之间统一版本。
+
+Spring Insight 的定位更轻：
+
+- **接入成本低**：业务服务引入 `spring-insight-agent-starter`，旁边单独跑 `insight-server` 即可开始观测。
+- **链路可视化**：自动聚合 Span，生成请求链路列表、瀑布图和调用拓扑。
+- **排查友好**：支持按服务、耗时、状态、关键字筛选，快速定位慢请求和错误链路。
+- **适合个人项目 / 小团队**：不需要重型 APM 基础设施，也能看清一次请求经过了哪些服务、哪一段变慢、哪里报错。
+
+如果你正在做 Spring Boot 微服务、Agent 链路、Spring AI 调用链，或者只是想给本地项目加一个轻量可观测面板，Spring Insight 可以作为一个更轻的起点。
 
 ## 快速开始（两步）
 
@@ -84,7 +95,7 @@ spring:
 
 ---
 
-## 它能做什么
+## 核心能力
 
 <img width="2341" height="530" alt="局部截取_20260910_151357" src="https://github.com/user-attachments/assets/80bbebee-1397-4ebd-abcf-d09d598f0a16" />
 
@@ -110,48 +121,39 @@ spring:
 
 KPI、时段摘要、健康/慢服务/热点依赖、库与缓存卡片、最近请求
 
-<img width="2341" height="1248" alt="局部截取_20260910_151425" src="https://github.com/user-attachments/assets/5d121a96-3dce-4911-b972-2bf7927e946c" />
+<img width="2315" height="837" alt="局部截取_20261013_192623" src="https://github.com/user-attachments/assets/fb6113f8-74e5-4eff-ba49-13f8f8ee3091" />
+
 
 
 ### 服务拓扑
-<img width="2328" height="1228" alt="局部截取_20260910_151452" src="https://github.com/user-attachments/assets/2e6ba9d2-4bbf-4e67-91ce-93ab89b1a18c" />
+<img width="2287" height="661" alt="局部截取_20261013_194718" src="https://github.com/user-attachments/assets/e451660f-ec3c-409c-9f76-3fd97b04ecf9" />
+
 
 ### 数据库
 
-侧栏 **「数据库」**（`/jdbc`）：按时间窗 / 业务服务查看 JDBC KPI、按库聚合与最近慢 / 错误 SQL，可点进对应 Trace。
+<img width="2214" height="486" alt="局部截取_20261013_194742" src="https://github.com/user-attachments/assets/030d71c0-2b02-4c8b-bd74-ce52319df075" />
+
 
 ### 缓存
 
 侧栏 **「缓存」**（`/redis`）：按时间窗 / 业务服务查看 Redis KPI、按实例聚合与最近命令，可点进对应 Trace。
 
 ### 链路追踪
-<img width="2325" height="717" alt="局部截取_20260910_151551" src="https://github.com/user-attachments/assets/83af472c-0919-49e9-bd5d-fcb635a8abd4" />
+<img width="2281" height="294" alt="局部截取_20261013_194820" src="https://github.com/user-attachments/assets/28a87049-c5f9-40bd-9dcf-7621dde343e5" />
 
-<img width="2298" height="1192" alt="局部截取_20260910_151611" src="https://github.com/user-attachments/assets/8768b3d3-c13a-48f2-8b2a-ced7fc13080d" />
+<img width="2298" height="677" alt="局部截取_20261013_194841" src="https://github.com/user-attachments/assets/5bd0ff90-9655-4bc0-a9bd-b768e30bc7c4" />
+
 
 
 ### 错误分析
 
-<img width="2324" height="967" alt="局部截取_20260910_151633" src="https://github.com/user-attachments/assets/7e019fd9-0520-4e1d-b01e-8d0627b4434a" />
+<img width="2300" height="782" alt="局部截取_20261013_194915" src="https://github.com/user-attachments/assets/8f408da0-071c-4772-a791-70bcb606207c" />
 
 
----
-
-## 版本与坐标
-
-Agent 与 Server **版本说明如下：**
-
-| 坐标 | 当前推荐 | 说明 |
-|------|----------|------|
-| `io.github.iweidujiang:spring-insight-agent-starter` | **`0.5.0`** | **业务侧依赖**（Boot3 / JDK 17+，Maven Central） |
-| `io.github.iweidujiang:insight-agent` | **`0.5.0`** | 采集核心（由 Starter 传递） |
-| `io.github.iweidujiang:spring-insight-agent-starter-boot2` | **`0.5.0`** | Boot2 / JDK 8（分支 `2.7.x` 发 Central） |
-| `ghcr.io/iweidujiang/spring-insight-server` | **`1.0.0`** | **监测中心镜像** |
-| Release `insight-server-*.jar` | 同上 | **无 Docker**：JDK 17+ 下 `java -jar` |
-
-仓库根 `pom.xml` 属性：`agent.version` / `server.version`。发版说明见 [CHANGELOG.md](CHANGELOG.md)。
 
 ---
+
+
 
 ## 架构一览
 
@@ -167,91 +169,19 @@ Agent 与 Server **版本说明如下：**
 | `insight-server` | 监测中心（API + 控制台 UI；前端源码在 `insight-server/ui`） |
 | `compose.yaml` | 一键起监测中心 |
 
----
 
-## 存储与其它启动方式
-
-- **Docker / Compose** 默认 `file` 落盘并挂卷，重启可保留 Span。
-- 仅内存：将 `SPRING_INSIGHT_SERVER_STORAGE_MODE` 设为 `memory`。
-- **SQLite（0.2）**：`SPRING_INSIGHT_SERVER_STORAGE_MODE=sqlite`，库文件默认 `/data/insight.db`（需挂卷）。
-- 按时间保留（可选）：`SPRING_INSIGHT_SERVER_STORAGE_RETENTION_MAX_AGE_HOURS=72`。
-- **可选鉴权 / 运维**：见 [`docs/dev_docs/v0.2-ops.md`](docs/dev_docs/v0.2-ops.md)（ingest Token、UI 登录、容量指标；默认关闭）。
-- **告警 / AI**：优先在控制台「设置」页开关；亦可启动期写 `spring.insight.server.alert.*` / `ai.*`（页面保存后文件覆盖启动默认）。
-- 本机从源码打 jar（构建与运行均需 JDK 17+）：
-
-```bash
-mvn clean install -DskipTests
-java -jar insight-server/target/insight-server.jar
-```
-
-仅改控制台时，可在 `insight-server/ui` 下 `npm run dev`（默认代理到本机 9966）。
-
-正式发版后优先从 GitHub Release 下载 `insight-server-x.y.z.jar`，无需自行编译。
-
-存储只在 **Server** 侧配置，业务微服务不要配 `spring.insight.server.storage.*`。  
-健康检查：`GET /api/v1/health`（含 `storageMode`、`storedSpans`）。
-
-**OpenAPI（只读）**：Server 启动后可查看机器可读文档与 Swagger UI（不改变业务 API）：
-
-| 地址 | 说明 |
-|------|------|
-| `GET /v3/api-docs` | OpenAPI 3 JSON（springdoc） |
-| `/swagger-ui.html` | 交互文档 UI |
-
-演示工程：[spring-insight-sca-demo](https://github.com/iweidujiang/spring-insight-sca-demo)（Nacos + 若干微服务）。
-
-控制台 **关于** 页也有「三分钟演示路径」；推荐配套 **Agent `0.5.0`**（开启 `jdbc-tracing-enabled` / `redis-tracing-enabled` 后再看库与缓存页）。
-
-### 演示路径与冒烟清单
-
-1. 启动 Server（见上文）→ 业务接入 Agent `0.5.0` → 造几笔跨服务调用（可含 JDBC / Redis）。
-2. **仪表盘**：KPI / 时段摘要有数；库与缓存卡片可点进「数据库」「缓存」（空态会提示开启追踪开关）。
-3. **拓扑图**：能看到服务边；不应出现库 / Redis 节点。
-4. **数据库 / 缓存**：有 Span 时可见 KPI 与最近列表；点进 Trace 瀑布。
-5. **链路详情**：点「排障包」下载 JSON（含 Trace Context、Server 版本、时段摘要）。
-6. **设置 → AI**：状态条显示就绪 / 未启用 / 未就绪及原因；未配齐时解读按钮灰显且有提示。
 
 ---
 
-## 常用配置
 
-```yaml
-spring:
-  insight:
-    enabled: true
-    server-url: http://localhost:9966
-    sample-rate: 1.0
-    http-tracing-enabled: true
-    context-propagation-enabled: true  # @Async / 线程池透传 Trace
-    jdbc-tracing-enabled: false        # JDBC 追踪（慢 SQL / 错误）；默认关
-    # jdbc-slow-threshold-ms: 500
-    redis-tracing-enabled: false       # Redis 追踪（慢命令 / 错误）；默认关
-    # redis-slow-threshold-ms: 500
-    micrometer-enabled: true           # 有 MeterRegistry 时导出 spring.insight.*
-    diagnostic-logs: false             # 排查上报时可临时打开
-```
 
-### 与 Prometheus / Micrometer
+## 相关文章
 
-| 关注点 | 建议 |
-|--------|------|
-| 链路、拓扑、跨服务调用 | **Spring Insight** |
-| JVM / 连接池 / HTTP QPS | **Actuator + Micrometer / Prometheus** |
-| Insight 自身指标 | 可选刮取 `spring.insight.*`（默认 `micrometer-enabled=true`） |
+[掘金专栏](https://juejin.cn/column/7593077945015926811)
 
----
+[CSDN 专栏](https://blog.csdn.net/iweidujiang/category_13115295.html?fromshare=blogcolumn&sharetype=blogcolumn&sharerId=13115295&sharerefer=PC&sharesource=iweidujiang&sharefrom=from_link)
 
-## 适用边界
-
-Spring Insight 定位是**轻量辅助排查**，不是 OpenTelemetry / SkyWalking 的替代品：
-
-- Span 默认有条数上限；不配落盘时重启会清空（Docker 推荐挂卷 + `file`）
-- 告警为简易阈值 + Webhook/邮件；无多租户、OIDC、密钥保险箱（可选 Token / 简易登录见 0.2 运维文档）
-- JVM 指标默认关闭（实验）；JDBC / Redis 追踪默认关闭（`jdbc-tracing-enabled` / `redis-tracing-enabled`）
-
-欢迎 Issue / PR。
-
----
+[微信公众号](https://mp.weixin.qq.com/mp/appmsgalbum?__biz=MzI1MDU1MjkxOQ==&action=getalbum&album_id=4333089336431689750&scene=126&sessionid=#wechat_redirect)
 
 ## 许可
 
