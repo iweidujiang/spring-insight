@@ -93,10 +93,10 @@ spring:
 |------|------|
 | HTTP / Feign / WebClient / Gateway / RestTemplate / RestClient 采集 | Agent 采 Span 并批量上报；success 与 HTTP 状态对齐；线程池可透传 Trace；WebFlux 走 Reactor Context；出站带 `remoteService` |
 | JDBC 追踪（默认关） | `spring.insight.jdbc-tracing-enabled=true` 包装 DataSource；错误 / 慢 SQL（默认 ≥500ms）上报 CLIENT Span；控制台「数据库」页汇总 |
-| Redis 追踪（默认关） | `spring.insight.redis-tracing-enabled=true` 包装 RedisConnectionFactory；错误 / 慢命令（默认 ≥500ms）上报 CLIENT Span；拓扑不画 Redis 节点 |
-| 服务依赖拓扑 | 谁调用了谁（箭头与次数）；点击节点/边可下钻链路（不含 JDBC 库节点） |
-| 链路列表 / Trace 详情 | 按 Trace 聚合，可搜索筛选；详情含瀑布时间线、tags、错误信息 |
-| 延迟与错误摘要 | 仪表盘慢/错 Top（含 p50/p95），可点进已筛 Trace |
+| Redis 追踪（默认关） | `spring.insight.redis-tracing-enabled=true` 包装 RedisConnectionFactory；错误 / 慢命令（默认 ≥500ms）上报 CLIENT Span；控制台「缓存」页汇总 |
+| 服务依赖拓扑 | 谁调用了谁（箭头与次数）；点击节点/边可下钻链路 |
+| 链路列表 / Trace 详情 | 按 Trace 聚合，可搜索筛选；详情含瀑布时间线、tags、错误信息；可下载脱敏排障包 |
+| 延迟与错误摘要 | 仪表盘 KPI / 慢/错 Top（含 p50/p95）与库缓存卡片，可点进已筛 Trace |
 | Micrometer 联动 | 宿主有 MeterRegistry 时导出 `spring.insight.*`（Span Timer / 上报队列） |
 | 可选鉴权 / 容量可见（0.2） | Server 可选 ingest Token、控制台登录；健康/Actuator 暴露 stored/max/evicted |
 | 可选告警 / AI（0.3，默认关） | 控制台「设置」配 Webhook、SMTP、OpenAI 兼容模型；保存后即时生效 |
@@ -108,6 +108,8 @@ spring:
 
 ### 仪表盘
 
+KPI、时段摘要、健康/慢服务/热点依赖、库与缓存卡片、最近请求
+
 <img width="2341" height="1248" alt="局部截取_20260910_151425" src="https://github.com/user-attachments/assets/5d121a96-3dce-4911-b972-2bf7927e946c" />
 
 
@@ -116,7 +118,11 @@ spring:
 
 ### 数据库
 
-侧栏 **「数据库」**（`/jdbc`）：按时间窗 / 业务服务查看 JDBC KPI、按库聚合与最近慢 / 错误 SQL，可点进对应 Trace。拓扑图不再展示库节点。
+侧栏 **「数据库」**（`/jdbc`）：按时间窗 / 业务服务查看 JDBC KPI、按库聚合与最近慢 / 错误 SQL，可点进对应 Trace。
+
+### 缓存
+
+侧栏 **「缓存」**（`/redis`）：按时间窗 / 业务服务查看 Redis KPI、按实例聚合与最近命令，可点进对应 Trace。
 
 ### 链路追踪
 <img width="2325" height="717" alt="局部截取_20260910_151551" src="https://github.com/user-attachments/assets/83af472c-0919-49e9-bd5d-fcb635a8abd4" />
@@ -193,6 +199,17 @@ java -jar insight-server/target/insight-server.jar
 | `/swagger-ui.html` | 交互文档 UI |
 
 演示工程：[spring-insight-sca-demo](https://github.com/iweidujiang/spring-insight-sca-demo)（Nacos + 若干微服务）。
+
+控制台 **关于** 页也有「三分钟演示路径」；推荐配套 **Agent `0.5.0`**（开启 `jdbc-tracing-enabled` / `redis-tracing-enabled` 后再看库与缓存页）。
+
+### 演示路径与冒烟清单
+
+1. 启动 Server（见上文）→ 业务接入 Agent `0.5.0` → 造几笔跨服务调用（可含 JDBC / Redis）。
+2. **仪表盘**：KPI / 时段摘要有数；库与缓存卡片可点进「数据库」「缓存」（空态会提示开启追踪开关）。
+3. **拓扑图**：能看到服务边；不应出现库 / Redis 节点。
+4. **数据库 / 缓存**：有 Span 时可见 KPI 与最近列表；点进 Trace 瀑布。
+5. **链路详情**：点「排障包」下载 JSON（含 Trace Context、Server 版本、时段摘要）。
+6. **设置 → AI**：状态条显示就绪 / 未启用 / 未就绪及原因；未配齐时解读按钮灰显且有提示。
 
 ---
 

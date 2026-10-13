@@ -5,7 +5,9 @@
         <h2 class="page-title mb-1">
           <i class="fa fa-info-circle me-2"></i>关于
         </h2>
-        <p class="page-description mb-0">Spring Insight 基本信息与能力概览</p>
+        <p class="page-description mb-0">
+          基本信息与演示路径 · 推荐配套 Agent {{ agentVersion }}
+        </p>
       </div>
       <span class="badge bg-info">
         <i class="fa fa-clock me-1"></i>{{ currentTime }}
@@ -68,6 +70,24 @@
       </div>
     </div>
 
+    <section class="si-about__demo" aria-label="演示路径">
+      <div class="si-about__features-head">
+        <h5 class="mb-0"><i class="fa fa-play-circle me-2"></i>三分钟演示路径</h5>
+        <span class="si-about__features-sub">配套 Agent 开启 JDBC / Redis 追踪更完整</span>
+      </div>
+      <ol class="si-about__demo-list">
+        <li v-for="(step, i) in demoSteps" :key="i">
+          <RouterLink v-if="step.to" :to="step.to" class="si-about__demo-link">{{ step.label }}</RouterLink>
+          <strong v-else>{{ step.label }}</strong>
+          <span>{{ step.hint }}</span>
+        </li>
+      </ol>
+<!--      <p class="si-about__demo-note">
+        冒烟建议：首页 KPI 有数 → 拓扑有服务边 → 数据库 / 缓存页有 Span（或空态提示开关）→
+        打开一条 Trace 可「排障包」下载 → 设置页 AI 状态条可看就绪 / 原因。
+      </p>-->
+    </section>
+
     <section class="si-about__features">
       <div class="si-about__features-head">
         <h5 class="mb-0"><i class="fa fa-star me-2"></i>功能特性</h5>
@@ -90,6 +110,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import axios from 'axios'
 
 const currentTime = ref('')
@@ -99,15 +120,24 @@ const agentVersion = ref('…')
 const storageMode = ref('')
 let timeInterval: number | null = null
 
+const demoSteps = [
+  { to: '/', label: '仪表盘', hint: '看 KPI、时段摘要、库/缓存卡片与最近请求' },
+  { to: '/topology', label: '拓扑图', hint: '确认服务依赖边' },
+  { to: '/jdbc', label: '数据库', hint: '开启 jdbc-tracing-enabled 后看慢 SQL / 错误' },
+  { to: '/redis', label: '缓存', hint: '开启 redis-tracing-enabled 后看慢命令 / 错误' },
+  { to: '/traces', label: '链路详情', hint: '打开一条 Trace →「排障包」下载脱敏 JSON' },
+  { to: '/settings', label: '设置 · AI', hint: '看就绪态 / 模型 / 失败原因；未配齐时按钮灰显有提示' }
+]
+
 const features = [
-  { title: '实时监控', desc: '汇总服务、Span 与 Collector 上报状态', icon: 'fa-tachometer', color: '#0f766e' },
+  { title: '仪表盘概览', desc: 'KPI、时段摘要、健康/慢/热点与库缓存卡片', icon: 'fa-tachometer', color: '#0f766e' },
   { title: '服务拓扑', desc: '可视化调用方向与依赖强度', icon: 'fa-sitemap', color: '#15803d' },
-  { title: '链路追踪', desc: '按 Trace / Span 排查单次请求耗时', icon: 'fa-list-ul', color: '#0d9488' },
+  { title: '数据库 / 缓存', desc: 'JDBC 与 Redis 出站汇总页，可点进 Trace', icon: 'fa-database', color: '#0d9488' },
+  { title: '链路与排障包', desc: '瀑布时间线；可导出脱敏排障包带走', icon: 'fa-list-ul', color: '#0d9488' },
   { title: '错误分析', desc: '识别高错误率服务并跳转相关链路', icon: 'fa-exclamation-triangle', color: '#b91c1c' },
-  { title: '控制台设置', desc: '告警 Webhook/邮件与 AI 解释在页面配置，即时生效', icon: 'fa-cog', color: '#0f766e' },
-  { title: '独立 Server', desc: '业务侧仅依赖 Agent，监测中心进程隔离', icon: 'fa-server', color: '#b45309' },
-  { title: 'OpenAPI', desc: '只读 /v3/api-docs 与 Swagger UI，便于对接与自检', icon: 'fa-book', color: '#0f766e' },
-  { title: '性能洞察', desc: '平均耗时、调用次数等指标辅助定位瓶颈', icon: 'fa-line-chart', color: '#1d4ed8' }
+  { title: 'AI 诚实展示', desc: '设置页与解读面板标明就绪、模型与降级原因', icon: 'fa-magic', color: '#0f766e' },
+  { title: '控制台设置', desc: '告警 Webhook/邮件与 AI 在页面配置，即时生效', icon: 'fa-cog', color: '#0f766e' },
+  { title: 'OpenAPI', desc: '只读 /v3/api-docs 与 Swagger UI，便于对接与自检', icon: 'fa-book', color: '#1d4ed8' }
 ]
 
 const updateCurrentTime = () => {
@@ -243,13 +273,55 @@ onUnmounted(() => {
   border: 1px solid rgba(15, 118, 110, 0.25);
 }
 
+.si-about__demo,
 .si-about__features {
-  margin-top: 0.25rem;
+  margin-top: 0.75rem;
   padding: 1rem 1.1rem 1.15rem;
   border-radius: 14px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   box-shadow: var(--box-shadow);
+}
+
+.si-about__demo-list {
+  margin: 0 0 0.75rem;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  color: var(--si-ink);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.si-about__demo-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  align-items: baseline;
+}
+
+.si-about__demo-list li > span {
+  flex: 1 1 12rem;
+  color: var(--si-muted);
+  font-size: 0.82rem;
+}
+
+.si-about__demo-link {
+  font-weight: 650;
+  color: var(--si-teal);
+  text-decoration: none;
+}
+
+.si-about__demo-link:hover {
+  text-decoration: underline;
+}
+
+.si-about__demo-note {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--si-muted);
 }
 
 .si-about__features-head {

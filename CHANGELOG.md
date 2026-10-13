@@ -16,8 +16,6 @@
 ## [Unreleased]
 
 ### 变更
-- **拓扑不含 JDBC 库节点**：依赖边 / 时段热边跳过 `component=JDBC`；库调用改由「数据库」页展示
-- **拓扑不含 Redis 节点**：依赖边 / 时段热边跳过 `component=REDIS`（与 JDBC 同属基础设施边）
 - **JDBC 汇总 API**：`GET /api/v1/ui/jdbc/summary`（`hours` / `service` / `recentLimit`）返回 KPI、按库聚合与最近 JDBC Span
 - **数据库页**：侧栏「数据库」→ `/jdbc`；按服务 / 时间窗看 KPI、按库聚合与最近 JDBC Span（可点进 Trace）
 - **仪表盘精简**：首页不再内嵌拓扑图；以 KPI、时段摘要、健康/慢服务/热点依赖与最近请求为主，拓扑改侧栏入口
@@ -26,6 +24,7 @@
 - **首页库/缓存卡片**：仪表盘展示 JDBC / Redis 概要（Span / 错误 / 慢 / p95），点击跳转「数据库」「缓存」；空态提示开启追踪开关
 - **排障包导出**：`GET /api/v1/ui/traces/{id}/troubleshoot-pack`（`hours`）返回脱敏 JSON（Trace Context + Server 版本 + 时段窗摘要）；链路详情页可下载
 - **AI 状态诚实**：`/ai/status` 增加 `statusLabel` / `reason`；设置页展示就绪态与模型；解读面板突出降级原因与 provider/model
+- **关于页**：关于页增加三分钟演示步骤
 
 ### 兼容
 - 推荐配套 Agent **`0.5.0`**（JDBC / Redis 追踪）；仅 HTTP 上报时 `0.4.x` 仍可用
