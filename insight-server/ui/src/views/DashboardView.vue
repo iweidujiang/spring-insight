@@ -130,6 +130,68 @@
         </button>
       </section>
 
+      <section class="si-infra" aria-label="库与缓存">
+        <button type="button" class="si-infra__card" @click="goJdbc()">
+          <div class="si-infra__head">
+            <span class="si-infra__title"><i class="fa fa-database me-2"></i>数据库</span>
+            <span class="si-infra__link">打开 <i class="fa fa-angle-right"></i></span>
+          </div>
+          <template v-if="jdbcKpis && jdbcKpis.spanCount > 0">
+            <div class="si-infra__metrics">
+              <div>
+                <em>Span</em>
+                <strong>{{ jdbcKpis.spanCount }}</strong>
+              </div>
+              <div>
+                <em>错误</em>
+                <strong :class="{ 'is-danger': jdbcKpis.errorCount > 0 }">{{ jdbcKpis.errorCount }}</strong>
+              </div>
+              <div>
+                <em>慢</em>
+                <strong :class="{ 'is-warn': jdbcKpis.slowCount > 0 }">{{ jdbcKpis.slowCount }}</strong>
+              </div>
+              <div>
+                <em>p95</em>
+                <strong>{{ formatMs(jdbcKpis.p95Ms) }}</strong>
+              </div>
+            </div>
+          </template>
+          <p v-else class="si-infra__empty">
+            暂无 JDBC 调用。业务侧开启 <code>jdbc-tracing-enabled</code> 后可在此看慢 SQL / 错误。
+          </p>
+        </button>
+
+        <button type="button" class="si-infra__card" @click="goRedis()">
+          <div class="si-infra__head">
+            <span class="si-infra__title"><i class="fa fa-cube me-2"></i>缓存</span>
+            <span class="si-infra__link">打开 <i class="fa fa-angle-right"></i></span>
+          </div>
+          <template v-if="redisKpis && redisKpis.spanCount > 0">
+            <div class="si-infra__metrics">
+              <div>
+                <em>Span</em>
+                <strong>{{ redisKpis.spanCount }}</strong>
+              </div>
+              <div>
+                <em>错误</em>
+                <strong :class="{ 'is-danger': redisKpis.errorCount > 0 }">{{ redisKpis.errorCount }}</strong>
+              </div>
+              <div>
+                <em>慢</em>
+                <strong :class="{ 'is-warn': redisKpis.slowCount > 0 }">{{ redisKpis.slowCount }}</strong>
+              </div>
+              <div>
+                <em>p95</em>
+                <strong>{{ formatMs(redisKpis.p95Ms) }}</strong>
+              </div>
+            </div>
+          </template>
+          <p v-else class="si-infra__empty">
+            暂无 Redis 调用。业务侧开启 <code>redis-tracing-enabled</code> 后可在此看慢命令 / 错误。
+          </p>
+        </button>
+      </section>
+
       <section v-if="isSolo" class="si-app" aria-label="单应用概览">
         <div class="si-app__head">
           <div>
@@ -364,6 +426,16 @@ const recentTraces = ref<any[]>([])
 const periodInsight = ref<PeriodInsight | null>(null)
 const periodExplain = ref<AiExplainResult | null>(null)
 const periodExplaining = ref(false)
+type InfraKpis = {
+  spanCount: number
+  errorCount: number
+  slowCount: number
+  avgMs: number
+  p95Ms: number
+  maxMs: number
+}
+const jdbcKpis = ref<InfraKpis | null>(null)
+const redisKpis = ref<InfraKpis | null>(null)
 
 let serviceRankChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
@@ -626,6 +698,8 @@ const onKpiClick = (to: string) => {
 }
 
 const goTopology = () => router.push('/topology')
+const goJdbc = () => router.push({ path: '/jdbc', query: { hours: String(hours.value) } })
+const goRedis = () => router.push({ path: '/redis', query: { hours: String(hours.value) } })
 const goTraces = (query: Record<string, string> = {}) => router.push({ path: '/traces', query })
 const goErrors = () => router.push('/error-analysis')
 const goTraceDetail = (traceId: string) => {
@@ -761,7 +835,18 @@ const loadData = async () => {
     loading.value = true
     loadError.value = ''
     const h = hours.value
-    const [serviceNames, serviceDeps, serviceStatsData, latencyData, errorAnalysisData, collectorStatsData, recent, period] = await Promise.all([
+    const [
+      serviceNames,
+      serviceDeps,
+      serviceStatsData,
+      latencyData,
+      errorAnalysisData,
+      collectorStatsData,
+      recent,
+      period,
+      jdbcSummary,
+      redisSummary
+    ] = await Promise.all([
       ApiService.getServiceNames(),
       ApiService.getServiceDependencies(h),
       ApiService.getServiceStats(h),
@@ -769,7 +854,9 @@ const loadData = async () => {
       ApiService.getErrorAnalysis(h),
       ApiService.getCollectorStats(),
       ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 16 }),
-      ApiService.getPeriodInsight(h)
+      ApiService.getPeriodInsight(h),
+      ApiService.getJdbcSummary(h, undefined, 1).catch(() => null),
+      ApiService.getRedisSummary(h, undefined, 1).catch(() => null)
     ])
     services.value = serviceNames
     dependencies.value = serviceDeps
@@ -780,6 +867,8 @@ const loadData = async () => {
     recentTraces.value = Array.isArray(recent) ? recent : []
     periodInsight.value = period
     periodExplain.value = null
+    jdbcKpis.value = jdbcSummary?.kpis ?? null
+    redisKpis.value = redisSummary?.kpis ?? null
     totalSpans.value = serviceStatsData.reduce((sum: number, s: any) => sum + (s.totalSpans || 0), 0)
   } catch (error) {
     console.error('加载仪表盘数据失败:', error)
@@ -1325,6 +1414,101 @@ onUnmounted(() => {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-right: 0.35rem;
+}
+
+.si-infra {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.si-infra__card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  text-align: left;
+  padding: 0.75rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--box-shadow);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.si-infra__card:hover {
+  border-color: rgba(15, 118, 110, 0.35);
+  box-shadow: 0 4px 14px rgba(21, 36, 31, 0.08);
+}
+
+.si-infra__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.si-infra__title {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--si-ink);
+}
+
+.si-infra__link {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--si-teal, #0f766e);
+  white-space: nowrap;
+}
+
+.si-infra__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.si-infra__metrics em {
+  display: block;
+  font-style: normal;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--si-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.si-infra__metrics strong {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--si-ink);
+  line-height: 1.2;
+}
+
+.si-infra__metrics strong.is-danger {
+  color: #b91c1c;
+}
+
+.si-infra__metrics strong.is-warn {
+  color: #b45309;
+}
+
+.si-infra__empty {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--si-muted);
+}
+
+.si-infra__empty code {
+  font-size: 0.78em;
+}
+
+@media (max-width: 900px) {
+  .si-infra {
+    grid-template-columns: 1fr;
+  }
 }
 
 .si-overview {
