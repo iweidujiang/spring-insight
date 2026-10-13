@@ -4,6 +4,7 @@ import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorS
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
+import io.github.iweidujiang.springinsight.storage.service.TroubleshootPackExportService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -37,15 +38,18 @@ public class CollectorApiController {
     private final TraceSpanCollectorService traceSpanCollectorService;
     private final InsightServerStorageProperties storageProperties;
     private final TraceContextExportService traceContextExportService;
+    private final TroubleshootPackExportService troubleshootPackExportService;
 
     public CollectorApiController(TraceSpanPersistenceService traceSpanPersistenceService,
                                   TraceSpanCollectorService traceSpanCollectorService,
                                   InsightServerStorageProperties storageProperties,
-                                  TraceContextExportService traceContextExportService) {
+                                  TraceContextExportService traceContextExportService,
+                                  TroubleshootPackExportService troubleshootPackExportService) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.storageProperties = storageProperties;
         this.traceContextExportService = traceContextExportService;
+        this.troubleshootPackExportService = troubleshootPackExportService;
     }
 
     /**
@@ -323,6 +327,29 @@ public class CollectorApiController {
             return ResponseEntity.ok(context);
         } catch (Exception e) {
             log.error("导出 Trace Context 失败: traceId={}", traceId, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 脱敏排障包：Trace Context + Server 版本 + 时段窗摘要（不调模型）。
+     *
+     * @param traceId Trace ID
+     * @param hours   窗摘要小时数；{@code <=0} 表示全部已存
+     * @return schemaVersion=1 排障包；不存在时 404
+     */
+    @GetMapping("/traces/{traceId}/troubleshoot-pack")
+    public ResponseEntity<?> getTroubleshootPack(
+            @PathVariable("traceId") String traceId,
+            @RequestParam(value = "hours", defaultValue = "24") int hours) {
+        try {
+            Map<String, Object> pack = troubleshootPackExportService.buildPack(traceId, hours);
+            if (pack == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(pack);
+        } catch (Exception e) {
+            log.error("导出排障包失败: traceId={}", traceId, e);
             return ResponseEntity.internalServerError().build();
         }
     }

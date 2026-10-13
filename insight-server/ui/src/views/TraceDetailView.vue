@@ -44,6 +44,16 @@
           <i class="fa fa-magic me-1"></i>复制 Context
         </button>
         <button
+          class="btn btn-sm btn-outline-secondary"
+          type="button"
+          @click="downloadTroubleshootPack"
+          :disabled="loading || exportingPack || spans.length === 0"
+          title="下载脱敏排障包（Trace Context + 版本 + 时段摘要）"
+        >
+          <i class="fa" :class="exportingPack ? 'fa-spinner fa-spin' : 'fa-download'"></i>
+          {{ exportingPack ? '导出中…' : '排障包' }}
+        </button>
+        <button
           class="btn btn-sm btn-outline-info"
           type="button"
           @click="runExplain"
@@ -282,6 +292,7 @@ import {
   loadFailedMessage,
   TRACE_NOT_FOUND
 } from '../utils/timeRange'
+import { resolveHours } from '../utils/insightQuery'
 
 const route = useRoute()
 const router = useRouter()
@@ -296,6 +307,7 @@ const deeplinkHint = ref('')
 const explainResult = ref<AiExplainResult | null>(null)
 const explainMeta = ref('')
 const explaining = ref(false)
+const exportingPack = ref(false)
 const aiStatus = ref({
   enabled: false,
   invokeReady: false,
@@ -398,6 +410,38 @@ const copyTraceContext = async () => {
     }, 3000)
   } catch {
     copyHint.value = '复制 Context 失败'
+  }
+}
+
+const downloadTroubleshootPack = async () => {
+  if (!traceId.value || exportingPack.value) return
+  exportingPack.value = true
+  copyHint.value = ''
+  try {
+    const hours = resolveHours(route.query, 24)
+    const pack = await ApiService.getTroubleshootPack(traceId.value, hours)
+    if (!pack) {
+      copyHint.value = '未找到排障包（Trace 可能不存在）'
+      return
+    }
+    const blob = new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+    const short = String(traceId.value).slice(0, 8)
+    link.href = url
+    link.download = `insight-troubleshoot-${short}-${stamp}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    copyHint.value = '已下载脱敏排障包（含 Trace Context、Server 版本与时段摘要）'
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = window.setTimeout(() => {
+      copyHint.value = ''
+    }, 3000)
+  } catch {
+    copyHint.value = '导出排障包失败'
+  } finally {
+    exportingPack.value = false
   }
 }
 

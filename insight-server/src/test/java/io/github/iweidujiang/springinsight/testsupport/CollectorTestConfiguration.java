@@ -6,10 +6,13 @@ import io.github.iweidujiang.springinsight.server.config.InsightServerStoragePro
 import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
+import io.github.iweidujiang.springinsight.storage.service.TroubleshootPackExportService;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
 import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.core.env.Environment;
 
 /**
  * Collector 切片测试配置（包路径刻意不在主应用 scanBasePackages 内，避免被全量启动测试扫到）。
@@ -65,6 +68,23 @@ public class CollectorTestConfiguration {
     @Bean
     public TraceContextExportService traceContextExportService(SpanStore spanStore) {
         return new TraceContextExportService(spanStore);
+    }
+
+    /**
+     * @param contextExport   Trace Context
+     * @param persistence     持久化
+     * @param environment     环境
+     * @param buildProperties build-info（可空）
+     * @return 排障包导出
+     */
+    @Bean
+    public TroubleshootPackExportService troubleshootPackExportService(
+            TraceContextExportService contextExport,
+            TraceSpanPersistenceService persistence,
+            Environment environment,
+            org.springframework.beans.factory.ObjectProvider<BuildProperties> buildProperties) {
+        return new TroubleshootPackExportService(
+                contextExport, persistence, environment, buildProperties.getIfAvailable());
     }
 
     /**

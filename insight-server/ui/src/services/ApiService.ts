@@ -484,6 +484,18 @@ export class ApiService {
     }
   }
 
+  /** 脱敏排障包：Trace Context + 版本 + 窗摘要（schemaVersion=1） */
+  static async getTroubleshootPack(traceId: string, hours: number = 24): Promise<any | null> {
+    try {
+      const qs = new URLSearchParams({ hours: String(hours) })
+      return await request<any>(
+        `/traces/${encodeURIComponent(traceId)}/troubleshoot-pack?${qs.toString()}`
+      )
+    } catch {
+      return null
+    }
+  }
+
   /** AI 开关与是否可调用（详情页按钮） */
   static async getAiStatus(): Promise<{
     enabled: boolean

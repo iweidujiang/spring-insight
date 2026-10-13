@@ -24,6 +24,7 @@
 - **Redis 汇总 API**：`GET /api/v1/ui/redis/summary`（`hours` / `service` / `recentLimit`）返回 KPI、按实例聚合与最近 REDIS Span
 - **缓存页**：侧栏「缓存」→ `/redis`；按服务 / 时间窗看 KPI、按 Redis 实例与最近命令（可点进 Trace）
 - **首页库/缓存卡片**：仪表盘展示 JDBC / Redis 概要（Span / 错误 / 慢 / p95），点击跳转「数据库」「缓存」；空态提示开启追踪开关
+- **排障包导出**：`GET /api/v1/ui/traces/{id}/troubleshoot-pack`（`hours`）返回脱敏 JSON（Trace Context + Server 版本 + 时段窗摘要）；链路详情页可下载
 
 ### 兼容
 - 推荐配套 Agent **`0.5.0`**（JDBC / Redis 追踪）；仅 HTTP 上报时 `0.4.x` 仍可用
