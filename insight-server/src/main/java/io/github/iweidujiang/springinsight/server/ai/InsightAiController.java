@@ -25,9 +25,9 @@ public class InsightAiController {
     private final InsightAiAuditLog auditLog;
 
     /**
-     * AI 开关与就绪状态（供详情页按钮灰显）。
+     * AI 开关与就绪状态（供详情页按钮灰显、设置页诚实展示）。
      *
-     * @return enabled / invokeReady / provider / model / baseUrl
+     * @return enabled / invokeReady / provider / model / baseUrl / statusLabel / reason
      */
     @GetMapping("/ai/status")
     public Map<String, Object> status() {

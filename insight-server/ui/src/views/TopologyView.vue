@@ -202,7 +202,8 @@
                 <button
                   type="button"
                   class="btn btn-outline-info btn-sm w-100"
-                  :disabled="explaining"
+                  :disabled="explaining || !aiReady"
+                  :title="aiReady ? (aiStatusReason || '解释当前调用边') : (aiStatusReason || '请先在设置中启用 AI')"
                   @click="explainEdge(selection.service, selection.peer)"
                 >
                   <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
@@ -214,6 +215,7 @@
                 v-if="edgeExplain"
                 :result="edgeExplain"
                 title="链路解读"
+                :meta="[edgeExplain.provider, edgeExplain.model].filter(Boolean).join(' · ')"
                 @close="edgeExplain = null"
               />
             </template>
@@ -312,6 +314,8 @@ const recentTraces = ref<any[]>([])
 const chartEl = ref<HTMLElement | null>(null)
 const explaining = ref(false)
 const edgeExplain = ref<AiExplainResult | null>(null)
+const aiReady = ref(false)
+const aiStatusReason = ref('')
 const selection = ref<{ kind: 'node' | 'edge' | null; service: string; peer?: string }>({
   kind: null,
   service: ''
@@ -628,6 +632,14 @@ onMounted(async () => {
       path: route.path,
       query: mergeQuery(route.query, { hours: String(hours.value) })
     })
+  }
+  try {
+    const st = await ApiService.getAiStatus()
+    aiReady.value = !!st.invokeReady
+    aiStatusReason.value = st.reason || ''
+  } catch {
+    aiReady.value = false
+    aiStatusReason.value = ''
   }
   await loadData()
 })

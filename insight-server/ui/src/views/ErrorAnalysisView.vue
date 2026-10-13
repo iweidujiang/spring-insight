@@ -23,7 +23,7 @@
           class="btn btn-sm btn-outline-primary"
           @click="onExplainErrors"
           :disabled="loading || explaining || !hasErrors || !aiReady"
-          :title="aiReady ? '用当前聚合摘要调用 AI' : '请先在设置中启用 AI 并配置密钥'"
+          :title="aiReady ? (aiStatusReason || '用当前聚合摘要调用 AI') : (aiStatusReason || '请先在设置中启用 AI 并配置密钥')"
         >
           <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
           {{ explaining ? '解读中…' : '一键解读' }}
@@ -267,6 +267,7 @@
           v-if="explainResult"
           :result="explainResult"
           title="AI 解读"
+          :meta="[explainResult.provider, explainResult.model].filter(Boolean).join(' · ')"
           @close="explainResult = null"
         />
       </template>
@@ -290,6 +291,7 @@ const loadError = ref('')
 const explaining = ref(false)
 const explainResult = ref<AiExplainResult | null>(null)
 const aiReady = ref(false)
+const aiStatusReason = ref('')
 const currentTime = ref('')
 const hours = ref(24)
 const errorAnalysis = ref<any[]>([])
@@ -479,8 +481,10 @@ async function refreshAiStatus() {
   try {
     const st = await ApiService.getAiStatus()
     aiReady.value = !!st.invokeReady
+    aiStatusReason.value = st.reason || ''
   } catch {
     aiReady.value = false
+    aiStatusReason.value = ''
   }
 }
 

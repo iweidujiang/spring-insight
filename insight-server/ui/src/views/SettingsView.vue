@@ -240,6 +240,24 @@
             </div>
           </header>
 
+          <div
+            class="si-settings__ai-status"
+            :class="aiDraftReady ? 'is-ready' : 'is-blocked'"
+            role="status"
+          >
+            <span class="si-settings__ai-badge">{{ aiDraftLabel }}</span>
+            <div class="si-settings__ai-status-body">
+              <p class="mb-0">{{ aiDraftReason }}</p>
+              <p v-if="form.ai.model" class="mb-0 si-settings__ai-model">
+                当前模型：<code>{{ form.ai.model }}</code>
+                <template v-if="form.ai.provider"> · {{ form.ai.provider }}</template>
+              </p>
+              <p v-if="aiServerReason && aiServerReason !== aiDraftReason" class="mb-0 text-muted small">
+                已保存状态{{ aiServerLabel ? `（${aiServerLabel}）` : '' }}：{{ aiServerReason }}
+              </p>
+            </div>
+          </div>
+
           <div class="si-settings__fields">
             <div class="si-settings__field">
               <label class="form-label" for="ai-provider">Provider</label>
@@ -506,6 +524,8 @@ const messageOk = ref(false)
 const settingsPath = ref('')
 const passwordConfigured = ref(false)
 const apiKeyConfigured = ref(false)
+const aiServerReason = ref('')
+const aiServerLabel = ref('')
 const clearOlderHours = ref(24)
 const clearServiceName = ref('')
 const serviceNames = ref<string[]>([])
@@ -552,6 +572,48 @@ const clearDialog = reactive({
 
 const previewing = ref(false)
 const previewResult = ref('')
+
+const aiDraftReady = computed(() => {
+  if (!form.ai.enabled) return false
+  const keyOk = !!(form.ai.apiKey?.trim() || apiKeyConfigured.value)
+  const baseOk = !!form.ai.baseUrl?.trim()
+  const provider = (form.ai.provider || 'openai-compatible').trim().toLowerCase()
+  const providerOk =
+    !provider ||
+    provider === 'openai-compatible' ||
+    provider === 'openai' ||
+    provider === 'deepseek'
+  return keyOk && baseOk && providerOk
+})
+
+const aiDraftLabel = computed(() => {
+  if (aiDraftReady.value) return '就绪'
+  if (!form.ai.enabled) return '未启用'
+  return '未就绪'
+})
+
+const aiDraftReason = computed(() => {
+  if (!form.ai.enabled) {
+    return '未启用：打开上方开关并填写 base-url / api-key 后保存。'
+  }
+  if (!(form.ai.apiKey?.trim() || apiKeyConfigured.value)) {
+    return '已启用但未配置 api-key（保存后才会生效）。'
+  }
+  if (!form.ai.baseUrl?.trim()) {
+    return '已启用但未配置 base-url。'
+  }
+  const provider = (form.ai.provider || '').trim().toLowerCase()
+  if (
+    provider &&
+    provider !== 'openai-compatible' &&
+    provider !== 'openai' &&
+    provider !== 'deepseek'
+  ) {
+    return '当前仅支持 provider=openai-compatible（DeepSeek / OpenAI / 兼容网关）。'
+  }
+  const model = form.ai.model?.trim()
+  return model ? `草稿就绪：保存后可调用模型 ${model}` : '草稿就绪：保存后可调用模型。'
+})
 
 const thresholdHint = computed(() => {
   const m = form.alert.metric
@@ -617,6 +679,17 @@ async function refreshStorage() {
   storage.sqlitePath = s.sqlitePath || ''
 }
 
+async function refreshAiStatus() {
+  try {
+    const st = await ApiService.getAiStatus()
+    aiServerLabel.value = st.statusLabel || ''
+    aiServerReason.value = st.reason || ''
+  } catch {
+    aiServerLabel.value = ''
+    aiServerReason.value = ''
+  }
+}
+
 async function load() {
   loading.value = true
   message.value = ''
@@ -659,6 +732,7 @@ async function load() {
     apiKeyConfigured.value = !!data.ai?.apiKeyConfigured
 
     await refreshStorage()
+    await refreshAiStatus()
     serviceNames.value = await ApiService.getServiceNames()
   } catch (e: any) {
     showMsg(e?.message || '加载设置失败', false)
@@ -680,6 +754,7 @@ async function onSave() {
     form.alert.email.password = ''
     form.ai.apiKey = ''
     settingsPath.value = saved.settingsPath || settingsPath.value
+    await refreshAiStatus()
     showMsg('已保存并生效', true)
   } catch (e: any) {
     const msg = e?.response?.data?.message || e?.message || '保存失败'
@@ -1002,6 +1077,61 @@ onUnmounted(() => {
   font-size: 0.82rem;
   margin-bottom: 0.3rem;
   color: var(--si-ink-soft);
+}
+
+.si-settings__ai-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(20, 83, 45, 0.15);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.si-settings__ai-status.is-ready {
+  border-color: rgba(15, 118, 110, 0.35);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.si-settings__ai-status.is-blocked {
+  border-color: rgba(180, 83, 9, 0.3);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.si-settings__ai-badge {
+  flex-shrink: 0;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--si-ink);
+}
+
+.si-settings__ai-status.is-ready .si-settings__ai-badge {
+  background: rgba(15, 118, 110, 0.18);
+  color: #0f766e;
+}
+
+.si-settings__ai-status.is-blocked .si-settings__ai-badge {
+  background: rgba(180, 83, 9, 0.18);
+  color: #9a3412;
+}
+
+.si-settings__ai-status-body {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--si-ink);
+}
+
+.si-settings__ai-model {
+  margin-top: 0.25rem !important;
+  font-size: 0.8rem;
+  color: var(--si-muted);
 }
 
 .si-settings__footnote {

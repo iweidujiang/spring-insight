@@ -76,17 +76,62 @@ public class InsightAiExplainService {
     }
 
     /**
-     * @return 状态摘要（UI 灰显按钮用）
+     * @return 状态摘要（UI 灰显按钮 / 设置页诚实展示用）
      */
     public Map<String, Object> status() {
         InsightServerAiProperties properties = settingsService.effectiveAi();
+        boolean ready = properties.isInvokeReady() && isOpenAiCompatible(properties.getProvider());
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("enabled", properties.isEnabled());
-        body.put("invokeReady", properties.isInvokeReady());
+        body.put("invokeReady", ready);
         body.put("provider", properties.getProvider() != null ? properties.getProvider() : "");
         body.put("model", properties.getModel() != null ? properties.getModel() : "");
         body.put("baseUrl", properties.normalizedBaseUrl());
+        body.put("statusLabel", aiStatusLabel(properties, ready));
+        body.put("reason", aiStatusReason(properties, ready));
         return body;
+    }
+
+    /**
+     * @param properties AI 配置
+     * @param ready      是否可调用
+     * @return 短标签：就绪 / 未启用 / 未就绪
+     */
+    static String aiStatusLabel(InsightServerAiProperties properties, boolean ready) {
+        if (ready) {
+            return "就绪";
+        }
+        if (properties == null || !properties.isEnabled()) {
+            return "未启用";
+        }
+        return "未就绪";
+    }
+
+    /**
+     * @param properties AI 配置
+     * @param ready      是否可调用
+     * @return 用户可读原因（含模型名提示）
+     */
+    static String aiStatusReason(InsightServerAiProperties properties, boolean ready) {
+        if (properties == null || !properties.isEnabled()) {
+            return "未启用：请到「设置 → AI 解读」打开开关并填写 base-url / api-key。";
+        }
+        if (!StringUtils.hasText(properties.normalizedApiKey())) {
+            return "已启用但未配置 api-key。";
+        }
+        if (!StringUtils.hasText(properties.normalizedBaseUrl())) {
+            return "已启用但未配置 base-url。";
+        }
+        if (!isOpenAiCompatible(properties.getProvider())) {
+            return "当前仅支持 provider=openai-compatible（DeepSeek / OpenAI / 兼容网关）。";
+        }
+        if (ready) {
+            String model = properties.getModel() != null ? properties.getModel().trim() : "";
+            return StringUtils.hasText(model)
+                    ? "就绪：可调用模型 " + model
+                    : "就绪：可调用模型（未填写 model 时由对端默认）。";
+        }
+        return "未就绪：请检查 AI 配置。";
     }
 
     /**

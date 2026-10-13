@@ -26,6 +26,17 @@ const router = useRouter()
 const summary = computed(() => props.result.summary || props.result.message || '')
 const evidence = computed(() => props.result.evidence || [])
 const suggestions = computed(() => props.result.suggestions || [])
+const displayMeta = computed(() => {
+  if (props.meta) return props.meta
+  return [props.result.provider, props.result.model].filter(Boolean).join(' · ')
+})
+const modelLine = computed(() => {
+  const parts: string[] = []
+  if (props.result.provider) parts.push(String(props.result.provider))
+  if (props.result.model) parts.push(String(props.result.model))
+  if (props.result.degraded) parts.push('调用失败或已降级')
+  return parts.join(' · ')
+})
 const showRawMarkdown = computed(
   () =>
     !props.result.structured &&
@@ -81,17 +92,21 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
     <div class="si-ai-panel__head">
       <h3 class="si-ai-panel__title">
         <i class="fa fa-lightbulb-o me-2"></i>{{ title }}
-        <small v-if="meta" class="text-muted ms-2">{{ meta }}</small>
+        <small v-if="displayMeta" class="text-muted ms-2">{{ displayMeta }}</small>
         <span v-if="result.degraded" class="badge text-bg-warning ms-2">已降级</span>
       </h3>
       <button type="button" class="btn btn-sm btn-outline-secondary" @click="emit('close')">关闭</button>
     </div>
 
-    <p v-if="summary" class="si-ai-panel__summary">{{ summary }}</p>
+    <div v-if="result.degraded" class="si-ai-panel__fail" role="status">
+      <i class="fa fa-exclamation-triangle me-1"></i>
+      <span>{{ result.message || summary || 'AI 调用失败或未就绪，已降级为提示信息。' }}</span>
+    </div>
+
     <p
-      v-if="result.degraded && result.message && result.message !== summary"
-      class="si-ai-panel__degrade-msg"
-    >{{ result.message }}</p>
+      v-if="summary && (!result.degraded || summary !== (result.message || ''))"
+      class="si-ai-panel__summary"
+    >{{ summary }}</p>
 
     <div v-if="evidence.length" class="si-ai-panel__block">
       <h4 class="si-ai-panel__sub">可疑证据</h4>
@@ -127,7 +142,8 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
       <pre class="si-ai-panel__md">{{ result.markdown }}</pre>
     </details>
 
-    <p class="si-ai-panel__note">AI 建议，请以 Span 为准。</p>
+    <p v-if="modelLine" class="si-ai-panel__model">{{ modelLine }}</p>
+    <p class="si-ai-panel__note">AI 建议，请以 Span 为准；失败时请核对设置页模型与密钥，或改用「复制 Context」。</p>
   </section>
 </template>
 
@@ -157,10 +173,23 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
   line-height: 1.5;
   color: var(--si-ink, #1c1917);
 }
-.si-ai-panel__degrade-msg {
-  margin: -0.35rem 0 0.75rem;
-  font-size: 0.82rem;
+.si-ai-panel__fail {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgba(180, 83, 9, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  font-size: 0.85rem;
   line-height: 1.45;
+  color: #9a3412;
+}
+.si-ai-panel__model {
+  margin: 0.65rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--si-muted, #78716c);
 }
 .si-ai-panel__block {

@@ -73,7 +73,8 @@
             <button
               type="button"
               class="btn btn-sm btn-outline-secondary si-period__action"
-              :disabled="periodExplaining"
+              :disabled="periodExplaining || !aiStatus.invokeReady"
+              :title="aiPeriodTitle"
               @click="explainPeriod"
             >
               <i class="fa" :class="periodExplaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
@@ -107,6 +108,7 @@
           v-if="periodExplain"
           :result="periodExplain"
           title="时段 AI 小结"
+          :meta="periodExplainMeta"
           @close="periodExplain = null"
         />
       </section>
@@ -426,6 +428,23 @@ const recentTraces = ref<any[]>([])
 const periodInsight = ref<PeriodInsight | null>(null)
 const periodExplain = ref<AiExplainResult | null>(null)
 const periodExplaining = ref(false)
+const aiStatus = ref({
+  enabled: false,
+  invokeReady: false,
+  provider: '',
+  model: '',
+  baseUrl: '',
+  statusLabel: '未启用',
+  reason: ''
+})
+const periodExplainMeta = computed(() => {
+  const r = periodExplain.value
+  if (!r) return ''
+  return [r.provider, r.model].filter(Boolean).join(' · ')
+})
+const aiPeriodTitle = computed(() =>
+  aiStatus.value.reason || (aiStatus.value.invokeReady ? '用当前时段事实调用 AI' : '请先在设置中启用 AI')
+)
 type InfraKpis = {
   spanCount: number
   errorCount: number
@@ -903,6 +922,11 @@ onMounted(async () => {
   persistHours(hours.value)
   if (route.query.hours == null || route.query.hours === '') {
     await syncHoursToRoute()
+  }
+  try {
+    aiStatus.value = await ApiService.getAiStatus()
+  } catch {
+    /* keep defaults */
   }
   await loadData()
 })

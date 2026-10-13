@@ -48,6 +48,29 @@ class InsightAiExplainServiceTest {
     }
 
     /**
+     * 状态接口诚实返回标签与原因。
+     */
+    @Test
+    void statusReportsLabelAndReason() {
+        InsightAiExplainService off = service(props(false, "https://api.example.com/v1", "k"), storeWithTrace());
+        Map<String, Object> disabled = off.status();
+        assertFalse((Boolean) disabled.get("invokeReady"));
+        assertEquals("未启用", disabled.get("statusLabel"));
+        assertTrue(String.valueOf(disabled.get("reason")).contains("未启用"));
+
+        InsightAiExplainService ready = service(props(true, "https://api.example.com/v1", "k"), storeWithTrace());
+        Map<String, Object> ok = ready.status();
+        assertTrue((Boolean) ok.get("invokeReady"));
+        assertEquals("就绪", ok.get("statusLabel"));
+        assertTrue(String.valueOf(ok.get("reason")).contains("gpt-4o-mini"));
+
+        InsightServerAiProperties noKey = props(true, "https://api.example.com/v1", "");
+        Map<String, Object> blocked = service(noKey, storeWithTrace()).status();
+        assertEquals("未就绪", blocked.get("statusLabel"));
+        assertTrue(String.valueOf(blocked.get("reason")).contains("api-key"));
+    }
+
+    /**
      * 未启用时 degraded，不调 HTTP。
      */
     @Test

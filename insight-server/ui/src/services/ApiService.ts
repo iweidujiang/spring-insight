@@ -496,20 +496,24 @@ export class ApiService {
     }
   }
 
-  /** AI 开关与是否可调用（详情页按钮） */
+  /** AI 开关与是否可调用（详情页按钮 / 设置页状态条） */
   static async getAiStatus(): Promise<{
     enabled: boolean
     invokeReady: boolean
     provider: string
     model: string
     baseUrl: string
+    statusLabel: string
+    reason: string
   }> {
     return requestWithDefault(`/ai/status`, {
       enabled: false,
       invokeReady: false,
       provider: '',
       model: '',
-      baseUrl: ''
+      baseUrl: '',
+      statusLabel: '未启用',
+      reason: '未启用：请到「设置 → AI 解读」打开开关并填写 base-url / api-key。'
     })
   }
 

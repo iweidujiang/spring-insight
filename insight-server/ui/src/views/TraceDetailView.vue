@@ -313,19 +313,19 @@ const aiStatus = ref({
   invokeReady: false,
   provider: '',
   model: '',
-  baseUrl: ''
+  baseUrl: '',
+  statusLabel: '未启用',
+  reason: ''
 })
 const waterfallEl = ref<HTMLElement | null>(null)
 let copyTimer: number | null = null
 
 const aiExplainTitle = computed(() => {
+  if (aiStatus.value.reason) return aiStatus.value.reason
   if (aiStatus.value.invokeReady) {
     return `调用 ${aiStatus.value.provider || 'AI'} / ${aiStatus.value.model || 'model'} 解释当前 Trace`
   }
-  if (aiStatus.value.enabled) {
-    return 'AI 已启用但未配齐 base-url / api-key（见 spring.insight.server.ai）'
-  }
-  return 'AI 未启用：请配置 spring.insight.server.ai.enabled=true 与 api-key；也可「复制 Context」'
+  return 'AI 未就绪：请到「设置 → AI 解读」配置；也可「复制 Context」'
 })
 
 const timeline = computed(() => buildTraceTimeline(spans.value))
