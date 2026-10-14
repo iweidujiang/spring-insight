@@ -240,6 +240,16 @@
   --si-login-focus: var(--si-teal-bright);
 }
 
+/* Bootstrap 组件主题化 */
+.card {
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+}
+
+.card .table {
+  --bs-table-bg: transparent;
+}
+
 /* ── 暗色主题 ── */
 [data-theme="dark"] {
   --si-paper:        #0f1419;
