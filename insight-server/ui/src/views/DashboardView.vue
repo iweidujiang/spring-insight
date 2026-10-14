@@ -1042,7 +1042,7 @@ onUnmounted(() => {
   width: auto;
   min-width: 7.5rem;
   font-size: 0.8rem;
-  border-color: rgba(20, 83, 45, 0.2);
+  border-color: var(--card-border);
   background: #fffcfa;
   color: #15241f;
 }
@@ -1136,7 +1136,7 @@ onUnmounted(() => {
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--si-ink);
-  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
+  border-bottom: 1px solid var(--card-border);
   background: rgba(15, 118, 110, 0.04);
 }
 
@@ -1281,7 +1281,7 @@ onUnmounted(() => {
   gap: 0.45rem 0.85rem;
   margin-bottom: 0.45rem;
   padding-bottom: 0.45rem;
-  border-bottom: 1px solid rgba(20, 83, 45, 0.08);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .si-period__meta {
@@ -1343,7 +1343,7 @@ onUnmounted(() => {
   font-weight: 600;
   padding: 0.22rem 0.55rem;
   white-space: nowrap;
-  border-color: rgba(20, 83, 45, 0.18);
+  border-color: var(--card-border);
   color: var(--si-ink-soft);
   background: transparent;
 }
@@ -1372,7 +1372,7 @@ onUnmounted(() => {
   color: var(--si-ink-soft);
   line-height: 1.35;
   background: rgba(15, 23, 42, 0.035);
-  border: 1px solid rgba(20, 83, 45, 0.1);
+  border: 1px solid var(--card-border);
 }
 
 .si-period__bullet--warn {
@@ -1733,7 +1733,7 @@ onUnmounted(() => {
   font-weight: 700;
   color: var(--si-ink);
   background: rgba(15, 118, 110, 0.05);
-  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .si-dashboard__diag-empty {
@@ -1799,7 +1799,7 @@ onUnmounted(() => {
 .si-dashboard__diag-foot {
   flex-shrink: 0;
   padding: 0.4rem 0.75rem 0.55rem;
-  border-top: 1px dashed rgba(20, 83, 45, 0.12);
+  border-top: 1px dashed var(--card-border);
   text-align: right;
 }
 
@@ -1830,7 +1830,7 @@ onUnmounted(() => {
 }
 
 .si-dashboard__solo-card {
-  border: 1px solid rgba(20, 83, 45, 0.12);
+  border: 1px solid var(--card-border);
   border-radius: 10px;
   background: rgba(15, 118, 110, 0.04);
   padding: 0.7rem 0.8rem;
@@ -1890,7 +1890,7 @@ onUnmounted(() => {
 
 .si-dashboard__solo-trace {
   padding: 0.45rem 0.35rem;
-  border-bottom: 1px solid rgba(20, 83, 45, 0.08);
+  border-bottom: 1px solid var(--card-border);
   cursor: pointer;
   border-radius: 6px;
 }
@@ -2035,7 +2035,7 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.7rem 0.95rem;
-  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .si-app__traces-head h6 {
@@ -2064,7 +2064,7 @@ onUnmounted(() => {
   gap: 0.75rem;
   padding: 0.62rem 0.95rem;
   cursor: pointer;
-  border-bottom: 1px solid rgba(20, 83, 45, 0.08);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .si-app__row:last-child {

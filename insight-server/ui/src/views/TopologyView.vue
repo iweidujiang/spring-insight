@@ -1009,7 +1009,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0.7rem 0.95rem;
-  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .si-topo-solo__panel-head h5 {
@@ -1038,7 +1038,7 @@ onUnmounted(() => {
   align-items: center;
   padding: 0.58rem 0.95rem;
   cursor: pointer;
-  border-bottom: 1px solid rgba(20, 83, 45, 0.08);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .si-topo-solo__list li:last-child {

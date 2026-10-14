@@ -564,7 +564,7 @@ onMounted(async () => {
   margin-bottom: 0.85rem;
   border-radius: 8px;
   border: 1px solid var(--card-border);
-  background: rgba(255, 252, 250, 0.65);
+  background: var(--card-bg);
 }
 
 .trace-strip__item {
@@ -701,7 +701,7 @@ onMounted(async () => {
 .trace-waterfall__axis {
   padding-bottom: 0.25rem;
   margin-bottom: 0.1rem;
-  border-bottom: 1px dashed rgba(20, 83, 45, 0.15);
+  border-bottom: 1px dashed var(--card-border);
 }
 
 .trace-waterfall__axis-track {

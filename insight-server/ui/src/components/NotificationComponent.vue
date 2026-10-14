@@ -24,7 +24,6 @@
         <div class="notification-header">
           <div>
             <h5>状态摘要</h5>
-            <p class="notification-header-desc">基于 Server 实时统计，非模拟告警</p>
           </div>
           <button
             v-if="unreadCount > 0"

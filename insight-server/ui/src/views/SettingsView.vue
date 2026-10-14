@@ -1086,8 +1086,8 @@ onUnmounted(() => {
   margin: 0 0 1rem;
   padding: 0.7rem 0.85rem;
   border-radius: 10px;
-  border: 1px solid rgba(20, 83, 45, 0.15);
-  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
 }
 
 .si-settings__ai-status.is-ready {
@@ -1155,8 +1155,8 @@ onUnmounted(() => {
   margin-bottom: 0.75rem;
   padding: 0.85rem 1rem;
   border-radius: 8px;
-  border: 1px solid rgba(185, 28, 28, 0.14);
-  background: rgba(255, 252, 250, 0.75);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
 }
 
 .si-settings__usage-head {
@@ -1216,8 +1216,8 @@ onUnmounted(() => {
   gap: 0.25rem;
   padding: 0.7rem 0.85rem;
   border-radius: 8px;
-  border: 1px solid rgba(185, 28, 28, 0.14);
-  background: rgba(255, 252, 250, 0.75);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
 }
 
 .si-settings__storage-item--wide {
@@ -1258,8 +1258,8 @@ onUnmounted(() => {
   align-items: center;
   padding: 0.95rem 1rem;
   border-radius: 10px;
-  border: 1px solid rgba(185, 28, 28, 0.16);
-  background: rgba(255, 252, 250, 0.85);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
 }
 
 @media (max-width: 767px) {

@@ -314,9 +314,9 @@ onMounted(async () => {
 
 .si-jdbc-kpi {
   padding: 0.85rem 1rem;
-  border: 1px solid rgba(20, 83, 45, 0.12);
+  border: 1px solid var(--card-border);
   border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--card-bg);
 }
 
 .si-jdbc-kpi__label {
@@ -356,7 +356,7 @@ onMounted(async () => {
   text-align: center;
   padding: 2.5rem 1rem;
   color: var(--si-muted, #6b7f76);
-  border: 1px dashed rgba(20, 83, 45, 0.2);
+  border: 1px dashed var(--card-border);
   border-radius: 0.5rem;
 }
 
@@ -368,10 +368,10 @@ onMounted(async () => {
 
 .si-jdbc-panel {
   margin-bottom: 1.25rem;
-  border: 1px solid rgba(20, 83, 45, 0.12);
+  border: 1px solid var(--card-border);
   border-radius: 0.5rem;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--card-bg);
 }
 
 .si-jdbc-panel__head {
@@ -380,7 +380,7 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.65rem 1rem;
-  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
+  border-bottom: 1px solid var(--card-border);
 }
 
 .si-jdbc-panel__title {
@@ -403,7 +403,7 @@ onMounted(async () => {
   margin-right: 0.35rem;
   padding: 0.05rem 0.35rem;
   border-radius: 0.25rem;
-  background: rgba(20, 83, 45, 0.08);
+  background: var(--si-teal-soft);
   font-size: 0.7rem;
   font-weight: 600;
 }

@@ -644,7 +644,7 @@ onUnmounted(() => {
   padding: 0.55rem 0.9rem;
   border-radius: 8px;
   border: 1px solid var(--card-border);
-  background: rgba(255, 252, 250, 0.65);
+  background: var(--card-bg);
 }
 
 .si-err-strip__item {
