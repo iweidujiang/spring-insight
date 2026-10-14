@@ -1,7 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#06221f"/>
-  <path d="M6.5 23.5C9.2 15.2 13.4 12.2 18.2 13" stroke="#5eead4" stroke-width="1.7" stroke-linecap="round"/>
-  <circle cx="7.2" cy="22.6" r="1.7" fill="#5eead4"/>
-  <circle cx="21.2" cy="14.2" r="6.15" stroke="#2dd4bf" stroke-width="1.7"/>
-  <circle cx="21.2" cy="14.2" r="2.25" fill="#ccfbf1"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- 背景 -->
+  <rect width="512" height="512" rx="96" fill="#042f2e"/>
+
+  <!-- 服务节点（大圆） -->
+  <circle cx="256" cy="256" r="148" fill="#2dd4bf"/>
+
+  <!-- 链路脉冲线（穿过节点） -->
+  <path d="M 68 256
+           L 168 256
+           C 188 256, 196 200, 212 200
+           C 226 200, 234 312, 256 312
+           C 278 312, 286 200, 300 200
+           C 316 200, 324 256, 344 256
+           L 444 256"
+        stroke="#99f6e4" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- 链路端点（小圆） -->
+  <circle cx="68" cy="256" r="26" fill="#99f6e4"/>
+  <circle cx="444" cy="256" r="26" fill="#99f6e4"/>
 </svg>
