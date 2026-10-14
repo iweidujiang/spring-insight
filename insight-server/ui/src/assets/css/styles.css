@@ -176,6 +176,53 @@
   --si-chart-tooltip-bg: rgba(255, 252, 250, 0.96);
   --si-chart-tooltip-border: rgba(20, 83, 45, 0.15);
   --si-chart-tooltip-text: #15241f;
+
+  /* 登录页 — 亮色模式：柔和纸感青绿 */
+  --si-login-page-bg:
+    radial-gradient(ellipse 70% 55% at 12% 18%, rgba(15, 118, 110, 0.10), transparent 58%),
+    radial-gradient(ellipse 55% 50% at 88% 12%, rgba(13, 148, 136, 0.08), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 78% 88%, rgba(20, 83, 45, 0.06), transparent 60%),
+    linear-gradient(155deg, #eef3f0 0%, #e2ece7 38%, #dce6e1 68%, #e8eeeb 100%);
+  --si-login-wash:
+    linear-gradient(180deg, rgba(15, 118, 110, 0.04), transparent 42%),
+    linear-gradient(90deg, rgba(15, 118, 110, 0.06), transparent 35%, rgba(13, 148, 136, 0.04) 100%);
+  --si-login-grid-line: rgba(15, 118, 110, 0.06);
+  --si-login-orb-a: radial-gradient(circle, rgba(15, 118, 110, 0.14), transparent 68%);
+  --si-login-orb-b: radial-gradient(circle, rgba(13, 148, 136, 0.12), transparent 70%);
+  --si-login-orb-c: radial-gradient(circle, rgba(15, 118, 110, 0.08), transparent 70%);
+  --si-login-halo: rgba(15, 118, 110, 0.08);
+  --si-login-halo-core: rgba(13, 148, 136, 0.12);
+  --si-login-node-fill: var(--si-teal);
+  --si-login-node-stroke: #fff;
+  --si-login-node-glow: rgba(15, 118, 110, 0.35);
+  --si-login-node-core-fill: #0d9488;
+  --si-login-node-core-stroke: #fff;
+  --si-login-edge-start: rgba(15, 118, 110, 0.08);
+  --si-login-edge-mid: rgba(15, 118, 110, 0.45);
+  --si-login-edge-end: rgba(13, 148, 136, 0.08);
+  --si-login-sheet-bg: var(--card-bg);
+  --si-login-sheet-border: var(--card-border);
+  --si-login-sheet-shadow: 0 22px 60px rgba(21, 36, 31, 0.12), 0 0 0 1px rgba(15, 118, 110, 0.06);
+  --si-login-brand-bg:
+    radial-gradient(480px 260px at 0% 0%, rgba(15, 118, 110, 0.08), transparent 58%),
+    linear-gradient(165deg, #f0f5f3, #e7ece9);
+  --si-login-brand-text: var(--si-ink);
+  --si-login-brand-heading: var(--si-ink-soft);
+  --si-login-brand-lead: var(--si-muted);
+  --si-login-kicker: var(--si-teal);
+  --si-login-mark-bg: var(--si-hover-teal);
+  --si-login-mark-ring: rgba(15, 118, 110, 0.22);
+  --si-login-mark-shadow: 0 10px 28px rgba(15, 118, 110, 0.12);
+  --si-login-panel-bg: var(--si-surface-1);
+  --si-login-panel-text: var(--si-ink);
+  --si-login-input-bg: var(--si-surface-2);
+  --si-login-input-border: var(--si-form-border);
+  --si-login-input-text: var(--si-ink);
+  --si-login-input-placeholder: var(--si-muted);
+  --si-login-btn: var(--si-teal);
+  --si-login-btn-hover: var(--si-btn-primary-hover);
+  --si-login-error: var(--danger-color);
+  --si-login-focus: var(--si-teal-bright);
 }
 
 /* ── 暗色主题 ── */
@@ -319,6 +366,54 @@
   --si-chart-tooltip-bg: rgba(26, 31, 38, 0.96);
   --si-chart-tooltip-border: rgba(45, 212, 191, 0.15);
   --si-chart-tooltip-text: #e6edf3;
+
+  /* 登录页 — 暗色模式：深青品牌美学 */
+  --si-login-page-bg:
+    radial-gradient(ellipse 70% 55% at 12% 18%, rgba(45, 212, 191, 0.28), transparent 58%),
+    radial-gradient(ellipse 55% 50% at 88% 12%, rgba(13, 148, 136, 0.26), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 78% 88%, rgba(20, 83, 45, 0.35), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 8% 82%, rgba(15, 118, 110, 0.22), transparent 55%),
+    linear-gradient(155deg, #031016 0%, #06241f 38%, #0a1a22 68%, #041014 100%);
+  --si-login-wash:
+    linear-gradient(180deg, rgba(204, 251, 241, 0.05), transparent 42%),
+    linear-gradient(90deg, rgba(15, 118, 110, 0.12), transparent 35%, rgba(45, 212, 191, 0.08) 100%);
+  --si-login-grid-line: rgba(94, 234, 212, 0.07);
+  --si-login-orb-a: radial-gradient(circle, rgba(45, 212, 191, 0.34), transparent 68%);
+  --si-login-orb-b: radial-gradient(circle, rgba(20, 184, 166, 0.28), transparent 70%);
+  --si-login-orb-c: radial-gradient(circle, rgba(94, 234, 212, 0.14), transparent 70%);
+  --si-login-halo: rgba(45, 212, 191, 0.12);
+  --si-login-halo-core: rgba(94, 234, 212, 0.18);
+  --si-login-node-fill: #042f2e;
+  --si-login-node-stroke: #5eead4;
+  --si-login-node-glow: rgba(45, 212, 191, 0.85);
+  --si-login-node-core-fill: #0f766e;
+  --si-login-node-core-stroke: #ccfbf1;
+  --si-login-edge-start: rgba(45, 212, 191, 0.05);
+  --si-login-edge-mid: rgba(94, 234, 212, 0.75);
+  --si-login-edge-end: rgba(153, 246, 228, 0.08);
+  --si-login-sheet-bg: #1a1f26;
+  --si-login-sheet-border: rgba(94, 234, 212, 0.18);
+  --si-login-sheet-shadow: 0 22px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(15, 118, 110, 0.12);
+  --si-login-brand-bg:
+    radial-gradient(480px 260px at 0% 0%, rgba(45, 212, 191, 0.18), transparent 58%),
+    linear-gradient(165deg, rgba(20, 48, 46, 0.96), rgba(12, 28, 32, 0.96));
+  --si-login-brand-text: #e7eef0;
+  --si-login-brand-heading: #d5e4e2;
+  --si-login-brand-lead: rgba(214, 226, 224, 0.78);
+  --si-login-kicker: #5eead4;
+  --si-login-mark-bg: rgba(94, 234, 212, 0.12);
+  --si-login-mark-ring: rgba(94, 234, 212, 0.28);
+  --si-login-mark-shadow: 0 10px 28px rgba(15, 118, 110, 0.35);
+  --si-login-panel-bg: rgba(12, 15, 17, 0.94);
+  --si-login-panel-text: #f4f7f6;
+  --si-login-input-bg: #1a1f22;
+  --si-login-input-border: #2a3336;
+  --si-login-input-text: #f4f7f6;
+  --si-login-input-placeholder: #8b9896;
+  --si-login-btn: #0f766e;
+  --si-login-btn-hover: #0d9488;
+  --si-login-error: #fca5a5;
+  --si-login-focus: #2dd4bf;
 }
 
 body {

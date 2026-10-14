@@ -132,9 +132,9 @@ async function onSubmit() {
       <svg class="si-login__graph" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
         <defs>
           <linearGradient id="siEdgeGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.05" />
-            <stop offset="45%" stop-color="#5eead4" stop-opacity="0.75" />
-            <stop offset="100%" stop-color="#99f6e4" stop-opacity="0.08" />
+            <stop offset="0%" stop-color="var(--si-login-edge-start)" stop-opacity="1" />
+            <stop offset="45%" stop-color="var(--si-login-edge-mid)" stop-opacity="1" />
+            <stop offset="100%" stop-color="var(--si-login-edge-end)" stop-opacity="1" />
           </linearGradient>
         </defs>
         <path
@@ -214,12 +214,7 @@ async function onSubmit() {
   place-items: center;
   padding: 1.5rem;
   overflow: hidden;
-  background:
-    radial-gradient(ellipse 70% 55% at 12% 18%, rgba(45, 212, 191, 0.28), transparent 58%),
-    radial-gradient(ellipse 55% 50% at 88% 12%, rgba(13, 148, 136, 0.26), transparent 55%),
-    radial-gradient(ellipse 60% 45% at 78% 88%, rgba(20, 83, 45, 0.35), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 8% 82%, rgba(15, 118, 110, 0.22), transparent 55%),
-    linear-gradient(155deg, #031016 0%, #06241f 38%, #0a1a22 68%, #041014 100%);
+  background: var(--si-login-page-bg);
 }
 
 .si-login__stage {
@@ -232,9 +227,7 @@ async function onSubmit() {
 .si-login__wash {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(204, 251, 241, 0.05), transparent 42%),
-    linear-gradient(90deg, rgba(15, 118, 110, 0.12), transparent 35%, rgba(45, 212, 191, 0.08) 100%);
+  background: var(--si-login-wash);
   opacity: 0.9;
 }
 
@@ -242,8 +235,8 @@ async function onSubmit() {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(94, 234, 212, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(94, 234, 212, 0.07) 1px, transparent 1px);
+    linear-gradient(var(--si-login-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--si-login-grid-line) 1px, transparent 1px);
   background-size: 52px 52px;
   mask-image: radial-gradient(ellipse at 50% 48%, #000 0%, transparent 82%);
   opacity: 0.85;
@@ -261,7 +254,7 @@ async function onSubmit() {
   height: 360px;
   right: -4%;
   top: -6%;
-  background: radial-gradient(circle, rgba(45, 212, 191, 0.34), transparent 68%);
+  background: var(--si-login-orb-a);
 }
 
 .si-login__orb--b {
@@ -269,7 +262,7 @@ async function onSubmit() {
   height: 300px;
   left: -6%;
   bottom: -4%;
-  background: radial-gradient(circle, rgba(20, 184, 166, 0.28), transparent 70%);
+  background: var(--si-login-orb-b);
   animation-duration: 22s;
   animation-direction: alternate-reverse;
 }
@@ -279,7 +272,7 @@ async function onSubmit() {
   height: 240px;
   left: 42%;
   top: 36%;
-  background: radial-gradient(circle, rgba(94, 234, 212, 0.14), transparent 70%);
+  background: var(--si-login-orb-c);
   animation-duration: 26s;
 }
 
@@ -306,23 +299,23 @@ async function onSubmit() {
 }
 
 .si-login__halo {
-  fill: rgba(45, 212, 191, 0.12);
+  fill: var(--si-login-halo);
 }
 
 .si-login__halo--core {
-  fill: rgba(94, 234, 212, 0.18);
+  fill: var(--si-login-halo-core);
 }
 
 .si-login__node {
-  fill: #042f2e;
-  stroke: #5eead4;
+  fill: var(--si-login-node-fill);
+  stroke: var(--si-login-node-stroke);
   stroke-width: 2.2;
-  filter: drop-shadow(0 0 8px rgba(45, 212, 191, 0.85));
+  filter: drop-shadow(0 0 8px var(--si-login-node-glow));
 }
 
 .si-login__node--core {
-  fill: #0f766e;
-  stroke: #ccfbf1;
+  fill: var(--si-login-node-core-fill);
+  stroke: var(--si-login-node-core-stroke);
   stroke-width: 2.6;
 }
 
@@ -335,10 +328,8 @@ async function onSubmit() {
   min-height: 460px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid rgba(94, 234, 212, 0.18);
-  box-shadow:
-    0 22px 60px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(15, 118, 110, 0.12);
+  border: 1px solid var(--si-login-sheet-border);
+  box-shadow: var(--si-login-sheet-shadow);
   backdrop-filter: blur(2px);
 }
 
@@ -348,10 +339,8 @@ async function onSubmit() {
   justify-content: center;
   gap: 0.95rem;
   padding: 2.5rem 2.1rem;
-  background:
-    radial-gradient(480px 260px at 0% 0%, rgba(45, 212, 191, 0.18), transparent 58%),
-    linear-gradient(165deg, rgba(20, 48, 46, 0.96), rgba(12, 28, 32, 0.96));
-  color: #e7eef0;
+  background: var(--si-login-brand-bg);
+  color: var(--si-login-brand-text);
 }
 
 .si-login__lockup {
@@ -364,10 +353,10 @@ async function onSubmit() {
   flex: 0 0 auto;
   padding: 0.2rem;
   border-radius: 14px;
-  background: rgba(94, 234, 212, 0.12);
+  background: var(--si-login-mark-bg);
   box-shadow:
-    0 0 0 1px rgba(94, 234, 212, 0.28),
-    0 10px 28px rgba(15, 118, 110, 0.35);
+    0 0 0 1px var(--si-login-mark-ring),
+    var(--si-login-mark-shadow);
 }
 
 .si-login__mark-wrap :deep(.si-mark) {
@@ -387,7 +376,7 @@ async function onSubmit() {
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.2em;
-  color: #5eead4;
+  color: var(--si-login-kicker);
 }
 
 .si-login__lockup-text > span {
@@ -395,14 +384,14 @@ async function onSubmit() {
   font-weight: 750;
   letter-spacing: -0.03em;
   line-height: 1.15;
-  color: #f0fdfa;
+  color: var(--si-login-brand-text);
 }
 
 .si-login__brand h1 {
   margin: 0.15rem 0 0;
   font-size: 1.15rem;
   font-weight: 650;
-  color: #d5e4e2;
+  color: var(--si-login-brand-heading);
 }
 
 .si-login__lead {
@@ -410,7 +399,7 @@ async function onSubmit() {
   max-width: 22rem;
   font-size: 0.92rem;
   line-height: 1.7;
-  color: rgba(214, 226, 224, 0.78);
+  color: var(--si-login-brand-lead);
 }
 
 .si-login__panel {
@@ -418,8 +407,8 @@ async function onSubmit() {
   flex-direction: column;
   justify-content: center;
   padding: 2.4rem 2.3rem;
-  background: rgba(12, 15, 17, 0.94);
-  color: #f4f7f6;
+  background: var(--si-login-panel-bg);
+  color: var(--si-login-panel-text);
 }
 
 .si-login__panel h2 {
@@ -436,21 +425,21 @@ form {
 
 input {
   width: 100%;
-  border: 1px solid #2a3336;
+  border: 1px solid var(--si-login-input-border);
   border-radius: 4px;
   padding: 0.72rem 0.8rem;
-  background: #1a1f22;
-  color: #f4f7f6;
+  background: var(--si-login-input-bg);
+  color: var(--si-login-input-text);
   font-size: 0.95rem;
 }
 
 input::placeholder {
-  color: #8b9896;
+  color: var(--si-login-input-placeholder);
 }
 
 input:focus {
   outline: none;
-  border-color: #2dd4bf;
+  border-color: var(--si-login-focus);
 }
 
 button {
@@ -458,7 +447,7 @@ button {
   border: 0;
   border-radius: 4px;
   padding: 0.72rem 1rem;
-  background: #0f766e;
+  background: var(--si-login-btn);
   color: #fff;
   font-size: 1rem;
   font-weight: 700;
@@ -466,7 +455,7 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: #0d9488;
+  background: var(--si-login-btn-hover);
 }
 
 button:disabled {
@@ -476,7 +465,7 @@ button:disabled {
 
 .si-login__error {
   margin: 0;
-  color: #fca5a5;
+  color: var(--si-login-error);
   font-size: 0.85rem;
 }
 
