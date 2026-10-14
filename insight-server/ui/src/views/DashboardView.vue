@@ -372,7 +372,7 @@
           <div class="si-overview__panel si-overview__panel--rank">
             <div class="si-overview__head">
               <span>请求排名</span>
-              <button type="button" class="btn btn-sm btn-outline-primary py-0" @click="refreshServiceRankChart">
+              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshServiceRankChart">
                 <i class="fa fa-refresh"></i>
               </button>
             </div>

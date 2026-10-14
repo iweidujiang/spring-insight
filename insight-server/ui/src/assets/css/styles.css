@@ -740,8 +740,10 @@ body::before {
     top: 0.75rem;
     left: 0.75rem;
     z-index: 60;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 44px;
+    min-height: 44px;
     border: 1px solid var(--card-border);
     border-radius: 8px;
     background: var(--si-nav-toggle-bg);
@@ -1406,8 +1408,10 @@ body::before {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
   border: 0;
   border-radius: 8px;
@@ -1439,4 +1443,43 @@ body::before {
 .si-theme-transitioning *::before,
 .si-theme-transitioning *::after {
   transition: background-color 0.3s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* ── 移动端触摸目标 ≥ 44px ── */
+@media (max-width: 768px) {
+  .notification-button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.625rem;
+  }
+
+  .si-user__trigger {
+    min-height: 44px;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .btn-sm {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-check {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .form-check-input {
+    flex-shrink: 0;
+  }
+
+  .form-check-label {
+    padding-left: 0.5rem;
+    cursor: pointer;
+  }
+
+  .form-switch .form-check-input {
+    width: 2.75em;
+    height: 1.5em;
+  }
 }

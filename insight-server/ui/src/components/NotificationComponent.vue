@@ -308,6 +308,11 @@ onUnmounted(() => {
   color: var(--si-ink-soft);
   cursor: pointer;
   padding: 0.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   transition: background 0.2s ease, color 0.2s ease;
 }
