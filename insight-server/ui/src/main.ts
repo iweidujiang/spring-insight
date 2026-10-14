@@ -14,6 +14,7 @@ import SettingsView from './views/SettingsView.vue'
 import AboutView from './views/AboutView.vue'
 import LoginView from './views/LoginView.vue'
 import { fetchAuthStatus, getUiToken } from './services/AuthService'
+import { initTheme } from './composables/useTheme'
 
 // 导入样式
 import 'bootstrap/dist/css/bootstrap.min.css'
@@ -126,6 +127,8 @@ router.beforeEach(async (to, _from, next) => {
   }
   next()
 })
+
+initTheme()
 
 const app = createApp(App)
 app.use(router)
