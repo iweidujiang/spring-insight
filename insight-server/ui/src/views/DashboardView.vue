@@ -393,13 +393,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import { ApiService, type AiExplainResult, type PeriodInsight, type PeriodInsightLink } from '../services/ApiService'
 import { formatDuration } from '../utils/traceTimeline'
+import { useChartTheme } from '../composables/useChartTheme'
 import {
   TIME_RANGE_OPTIONS,
   formatHoursLabel,
@@ -458,6 +459,8 @@ const redisKpis = ref<InfraKpis | null>(null)
 
 let serviceRankChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
+
+const { colors: chartColors } = useChartTheme()
 
 const hasDependencies = computed(() => dependencies.value.length > 0)
 /** 只有一个应用且尚无调用边：首页用单应用请求列表 */
@@ -744,13 +747,9 @@ const mountRankChart = () => {
   serviceRankChart = echarts.init(serviceRankChartDom)
   serviceRankChart.setOption({
     backgroundColor: 'transparent',
-    textStyle: { color: '#6b7f76' },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      backgroundColor: 'rgba(255, 252, 250, 0.96)',
-      borderColor: 'rgba(20, 83, 45, 0.15)',
-      textStyle: { color: '#15241f' },
       formatter: (params: any) => {
         const data = params[0]
         return `${data.name}<br/>请求数量: ${data.value} 条`
@@ -759,39 +758,23 @@ const mountRankChart = () => {
     grid: { left: 8, right: 28, bottom: 8, top: 12, containLabel: true },
     xAxis: {
       type: 'value',
-      name: '请求',
-      nameTextStyle: { fontSize: 10, color: '#6b7f76' },
-      axisLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.25)' } },
-      splitLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.1)' } },
-      axisLabel: { fontSize: 10, color: '#6b7f76' }
+      name: '请求'
     },
     yAxis: {
       type: 'category',
       data: [],
-      axisLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.25)' } },
-      axisLabel: {
-        fontSize: 11,
-        color: '#15241f',
-        width: 100,
-        overflow: 'truncate',
-        ellipsis: '…'
-      }
+      axisLabel: { width: 100, overflow: 'truncate', ellipsis: '…' }
     },
     series: [{
       name: '请求数量',
       type: 'bar',
       data: [],
       barMaxWidth: 18,
-      itemStyle: {
-        color: (params: any) => {
-          const colorList = ['#0f766e', '#15803d', '#0d9488', '#b45309', '#b91c1c', '#1d4ed8', '#c2410c', '#047857']
-          return colorList[params.dataIndex % colorList.length]
-        },
-        borderRadius: [0, 4, 4, 0]
-      },
-      label: { show: true, position: 'right', formatter: '{c}', fontSize: 10, color: '#3d524a' }
+      itemStyle: { borderRadius: [0, 4, 4, 0] },
+      label: { show: true, position: 'right', formatter: '{c}', fontSize: 10 }
     }]
   })
+  applyRankChartTheme()
   serviceRankChart.on('click', (params: any) => {
     const name = params?.name
     if (typeof name === 'string' && name) {
@@ -800,6 +783,35 @@ const mountRankChart = () => {
         query: { hours: String(hours.value) }
       })
     }
+  })
+}
+
+const applyRankChartTheme = () => {
+  if (!serviceRankChart) return
+  const c = chartColors.value
+  serviceRankChart.setOption({
+    textStyle: { color: c.muted },
+    tooltip: {
+      backgroundColor: c.tooltipBg,
+      borderColor: c.tooltipBorder,
+      textStyle: { color: c.tooltipText }
+    },
+    xAxis: {
+      nameTextStyle: { fontSize: 10, color: c.muted },
+      axisLine: { lineStyle: { color: c.axisLine } },
+      splitLine: { lineStyle: { color: c.splitLine } },
+      axisLabel: { fontSize: 10, color: c.muted }
+    },
+    yAxis: {
+      axisLine: { lineStyle: { color: c.axisLine } },
+      axisLabel: { fontSize: 11, color: c.ink }
+    },
+    series: [{
+      itemStyle: {
+        color: (params: any) => c.palette[params.dataIndex % c.palette.length]
+      },
+      label: { color: c.inkSoft }
+    }]
   })
 }
 
@@ -818,7 +830,7 @@ const updateCharts = () => {
           type: 'text',
           left: 'center',
           top: 'center',
-          style: { text: '暂无排名数据', fill: '#6b7f76', fontSize: 12, textAlign: 'center' }
+          style: { text: '暂无排名数据', fill: chartColors.value.muted, fontSize: 12, textAlign: 'center' }
         }]
       : [],
     yAxis: { data: serviceNames },
@@ -830,6 +842,11 @@ const refreshServiceRankChart = () => {
   serviceRankChart?.resize()
   updateCharts()
 }
+
+watch(() => chartColors.value, () => {
+  applyRankChartTheme()
+  updateCharts()
+})
 
 const syncHoursToRoute = async () => {
   persistHours(hours.value)

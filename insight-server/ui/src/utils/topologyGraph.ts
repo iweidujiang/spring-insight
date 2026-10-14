@@ -1,4 +1,5 @@
 import type { EChartsOption } from 'echarts'
+import { getChartThemeColors, type ChartThemeColors } from './chartTheme'
 
 export interface ServiceDependency {
   sourceService: string
@@ -13,12 +14,6 @@ export interface TopologyHighlight {
   /** 高亮边 */
   edge?: { source: string; target: string } | null
 }
-
-/** 浅色纸感主题下的节点色（墨青系，少霓虹） */
-const NODE_COLORS = [
-  '#0f766e', '#15803d', '#0d9488', '#b45309',
-  '#b91c1c', '#1d4ed8', '#c2410c', '#047857'
-]
 
 /**
  * 按节点数量微调缩放，节点越多略缩小，减轻挤成一团。
@@ -42,10 +37,12 @@ export function buildTopologyOption(
     standaloneServices?: string[]
     spanByService?: Record<string, number>
     highlight?: TopologyHighlight
+    theme?: ChartThemeColors
   } = {}
 ): EChartsOption {
   const compact = opts.compact === true
   const highlight = opts.highlight || {}
+  const theme = opts.theme || getChartThemeColors(false)
   const callCounts = new Map<string, number>()
   const links: Array<Record<string, unknown>> = []
 
@@ -65,12 +62,12 @@ export function buildTopologyOption(
         show: !compact || dependencies.length <= 12,
         formatter: `${dep.callCount}`,
         fontSize: compact ? 10 : 11,
-        color: edgeHit ? '#0f766e' : '#3d524a',
+        color: edgeHit ? theme.teal : theme.inkSoft,
         fontWeight: edgeHit ? 700 : 500,
-        backgroundColor: edgeHit ? 'rgba(204, 251, 241, 0.95)' : 'rgba(255, 252, 250, 0.92)',
+        backgroundColor: theme.surface,
         padding: [2, 4],
         borderRadius: 3,
-        borderColor: edgeHit ? 'rgba(15, 118, 110, 0.35)' : 'rgba(20, 83, 45, 0.12)',
+        borderColor: theme.axisLine,
         borderWidth: 1
       },
       lineStyle: {
@@ -79,7 +76,7 @@ export function buildTopologyOption(
           Math.min(compact ? 4 : 5, 1 + Math.log2(dep.callCount + 1))
         ) + (edgeHit ? 1.5 : 0),
         curveness: 0.16,
-        color: edgeHit ? '#0f766e' : '#7a9086',
+        color: edgeHit ? theme.teal : theme.muted,
         opacity: edgeHit ? 1 : highlight.edge || highlight.node ? 0.35 : 0.9
       }
     })
@@ -106,11 +103,11 @@ export function buildTopologyOption(
         Math.min(compact ? 54 : 68, 16 + Math.sqrt(value) * (compact ? 4.5 : 6.5))
       ) + (nodeHit ? 6 : 0),
       itemStyle: {
-        color: NODE_COLORS[index % NODE_COLORS.length],
-        borderColor: nodeHit || onSelectedEdge ? '#0f766e' : '#fffcfa',
+        color: theme.palette[index % theme.palette.length],
+        borderColor: nodeHit || onSelectedEdge ? theme.teal : theme.surface,
         borderWidth: nodeHit ? 3 : 2,
         shadowBlur: nodeHit ? 14 : 8,
-        shadowColor: nodeHit ? 'rgba(15, 118, 110, 0.4)' : 'rgba(21, 36, 31, 0.18)',
+        shadowColor: nodeHit ? 'rgba(45, 212, 191, 0.4)' : 'rgba(21, 36, 31, 0.18)',
         opacity: dimmed ? 0.35 : 1
       },
       label: {
@@ -120,7 +117,7 @@ export function buildTopologyOption(
         formatter: '{b}',
         fontSize: compact ? 10 : nodeHit ? 13 : 12,
         fontWeight: nodeHit ? 700 : 600,
-        color: dimmed ? '#6b7f76' : '#15241f'
+        color: dimmed ? theme.muted : theme.ink
       }
     }
   })
@@ -131,12 +128,12 @@ export function buildTopologyOption(
 
   return {
     backgroundColor: 'transparent',
-    textStyle: { color: '#6b7f76' },
+    textStyle: { color: theme.muted },
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(255, 252, 250, 0.96)',
-      borderColor: 'rgba(20, 83, 45, 0.15)',
-      textStyle: { color: '#15241f' },
+      backgroundColor: theme.tooltipBg,
+      borderColor: theme.tooltipBorder,
+      textStyle: { color: theme.tooltipText },
       formatter: (params: any) => {
         if (params.dataType === 'edge' || params.data?.source != null) {
           const d = params.data
@@ -154,7 +151,7 @@ export function buildTopologyOption(
           top: 'center',
           style: {
             text: '暂无服务数据\n请确认 Agent 已上报，或扩大时间范围',
-            fill: '#6b7f76',
+            fill: theme.muted,
             fontSize: 13,
             textAlign: 'center',
             lineHeight: 22
@@ -167,7 +164,7 @@ export function buildTopologyOption(
             top: compact ? 8 : 12,
             style: {
               text: '当前为单应用监控（暂无跨服务调用边）· 点击节点可选中',
-              fill: '#6b7f76',
+              fill: theme.muted,
               fontSize: 12,
               textAlign: 'center'
             }
@@ -189,8 +186,8 @@ export function buildTopologyOption(
       edgeSymbolSize: [0, compact ? 10 : 12],
       emphasis: {
         focus: 'adjacency',
-        lineStyle: { width: 5, color: '#0f766e' },
-        itemStyle: { shadowBlur: 12, shadowColor: 'rgba(15, 118, 110, 0.35)' }
+        lineStyle: { width: 5, color: theme.teal },
+        itemStyle: { shadowBlur: 12, shadowColor: 'rgba(45, 212, 191, 0.35)' }
       }
     }]
   }

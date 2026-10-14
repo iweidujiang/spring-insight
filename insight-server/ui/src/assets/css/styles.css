@@ -163,6 +163,19 @@
   --si-error-box-bg: rgba(185, 28, 28, 0.06);
   --si-error-box-border: rgba(185, 28, 28, 0.2);
   --si-error-box-color: #991b1b;
+
+  /* 图表调色板 */
+  --si-chart-palette-1: #0f766e;
+  --si-chart-palette-2: #15803d;
+  --si-chart-palette-3: #0d9488;
+  --si-chart-palette-4: #b45309;
+  --si-chart-palette-5: #b91c1c;
+  --si-chart-palette-6: #1d4ed8;
+  --si-chart-palette-7: #c2410c;
+  --si-chart-palette-8: #047857;
+  --si-chart-tooltip-bg: rgba(255, 252, 250, 0.96);
+  --si-chart-tooltip-border: rgba(20, 83, 45, 0.15);
+  --si-chart-tooltip-text: #15241f;
 }
 
 /* ── 暗色主题 ── */
@@ -293,6 +306,19 @@
   --si-error-box-bg: rgba(248, 113, 113, 0.08);
   --si-error-box-border: rgba(248, 113, 113, 0.2);
   --si-error-box-color: #fca5a5;
+
+  /* 图表调色板（暗色下提高亮度） */
+  --si-chart-palette-1: #2dd4bf;
+  --si-chart-palette-2: #4ade80;
+  --si-chart-palette-3: #22d3ee;
+  --si-chart-palette-4: #fbbf24;
+  --si-chart-palette-5: #f87171;
+  --si-chart-palette-6: #60a5fa;
+  --si-chart-palette-7: #fb923c;
+  --si-chart-palette-8: #34d399;
+  --si-chart-tooltip-bg: rgba(26, 31, 38, 0.96);
+  --si-chart-tooltip-border: rgba(45, 212, 191, 0.15);
+  --si-chart-tooltip-text: #e6edf3;
 }
 
 body {

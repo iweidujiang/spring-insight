@@ -281,6 +281,7 @@ import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
+import { useChartTheme } from '../composables/useChartTheme'
 import { TIME_RANGE_OPTIONS, formatHoursLabel, loadFailedMessage } from '../utils/timeRange'
 import { mergeQuery, persistHours, resolveHours } from '../utils/insightQuery'
 
@@ -306,13 +307,13 @@ let errorPieChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
 let chartsReady = false
 
+const { colors: chartColors, palette: chartPalette } = useChartTheme()
+
 const hasErrors = computed(() => totalErrorSpans.value > 0 || errorAnalysis.value.length > 0)
 const maxErrorRate = computed(() => {
   if (errorAnalysis.value.length === 0) return '0.00'
   return Math.max(...errorAnalysis.value.map((e) => e.errorRate || 0)).toFixed(2)
 })
-
-const PIE_COLORS = ['#0f766e', '#b91c1c', '#b45309', '#15803d', '#1d4ed8', '#c2410c', '#047857', '#0d9488']
 
 const rateLevel = (rate: number) => {
   if (rate > 10) return 'severe'
@@ -363,6 +364,7 @@ const ensureCharts = async () => {
 const updateCharts = () => {
   if (!chartsReady || !errorRateChart || !errorPieChart) return
 
+  const c = chartColors.value
   const serviceNames = errorAnalysis.value.map((e) => e.serviceName)
   const errorRates = errorAnalysis.value.map((e) => e.errorRate)
   const pieData = errorAnalysis.value.map((e) => ({
@@ -374,23 +376,23 @@ const updateCharts = () => {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(255, 252, 250, 0.96)',
-      borderColor: 'rgba(20, 83, 45, 0.15)',
-      textStyle: { color: '#15241f' }
+      backgroundColor: c.tooltipBg,
+      borderColor: c.tooltipBorder,
+      textStyle: { color: c.tooltipText }
     },
     grid: { left: 44, right: 12, top: 20, bottom: 40 },
     xAxis: {
       type: 'category',
       data: serviceNames,
-      axisLabel: { rotate: serviceNames.length > 4 ? 28 : 0, color: '#6b7f76', fontSize: 11 },
-      axisLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.15)' } }
+      axisLabel: { rotate: serviceNames.length > 4 ? 28 : 0, color: c.muted, fontSize: 11 },
+      axisLine: { lineStyle: { color: c.axisLine } }
     },
     yAxis: {
       type: 'value',
       name: '%',
-      nameTextStyle: { color: '#6b7f76' },
-      axisLabel: { color: '#6b7f76' },
-      splitLine: { lineStyle: { color: 'rgba(20, 83, 45, 0.08)' } }
+      nameTextStyle: { color: c.muted },
+      axisLabel: { color: c.muted },
+      splitLine: { lineStyle: { color: c.splitLine } }
     },
     series: [
       {
@@ -401,9 +403,9 @@ const updateCharts = () => {
           borderRadius: [4, 4, 0, 0],
           color: (params: any) => {
             const v = Number(params.value || 0)
-            if (v > 10) return '#b91c1c'
-            if (v > 5) return '#b45309'
-            return '#0f766e'
+            if (v > 10) return c.danger
+            if (v > 5) return c.warning
+            return c.success
           }
         }
       }
@@ -414,16 +416,16 @@ const updateCharts = () => {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'item',
-      backgroundColor: 'rgba(255, 252, 250, 0.96)',
-      borderColor: 'rgba(20, 83, 45, 0.15)',
-      textStyle: { color: '#15241f' }
+      backgroundColor: c.tooltipBg,
+      borderColor: c.tooltipBorder,
+      textStyle: { color: c.tooltipText }
     },
     legend: {
       bottom: 0,
       type: 'scroll',
-      textStyle: { color: '#3d524a', fontSize: 11 }
+      textStyle: { color: c.inkSoft, fontSize: 11 }
     },
-    color: PIE_COLORS,
+    color: chartPalette.value,
     series: [
       {
         type: 'pie',
@@ -432,11 +434,11 @@ const updateCharts = () => {
         data: pieData,
         label: {
           formatter: '{b}\n{d}%',
-          color: '#15241f',
+          color: c.ink,
           fontSize: 11
         },
         itemStyle: {
-          borderColor: '#fffcfa',
+          borderColor: c.surface,
           borderWidth: 2
         }
       }
@@ -449,6 +451,10 @@ const refreshCharts = () => {
   errorPieChart?.resize()
   updateCharts()
 }
+
+watch(() => chartColors.value, () => {
+  updateCharts()
+})
 
 const viewServiceDetails = (serviceName: string) => {
   const name = String(serviceName || '').trim()

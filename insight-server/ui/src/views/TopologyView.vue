@@ -278,13 +278,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
+import { useChartTheme } from '../composables/useChartTheme'
 import { formatDuration } from '../utils/traceTimeline'
 import {
   TIME_RANGE_OPTIONS,
@@ -323,6 +324,8 @@ const selection = ref<{ kind: 'node' | 'edge' | null; service: string; peer?: st
 
 let topologyChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
+
+const { colors: chartColors } = useChartTheme()
 
 const isSolo = computed(() => dependencies.value.length === 0 && serviceNames.value.length === 1)
 const soloName = computed(() => serviceNames.value[0] || '未命名服务')
@@ -368,6 +371,7 @@ const highlightOpts = () => {
 
 const topologyOpts = () => ({
   standaloneServices: serviceNames.value,
+  theme: chartColors.value,
   ...highlightOpts()
 })
 
@@ -525,6 +529,10 @@ const refreshTopology = () => {
   updateChart()
   topologyChart?.resize()
 }
+
+watch(() => chartColors.value, () => {
+  updateChart()
+})
 
 const fitToScreen = () => {
   if (!topologyChart) return
