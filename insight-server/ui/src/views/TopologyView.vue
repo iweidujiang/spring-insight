@@ -915,12 +915,12 @@ onUnmounted(() => {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: #0f766e;
-  color: #ecfeff;
+  background: var(--si-teal);
+  color: var(--si-avatar-text);
   font-family: var(--font-display);
   font-size: 1.6rem;
   font-weight: 700;
-  box-shadow: 0 0 0 8px rgba(15, 118, 110, 0.12);
+  box-shadow: 0 0 0 8px var(--si-hover-teal);
 }
 
 .si-topo-solo__kicker {

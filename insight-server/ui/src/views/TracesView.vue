@@ -472,7 +472,7 @@ onUnmounted(() => {
   gap: 0.35rem;
   margin: 0;
   font-size: 0.85rem;
-  color: var(--si-ink-soft, #334);
+  color: var(--si-ink-soft);
   user-select: none;
 }
 
@@ -481,7 +481,7 @@ onUnmounted(() => {
 }
 
 .si-trace-row--selected {
-  background: rgba(15, 118, 110, 0.07);
+  background: var(--si-hover-teal);
 }
 
 .si-trace-col-check {
@@ -566,13 +566,13 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 650;
-  color: var(--si-ink, #15241f);
+  color: var(--si-ink);
 }
 
 .si-trace-extra {
   flex: 0 0 auto;
   font-size: 0.72rem;
-  color: var(--si-muted, #6b7f76);
+  color: var(--si-muted);
   white-space: nowrap;
 }
 
@@ -591,7 +591,7 @@ onUnmounted(() => {
 
 .si-trace-time {
   font-size: 0.82rem;
-  color: var(--si-muted, #6b7f76);
+  color: var(--si-muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }

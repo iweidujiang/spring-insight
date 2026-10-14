@@ -188,7 +188,7 @@ const CompactWaterfall = defineComponent({
                 style: {
                   left: `${row.offsetPct}%`,
                   width: `${Math.min(row.widthPct, 100 - row.offsetPct)}%`,
-                  background: row.isError ? '#b91c1c' : row.color
+                  background: row.isError ? 'var(--danger-color)' : row.color
                 },
                 title: `${row.span.serviceName} · ${formatWaterfallOpLabel(row.span)}\n${formatDuration(row.durationMs)}`
               })
@@ -408,11 +408,11 @@ onMounted(() => load())
   font-size: 0.7rem;
   font-weight: 800;
   color: #fff;
-  background: #0f766e;
+  background: var(--si-teal);
   margin-right: 0.4rem;
 }
 
-.si-compare__side--b { background: #1d4ed8; }
+.si-compare__side--b { background: var(--si-kind-client-color); }
 
 .si-compare__id {
   font-size: 0.78rem;
@@ -425,7 +425,7 @@ onMounted(() => load())
   color: var(--si-muted);
 }
 
-.si-compare__diff-slow { background: rgba(194, 65, 12, 0.06); }
+.si-compare__diff-slow { background: var(--si-error-row-bg); }
 .si-compare__diff-fast { background: rgba(21, 128, 61, 0.06); }
 .si-compare__diff-muted { opacity: 0.85; }
 
@@ -434,9 +434,9 @@ onMounted(() => load())
   display: flex;
   flex-direction: column;
   gap: 0.12rem;
-  border: 1px solid rgba(20, 83, 45, 0.1);
+  border: 1px solid var(--si-table-border);
   border-radius: 6px;
-  background: var(--si-paper, #fafaf8);
+  background: var(--si-surface-1);
   padding: 0.4rem 0.45rem 0.5rem;
   overflow-x: auto;
 }
@@ -457,7 +457,7 @@ onMounted(() => load())
 :deep(.si-cwf__axis) {
   padding-bottom: 0.15rem;
   margin-bottom: 0.05rem;
-  border-bottom: 1px dashed rgba(20, 83, 45, 0.12);
+  border-bottom: 1px dashed var(--si-table-border);
 }
 
 :deep(.si-cwf__axis-track) {
@@ -479,7 +479,7 @@ onMounted(() => load())
 :deep(.si-cwf__tick:last-child) { transform: translateX(-100%); }
 
 :deep(.si-cwf__row.is-critical) {
-  box-shadow: inset 2px 0 0 #c2410c;
+  box-shadow: inset 2px 0 0 var(--si-critical-color);
 }
 
 :deep(.si-cwf__meta) {
@@ -515,15 +515,15 @@ onMounted(() => load())
 }
 
 :deep(.si-cwf__kind.is-server) {
-  color: #0f766e;
-  border-color: rgba(15, 118, 110, 0.28);
-  background: rgba(15, 118, 110, 0.08);
+  color: var(--si-kind-server-color);
+  border-color: var(--si-kind-server-border);
+  background: var(--si-kind-server-bg);
 }
 
 :deep(.si-cwf__kind.is-client) {
-  color: #1d4ed8;
-  border-color: rgba(29, 78, 216, 0.28);
-  background: rgba(29, 78, 216, 0.08);
+  color: var(--si-kind-client-color);
+  border-color: var(--si-kind-client-border);
+  background: var(--si-kind-client-bg);
 }
 
 :deep(.si-cwf__op) {

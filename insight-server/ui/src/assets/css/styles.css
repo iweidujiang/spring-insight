@@ -127,6 +127,42 @@
   --si-theme-toggle-bg: transparent;
   --si-theme-toggle-hover: rgba(15, 118, 110, 0.08);
   --si-theme-toggle-color: var(--si-muted);
+
+  /* 通知面板 */
+  --si-notification-bg: var(--si-dropdown-bg);
+  --si-notification-shadow: 0 16px 40px rgba(21, 36, 31, 0.18);
+  --si-notification-unread-bg: rgba(15, 118, 110, 0.04);
+  --si-notification-footer-bg: rgba(15, 118, 110, 0.04);
+  --si-notification-header-bg: rgba(15, 118, 110, 0.05);
+
+  /* 图标徽标 */
+  --si-icon-success-bg: #d1fae5;
+  --si-icon-success-color: #10b981;
+  --si-icon-warning-bg: #fef3c7;
+  --si-icon-warning-color: #f59e0b;
+  --si-icon-error-bg: #fee2e2;
+  --si-icon-error-color: #ef4444;
+  --si-icon-info-bg: #dbeafe;
+  --si-icon-info-color: #3b82f6;
+
+  /* 链路瀑布 */
+  --si-waterfall-track-bg: rgba(255, 252, 250, 0.8);
+  --si-waterfall-track-border: rgba(20, 83, 45, 0.08);
+  --si-waterfall-bar-shadow: 0 1px 2px rgba(21, 36, 31, 0.12);
+  --si-kind-bg: rgba(15, 23, 42, 0.04);
+  --si-kind-server-color: var(--si-teal);
+  --si-kind-server-border: rgba(15, 118, 110, 0.28);
+  --si-kind-server-bg: var(--si-hover-teal);
+  --si-kind-client-color: #1d4ed8;
+  --si-kind-client-border: rgba(29, 78, 216, 0.28);
+  --si-kind-client-bg: rgba(29, 78, 216, 0.08);
+  --si-tag-bg: rgba(15, 118, 110, 0.06);
+  --si-tag-border: rgba(15, 118, 110, 0.14);
+  --si-critical-color: #c2410c;
+  --si-error-row-bg: rgba(185, 28, 28, 0.06);
+  --si-error-box-bg: rgba(185, 28, 28, 0.06);
+  --si-error-box-border: rgba(185, 28, 28, 0.2);
+  --si-error-box-color: #991b1b;
 }
 
 /* ── 暗色主题 ── */
@@ -224,6 +260,39 @@
   --si-theme-toggle-bg: transparent;
   --si-theme-toggle-hover: rgba(45, 212, 191, 0.1);
   --si-theme-toggle-color: #b0bac5;
+
+  --si-notification-bg: var(--si-dropdown-bg);
+  --si-notification-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  --si-notification-unread-bg: rgba(45, 212, 191, 0.06);
+  --si-notification-footer-bg: rgba(45, 212, 191, 0.04);
+  --si-notification-header-bg: rgba(45, 212, 191, 0.05);
+
+  --si-icon-success-bg: rgba(74, 222, 128, 0.12);
+  --si-icon-success-color: #4ade80;
+  --si-icon-warning-bg: rgba(251, 191, 36, 0.12);
+  --si-icon-warning-color: #fbbf24;
+  --si-icon-error-bg: rgba(248, 113, 113, 0.12);
+  --si-icon-error-color: #f87171;
+  --si-icon-info-bg: rgba(96, 165, 250, 0.12);
+  --si-icon-info-color: #60a5fa;
+
+  --si-waterfall-track-bg: rgba(26, 31, 38, 0.8);
+  --si-waterfall-track-border: rgba(45, 212, 191, 0.06);
+  --si-waterfall-bar-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --si-kind-bg: rgba(45, 212, 191, 0.04);
+  --si-kind-server-color: var(--si-teal);
+  --si-kind-server-border: rgba(45, 212, 191, 0.25);
+  --si-kind-server-bg: var(--si-hover-teal);
+  --si-kind-client-color: #60a5fa;
+  --si-kind-client-border: rgba(96, 165, 250, 0.25);
+  --si-kind-client-bg: rgba(96, 165, 250, 0.08);
+  --si-tag-bg: rgba(45, 212, 191, 0.06);
+  --si-tag-border: rgba(45, 212, 191, 0.12);
+  --si-critical-color: #fb923c;
+  --si-error-row-bg: rgba(248, 113, 113, 0.06);
+  --si-error-box-bg: rgba(248, 113, 113, 0.08);
+  --si-error-box-border: rgba(248, 113, 113, 0.2);
+  --si-error-box-color: #fca5a5;
 }
 
 body {

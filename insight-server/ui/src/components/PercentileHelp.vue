@@ -54,7 +54,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
   padding: 0;
   margin-left: 0.25rem;
   background: transparent;
-  color: var(--si-muted, #6b7f76);
+  color: var(--si-muted);
   font-size: 0.85rem;
   line-height: 1;
   cursor: pointer;
@@ -62,7 +62,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
 .si-px-help__btn:hover,
 .si-px-help__btn[aria-expanded='true'] {
-  color: var(--si-teal, #0f766e);
+  color: var(--si-teal);
 }
 
 .si-px-help__panel {
@@ -74,10 +74,10 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
   width: min(22rem, 78vw);
   padding: 0.85rem 0.95rem;
   border-radius: 10px;
-  border: 1px solid rgba(20, 83, 45, 0.16);
-  background: #fffcfa;
+  border: 1px solid var(--card-border);
+  background: var(--si-dropdown-bg);
   box-shadow: 0 12px 28px rgba(21, 36, 31, 0.14);
-  color: var(--si-ink, #15241f);
+  color: var(--si-ink);
   text-align: left;
 }
 
@@ -92,7 +92,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
   padding-left: 1.05rem;
   font-size: 0.78rem;
   line-height: 1.55;
-  color: var(--si-ink-soft, #3d524a);
+  color: var(--si-ink-soft);
 }
 
 .si-px-help__panel li + li {
@@ -103,6 +103,6 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
   margin: 0.55rem 0 0;
   font-size: 0.74rem;
   line-height: 1.5;
-  color: var(--si-muted, #6b7f76);
+  color: var(--si-muted);
 }
 </style>

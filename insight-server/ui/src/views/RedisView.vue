@@ -299,7 +299,7 @@ onMounted(async () => {
 .si-redis-hint {
   margin: 0 0 1rem;
   font-size: 0.85rem;
-  color: var(--si-muted, #6b7f76);
+  color: var(--si-muted);
 }
 
 .si-redis-kpis {
@@ -311,23 +311,23 @@ onMounted(async () => {
 
 .si-redis-kpi {
   padding: 0.85rem 1rem;
-  border: 1px solid rgba(20, 83, 45, 0.12);
+  border: 1px solid var(--card-border);
   border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--si-surface-1);
 }
 
 .si-redis-kpi__label {
   font-size: 0.7rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--si-muted, #6b7f76);
+  color: var(--si-muted);
 }
 
 .si-redis-kpi__value {
   margin-top: 0.25rem;
   font-size: 1.35rem;
   font-weight: 700;
-  color: var(--si-ink, #15241f);
+  color: var(--si-ink);
   line-height: 1.2;
 }
 
@@ -336,17 +336,17 @@ onMounted(async () => {
 }
 
 .si-redis-kpi__value.is-danger {
-  color: #b91c1c;
+  color: var(--danger-color);
 }
 
 .si-redis-kpi__value.is-warn {
-  color: #b45309;
+  color: var(--warning-color);
 }
 
 .si-redis-kpi__sub {
   font-weight: 500;
   font-size: 0.9em;
-  color: var(--si-muted, #6b7f76);
+  color: var(--si-muted);
 }
 
 .si-redis-empty {

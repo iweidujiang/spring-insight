@@ -167,7 +167,7 @@
                     :style="{
                       left: `${row.offsetPct}%`,
                       width: `${Math.min(row.widthPct, 100 - row.offsetPct)}%`,
-                      background: row.isError ? '#b91c1c' : row.color
+                      background: row.isError ? 'var(--danger-color)' : row.color
                     }"
                     :title="barTitle(row)"
                   >
@@ -591,7 +591,7 @@ onMounted(async () => {
 }
 
 .trace-strip__value.is-danger {
-  color: #b91c1c;
+  color: var(--danger-color);
 }
 
 /* —— 主舞台：瀑布 + 右栏 —— */
@@ -735,16 +735,16 @@ onMounted(async () => {
 
 .trace-waterfall__row:hover,
 .trace-waterfall__row.is-active {
-  background: rgba(15, 118, 110, 0.06);
+  background: var(--si-hover-teal);
 }
 
 .trace-waterfall__row.is-critical {
-  box-shadow: inset 3px 0 0 #c2410c;
+  box-shadow: inset 3px 0 0 var(--si-critical-color);
 }
 
 .trace-waterfall__row.is-error:hover,
 .trace-waterfall__row.is-error.is-active {
-  background: rgba(185, 28, 28, 0.06);
+  background: var(--si-error-row-bg);
 }
 
 .trace-waterfall__meta {
@@ -781,19 +781,19 @@ onMounted(async () => {
   border-radius: 3px;
   border: 1px solid transparent;
   color: var(--si-muted);
-  background: rgba(15, 23, 42, 0.04);
+  background: var(--si-kind-bg);
 }
 
 .trace-waterfall__kind.is-server {
-  color: #0f766e;
-  border-color: rgba(15, 118, 110, 0.28);
-  background: rgba(15, 118, 110, 0.08);
+  color: var(--si-kind-server-color);
+  border-color: var(--si-kind-server-border);
+  background: var(--si-kind-server-bg);
 }
 
 .trace-waterfall__kind.is-client {
-  color: #1d4ed8;
-  border-color: rgba(29, 78, 216, 0.28);
-  background: rgba(29, 78, 216, 0.08);
+  color: var(--si-kind-client-color);
+  border-color: var(--si-kind-client-border);
+  background: var(--si-kind-client-bg);
 }
 
 .trace-waterfall__op {
@@ -807,8 +807,8 @@ onMounted(async () => {
 .trace-waterfall__track {
   position: relative;
   height: 1.35rem;
-  background: rgba(255, 252, 250, 0.8);
-  border: 1px solid rgba(20, 83, 45, 0.08);
+  background: var(--si-waterfall-track-bg);
+  border: 1px solid var(--si-waterfall-track-border);
   border-radius: 5px;
   overflow: hidden;
 }
@@ -822,7 +822,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   padding: 0 0.3rem;
-  box-shadow: 0 1px 2px rgba(21, 36, 31, 0.12);
+  box-shadow: var(--si-waterfall-bar-shadow);
 }
 
 .trace-waterfall__bar-label {
@@ -877,9 +877,9 @@ onMounted(async () => {
   margin-top: 0.75rem;
   padding: 0.65rem 0.8rem;
   border-radius: 8px;
-  background: rgba(185, 28, 28, 0.06);
-  border: 1px solid rgba(185, 28, 28, 0.2);
-  color: #991b1b;
+  background: var(--si-error-box-bg);
+  border: 1px solid var(--si-error-box-border);
+  color: var(--si-error-box-color);
   font-size: 0.84rem;
   word-break: break-word;
 }
@@ -914,8 +914,8 @@ onMounted(async () => {
   max-width: 100%;
   padding: 0.15rem 0.45rem;
   border-radius: 5px;
-  background: rgba(15, 118, 110, 0.06);
-  border: 1px solid rgba(15, 118, 110, 0.14);
+  background: var(--si-tag-bg);
+  border: 1px solid var(--si-tag-border);
   font-size: 0.74rem;
   color: var(--si-ink);
   word-break: break-all;

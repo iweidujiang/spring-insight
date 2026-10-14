@@ -305,7 +305,7 @@ onUnmounted(() => {
   background: none;
   border: none;
   font-size: 1.15rem;
-  color: var(--si-ink-soft, #3d524a);
+  color: var(--si-ink-soft);
   cursor: pointer;
   padding: 0.5rem;
   border-radius: 50%;
@@ -313,15 +313,15 @@ onUnmounted(() => {
 }
 
 .notification-button:hover {
-  background-color: rgba(15, 118, 110, 0.1);
-  color: var(--si-teal, #0f766e);
+  background-color: var(--si-hover-teal);
+  color: var(--si-teal);
 }
 
 .notification-badge {
   position: absolute;
   top: 0;
   right: 0;
-  background-color: #ef4444;
+  background-color: var(--danger-color);
   color: white;
   font-size: 0.7rem;
   font-weight: 700;
@@ -337,10 +337,10 @@ onUnmounted(() => {
 <style>
 .notification-panel {
   max-height: min(420px, calc(100vh - 1.5rem));
-  background: #fffcfa;
+  background: var(--si-notification-bg);
   border-radius: 0.65rem;
-  border: 1px solid rgba(20, 83, 45, 0.14);
-  box-shadow: 0 16px 40px rgba(21, 36, 31, 0.18);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--si-notification-shadow);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -352,8 +352,8 @@ onUnmounted(() => {
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid rgba(20, 83, 45, 0.1);
-  background-color: rgba(15, 118, 110, 0.05);
+  border-bottom: 1px solid var(--si-brand-divider);
+  background-color: var(--si-notification-header-bg);
   flex-shrink: 0;
 }
 
@@ -361,13 +361,13 @@ onUnmounted(() => {
   margin: 0;
   font-weight: 700;
   font-size: 0.95rem;
-  color: #15241f;
+  color: var(--si-ink);
 }
 
 .notification-header-desc {
   margin: 0.2rem 0 0;
   font-size: 0.7rem;
-  color: #6b7f76;
+  color: var(--si-muted);
   font-weight: 500;
 }
 
@@ -383,30 +383,30 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
-  color: #94a3b8;
+  color: var(--si-muted);
 }
 
 .notification-empty i {
   font-size: 2rem;
   margin-bottom: 0.75rem;
-  color: #0f766e;
+  color: var(--si-teal);
 }
 
 .notification-item {
   display: flex;
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--si-table-border);
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .notification-item:hover {
-  background-color: rgba(15, 118, 110, 0.05);
+  background-color: var(--si-hover-teal);
 }
 
 .notification-item.unread {
-  background-color: #f0f9ff;
-  border-left: 4px solid #0f766e;
+  background-color: var(--si-notification-unread-bg);
+  border-left: 4px solid var(--si-teal);
 }
 
 .notification-icon {
@@ -421,23 +421,23 @@ onUnmounted(() => {
 }
 
 .notification-icon.success {
-  background-color: #d1fae5;
-  color: #10b981;
+  background-color: var(--si-icon-success-bg);
+  color: var(--si-icon-success-color);
 }
 
 .notification-icon.warning {
-  background-color: #fef3c7;
-  color: #f59e0b;
+  background-color: var(--si-icon-warning-bg);
+  color: var(--si-icon-warning-color);
 }
 
 .notification-icon.error {
-  background-color: #fee2e2;
-  color: #ef4444;
+  background-color: var(--si-icon-error-bg);
+  color: var(--si-icon-error-color);
 }
 
 .notification-icon.info {
-  background-color: #dbeafe;
-  color: #3b82f6;
+  background-color: var(--si-icon-info-bg);
+  color: var(--si-icon-info-color);
 }
 
 .notification-icon i {
@@ -453,19 +453,19 @@ onUnmounted(() => {
   margin: 0 0 0.2rem;
   font-size: 0.875rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--si-ink);
 }
 
 .notification-message {
   margin: 0 0 0.4rem;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--si-muted);
   line-height: 1.4;
 }
 
 .notification-time {
   font-size: 0.6875rem;
-  color: #94a3b8;
+  color: var(--si-muted);
 }
 
 .notification-footer {
@@ -473,8 +473,8 @@ onUnmounted(() => {
   padding: 0.65rem 1rem;
   font-size: 0.68rem;
   line-height: 1.45;
-  color: #6b7f76;
-  background: rgba(15, 118, 110, 0.04);
-  border-top: 1px solid rgba(20, 83, 45, 0.1);
+  color: var(--si-muted);
+  background: var(--si-notification-footer-bg);
+  border-top: 1px solid var(--si-brand-divider);
 }
 </style>
