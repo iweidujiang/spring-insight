@@ -1041,7 +1041,7 @@ onUnmounted(() => {
   overflow: auto;
   padding: 0.65rem 0.75rem;
   border-radius: 6px;
-  border: 1px solid rgba(15, 23, 42, 0.1);
+  border: 1px solid var(--card-border);
   background: var(--si-paper, #fafaf8);
   font-size: 0.75rem;
   line-height: 1.45;
@@ -1097,7 +1097,7 @@ onUnmounted(() => {
 
 .si-settings__ai-status.is-blocked {
   border-color: rgba(180, 83, 9, 0.3);
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--si-amber-bg);
 }
 
 .si-settings__ai-badge {
@@ -1179,7 +1179,7 @@ onUnmounted(() => {
 .si-settings__usage-bar {
   height: 0.45rem;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.08);
+  background: var(--si-track-bg);
   overflow: hidden;
 }
 

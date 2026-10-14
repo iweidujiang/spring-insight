@@ -598,9 +598,9 @@ onUnmounted(() => {
   min-height: clamp(280px, 42vh, 420px);
   padding: 2rem 1.5rem;
   border-radius: 12px;
-  border: 1px solid rgba(21, 128, 61, 0.2);
+  border: 1px solid var(--si-ok-bullet-border);
   background:
-    radial-gradient(ellipse at 50% 20%, rgba(21, 128, 61, 0.08), transparent 55%),
+    radial-gradient(ellipse at 50% 20%, var(--si-ok-bullet-bg), transparent 55%),
     var(--card-bg);
 }
 

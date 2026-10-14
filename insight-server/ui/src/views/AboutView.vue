@@ -372,7 +372,7 @@ onUnmounted(() => {
 
 .si-about__feature:hover {
   border-color: rgba(15, 118, 110, 0.35);
-  background: #fff;
+  background: var(--card-bg);
 }
 
 .si-about__feature-icon {
@@ -383,7 +383,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: #fff;
+  background: var(--card-bg);
   font-size: 0.95rem;
   border: 1px solid var(--card-border);
 }

@@ -426,7 +426,7 @@ onMounted(() => load())
 }
 
 .si-compare__diff-slow { background: var(--si-error-row-bg); }
-.si-compare__diff-fast { background: rgba(21, 128, 61, 0.06); }
+.si-compare__diff-fast { background: var(--si-success-row-bg); }
 .si-compare__diff-muted { opacity: 0.85; }
 
 /* compact waterfall */
@@ -537,7 +537,7 @@ onMounted(() => load())
 :deep(.si-cwf__track) {
   position: relative;
   height: 0.85rem;
-  background: rgba(15, 23, 42, 0.04);
+  background: var(--si-track-bg);
   border-radius: 3px;
 }
 

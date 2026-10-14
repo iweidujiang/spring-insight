@@ -181,10 +181,10 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
   padding: 0.55rem 0.7rem;
   border-radius: 8px;
   border: 1px solid rgba(180, 83, 9, 0.35);
-  background: rgba(245, 158, 11, 0.12);
+  background: var(--si-amber-bg);
   font-size: 0.85rem;
   line-height: 1.45;
-  color: #9a3412;
+  color: var(--si-warn-bullet-color);
 }
 .si-ai-panel__model {
   margin: 0.65rem 0 0;
