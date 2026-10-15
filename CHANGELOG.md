@@ -17,6 +17,39 @@
 
 ---
 
+## [1.1.0] — 2026-10-15
+
+### 主题与暗色模式
+- **亮/暗色主题切换**：新增 `ThemeToggle` 组件 + `useTheme` composable，`localStorage` 持久化；右上角一键切换
+- **CSS 变量设计令牌**：`styles.css` 建立完整语义色变量体系（`--si-*`），`[data-theme="dark"]` 覆盖全部令牌
+- **Bootstrap 组件主题化**：覆盖 `--bs-card-bg` / `--bs-card-border-color` / `--bs-table-bg` 等，`.card`、表格、徽章等组件自动适配
+- **ECharts 图表主题化**：新增 `chartTheme.ts` + `useChartTheme` composable，仪表盘/拓扑/错误分析/数据库/缓存 5 个页面的图表随主题联动
+- **全视图硬编码色值清零**：JdbcView、ErrorAnalysisView、SettingsView、TraceDetailView、RedisView、TraceCompareView、DashboardView、TopologyView、AboutView、AiExplainPanel 的卡片/面板/标签/圆点背景与边框全部改为 CSS 变量
+
+### 品牌标识
+- **Logo 重设计**："链路追踪节点 + 监控脉冲"，服务节点由链路串联，中心脉冲圆代表观测
+- **favicon 同步更新**：浏览器标签图标与新 Logo 一致
+
+### 移动端体验
+- **触摸目标 ≥ 44px**：主题切换按钮 32→44px、汉堡菜单 40→44px、通知铃铛/用户头像/所有 `btn-sm`/复选框/开关在移动端统一强制最小触摸区域
+- 图表刷新按钮移除 `py-0` 恢复合理高度
+
+### 新增语义色变量
+`--si-success-row-bg`、`--si-warn-pill-bg/color`、`--si-ok-pill-bg/color`、`--si-amber-bg`、`--si-warn-bullet-*`、`--si-ok-bullet-*`、`--si-track-bg`、`--si-chart-palette-1~8`、`--si-chart-tooltip-*`
+
+### 兼容
+- 纯前端变更；API / 存储 / Agent 协议均无变化
+- 推荐配套 Agent **`0.5.0`**（不变）
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.5.0` |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:1.1.0` |
+| Release jar | `insight-server-1.1.0.jar` |
+
+---
+
 ## [1.0.0] — 2026-10-13
 
 ### 变更
