@@ -69,12 +69,33 @@ public class SqliteSpanStore implements SpanStore {
                       span_id TEXT NOT NULL,
                       service_name TEXT,
                       start_time INTEGER NOT NULL DEFAULT 0,
-                      payload TEXT NOT NULL
+                      payload TEXT NOT NULL,
+                      error INTEGER NOT NULL DEFAULT 0,
+                      component TEXT
                     )
                     """);
+            addColumnIfMissing(st, "ALTER TABLE spans ADD COLUMN error INTEGER NOT NULL DEFAULT 0");
+            addColumnIfMissing(st, "ALTER TABLE spans ADD COLUMN component TEXT");
             st.execute("CREATE INDEX IF NOT EXISTS idx_spans_trace ON spans(trace_id)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_spans_start ON spans(start_time)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_spans_service ON spans(service_name)");
+            st.execute("CREATE INDEX IF NOT EXISTS idx_span_start_service ON spans(start_time, service_name)");
+            st.execute("CREATE INDEX IF NOT EXISTS idx_span_start_error ON spans(start_time, error)");
+            st.execute("CREATE INDEX IF NOT EXISTS idx_span_start_component ON spans(start_time, component)");
+        }
+    }
+
+    /**
+     * 已有库的建表语句不会补列；重复添加时忽略。
+     */
+    private static void addColumnIfMissing(Statement st, String ddl) throws SQLException {
+        try {
+            st.execute(ddl);
+        } catch (SQLException e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+            if (!msg.contains("duplicate column")) {
+                throw e;
+            }
         }
     }
 
@@ -92,7 +113,10 @@ public class SqliteSpanStore implements SpanStore {
             int added = 0;
             try {
                 connection.setAutoCommit(false);
-                String sql = "INSERT INTO spans(trace_id, span_id, service_name, start_time, payload) VALUES (?,?,?,?,?)";
+                String sql = """
+                        INSERT INTO spans(trace_id, span_id, service_name, start_time, payload, error, component)
+                        VALUES (?,?,?,?,?,?,?)
+                        """;
                 try (PreparedStatement ps = connection.prepareStatement(sql)) {
                     for (TraceSpan span : spans) {
                         if (span == null || span.getTraceId() == null || span.getSpanId() == null) {
@@ -104,6 +128,8 @@ public class SqliteSpanStore implements SpanStore {
                         ps.setString(3, copy.getServiceName());
                         ps.setLong(4, n(copy.getStartTime()));
                         ps.setString(5, objectMapper.writeValueAsString(copy));
+                        ps.setInt(6, isError(copy) ? 1 : 0);
+                        ps.setString(7, copy.getComponent());
                         ps.addBatch();
                         added++;
                     }
@@ -324,5 +350,12 @@ public class SqliteSpanStore implements SpanStore {
 
     private static long n(Long v) {
         return v != null ? v : 0L;
+    }
+
+    private static boolean isError(TraceSpan span) {
+        if ("ERROR".equalsIgnoreCase(span.getStatusCode())) {
+            return true;
+        }
+        return Boolean.FALSE.equals(span.getSuccess());
     }
 }
