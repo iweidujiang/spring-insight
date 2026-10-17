@@ -11,35 +11,26 @@
             : '箭头：调用方 → 被调用方；点击节点或调用链路先选中，再从旁栏下钻' }}
         </p>
       </div>
-      <span class="badge bg-info">
-        <i class="fa fa-clock me-1"></i>{{ currentTime }}
-      </span>
-    </div>
-
-    <div class="card stat-card si-toolbar-card">
-      <div class="card-body">
-        <div class="si-toolbar-inner">
-          <div>
-            <label class="form-label" for="hours-topology">时间范围</label>
-            <select id="hours-topology" class="form-select" style="min-width: 11rem" v-model.number="hours" @change="onHoursChange">
-              <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-          </div>
-          <div class="d-flex flex-wrap gap-2 ms-auto">
-            <button class="btn btn-primary" type="button" @click="loadData" :disabled="loading">
-              <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
-            </button>
-            <button
-              class="btn btn-outline-secondary"
-              type="button"
-              @click="downloadTopology"
-              :disabled="loading || dependencies.length === 0"
-            >
-              <i class="fa fa-download"></i> 导出
-            </button>
-          </div>
-        </div>
-      </div>
+      <SiFilterBar
+        v-model:hours="hours"
+        :show-service="false"
+        :loading="loading"
+        hours-id="hours-topology"
+        @hours-change="onHoursChange"
+        @refresh="loadData"
+      >
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          type="button"
+          @click="downloadTopology"
+          :disabled="loading || dependencies.length === 0"
+        >
+          <i class="fa fa-download"></i> 导出
+        </button>
+        <span class="badge bg-info">
+          <i class="fa fa-clock me-1"></i>{{ currentTime }}
+        </span>
+      </SiFilterBar>
     </div>
 
     <div v-if="loadError" class="alert alert-danger py-2 mb-3" role="alert">{{ loadError }}</div>
@@ -283,12 +274,12 @@ import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
+import SiFilterBar from '../components/SiFilterBar.vue'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { useChartTheme } from '../composables/useChartTheme'
 import { formatDuration } from '../utils/traceTimeline'
 import {
-  TIME_RANGE_OPTIONS,
   emptyRequestsMessage,
   deeplinkMissMessage,
   loadFailedMessage
