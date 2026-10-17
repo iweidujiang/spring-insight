@@ -88,43 +88,27 @@
             <h3 class="si-err-stage__title"><i class="fa fa-list me-2"></i>错误服务</h3>
             <span class="badge bg-danger">{{ errorAnalysis.length }} 个</span>
           </div>
-          <div class="table-responsive">
-            <table class="table table-hover mb-0 si-err-table si-data-table">
-              <thead class="table-light">
-                <tr>
-                  <th>服务</th>
-                  <th>总调用</th>
-                  <th>错误</th>
-                  <th>错误率</th>
-                  <th>级别</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(error, index) in errorAnalysis"
-                  :key="error.serviceName"
-                  class="si-err-row"
-                  :class="error.errorRate > 10 ? 'is-severe' : error.errorRate > 5 ? 'is-warn' : ''"
-                  :style="{ animationDelay: `${Math.min(index, 20) * 0.03}s` }"
-                  @click="viewServiceDetails(error.serviceName)"
-                >
-                  <td class="si-err-svc">{{ error.serviceName }}</td>
-                  <td>{{ error.totalCalls }}</td>
-                  <td class="text-danger fw-semibold">{{ error.errorCalls }}</td>
-                  <td>
-                    <span class="si-err-rate" :data-level="rateLevel(error.errorRate)">
-                      {{ error.errorRate.toFixed(2) }}%
-                    </span>
-                  </td>
-                  <td>
-                    <span class="si-err-level" :data-level="rateLevel(error.errorRate)">
-                      {{ rateLabel(error.errorRate) }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <SiDataTable
+            :rows="errorAnalysis"
+            :columns="errorServiceColumns"
+            row-key="serviceName"
+            clickable
+            :row-class="errorServiceRowClass"
+            :row-style="errorServiceRowStyle"
+            empty-text="暂无错误服务"
+            @row-click="onErrorServiceClick"
+          >
+            <template #cell-rate="{ row }">
+              <span class="si-err-rate" :data-level="rateLevel(row.errorRate)">
+                {{ Number(row.errorRate).toFixed(2) }}%
+              </span>
+            </template>
+            <template #cell-level="{ row }">
+              <span class="si-err-level" :data-level="rateLevel(row.errorRate)">
+                {{ rateLabel(row.errorRate) }}
+              </span>
+            </template>
+          </SiDataTable>
         </section>
 
         <div class="si-err-charts">
@@ -271,9 +255,11 @@ import * as echarts from 'echarts'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
+import SiDataTable from '../components/SiDataTable.vue'
 import SiFilterBar from '../components/SiFilterBar.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
+import type { SiColumn } from '../components/siTable'
 import { useChartTheme } from '../composables/useChartTheme'
 import { formatHoursLabel, loadFailedMessage } from '../utils/timeRange'
 import { mergeQuery, persistHours, resolveHours } from '../utils/insightQuery'
@@ -318,6 +304,31 @@ const rateLabel = (rate: number) => {
   if (rate > 10) return '严重'
   if (rate > 5) return '警告'
   return '注意'
+}
+
+type ErrorServiceRow = Record<string, any>
+
+const errorServiceColumns: SiColumn<ErrorServiceRow>[] = [
+  { key: 'service', label: '服务', cellClass: 'si-err-svc', value: (row) => row.serviceName },
+  { key: 'total', label: '总调用', value: (row) => row.totalCalls },
+  { key: 'errors', label: '错误', cellClass: 'text-danger fw-semibold', value: (row) => row.errorCalls },
+  { key: 'rate', label: '错误率' },
+  { key: 'level', label: '级别' }
+]
+
+const errorServiceRowClass = (row: ErrorServiceRow) => {
+  const rate = Number(row.errorRate) || 0
+  if (rate > 10) return 'si-err-row is-severe'
+  if (rate > 5) return 'si-err-row is-warn'
+  return 'si-err-row'
+}
+
+const errorServiceRowStyle = (_row: ErrorServiceRow, index: number) => ({
+  animationDelay: `${Math.min(index, 20) * 0.03}s`
+})
+
+const onErrorServiceClick = (row: ErrorServiceRow) => {
+  viewServiceDetails(String(row.serviceName || ''))
 }
 
 const updateCurrentTime = () => {
@@ -700,20 +711,24 @@ onUnmounted(() => {
   color: var(--si-ink);
 }
 
-.si-err-table .si-err-row {
+.si-err-table .si-err-row,
+:deep(.si-err-row) {
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
-.si-err-table .si-err-row:hover {
+.si-err-table .si-err-row:hover,
+:deep(.si-err-row:hover) {
   background: rgba(15, 118, 110, 0.05);
 }
 
-.si-err-table .si-err-row.is-severe:hover {
+.si-err-table .si-err-row.is-severe:hover,
+:deep(.si-err-row.is-severe:hover) {
   background: rgba(185, 28, 28, 0.06);
 }
 
-.si-err-svc {
+.si-err-svc,
+:deep(.si-err-svc) {
   font-weight: 600;
   color: var(--si-ink);
 }
