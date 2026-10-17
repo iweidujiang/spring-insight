@@ -9,30 +9,17 @@
           JDBC 出站调用汇总，可在此查看慢 SQL / 错误
         </p>
       </div>
-      <div class="si-page__toolbar">
-        <label class="form-label mb-0 visually-hidden" for="jdbc-service">业务服务</label>
-        <select
-          id="jdbc-service"
-          class="form-select form-select-sm si-jdbc-filter"
-          v-model="selectedService"
-          @change="onFilterChange"
-        >
-          <option value="">全部服务</option>
-          <option v-for="name in services" :key="name" :value="name">{{ name }}</option>
-        </select>
-        <label class="form-label mb-0 visually-hidden" for="jdbc-hours">时间范围</label>
-        <select
-          id="jdbc-hours"
-          class="form-select form-select-sm si-jdbc-filter"
-          v-model.number="hours"
-          @change="onHoursChange"
-        >
-          <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-        </select>
-        <button class="btn btn-sm btn-primary" @click="load" :disabled="loading">
-          <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
-        </button>
-      </div>
+      <SiFilterBar
+        v-model:service="selectedService"
+        v-model:hours="hours"
+        :services="services"
+        :loading="loading"
+        service-id="jdbc-service"
+        hours-id="jdbc-hours"
+        @service-change="onFilterChange"
+        @hours-change="onHoursChange"
+        @refresh="load"
+      />
     </div>
 
     <p class="si-jdbc-hint">
@@ -141,13 +128,13 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SiDataTable from '../components/SiDataTable.vue'
+import SiFilterBar from '../components/SiFilterBar.vue'
 import SiSection from '../components/SiSection.vue'
 import SiStatusBadge from '../components/SiStatusBadge.vue'
 import type { SiColumn } from '../components/siTable'
 import { ApiService } from '../services/ApiService'
 import { formatDuration } from '../utils/traceTimeline'
 import {
-  TIME_RANGE_OPTIONS,
   emptyInRangeShort,
   formatHoursLabel,
   loadFailedMessage
@@ -308,11 +295,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.si-jdbc-filter {
-  width: auto;
-  min-width: 7.5rem;
-}
-
 .si-jdbc-hint {
   margin: 0 0 1rem;
   font-size: 0.85rem;
