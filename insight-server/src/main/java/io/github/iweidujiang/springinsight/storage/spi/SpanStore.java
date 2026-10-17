@@ -63,6 +63,30 @@ public interface SpanStore {
     List<ServiceAggregate> aggregateSnapshot(long sinceEpoch, @Nullable String service);
 
     /**
+     * 按 Trace 聚合后分页。排序取值 {@code time_desc}、{@code time_asc}、{@code duration_desc}、{@code duration_asc}。
+     *
+     * @param sinceEpoch    开始时间下界（毫秒，含）；{@code <=0} 表示不限
+     * @param service       服务名；空则全部
+     * @param status        {@code all}、{@code error} 或 {@code ok}
+     * @param query         模糊匹配 Trace ID、服务名或根操作名
+     * @param minDurationMs 链路耗时下限
+     * @param pathPrefix    根操作路径前缀
+     * @param offset        跳过的链路数
+     * @param limit         本页条数，最大 200
+     * @param sort          排序；无法识别时按开始时间降序
+     * @return 当前页
+     */
+    List<TraceSummary> listTraces(long sinceEpoch, @Nullable String service, @Nullable String status,
+                                  @Nullable String query, long minDurationMs, @Nullable String pathPrefix,
+                                  int offset, int limit, @Nullable String sort);
+
+    /**
+     * 与 {@link #listTraces} 使用同一组筛选条件的链路总数。
+     */
+    long countTraces(long sinceEpoch, @Nullable String service, @Nullable String status,
+                     @Nullable String query, long minDurationMs, @Nullable String pathPrefix);
+
+    /**
      * @return 当前持有条数
      */
     int size();

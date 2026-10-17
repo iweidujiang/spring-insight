@@ -6,6 +6,7 @@ import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.spi.ServiceAggregate;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
+import io.github.iweidujiang.springinsight.storage.spi.TraceSummary;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -89,6 +90,18 @@ public class FileSpanStore implements SpanStore {
     @Override
     public List<ServiceAggregate> aggregateSnapshot(long sinceEpoch, String service) {
         return memory.aggregateSnapshot(sinceEpoch, service);
+    }
+
+    @Override
+    public List<TraceSummary> listTraces(long sinceEpoch, String service, String status, String query,
+                                          long minDurationMs, String pathPrefix, int offset, int limit, String sort) {
+        return memory.listTraces(sinceEpoch, service, status, query, minDurationMs, pathPrefix, offset, limit, sort);
+    }
+
+    @Override
+    public long countTraces(long sinceEpoch, String service, String status, String query,
+                            long minDurationMs, String pathPrefix) {
+        return memory.countTraces(sinceEpoch, service, status, query, minDurationMs, pathPrefix);
     }
 
     @Override

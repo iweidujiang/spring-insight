@@ -1,7 +1,9 @@
 package io.github.iweidujiang.springinsight.storage.service;
 
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
+import io.github.iweidujiang.springinsight.storage.impl.TraceSummaryCalculator;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
+import io.github.iweidujiang.springinsight.storage.spi.TraceSummary;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -96,121 +98,16 @@ public class TraceSpanPersistenceService {
             int lastHours, int limit, String serviceName, String status, String query,
             long minDurationMs, String pathPrefix) {
         long sinceTime = sinceEpochMillis(lastHours);
-        String svc = serviceName != null ? serviceName.trim() : "";
-        String st = status != null ? status.trim().toLowerCase() : "all";
-        String q = query != null ? query.trim().toLowerCase() : "";
-        String pathPref = normalizePathPrefix(pathPrefix);
-        long minDur = Math.max(0L, minDurationMs);
         int max = Math.max(1, limit);
-
-        record Acc(
-                String traceId,
-                long minStart,
-                long maxEnd,
-                int spanCount,
-                boolean hasError,
-                java.util.LinkedHashSet<String> services,
-                List<TraceSpan> spans
-        ) {}
-
-        Map<String, Acc> byTrace = new LinkedHashMap<>();
-        for (TraceSpan s : spanStore.snapshot()) {
-            if (s == null || s.getTraceId() == null || s.getTraceId().isBlank()) {
-                continue;
-            }
-            long start = n(s.getStartTime());
-            if (start < sinceTime) {
-                continue;
-            }
-            long end = n(s.getEndTime());
-            if (end <= 0) {
-                end = start + n(s.getDurationMs());
-            }
-            Acc acc = byTrace.get(s.getTraceId());
-            if (acc == null) {
-                java.util.LinkedHashSet<String> services = new java.util.LinkedHashSet<>();
-                if (s.getServiceName() != null && !s.getServiceName().isBlank()) {
-                    services.add(s.getServiceName());
-                }
-                List<TraceSpan> spans = new ArrayList<>();
-                spans.add(s);
-                byTrace.put(s.getTraceId(), new Acc(
-                        s.getTraceId(),
-                        start,
-                        Math.max(start, end),
-                        1,
-                        isError(s),
-                        services,
-                        spans
-                ));
-            } else {
-                if (s.getServiceName() != null && !s.getServiceName().isBlank()) {
-                    acc.services().add(s.getServiceName());
-                }
-                acc.spans().add(s);
-                byTrace.put(s.getTraceId(), new Acc(
-                        acc.traceId(),
-                        Math.min(acc.minStart(), start),
-                        Math.max(acc.maxEnd(), Math.max(start, end)),
-                        acc.spanCount() + 1,
-                        acc.hasError() || isError(s),
-                        acc.services(),
-                        acc.spans()
-                ));
-            }
+        List<TraceSummary> rows = TraceSummaryCalculator.collect(
+                spanStore.snapshot(), sinceTime, serviceName, status, query, minDurationMs, pathPrefix);
+        rows.sort((a, b) -> Long.compare(b.startTime(), a.startTime()));
+        if (rows.size() > max) {
+            rows = rows.subList(0, max);
         }
-
         List<Map<String, Object>> out = new ArrayList<>();
-        for (Acc acc : byTrace.values()) {
-            // 服务过滤：本地 serviceName，或仅作为 remoteService 出现的外部依赖（如 JDBC 库名）
-            if (!svc.isEmpty() && !acc.services().contains(svc) && !spansTouchRemote(acc.spans(), svc)) {
-                continue;
-            }
-            if ("error".equals(st) && !acc.hasError()) {
-                continue;
-            }
-            if ("ok".equals(st) && acc.hasError()) {
-                continue;
-            }
-            TraceSpan root = pickTraceRootSpan(acc.spans());
-            String rootOp = root != null && root.getOperationName() != null ? root.getOperationName() : "";
-            String rootSvc = root != null && root.getServiceName() != null ? root.getServiceName() : "";
-            if (rootSvc.isBlank() && !acc.services().isEmpty()) {
-                rootSvc = acc.services().iterator().next();
-            }
-            if (!q.isEmpty()) {
-                boolean match = acc.traceId().toLowerCase().contains(q)
-                        || rootOp.toLowerCase().contains(q)
-                        || rootSvc.toLowerCase().contains(q)
-                        || acc.services().stream().anyMatch(x -> x.toLowerCase().contains(q));
-                if (!match) {
-                    continue;
-                }
-            }
-            long durationMs = Math.max(0L, acc.maxEnd() - acc.minStart());
-            if (durationMs < minDur) {
-                continue;
-            }
-            if (!pathPref.isEmpty() && !operationPathMatchesPrefix(rootOp, pathPref)) {
-                continue;
-            }
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("traceId", acc.traceId());
-            row.put("serviceName", rootSvc);
-            row.put("operationName", rootOp.isBlank() ? "(unknown)" : rootOp);
-            row.put("startTime", acc.minStart());
-            row.put("durationMs", durationMs);
-            row.put("spanCount", acc.spanCount());
-            row.put("serviceCount", acc.services().size());
-            row.put("hasError", acc.hasError());
-            row.put("statusCode", acc.hasError() ? "ERROR" : "OK");
-            out.add(row);
-        }
-        out.sort((a, b) -> Long.compare(
-                ((Number) b.get("startTime")).longValue(),
-                ((Number) a.get("startTime")).longValue()));
-        if (out.size() > max) {
-            return out.subList(0, max);
+        for (TraceSummary row : rows) {
+            out.add(TraceSummaryCalculator.toMap(row));
         }
         return out;
     }
@@ -1233,18 +1130,6 @@ public class TraceSpanPersistenceService {
         if (isError(s)) {
             ea[0]++;
         }
-    }
-
-    private static boolean spansTouchRemote(List<TraceSpan> spans, String remote) {
-        if (spans == null || remote == null || remote.isBlank()) {
-            return false;
-        }
-        for (TraceSpan s : spans) {
-            if (s != null && remote.equals(s.getRemoteService())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static Map<String, Object> emptyServiceKpis() {

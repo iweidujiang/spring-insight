@@ -5,6 +5,7 @@ import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.spi.ServiceAggregate;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
+import io.github.iweidujiang.springinsight.storage.spi.TraceSummary;
 import lombok.extern.slf4j.Slf4j;
 
 import java.nio.file.Files;
@@ -331,6 +332,171 @@ public class SqliteSpanStore implements SpanStore {
             rows.sort(java.util.Comparator.comparing(ServiceAggregate::serviceName));
             return rows;
         }
+    }
+
+    @Override
+    public List<TraceSummary> listTraces(long sinceEpoch, String service, String status, String query,
+                                          long minDurationMs, String pathPrefix, int offset, int limit, String sort) {
+        if (needsPayloadFilter(query, pathPrefix)) {
+            return TraceSummaryCalculator.page(
+                    TraceSummaryCalculator.collect(snapshot(), sinceEpoch, service, status, query, minDurationMs, pathPrefix),
+                    offset, limit, sort);
+        }
+        synchronized (lock) {
+            List<TraceSummary> page = queryTracePage(sinceEpoch, service, status, minDurationMs, offset, limit, sort);
+            return enrichRoots(page);
+        }
+    }
+
+    @Override
+    public long countTraces(long sinceEpoch, String service, String status, String query,
+                            long minDurationMs, String pathPrefix) {
+        if (needsPayloadFilter(query, pathPrefix)) {
+            return TraceSummaryCalculator.collect(
+                    snapshot(), sinceEpoch, service, status, query, minDurationMs, pathPrefix).size();
+        }
+        synchronized (lock) {
+            String filter = service == null ? "" : service.trim();
+            String sql = "SELECT COUNT(*) FROM (" + groupedTraceSql(filter, status) + ") grouped";
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                bindTraceFilter(ps, sinceEpoch, minDurationMs, filter);
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next() ? rs.getLong(1) : 0L;
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("SQLite 链路计数失败: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    private List<TraceSummary> queryTracePage(long sinceEpoch, String service, String status,
+                                               long minDurationMs, int offset, int limit, String sort) {
+        String filter = service == null ? "" : service.trim();
+        int off = Math.max(0, offset);
+        int lim = Math.min(200, Math.max(1, limit));
+        String sql = "SELECT trace_id, start_time, duration_ms, span_count, service_count, has_error FROM ("
+                + groupedTraceSql(filter, status) + ") grouped ORDER BY " + orderBy(sort) + " LIMIT ? OFFSET ?";
+        List<TraceSummary> rows = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            int next = bindTraceFilter(ps, sinceEpoch, minDurationMs, filter);
+            ps.setInt(next, lim);
+            ps.setInt(next + 1, off);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    boolean error = rs.getInt(6) != 0;
+                    rows.add(new TraceSummary(
+                            rs.getString(1),
+                            "",
+                            "(unknown)",
+                            rs.getLong(2),
+                            Math.max(0L, rs.getLong(3)),
+                            rs.getInt(4),
+                            rs.getInt(5),
+                            error,
+                            error ? "ERROR" : "OK"));
+                }
+            }
+        } catch (SQLException e) {
+            throw new IllegalStateException("SQLite 链路分页失败: " + e.getMessage(), e);
+        }
+        return rows;
+    }
+
+    /**
+     * 分组子查询。外层可再套排序、分页或计数。
+     */
+    private static String groupedTraceSql(String service, String status) {
+        String serviceClause = service == null || service.isEmpty()
+                ? ""
+                : " AND SUM(CASE WHEN service_name = ? OR json_extract(payload, '$.remoteService') = ? THEN 1 ELSE 0 END) > 0 ";
+        String statusClause = switch (status == null ? "all" : status.trim().toLowerCase()) {
+            case "error" -> " AND MAX(error) != 0 ";
+            case "ok" -> " AND MAX(error) = 0 ";
+            default -> "";
+        };
+        return """
+                SELECT trace_id,
+                       MIN(start_time) AS start_time,
+                       MAX(start_time + duration_ms) - MIN(start_time) AS duration_ms,
+                       COUNT(*) AS span_count,
+                       COUNT(DISTINCT CASE WHEN service_name IS NOT NULL AND service_name != '' THEN service_name END) AS service_count,
+                       MAX(error) AS has_error
+                FROM spans
+                WHERE start_time >= ?
+                GROUP BY trace_id
+                HAVING (MAX(start_time + duration_ms) - MIN(start_time)) >= ?
+                """ + serviceClause + statusClause;
+    }
+
+    private static int bindTraceFilter(PreparedStatement ps, long sinceEpoch, long minDurationMs, String service)
+            throws SQLException {
+        ps.setLong(1, Math.max(0L, sinceEpoch));
+        ps.setLong(2, Math.max(0L, minDurationMs));
+        if (service != null && !service.isEmpty()) {
+            ps.setString(3, service);
+            ps.setString(4, service);
+            return 5;
+        }
+        return 3;
+    }
+
+    private static String orderBy(String sort) {
+        return switch (TraceSummaryCalculator.normalizeSort(sort)) {
+            case "time_asc" -> "start_time ASC, trace_id ASC";
+            case "duration_desc" -> "duration_ms DESC, trace_id ASC";
+            case "duration_asc" -> "duration_ms ASC, trace_id ASC";
+            default -> "start_time DESC, trace_id ASC";
+        };
+    }
+
+    private List<TraceSummary> enrichRoots(List<TraceSummary> page) {
+        if (page.isEmpty()) {
+            return page;
+        }
+        Map<String, List<TraceSpan>> spansByTrace = new LinkedHashMap<>();
+        StringBuilder sql = new StringBuilder("SELECT payload FROM spans WHERE trace_id IN (");
+        for (int i = 0; i < page.size(); i++) {
+            if (i > 0) {
+                sql.append(',');
+            }
+            sql.append('?');
+        }
+        sql.append(')');
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            for (int i = 0; i < page.size(); i++) {
+                ps.setString(i + 1, page.get(i).traceId());
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    TraceSpan span = readPayload(rs.getString(1));
+                    spansByTrace.computeIfAbsent(span.getTraceId(), key -> new ArrayList<>()).add(span);
+                }
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("SQLite 读取链路根 Span 失败: " + e.getMessage(), e);
+        }
+        List<TraceSummary> enriched = new ArrayList<>(page.size());
+        for (TraceSummary row : page) {
+            TraceSpan root = TraceSummaryCalculator.pickRoot(spansByTrace.get(row.traceId()));
+            String operation = root != null && root.getOperationName() != null && !root.getOperationName().isBlank()
+                    ? root.getOperationName() : "(unknown)";
+            String serviceName = root != null && root.getServiceName() != null ? root.getServiceName() : "";
+            enriched.add(new TraceSummary(
+                    row.traceId(),
+                    serviceName,
+                    operation,
+                    row.startTime(),
+                    row.durationMs(),
+                    row.spanCount(),
+                    row.serviceCount(),
+                    row.hasError(),
+                    row.statusCode()));
+        }
+        return enriched;
+    }
+
+    private static boolean needsPayloadFilter(String query, String pathPrefix) {
+        return (query != null && !query.isBlank()) || (pathPrefix != null && !pathPrefix.isBlank());
     }
 
     @Override

@@ -76,7 +76,9 @@ public class CollectorApiController {
     @GetMapping("/traces/recent")
     public ResponseEntity<?> getRecentTraces(
             @RequestParam(value = "hours", defaultValue = "24") int hours,
-            @RequestParam(value = "limit", defaultValue = "100") int limit,
+            @RequestParam(value = "limit", required = false) Integer limit,
+            @RequestParam(value = "offset", required = false) Integer offset,
+            @RequestParam(value = "sort", required = false) String sort,
             @RequestParam(value = "service", required = false) String service,
             @RequestParam(value = "status", defaultValue = "all") String status,
             @RequestParam(value = "q", required = false) String q,
@@ -84,9 +86,23 @@ public class CollectorApiController {
             @RequestParam(value = "pathPrefix", required = false) String pathPrefix) {
 
         try {
-            var traces = traceSpanPersistenceService.getRecentTraceSummaries(
-                    hours, limit, service, status, q, minDurationMs, pathPrefix);
-            return ResponseEntity.ok(traces);
+            if (offset == null) {
+                int max = limit == null ? 100 : limit;
+                var traces = traceSpanPersistenceService.getRecentTraceSummaries(
+                        hours, max, service, status, q, minDurationMs, pathPrefix);
+                return ResponseEntity.ok(traces);
+            }
+            int pageSize = limit == null ? 50 : Math.min(200, Math.max(1, limit));
+            int off = Math.max(0, offset);
+            long since = hours <= 0 ? 0L : Instant.now().minus(hours, ChronoUnit.HOURS).toEpochMilli();
+            var data = spanStore.listTraces(since, service, status, q, minDurationMs, pathPrefix, off, pageSize, sort);
+            long total = spanStore.countTraces(since, service, status, q, minDurationMs, pathPrefix);
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("data", data);
+            body.put("total", total);
+            body.put("offset", off);
+            body.put("limit", pageSize);
+            return ResponseEntity.ok(body);
         } catch (Exception e) {
             log.error("获取最近链路失败", e);
             return ResponseEntity.internalServerError().build();
