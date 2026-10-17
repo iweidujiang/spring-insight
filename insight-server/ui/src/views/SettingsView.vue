@@ -363,10 +363,9 @@
                 <p>只删除早于指定小时数的 Span，保留更近的数据。</p>
               </div>
               <div class="si-settings__action-row">
-                <div class="si-settings__action-field">
-                  <label class="form-label" for="clear-hours">早于（小时）</label>
+                <SiFormField class="si-settings__action-field" label="早于（小时）" field-id="clear-hours">
                   <input id="clear-hours" v-model.number="clearOlderHours" class="form-control" type="number" min="1" />
-                </div>
+                </SiFormField>
                 <button
                   type="button"
                   class="btn btn-outline-warning si-settings__action-btn"
@@ -384,8 +383,7 @@
                 <p>按服务名精确匹配删除该服务的全部 Span。</p>
               </div>
               <div class="si-settings__action-row">
-                <div class="si-settings__action-field">
-                  <label class="form-label" for="clear-svc">服务名</label>
+                <SiFormField class="si-settings__action-field" label="服务名" field-id="clear-svc">
                   <input
                     id="clear-svc"
                     v-model="clearServiceName"
@@ -396,7 +394,7 @@
                   <datalist id="si-service-names">
                     <option v-for="n in serviceNames" :key="n" :value="n" />
                   </datalist>
-                </div>
+                </SiFormField>
                 <button
                   type="button"
                   class="btn btn-outline-warning si-settings__action-btn"
