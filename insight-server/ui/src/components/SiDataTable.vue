@@ -8,6 +8,8 @@ const props = withDefaults(
     rowKey?: string | ((row: T, index: number) => string | number)
     clickable?: boolean
     emptyText?: string
+    rowClass?: (row: T, index: number) => string | undefined
+    rowStyle?: (row: T, index: number) => Record<string, string> | undefined
   }>(),
   {
     clickable: false,
@@ -59,6 +61,10 @@ function onRowClick(row: T) {
   if (!props.clickable) return
   emit('rowClick', row)
 }
+
+function onCellClick(event: MouseEvent, column: SiColumn<T>) {
+  if (column.stopRowClick) event.stopPropagation()
+}
 </script>
 
 <template>
@@ -70,7 +76,7 @@ function onRowClick(row: T) {
             v-for="column in columns"
             :key="column.key"
             scope="col"
-            :class="{ 'si-data-table__num': column.numeric }"
+            :class="[column.numeric ? 'si-data-table__num' : '', column.headerClass || '']"
             :style="column.width ? { width: column.width } : undefined"
           >
             {{ column.label }}
@@ -86,7 +92,8 @@ function onRowClick(row: T) {
         <tr
           v-for="(row, index) in rows"
           :key="keyOf(row, index)"
-          :class="{ 'si-data-table__row--clickable': clickable }"
+          :class="[clickable ? 'si-data-table__row--clickable' : '', props.rowClass?.(row, index)]"
+          :style="props.rowStyle?.(row, index)"
           @click="onRowClick(row)"
         >
           <td
@@ -94,6 +101,7 @@ function onRowClick(row: T) {
             :key="column.key"
             :class="cellClass(row, column)"
             :title="cellTitle(row, column)"
+            @click="onCellClick($event, column)"
           >
             <slot :name="`cell-${column.key}`" :row="row" :index="index">
               {{ textOf(row, column) }}

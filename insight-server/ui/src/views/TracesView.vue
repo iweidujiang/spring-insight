@@ -129,78 +129,58 @@
             </button>
           </div>
         </div>
-        <div class="table-responsive">
-          <table class="table table-hover mb-0 si-trace-table si-data-table">
-            <thead class="table-light">
-              <tr>
-                <th class="si-trace-col-check"></th>
-                <th class="si-trace-col-op">请求</th>
-                <th class="si-trace-col-dur">耗时</th>
-                <th class="si-trace-col-status">状态</th>
-                <th class="si-trace-col-svc">服务</th>
-                <th class="si-trace-col-time">时间</th>
-                <th class="si-trace-col-act"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(trace, index) in traces"
-                :key="`${trace.traceId}-${index}`"
-                class="fade-in si-trace-row"
-                :class="{ 'si-trace-row--selected': isSelected(trace.traceId) }"
-                :style="{ animationDelay: `${Math.min(index, 20) * 0.03}s` }"
-                @click="viewTraceDetail(trace.traceId)"
-              >
-                <td class="si-trace-check" @click.stop>
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    :checked="isSelected(trace.traceId)"
-                    :disabled="!isSelected(trace.traceId) && selectedIds.length >= 2"
-                    @change="toggleSelect(trace.traceId)"
-                    :aria-label="`选择 ${trace.traceId}`"
-                  />
-                </td>
-                <td class="si-trace-op">
-                  <div class="si-trace-op__inner">
-                    <span class="si-http-method" :data-method="traceMethod(trace)">{{ traceMethod(trace) || 'REQ' }}</span>
-                    <span class="si-trace-path" :title="tracePath(trace)">{{ tracePath(trace) }}</span>
-                    <span v-if="trace.serviceCount > 1" class="si-trace-extra">{{ trace.serviceCount }} 个服务</span>
-                  </div>
-                </td>
-                <td class="si-trace-dur">
-                  <span class="si-dur" aria-hidden="false">
-                    <span class="si-dur__track">
-                      <i class="si-dur__bar" :style="{ width: durationShare(trace) + '%' }"></i>
-                    </span>
-                    <em class="si-dur__val" :class="durationClass(trace.durationMs)">{{ formatDuration(Number(trace.durationMs) || 0) }}</em>
-                  </span>
-                </td>
-                <td class="si-trace-status">
-                  <span class="badge" :class="traceFailed(trace) ? 'bg-danger' : 'bg-success'">
-                    {{ traceFailed(trace) ? '失败' : '成功' }}
-                  </span>
-                </td>
-                <td class="text-truncate si-trace-service" :title="trace.serviceName">{{ trace.serviceName || '—' }}</td>
-                <td class="si-trace-time">{{ formatTime(trace.startTime) }}</td>
-                <td class="si-trace-act" @click.stop>
-                  <button class="btn btn-sm btn-outline-secondary" @click="copyTraceId(trace.traceId)" title="复制 Trace ID">
-                    <i class="fa fa-copy"></i>
-                  </button>
-                </td>
-              </tr>
-              <tr v-if="traces.length === 0">
-                <td colspan="7" class="text-center text-muted">
-                  <div class="py-4">
-                    <i class="fa fa-info-circle fa-2x mb-2"></i>
-                    <p class="mb-0">{{ emptyNoMatchMessage(hours) }}</p>
-                    <p class="small mb-0 mt-1">{{ EMPTY_HINT_RELAX }}</p>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <SiDataTable
+          :rows="traces"
+          :columns="traceColumns"
+          :row-key="traceRowKey"
+          clickable
+          :row-class="traceRowClass"
+          :row-style="traceRowStyle"
+          @row-click="onTraceRowClick"
+        >
+          <template #cell-check="{ row }">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              :checked="isSelected(row.traceId)"
+              :disabled="!isSelected(row.traceId) && selectedIds.length >= 2"
+              @change="toggleSelect(row.traceId)"
+              :aria-label="`选择 ${row.traceId}`"
+            />
+          </template>
+          <template #cell-operation="{ row }">
+            <div class="si-trace-op__inner">
+              <span class="si-http-method" :data-method="traceMethod(row)">{{ traceMethod(row) || 'REQ' }}</span>
+              <span class="si-trace-path" :title="tracePath(row)">{{ tracePath(row) }}</span>
+              <span v-if="row.serviceCount > 1" class="si-trace-extra">{{ row.serviceCount }} 个服务</span>
+            </div>
+          </template>
+          <template #cell-duration="{ row }">
+            <span class="si-dur" aria-hidden="false">
+              <span class="si-dur__track">
+                <i class="si-dur__bar" :style="{ width: durationShare(row) + '%' }"></i>
+              </span>
+              <em class="si-dur__val" :class="durationClass(row.durationMs)">{{ formatDuration(Number(row.durationMs) || 0) }}</em>
+            </span>
+          </template>
+          <template #cell-status="{ row }">
+            <span class="badge" :class="traceFailed(row) ? 'bg-danger' : 'bg-success'">
+              {{ traceFailed(row) ? '失败' : '成功' }}
+            </span>
+          </template>
+          <template #cell-act="{ row }">
+            <button class="btn btn-sm btn-outline-secondary" @click="copyTraceId(row.traceId)" title="复制 Trace ID">
+              <i class="fa fa-copy"></i>
+            </button>
+          </template>
+          <template #empty>
+            <div class="py-4">
+              <i class="fa fa-info-circle fa-2x mb-2"></i>
+              <p class="mb-0">{{ emptyNoMatchMessage(hours) }}</p>
+              <p class="small mb-0 mt-1">{{ EMPTY_HINT_RELAX }}</p>
+            </div>
+          </template>
+        </SiDataTable>
       </div>
     </div>
   </div>
@@ -211,9 +191,11 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
+import SiDataTable from '../components/SiDataTable.vue'
 import SiFilterBar from '../components/SiFilterBar.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
+import type { SiColumn } from '../components/siTable'
 import { formatDuration } from '../utils/traceTimeline'
 import {
   emptyNoMatchMessage,
@@ -396,6 +378,44 @@ const viewTraceDetail = (traceId: string) => {
   router.push({ name: 'trace-detail', params: { traceId }, query: route.query })
 }
 
+type TraceRow = Record<string, any>
+
+const traceColumns: SiColumn<TraceRow>[] = [
+  { key: 'check', label: '', headerClass: 'si-trace-col-check', cellClass: 'si-trace-check', stopRowClick: true },
+  { key: 'operation', label: '请求', headerClass: 'si-trace-col-op', cellClass: 'si-trace-op' },
+  { key: 'duration', label: '耗时', headerClass: 'si-trace-col-dur', cellClass: 'si-trace-dur' },
+  { key: 'status', label: '状态', headerClass: 'si-trace-col-status', cellClass: 'si-trace-status' },
+  {
+    key: 'service',
+    label: '服务',
+    headerClass: 'si-trace-col-svc',
+    cellClass: 'text-truncate si-trace-service',
+    value: (row) => row.serviceName || '—',
+    title: (row) => (row.serviceName ? String(row.serviceName) : undefined)
+  },
+  {
+    key: 'time',
+    label: '时间',
+    headerClass: 'si-trace-col-time',
+    cellClass: 'si-trace-time',
+    value: (row) => formatTime(row.startTime)
+  },
+  { key: 'act', label: '', headerClass: 'si-trace-col-act', cellClass: 'si-trace-act', stopRowClick: true }
+]
+
+const traceRowKey = (row: TraceRow, index: number) => `${row.traceId}-${index}`
+
+const traceRowClass = (row: TraceRow) =>
+  isSelected(row.traceId) ? 'fade-in si-trace-row si-trace-row--selected' : 'fade-in si-trace-row'
+
+const traceRowStyle = (_row: TraceRow, index: number) => ({
+  animationDelay: `${Math.min(index, 20) * 0.03}s`
+})
+
+const onTraceRowClick = (row: TraceRow) => {
+  viewTraceDetail(String(row.traceId || ''))
+}
+
 const copyTraceId = async (traceId: string) => {
   try {
     await navigator.clipboard.writeText(traceId)
@@ -464,19 +484,19 @@ onUnmounted(() => {
   user-select: none;
 }
 
-.si-trace-row {
+:deep(.si-trace-row) {
   cursor: pointer;
 }
 
-.si-trace-row--selected {
+:deep(.si-trace-row--selected) {
   background: var(--si-hover-teal);
 }
 
-.si-trace-col-check {
+:deep(.si-trace-col-check) {
   width: 2.25rem;
 }
 
-.si-trace-check {
+:deep(.si-trace-check) {
   vertical-align: middle;
 }
 
@@ -509,31 +529,31 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.si-trace-col-op {
+:deep(.si-trace-col-op) {
   width: 40%;
 }
 
-.si-trace-col-dur {
+:deep(.si-trace-col-dur) {
   width: 11rem;
 }
 
-.si-trace-col-status {
+:deep(.si-trace-col-status) {
   width: 5.5rem;
 }
 
-.si-trace-col-svc {
+:deep(.si-trace-col-svc) {
   width: 18%;
 }
 
-.si-trace-col-time {
+:deep(.si-trace-col-time) {
   width: 9.5rem;
 }
 
-.si-trace-col-act {
+:deep(.si-trace-col-act) {
   width: 3.25rem;
 }
 
-.si-trace-op {
+:deep(.si-trace-op) {
   /* 勿对 td 设 display:flex，否则 border-collapse/行高错位 */
   min-width: 0;
   max-width: 100%;
@@ -564,7 +584,7 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.si-trace-dur {
+:deep(.si-trace-dur) {
   white-space: nowrap;
 }
 
@@ -573,18 +593,18 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.si-trace-service {
+:deep(.si-trace-service) {
   max-width: none;
 }
 
-.si-trace-time {
+:deep(.si-trace-time) {
   font-size: 0.82rem;
   color: var(--si-muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
-.si-trace-act {
+:deep(.si-trace-act) {
   text-align: right;
   width: 3.25rem;
 }
