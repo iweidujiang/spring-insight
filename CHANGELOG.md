@@ -20,6 +20,7 @@
 ### 变更
 - **SQLite 索引**：`spans` 增加按开始时间与服务、错误、组件的复合索引，便于时间窗筛选
 - **服务级预聚合**：`SpanStore.aggregateSnapshot` 在 SQLite 用分组查询汇总条数、错误、平均/最大耗时和分位数，不必先把全部 Span 载入内存
+- **聚合查询**：`GET /api/v1/ui/spans/aggregate` 按时间窗返回各服务的条数、错误和耗时分位
 
 ### 兼容
 - 已有 sqlite 库会自动补 `error`、`component` 列；推荐配套 Agent 仍为 **`0.5.0`**

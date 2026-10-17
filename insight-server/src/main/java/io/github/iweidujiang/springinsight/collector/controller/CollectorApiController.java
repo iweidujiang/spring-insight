@@ -5,6 +5,7 @@ import io.github.iweidujiang.springinsight.server.config.InsightServerStoragePro
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import io.github.iweidujiang.springinsight.storage.service.TroubleshootPackExportService;
+import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -39,17 +40,20 @@ public class CollectorApiController {
     private final InsightServerStorageProperties storageProperties;
     private final TraceContextExportService traceContextExportService;
     private final TroubleshootPackExportService troubleshootPackExportService;
+    private final SpanStore spanStore;
 
     public CollectorApiController(TraceSpanPersistenceService traceSpanPersistenceService,
                                   TraceSpanCollectorService traceSpanCollectorService,
                                   InsightServerStorageProperties storageProperties,
                                   TraceContextExportService traceContextExportService,
-                                  TroubleshootPackExportService troubleshootPackExportService) {
+                                  TroubleshootPackExportService troubleshootPackExportService,
+                                  SpanStore spanStore) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.storageProperties = storageProperties;
         this.traceContextExportService = traceContextExportService;
         this.troubleshootPackExportService = troubleshootPackExportService;
+        this.spanStore = spanStore;
     }
 
     /**
@@ -117,6 +121,27 @@ public class CollectorApiController {
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             log.error("获取服务统计失败", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 服务级 Span 聚合。时间窗内按服务汇总条数、错误和耗时，不把全部 Span 载入响应。
+     *
+     * @param hours   时间窗小时；默认 1。小于等于 0 表示不设下界
+     * @param service 可选服务名；空白表示全部服务
+     * @return 每个服务一行
+     */
+    @GetMapping("/spans/aggregate")
+    public ResponseEntity<?> aggregateSpans(
+            @RequestParam(value = "hours", defaultValue = "1") int hours,
+            @RequestParam(value = "service", required = false) String service) {
+        try {
+            long since = hours <= 0 ? 0L : Instant.now().minus(hours, ChronoUnit.HOURS).toEpochMilli();
+            String filter = service == null || service.isBlank() ? null : service.trim();
+            return ResponseEntity.ok(spanStore.aggregateSnapshot(since, filter));
+        } catch (Exception e) {
+            log.error("获取服务级聚合失败", e);
             return ResponseEntity.internalServerError().build();
         }
     }
