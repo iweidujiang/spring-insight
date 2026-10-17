@@ -12,8 +12,8 @@
       </div>
     </header>
 
-    <div v-if="hint" class="alert alert-warning py-2 mb-3" role="alert">{{ hint }}</div>
-    <div v-if="loadError" class="alert alert-danger py-2 mb-3" role="alert">{{ loadError }}</div>
+    <SiAlert v-if="hint" tone="warning" role="alert" class="mb-3">{{ hint }}</SiAlert>
+    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
 
     <div v-if="loading" class="si-compare__loading">
       <i class="fa fa-spinner fa-spin"></i><span class="ms-2">加载对比数据…</span>
@@ -124,6 +124,7 @@
 import { computed, defineComponent, h, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiService } from '../services/ApiService'
+import SiAlert from '../components/SiAlert.vue'
 import {
   buildOpDurationDiff,
   buildTraceTimeline,

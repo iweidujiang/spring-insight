@@ -1,16 +1,11 @@
 <template>
   <div class="si-page fade-in si-topo-page">
-    <div class="si-page__header">
-      <div>
-        <h2 class="page-title mb-1">
-          <i class="fa fa-sitemap me-2"></i>服务拓扑图
-        </h2>
-        <p class="page-description mb-0">
-          {{ isSolo
-            ? '当前只有一个应用、还没有跨服务调用。'
-            : '箭头：调用方 → 被调用方；点击节点或调用链路先选中，再从旁栏下钻' }}
-        </p>
-      </div>
+    <SiPageHeader title="服务拓扑图" icon="fa-sitemap">
+      <template #description>
+        {{ isSolo
+          ? '当前只有一个应用、还没有跨服务调用。'
+          : '箭头：调用方 → 被调用方；点击节点或调用链路先选中，再从旁栏下钻' }}
+      </template>
       <SiFilterBar
         v-model:hours="hours"
         :show-service="false"
@@ -31,15 +26,12 @@
           <i class="fa fa-clock me-1"></i>{{ currentTime }}
         </span>
       </SiFilterBar>
-    </div>
+    </SiPageHeader>
 
-    <div v-if="loadError" class="alert alert-danger py-2 mb-3" role="alert">{{ loadError }}</div>
-    <div v-if="deeplinkHint" class="alert alert-warning py-2 mb-3" role="status">{{ deeplinkHint }}</div>
+    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
+    <SiAlert v-if="deeplinkHint" tone="warning" class="mb-3">{{ deeplinkHint }}</SiAlert>
 
-    <div v-if="loading" class="loading-spinner">
-      <i class="fa fa-spinner fa-spin"></i>
-      <span class="ms-2">正在加载拓扑数据...</span>
-    </div>
+    <SiLoading v-if="loading" text="正在加载拓扑数据..." />
 
     <div v-else-if="isSolo" class="si-topo-solo">
       <section class="si-topo-solo__hero">
@@ -274,7 +266,10 @@ import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
+import SiAlert from '../components/SiAlert.vue'
 import SiFilterBar from '../components/SiFilterBar.vue'
+import SiLoading from '../components/SiLoading.vue'
+import SiPageHeader from '../components/SiPageHeader.vue'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { useChartTheme } from '../composables/useChartTheme'

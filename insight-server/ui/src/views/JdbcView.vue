@@ -1,14 +1,9 @@
 <template>
   <div class="si-page fade-in si-jdbc-page">
-    <div class="si-page__header">
-      <div>
-        <h2 class="page-title mb-1">
-          <i class="fa fa-database me-2"></i>数据库
-        </h2>
-        <p class="page-description mb-0">
-          JDBC 出站调用汇总，可在此查看慢 SQL / 错误
-        </p>
-      </div>
+    <SiPageHeader title="数据库" icon="fa-database">
+      <template #description>
+        JDBC 出站调用汇总，可在此查看慢 SQL / 错误
+      </template>
       <SiFilterBar
         v-model:service="selectedService"
         v-model:hours="hours"
@@ -20,7 +15,7 @@
         @hours-change="onHoursChange"
         @refresh="load"
       />
-    </div>
+    </SiPageHeader>
 
     <p class="si-jdbc-hint">
       <i class="fa fa-info-circle me-1"></i>
@@ -28,12 +23,9 @@
       <template v-if="selectedService"> · 服务 {{ selectedService }}</template>
     </p>
 
-    <div v-if="loadError" class="alert alert-danger py-2 mb-3" role="alert">{{ loadError }}</div>
+    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
 
-    <div v-if="loading" class="loading-spinner">
-      <i class="fa fa-spinner fa-spin"></i>
-      <span class="ms-2">正在加载 JDBC 汇总…</span>
-    </div>
+    <SiLoading v-if="loading" text="正在加载 JDBC 汇总…" />
 
     <template v-else-if="summary">
       <section class="si-jdbc-kpis" aria-label="关键指标">
@@ -63,8 +55,7 @@
         </div>
       </section>
 
-      <div v-if="summary.kpis.spanCount === 0" class="si-jdbc-empty">
-        <i class="fa fa-database"></i>
+      <SiEmpty v-if="summary.kpis.spanCount === 0" icon="fa-database">
         <p class="mb-1">{{ emptyInRangeShort(hours, 'JDBC 调用') }}</p>
         <p v-if="selectedService" class="small text-muted mb-2">
           当前按业务服务「{{ selectedService }}」筛选。JDBC Span 记在<strong>执行 SQL 的服务</strong>上
@@ -82,7 +73,7 @@
         >
           查看全部服务
         </button>
-      </div>
+      </SiEmpty>
 
       <template v-else>
         <SiSection title="按数据库" icon="fa-server" :count="summary.byRemote.length" label="按库聚合">
@@ -127,8 +118,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
+import SiEmpty from '../components/SiEmpty.vue'
 import SiFilterBar from '../components/SiFilterBar.vue'
+import SiLoading from '../components/SiLoading.vue'
+import SiPageHeader from '../components/SiPageHeader.vue'
 import SiSection from '../components/SiSection.vue'
 import SiStatusBadge from '../components/SiStatusBadge.vue'
 import type { SiColumn } from '../components/siTable'
@@ -346,20 +341,6 @@ onMounted(async () => {
   font-weight: 500;
   font-size: 0.9em;
   color: var(--si-muted, #6b7f76);
-}
-
-.si-jdbc-empty {
-  text-align: center;
-  padding: 2.5rem 1rem;
-  color: var(--si-muted, #6b7f76);
-  border: 1px dashed var(--card-border);
-  border-radius: 0.5rem;
-}
-
-.si-jdbc-empty .fa {
-  font-size: 1.75rem;
-  margin-bottom: 0.75rem;
-  opacity: 0.55;
 }
 
 .si-jdbc-sql-type {

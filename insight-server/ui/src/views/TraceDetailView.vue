@@ -69,15 +69,12 @@
       </div>
     </div>
 
-    <div v-if="copyHint" class="alert alert-success py-2 mb-3" role="status">{{ copyHint }}</div>
-    <div v-if="explainHint" class="alert alert-warning py-2 mb-3" role="status">{{ explainHint }}</div>
-    <div v-if="loadError" class="alert alert-danger py-2 mb-3" role="alert">{{ loadError }}</div>
-    <div v-if="deeplinkHint" class="alert alert-warning py-2 mb-3" role="status">{{ deeplinkHint }}</div>
+    <SiAlert v-if="copyHint" tone="success" class="mb-3">{{ copyHint }}</SiAlert>
+    <SiAlert v-if="explainHint" tone="warning" class="mb-3">{{ explainHint }}</SiAlert>
+    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
+    <SiAlert v-if="deeplinkHint" tone="warning" class="mb-3">{{ deeplinkHint }}</SiAlert>
 
-    <div v-if="loading" class="loading-spinner">
-      <i class="fa fa-spinner fa-spin"></i>
-      <span class="ms-2">加载中...</span>
-    </div>
+    <SiLoading v-if="loading" text="加载中..." />
 
     <template v-else>
       <div v-if="spans.length === 0" class="card stat-card">
@@ -278,6 +275,8 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
+import SiAlert from '../components/SiAlert.vue'
+import SiLoading from '../components/SiLoading.vue'
 import {
   buildTraceTimeline,
   formatDuration,

@@ -39,8 +39,8 @@
     <div v-if="loading" class="si-svc-detail__loading">
       <i class="fa fa-spinner fa-spin"></i><span class="ms-2">加载中…</span>
     </div>
-    <div v-if="loadError" class="alert alert-danger py-2 mb-3" role="alert">{{ loadError }}</div>
-    <div v-else-if="!loading && deeplinkHint" class="alert alert-warning py-2 mb-3" role="alert">{{ deeplinkHint }}</div>
+    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
+    <SiAlert v-else-if="!loading && deeplinkHint" tone="warning" role="alert" class="mb-3">{{ deeplinkHint }}</SiAlert>
 
     <template v-if="!loading && summary">
       <section class="si-svc-detail__kpis" aria-label="关键指标">
@@ -198,6 +198,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiService } from '../services/ApiService'
+import SiAlert from '../components/SiAlert.vue'
 import { formatDuration } from '../utils/traceTimeline'
 import { TIME_RANGE_OPTIONS, emptyRequestsMessage } from '../utils/timeRange'
 import { resolveHours, persistHours, persistService, mergeQuery } from '../utils/insightQuery'

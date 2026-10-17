@@ -1,20 +1,15 @@
 <template>
   <div class="si-page fade-in">
-    <div class="si-page__header">
-      <div>
-        <h2 class="page-title mb-1">
-          <i class="fa fa-list-ul me-2"></i>链路追踪
-        </h2>
-        <p class="page-description mb-0">
-          一行 = 一次请求（一个 TraceId）。点整行看详情；勾选两条可对比
-        </p>
-      </div>
+    <SiPageHeader title="链路追踪" icon="fa-list-ul">
+      <template #description>
+        一行 = 一次请求（一个 TraceId）。点整行看详情；勾选两条可对比
+      </template>
       <div class="si-page__toolbar">
         <span class="badge bg-info">
           <i class="fa fa-clock me-1"></i>{{ currentTime }}
         </span>
       </div>
-    </div>
+    </SiPageHeader>
 
     <SiFilterBar
       layout="fields"
@@ -92,15 +87,12 @@
       </template>
     </SiFilterBar>
 
-    <div v-if="copyHint" class="alert alert-success py-2 si-copy-hint" role="status">
+    <SiAlert v-if="copyHint" tone="success" class="si-copy-hint">
       {{ copyHint }}
-    </div>
-    <div v-if="loadError" class="alert alert-danger py-2 mb-3" role="alert">{{ loadError }}</div>
+    </SiAlert>
+    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
 
-    <div v-if="loading" class="loading-spinner">
-      <i class="fa fa-spinner fa-spin"></i>
-      <span class="ms-2">正在加载链路数据...</span>
-    </div>
+    <SiLoading v-if="loading" text="正在加载链路数据..." />
 
     <div v-else class="card stat-card si-table-panel">
       <div class="card-body">
@@ -218,7 +210,10 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ApiService } from '../services/ApiService'
+import SiAlert from '../components/SiAlert.vue'
 import SiFilterBar from '../components/SiFilterBar.vue'
+import SiLoading from '../components/SiLoading.vue'
+import SiPageHeader from '../components/SiPageHeader.vue'
 import { formatDuration } from '../utils/traceTimeline'
 import {
   emptyNoMatchMessage,

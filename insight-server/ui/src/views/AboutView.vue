@@ -1,18 +1,13 @@
 <template>
   <div class="si-page fade-in si-about">
-    <div class="si-page__header mb-1">
-      <div>
-        <h2 class="page-title mb-1">
-          <i class="fa fa-info-circle me-2"></i>关于
-        </h2>
-        <p class="page-description mb-0">
-          基本信息与演示路径 · 推荐配套 Agent {{ agentVersion }}
-        </p>
-      </div>
+    <SiPageHeader class="mb-1" title="关于" icon="fa-info-circle">
+      <template #description>
+        基本信息与演示路径 · 推荐配套 Agent {{ agentVersion }}
+      </template>
       <span class="badge bg-info">
         <i class="fa fa-clock me-1"></i>{{ currentTime }}
       </span>
-    </div>
+    </SiPageHeader>
 
     <div class="si-about__info">
       <div class="card stat-card si-about__card">
@@ -94,6 +89,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import axios from 'axios'
+import SiPageHeader from '../components/SiPageHeader.vue'
 
 const currentTime = ref('')
 const buildTime = ref('')

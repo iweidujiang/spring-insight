@@ -36,7 +36,7 @@
       <span class="ms-2">加载中…</span>
     </div>
 
-    <div v-if="loadError" class="alert alert-danger py-2 mx-3 mb-0" role="alert">{{ loadError }}</div>
+    <SiAlert v-if="loadError" tone="danger" class="mx-3 mb-0">{{ loadError }}</SiAlert>
 
     <div v-show="!loading" class="si-dashboard__content">
       <section class="si-dashboard__kpis" aria-label="关键指标">
@@ -398,6 +398,7 @@ import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
+import SiAlert from '../components/SiAlert.vue'
 import { ApiService, type AiExplainResult, type PeriodInsight, type PeriodInsightLink } from '../services/ApiService'
 import { formatDuration } from '../utils/traceTimeline'
 import { useChartTheme } from '../composables/useChartTheme'

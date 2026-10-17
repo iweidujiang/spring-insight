@@ -1,19 +1,14 @@
 <template>
   <div class="si-page fade-in si-settings">
-    <div class="si-page__header mb-3">
-      <div>
-        <h2 class="page-title mb-1">
-          <i class="fa fa-cog me-2"></i>设置
-        </h2>
-        <p class="page-description mb-0">
-          告警推送、链路 AI 解读与容量保留
-          <template v-if="section !== 'data'">
-            · 保存后即时生效，写入
-            <code v-if="settingsPath">{{ settingsPath }}</code>
-            <span v-else>runtime-settings.json</span>
-          </template>
-        </p>
-      </div>
+    <SiPageHeader class="mb-3" title="设置" icon="fa-cog">
+      <template #description>
+        告警推送、链路 AI 解读与容量保留
+        <template v-if="section !== 'data'">
+          · 保存后即时生效，写入
+          <code v-if="settingsPath">{{ settingsPath }}</code>
+          <span v-else>runtime-settings.json</span>
+        </template>
+      </template>
       <button
         v-if="section !== 'data'"
         type="button"
@@ -24,7 +19,7 @@
         <i class="fa" :class="saving ? 'fa-spinner fa-spin' : 'fa-save'"></i>
         {{ saving ? '保存中…' : '保存并生效' }}
       </button>
-    </div>
+    </SiPageHeader>
 
     <div v-if="message" class="alert" :class="messageOk ? 'alert-success' : 'alert-danger'" role="status">
       {{ message }}
@@ -449,6 +444,7 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import SiFormBlock from '../components/SiFormBlock.vue'
 import SiFormField from '../components/SiFormField.vue'
+import SiPageHeader from '../components/SiPageHeader.vue'
 import SiSwitchField from '../components/SiSwitchField.vue'
 import { ApiService, type RuntimeSettingsSaveBody } from '../services/ApiService'
 import { capacityWarnMessage } from '../utils/timeRange'
