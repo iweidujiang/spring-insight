@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.storage.spi.ServiceAggregate;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
 import lombok.extern.slf4j.Slf4j;
 
@@ -83,6 +84,11 @@ public class FileSpanStore implements SpanStore {
     @Override
     public List<TraceSpan> snapshot() {
         return memory.snapshot();
+    }
+
+    @Override
+    public List<ServiceAggregate> aggregateSnapshot(long sinceEpoch, String service) {
+        return memory.aggregateSnapshot(sinceEpoch, service);
     }
 
     @Override

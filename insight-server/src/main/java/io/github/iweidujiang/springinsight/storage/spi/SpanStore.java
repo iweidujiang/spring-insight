@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.storage.spi;
 
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
+import org.springframework.lang.Nullable;
 
 import java.util.List;
 
@@ -51,6 +52,15 @@ public interface SpanStore {
      * @return 不可与内部缓冲共享的列表
      */
     List<TraceSpan> snapshot();
+
+    /**
+     * 按服务聚合时间窗内的 Span。不返回原始 Span。
+     *
+     * @param sinceEpoch 开始时间下界（毫秒，含）；{@code <=0} 表示不限
+     * @param service    服务名；空则全部服务
+     * @return 按服务名排序的聚合行
+     */
+    List<ServiceAggregate> aggregateSnapshot(long sinceEpoch, @Nullable String service);
 
     /**
      * @return 当前持有条数

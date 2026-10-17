@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.storage.impl;
 
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.storage.spi.ServiceAggregate;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
 
 import java.time.Instant;
@@ -102,6 +103,13 @@ public class InMemorySpanStore implements SpanStore {
     public List<TraceSpan> snapshot() {
         synchronized (lock) {
             return spans.stream().map(TraceSpan::snapshot).collect(Collectors.toList());
+        }
+    }
+
+    @Override
+    public List<ServiceAggregate> aggregateSnapshot(long sinceEpoch, String service) {
+        synchronized (lock) {
+            return ServiceAggregateCalculator.fromSpans(spans, sinceEpoch, service);
         }
     }
 

@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.storage.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.storage.spi.ServiceAggregate;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,7 +18,9 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -71,11 +74,13 @@ public class SqliteSpanStore implements SpanStore {
                       start_time INTEGER NOT NULL DEFAULT 0,
                       payload TEXT NOT NULL,
                       error INTEGER NOT NULL DEFAULT 0,
-                      component TEXT
+                      component TEXT,
+                      duration_ms INTEGER NOT NULL DEFAULT 0
                     )
                     """);
             addColumnIfMissing(st, "ALTER TABLE spans ADD COLUMN error INTEGER NOT NULL DEFAULT 0");
             addColumnIfMissing(st, "ALTER TABLE spans ADD COLUMN component TEXT");
+            addColumnIfMissing(st, "ALTER TABLE spans ADD COLUMN duration_ms INTEGER NOT NULL DEFAULT 0");
             st.execute("CREATE INDEX IF NOT EXISTS idx_spans_trace ON spans(trace_id)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_spans_start ON spans(start_time)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_spans_service ON spans(service_name)");
@@ -114,8 +119,8 @@ public class SqliteSpanStore implements SpanStore {
             try {
                 connection.setAutoCommit(false);
                 String sql = """
-                        INSERT INTO spans(trace_id, span_id, service_name, start_time, payload, error, component)
-                        VALUES (?,?,?,?,?,?,?)
+                        INSERT INTO spans(trace_id, span_id, service_name, start_time, payload, error, component, duration_ms)
+                        VALUES (?,?,?,?,?,?,?,?)
                         """;
                 try (PreparedStatement ps = connection.prepareStatement(sql)) {
                     for (TraceSpan span : spans) {
@@ -128,8 +133,9 @@ public class SqliteSpanStore implements SpanStore {
                         ps.setString(3, copy.getServiceName());
                         ps.setLong(4, n(copy.getStartTime()));
                         ps.setString(5, objectMapper.writeValueAsString(copy));
-                        ps.setInt(6, isError(copy) ? 1 : 0);
+                        ps.setInt(6, ServiceAggregateCalculator.isError(copy) ? 1 : 0);
                         ps.setString(7, copy.getComponent());
+                        ps.setLong(8, ServiceAggregateCalculator.durationOf(copy));
                         ps.addBatch();
                         added++;
                     }
@@ -251,6 +257,83 @@ public class SqliteSpanStore implements SpanStore {
     }
 
     @Override
+    public List<ServiceAggregate> aggregateSnapshot(long sinceEpoch, String service) {
+        String filter = service == null ? "" : service.trim();
+        synchronized (lock) {
+            Map<String, long[]> stats = new LinkedHashMap<>();
+            String summarySql = """
+                    SELECT COALESCE(service_name, ''),
+                           COUNT(*),
+                           SUM(CASE WHEN error != 0 THEN 1 ELSE 0 END),
+                           COALESCE(SUM(duration_ms), 0),
+                           COALESCE(MAX(duration_ms), 0)
+                    FROM spans
+                    WHERE start_time >= ?
+                    """ + (filter.isEmpty() ? "" : " AND service_name = ? ") + """
+                    GROUP BY COALESCE(service_name, '')
+                    """;
+            try (PreparedStatement ps = connection.prepareStatement(summarySql)) {
+                ps.setLong(1, Math.max(0L, sinceEpoch));
+                if (!filter.isEmpty()) {
+                    ps.setString(2, filter);
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        stats.put(rs.getString(1), new long[]{
+                                rs.getLong(2),
+                                rs.getLong(3),
+                                rs.getLong(4),
+                                rs.getLong(5)
+                        });
+                    }
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("SQLite 聚合失败: " + e.getMessage(), e);
+            }
+
+            Map<String, List<Long>> durations = new LinkedHashMap<>();
+            String durationSql = """
+                    SELECT COALESCE(service_name, ''), duration_ms
+                    FROM spans
+                    WHERE start_time >= ?
+                    """ + (filter.isEmpty() ? "" : " AND service_name = ? ") + """
+                    ORDER BY 1, duration_ms
+                    """;
+            try (PreparedStatement ps = connection.prepareStatement(durationSql)) {
+                ps.setLong(1, Math.max(0L, sinceEpoch));
+                if (!filter.isEmpty()) {
+                    ps.setString(2, filter);
+                }
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        durations.computeIfAbsent(rs.getString(1), key -> new ArrayList<>()).add(rs.getLong(2));
+                    }
+                }
+            } catch (SQLException e) {
+                throw new IllegalStateException("SQLite 分位数查询失败: " + e.getMessage(), e);
+            }
+
+            List<ServiceAggregate> rows = new ArrayList<>();
+            for (Map.Entry<String, long[]> entry : stats.entrySet()) {
+                long[] row = entry.getValue();
+                long count = row[0];
+                double avg = count == 0 ? 0.0 : Math.round((row[2] / (double) count) * 100.0) / 100.0;
+                List<Long> sorted = durations.getOrDefault(entry.getKey(), List.of());
+                rows.add(new ServiceAggregate(
+                        entry.getKey(),
+                        count,
+                        row[1],
+                        avg,
+                        row[3],
+                        ServiceAggregateCalculator.percentile(sorted, 0.50),
+                        ServiceAggregateCalculator.percentile(sorted, 0.95)));
+            }
+            rows.sort(java.util.Comparator.comparing(ServiceAggregate::serviceName));
+            return rows;
+        }
+    }
+
+    @Override
     public int size() {
         synchronized (lock) {
             return sizeUnlocked();
@@ -352,10 +435,4 @@ public class SqliteSpanStore implements SpanStore {
         return v != null ? v : 0L;
     }
 
-    private static boolean isError(TraceSpan span) {
-        if ("ERROR".equalsIgnoreCase(span.getStatusCode())) {
-            return true;
-        }
-        return Boolean.FALSE.equals(span.getSuccess());
-    }
 }
