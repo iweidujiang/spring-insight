@@ -4,7 +4,7 @@ import { TIME_RANGE_OPTIONS } from '../utils/timeRange'
 
 const props = withDefaults(
   defineProps<{
-    service: string
+    service?: string
     hours: number
     services?: readonly string[]
     loading?: boolean
@@ -16,6 +16,7 @@ const props = withDefaults(
     allServicesLabel?: string
   }>(),
   {
+    service: '',
     services: () => [],
     loading: false,
     showService: true,

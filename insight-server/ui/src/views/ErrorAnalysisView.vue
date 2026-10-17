@@ -9,35 +9,32 @@
           按服务、HTTP 状态码与异常类聚合；点整行可下钻到异常链路
         </p>
       </div>
-      <div class="si-page__toolbar">
-        <label class="form-label mb-0 visually-hidden" for="hours-select-err">时间范围</label>
-        <select
-          id="hours-select-err"
-          class="form-select form-select-sm si-err-hours"
-          v-model.number="hours"
-          @change="onHoursChange"
-        >
-          <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-        </select>
-        <button
-          class="btn btn-sm btn-outline-primary"
-          @click="onExplainErrors"
-          :disabled="loading || explaining || !hasErrors || !aiReady"
-          :title="aiReady ? (aiStatusReason || '用当前聚合摘要调用 AI') : (aiStatusReason || '请先在设置中启用 AI 并配置密钥')"
-        >
-          <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
-          {{ explaining ? '解读中…' : '一键解读' }}
-        </button>
-        <button class="btn btn-sm btn-primary" @click="loadData" :disabled="loading">
-          <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
-        </button>
+      <SiFilterBar
+        v-model:hours="hours"
+        :show-service="false"
+        :loading="loading"
+        hours-id="hours-select-err"
+        @hours-change="onHoursChange"
+        @refresh="loadData"
+      >
+        <template #leading>
+          <button
+            class="btn btn-sm btn-outline-primary"
+            @click="onExplainErrors"
+            :disabled="loading || explaining || !hasErrors || !aiReady"
+            :title="aiReady ? (aiStatusReason || '用当前聚合摘要调用 AI') : (aiStatusReason || '请先在设置中启用 AI 并配置密钥')"
+          >
+            <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
+            {{ explaining ? '解读中…' : '一键解读' }}
+          </button>
+        </template>
         <button class="btn btn-sm btn-outline-secondary" @click="downloadErrorData" :disabled="loading || !hasErrors">
           <i class="fa fa-download"></i> 导出
         </button>
         <span class="badge bg-info">
           <i class="fa fa-clock me-1"></i>{{ currentTime }}
         </span>
-      </div>
+      </SiFilterBar>
     </div>
 
     <p class="si-err-hint-line">
@@ -281,8 +278,9 @@ import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
+import SiFilterBar from '../components/SiFilterBar.vue'
 import { useChartTheme } from '../composables/useChartTheme'
-import { TIME_RANGE_OPTIONS, formatHoursLabel, loadFailedMessage } from '../utils/timeRange'
+import { formatHoursLabel, loadFailedMessage } from '../utils/timeRange'
 import { mergeQuery, persistHours, resolveHours } from '../utils/insightQuery'
 
 const route = useRoute()
@@ -572,11 +570,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.si-err-hours {
-  min-width: 9.5rem;
-  width: auto;
-}
-
 .si-err-hint-line {
   margin: -0.35rem 0 0.85rem;
   font-size: 0.78rem;
