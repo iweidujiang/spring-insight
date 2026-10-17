@@ -27,6 +27,7 @@ withDefaults(
       <slot name="hint" />
     </label>
     <slot />
+    <slot name="note" />
   </div>
 </template>
 

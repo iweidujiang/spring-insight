@@ -192,10 +192,7 @@
                 对接 OpenAI 兼容接口。解读含摘要、可点证据与建议；可选在告警推送时附带短解读。
               </p>
             </div>
-            <div class="form-check form-switch mb-0">
-              <input id="ai-enabled" v-model="form.ai.enabled" class="form-check-input" type="checkbox" />
-              <label class="form-check-label" for="ai-enabled">启用 AI</label>
-            </div>
+            <SiSwitchField id="ai-enabled" v-model="form.ai.enabled" label="启用 AI" flush />
           </header>
 
           <div
@@ -217,23 +214,19 @@
           </div>
 
           <div class="si-settings__fields">
-            <div class="si-settings__field">
-              <label class="form-label" for="ai-provider">Provider</label>
+            <SiFormField label="Provider" field-id="ai-provider">
               <input id="ai-provider" v-model="form.ai.provider" class="form-control" placeholder="openai-compatible" />
-            </div>
-            <div class="si-settings__field">
-              <label class="form-label" for="ai-model">Model</label>
+            </SiFormField>
+            <SiFormField label="Model" field-id="ai-model">
               <input id="ai-model" v-model="form.ai.model" class="form-control" placeholder="deepseek-chat" />
-            </div>
-            <div class="si-settings__field si-settings__field--full">
-              <label class="form-label" for="ai-base">Base URL</label>
+            </SiFormField>
+            <SiFormField label="Base URL" field-id="ai-base" span="full">
               <input id="ai-base" v-model="form.ai.baseUrl" class="form-control" placeholder="https://api.deepseek.com/v1" />
-            </div>
-            <div class="si-settings__field si-settings__field--full">
-              <label class="form-label" for="ai-key">
-                API Key
-                <span v-if="apiKeyConfigured" class="text-muted small">（已配置，留空不改）</span>
-              </label>
+            </SiFormField>
+            <SiFormField label="API Key" field-id="ai-key" span="full">
+              <template v-if="apiKeyConfigured" #hint>
+                <span class="text-muted small">（已配置，留空不改）</span>
+              </template>
               <input
                 id="ai-key"
                 v-model="form.ai.apiKey"
@@ -242,28 +235,23 @@
                 autocomplete="new-password"
                 :placeholder="apiKeyConfigured ? '••••••••' : ''"
               />
-            </div>
-            <div class="si-settings__field">
-              <label class="form-label" for="ai-timeout">超时（ms）</label>
+            </SiFormField>
+            <SiFormField label="超时（ms）" field-id="ai-timeout">
               <input id="ai-timeout" v-model.number="form.ai.timeoutMs" class="form-control" type="number" min="1000" />
-            </div>
-            <div class="si-settings__field">
-              <label class="form-label" for="ai-spans">最大输入 Span</label>
+            </SiFormField>
+            <SiFormField label="最大输入 Span" field-id="ai-spans">
               <input id="ai-spans" v-model.number="form.ai.maxInputSpans" class="form-control" type="number" min="1" />
-            </div>
-            <div class="si-settings__field">
-              <label class="form-label" for="ai-tokens">maxTokens</label>
+            </SiFormField>
+            <SiFormField label="maxTokens" field-id="ai-tokens">
               <input id="ai-tokens" v-model.number="form.ai.maxTokens" class="form-control" type="number" min="64" />
-            </div>
-            <div class="si-settings__field si-settings__field--full">
-              <div class="form-check form-switch">
-                <input id="ai-attach-alerts" v-model="form.ai.attachToAlerts" class="form-check-input" type="checkbox" />
-                <label class="form-check-label" for="ai-attach-alerts">告警附带 AI 解读</label>
-              </div>
-              <p class="form-text mb-0">开启后，Webhook / 邮件会附带短摘要与建议（须同时启用 AI；失败不阻断推送）。</p>
-            </div>
-            <div class="si-settings__field">
-              <label class="form-label" for="ai-alert-max">告警 AI 每小时上限</label>
+            </SiFormField>
+            <SiFormField span="full">
+              <SiSwitchField id="ai-attach-alerts" v-model="form.ai.attachToAlerts" label="告警附带 AI 解读" />
+              <template #note>
+                <p class="form-text mb-0">开启后，Webhook / 邮件会附带短摘要与建议（须同时启用 AI；失败不阻断推送）。</p>
+              </template>
+            </SiFormField>
+            <SiFormField label="告警 AI 每小时上限" field-id="ai-alert-max">
               <input
                 id="ai-alert-max"
                 v-model.number="form.ai.alertMaxPerHour"
@@ -272,9 +260,8 @@
                 min="1"
                 :disabled="!form.ai.attachToAlerts"
               />
-            </div>
-            <div class="si-settings__field">
-              <label class="form-label" for="ai-period-max">时段 AI 每小时上限</label>
+            </SiFormField>
+            <SiFormField label="时段 AI 每小时上限" field-id="ai-period-max">
               <input
                 id="ai-period-max"
                 v-model.number="form.ai.periodMaxPerHour"
@@ -282,8 +269,10 @@
                 type="number"
                 min="1"
               />
-              <p class="form-text mb-0">仪表盘「时段摘要 → AI 小结」按钮触发；超出后本小时内降级，不调模型。</p>
-            </div>
+              <template #note>
+                <p class="form-text mb-0">仪表盘「时段摘要 → AI 小结」按钮触发；超出后本小时内降级，不调模型。</p>
+              </template>
+            </SiFormField>
           </div>
           <p class="si-settings__footnote">
             使用 Chat Completions 兼容接口即可对接各类大模型；API Key 仅保存在 Server 本机数据目录。
