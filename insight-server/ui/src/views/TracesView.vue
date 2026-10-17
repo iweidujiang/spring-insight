@@ -16,88 +16,81 @@
       </div>
     </div>
 
-    <div class="card stat-card si-toolbar-card">
-      <div class="card-body">
-        <h5 class="card-title">
-          <i class="fa fa-filter me-2"></i>筛选条件
-        </h5>
-        <div class="row g-3 align-items-end">
-          <div class="col-lg-2 col-md-4 col-sm-6">
-            <label for="service-select" class="form-label">服务</label>
-            <select id="service-select" class="form-select" v-model="selectedService" @change="onFilterChange">
-              <option value="">全部</option>
-              <option v-for="service in services" :key="service" :value="service">
-                {{ service }}
-              </option>
-            </select>
-          </div>
-          <div class="col-lg-2 col-md-4 col-sm-6">
-            <label for="hours-select" class="form-label">时间范围</label>
-            <select id="hours-select" class="form-select" v-model.number="hours" @change="onFilterChange">
-              <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-          </div>
-          <div class="col-lg-2 col-md-4 col-sm-6">
-            <label for="status-select" class="form-label">状态</label>
-            <select id="status-select" class="form-select" v-model="statusFilter" @change="onFilterChange">
-              <option value="all">全部</option>
-              <option value="error">仅异常</option>
-              <option value="ok">仅成功</option>
-            </select>
-          </div>
-          <div class="col-lg-2 col-md-4 col-sm-6">
-            <label for="min-dur-select" class="form-label">最慢起</label>
-            <select id="min-dur-select" class="form-select" v-model.number="minDurationMs" @change="onFilterChange">
-              <option :value="0">不限</option>
-              <option :value="100">≥100ms</option>
-              <option :value="500">≥500ms</option>
-              <option :value="1000">≥1s</option>
-              <option :value="3000">≥3s</option>
-            </select>
-          </div>
-          <div class="col-lg-2 col-md-4 col-sm-6">
-            <label for="path-prefix-input" class="form-label">路径前缀</label>
+    <SiFilterBar
+      layout="fields"
+      :show-refresh="false"
+      v-model:service="selectedService"
+      v-model:hours="hours"
+      :services="services"
+      :loading="loading"
+      service-id="service-select"
+      hours-id="hours-select"
+      service-label="服务"
+      all-services-label="全部"
+      @service-change="onFilterChange"
+      @hours-change="onFilterChange"
+    >
+      <template #fields>
+        <div class="si-filter-bar__field">
+          <label for="status-select" class="form-label">状态</label>
+          <select id="status-select" class="form-select" v-model="statusFilter" @change="onFilterChange">
+            <option value="all">全部</option>
+            <option value="error">仅异常</option>
+            <option value="ok">仅成功</option>
+          </select>
+        </div>
+        <div class="si-filter-bar__field">
+          <label for="min-dur-select" class="form-label">最慢起</label>
+          <select id="min-dur-select" class="form-select" v-model.number="minDurationMs" @change="onFilterChange">
+            <option :value="0">不限</option>
+            <option :value="100">≥100ms</option>
+            <option :value="500">≥500ms</option>
+            <option :value="1000">≥1s</option>
+            <option :value="3000">≥3s</option>
+          </select>
+        </div>
+        <div class="si-filter-bar__field">
+          <label for="path-prefix-input" class="form-label">路径前缀</label>
+          <input
+            id="path-prefix-input"
+            class="form-control"
+            type="search"
+            v-model="pathPrefix"
+            placeholder="留空不限，例 /order"
+            @keyup.enter="onFilterChange"
+            @change="onFilterChange"
+          />
+        </div>
+        <div class="si-filter-bar__field si-filter-bar__field--narrow">
+          <label for="limit-select" class="form-label">数量</label>
+          <select id="limit-select" class="form-select" v-model.number="limit" @change="onFilterChange">
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+            <option :value="100">100</option>
+            <option :value="200">200</option>
+          </select>
+        </div>
+        <div class="si-filter-bar__field si-filter-bar__field--search">
+          <label for="q-input" class="form-label">搜索</label>
+          <div class="d-flex gap-2">
             <input
-              id="path-prefix-input"
+              id="q-input"
               class="form-control"
               type="search"
-              v-model="pathPrefix"
-              placeholder="留空不限，例 /order"
+              v-model="query"
+              placeholder="Trace ID / 服务 / 操作名"
               @keyup.enter="onFilterChange"
-              @change="onFilterChange"
             />
-          </div>
-          <div class="col-lg-1 col-md-4 col-sm-6">
-            <label for="limit-select" class="form-label">数量</label>
-            <select id="limit-select" class="form-select" v-model.number="limit" @change="onFilterChange">
-              <option :value="20">20</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-              <option :value="200">200</option>
-            </select>
-          </div>
-          <div class="col-lg-3 col-md-8 col-sm-12">
-            <label for="q-input" class="form-label">搜索</label>
-            <div class="d-flex gap-2">
-              <input
-                id="q-input"
-                class="form-control"
-                type="search"
-                v-model="query"
-                placeholder="Trace ID / 服务 / 操作名"
-                @keyup.enter="onFilterChange"
-              />
-              <button class="btn btn-primary" @click="onFilterChange" :disabled="loading" title="搜索">
-                <i class="fa fa-search"></i>
-              </button>
-              <button class="btn btn-outline-secondary" @click="resetFilters" :disabled="loading" title="重置">
-                <i class="fa fa-refresh"></i>
-              </button>
-            </div>
+            <button type="button" class="btn btn-primary" @click="onFilterChange" :disabled="loading" title="搜索">
+              <i class="fa fa-search"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @click="resetFilters" :disabled="loading" title="重置">
+              <i class="fa fa-refresh"></i>
+            </button>
           </div>
         </div>
-      </div>
-    </div>
+      </template>
+    </SiFilterBar>
 
     <div v-if="copyHint" class="alert alert-success py-2 si-copy-hint" role="status">
       {{ copyHint }}
@@ -225,9 +218,9 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ApiService } from '../services/ApiService'
+import SiFilterBar from '../components/SiFilterBar.vue'
 import { formatDuration } from '../utils/traceTimeline'
 import {
-  TIME_RANGE_OPTIONS,
   emptyNoMatchMessage,
   EMPTY_HINT_RELAX,
   loadFailedMessage

@@ -9,6 +9,9 @@ const props = withDefaults(
     services?: readonly string[]
     loading?: boolean
     showService?: boolean
+    showRefresh?: boolean
+    /** compact：页头右侧，标签对读屏隐藏。fields：多条件贴在内容上方，标签可见 */
+    layout?: 'compact' | 'fields'
     serviceId?: string
     hoursId?: string
     serviceLabel?: string
@@ -20,6 +23,8 @@ const props = withDefaults(
     services: () => [],
     loading: false,
     showService: true,
+    showRefresh: true,
+    layout: 'compact',
     serviceId: 'si-filter-service',
     hoursId: 'si-filter-hours',
     serviceLabel: '业务服务',
@@ -54,7 +59,7 @@ const hoursModel = computed({
 </script>
 
 <template>
-  <div class="si-page__toolbar si-filter-bar">
+  <div v-if="layout === 'compact'" class="si-page__toolbar si-filter-bar">
     <template v-if="showService">
       <label class="form-label mb-0 visually-hidden" :for="serviceId">{{ serviceLabel }}</label>
       <select
@@ -78,7 +83,47 @@ const hoursModel = computed({
 
     <slot name="leading" />
 
-    <button type="button" class="btn btn-sm btn-primary" :disabled="loading" @click="emit('refresh')">
+    <button
+      v-if="showRefresh"
+      type="button"
+      class="btn btn-sm btn-primary"
+      :disabled="loading"
+      @click="emit('refresh')"
+    >
+      <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i>
+      刷新
+    </button>
+
+    <slot />
+  </div>
+
+  <div v-else class="si-filter-bar si-filter-bar--fields">
+    <div v-if="showService" class="si-filter-bar__field">
+      <label class="form-label" :for="serviceId">{{ serviceLabel }}</label>
+      <select :id="serviceId" v-model="serviceModel" class="form-select">
+        <option value="">{{ allServicesLabel }}</option>
+        <option v-for="name in services" :key="name" :value="name">{{ name }}</option>
+      </select>
+    </div>
+
+    <div class="si-filter-bar__field">
+      <label class="form-label" :for="hoursId">{{ hoursLabel }}</label>
+      <select :id="hoursId" v-model.number="hoursModel" class="form-select">
+        <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
+    </div>
+
+    <slot name="fields" />
+
+    <slot name="leading" />
+
+    <button
+      v-if="showRefresh"
+      type="button"
+      class="btn btn-sm btn-primary"
+      :disabled="loading"
+      @click="emit('refresh')"
+    >
       <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i>
       刷新
     </button>
@@ -91,5 +136,39 @@ const hoursModel = computed({
 .si-filter-bar__control {
   width: auto;
   min-width: 7.5rem;
+}
+
+.si-filter-bar--fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+}
+
+.si-filter-bar__field,
+.si-filter-bar--fields :deep(.si-filter-bar__field) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 9.5rem;
+  min-width: 8.5rem;
+  max-width: 14rem;
+}
+
+.si-filter-bar--fields :deep(.si-filter-bar__field--narrow) {
+  flex: 0 1 6.5rem;
+  min-width: 5.5rem;
+  max-width: 7rem;
+}
+
+.si-filter-bar--fields :deep(.si-filter-bar__field--search) {
+  flex: 2 1 18rem;
+  max-width: 32rem;
+}
+
+.si-filter-bar--fields .form-label,
+.si-filter-bar--fields :deep(.form-label) {
+  margin-bottom: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--si-muted);
 }
 </style>
