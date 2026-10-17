@@ -71,9 +71,9 @@
     </div>
 
     <section class="si-about__demo" aria-label="演示路径">
-      <div class="si-about__features-head">
+      <div class="si-about__demo-head">
         <h5 class="mb-0"><i class="fa fa-play-circle me-2"></i>三分钟演示路径</h5>
-        <span class="si-about__features-sub">配套 Agent 开启 JDBC / Redis 追踪更完整</span>
+        <span class="si-about__demo-sub">配套 Agent 开启 JDBC / Redis 追踪更完整</span>
       </div>
       <ol class="si-about__demo-list">
         <li v-for="(step, i) in demoSteps" :key="i">
@@ -86,24 +86,6 @@
         冒烟建议：首页 KPI 有数 → 拓扑有服务边 → 数据库 / 缓存页有 Span（或空态提示开关）→
         打开一条 Trace 可「排障包」下载 → 设置页 AI 状态条可看就绪 / 原因。
       </p>-->
-    </section>
-
-    <section class="si-about__features">
-      <div class="si-about__features-head">
-        <h5 class="mb-0"><i class="fa fa-star me-2"></i>功能特性</h5>
-        <span class="si-about__features-sub">开箱即用的监测能力</span>
-      </div>
-      <ul class="si-about__feature-list">
-        <li v-for="f in features" :key="f.title" class="si-about__feature">
-          <span class="si-about__feature-icon" :style="{ color: f.color }">
-            <i :class="['fa', f.icon]"></i>
-          </span>
-          <div class="si-about__feature-text">
-            <strong>{{ f.title }}</strong>
-            <span>{{ f.desc }}</span>
-          </div>
-        </li>
-      </ul>
     </section>
   </div>
 </template>
@@ -127,17 +109,6 @@ const demoSteps = [
   { to: '/redis', label: '缓存', hint: '开启 redis-tracing-enabled 后看慢命令 / 错误' },
   { to: '/traces', label: '链路详情', hint: '打开一条 Trace →「排障包」下载脱敏 JSON' },
   { to: '/settings', label: '设置 · AI', hint: '看就绪态 / 模型 / 失败原因；未配齐时按钮灰显有提示' }
-]
-
-const features = [
-  { title: '仪表盘概览', desc: 'KPI、时段摘要、健康/慢/热点与库缓存卡片', icon: 'fa-tachometer', color: '#0f766e' },
-  { title: '服务拓扑', desc: '可视化调用方向与依赖强度', icon: 'fa-sitemap', color: '#15803d' },
-  { title: '数据库 / 缓存', desc: 'JDBC 与 Redis 出站汇总页，可点进 Trace', icon: 'fa-database', color: '#0d9488' },
-  { title: '链路与排障包', desc: '瀑布时间线；可导出脱敏排障包带走', icon: 'fa-list-ul', color: '#0d9488' },
-  { title: '错误分析', desc: '识别高错误率服务并跳转相关链路', icon: 'fa-exclamation-triangle', color: '#b91c1c' },
-  { title: 'AI 诚实展示', desc: '设置页与解读面板标明就绪、模型与降级原因', icon: 'fa-magic', color: '#0f766e' },
-  { title: '控制台设置', desc: '告警 Webhook/邮件与 AI 在页面配置，即时生效', icon: 'fa-cog', color: '#0f766e' },
-  { title: 'OpenAPI', desc: '只读 /v3/api-docs 与 Swagger UI，便于对接与自检', icon: 'fa-book', color: '#1d4ed8' }
 ]
 
 const updateCurrentTime = () => {
@@ -273,8 +244,7 @@ onUnmounted(() => {
   border: 1px solid rgba(15, 118, 110, 0.25);
 }
 
-.si-about__demo,
-.si-about__features {
+.si-about__demo {
   margin-top: 0.75rem;
   padding: 1rem 1.1rem 1.15rem;
   border-radius: 14px;
@@ -284,7 +254,7 @@ onUnmounted(() => {
 }
 
 .si-about__demo-list {
-  margin: 0 0 0.75rem;
+  margin: 0;
   padding-left: 1.25rem;
   display: flex;
   flex-direction: column;
@@ -324,7 +294,7 @@ onUnmounted(() => {
   color: var(--si-muted);
 }
 
-.si-about__features-head {
+.si-about__demo-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -333,76 +303,8 @@ onUnmounted(() => {
   color: var(--si-ink);
 }
 
-.si-about__features-sub {
+.si-about__demo-sub {
   font-size: 0.75rem;
   color: var(--si-muted);
-}
-
-.si-about__feature-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.55rem;
-}
-
-@media (max-width: 991px) {
-  .si-about__feature-list {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 575px) {
-  .si-about__feature-list {
-    grid-template-columns: 1fr;
-  }
-}
-
-.si-about__feature {
-  display: flex;
-  gap: 0.7rem;
-  align-items: flex-start;
-  padding: 0.7rem 0.8rem;
-  border-radius: 10px;
-  background: var(--si-paper);
-  border: 1px solid var(--card-border);
-  transition: border-color 0.2s ease, background 0.2s ease;
-}
-
-.si-about__feature:hover {
-  border-color: rgba(15, 118, 110, 0.35);
-  background: var(--card-bg);
-}
-
-.si-about__feature-icon {
-  flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: var(--card-bg);
-  font-size: 0.95rem;
-  border: 1px solid var(--card-border);
-}
-
-.si-about__feature-text {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.si-about__feature-text strong {
-  color: var(--si-ink);
-  font-size: 0.88rem;
-}
-
-.si-about__feature-text span {
-  color: var(--si-muted);
-  font-size: 0.78rem;
-  line-height: 1.4;
 }
 </style>
