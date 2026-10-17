@@ -97,87 +97,40 @@
       </div>
 
       <template v-else>
-        <section class="si-redis-panel" aria-label="按实例聚合">
-          <div class="si-redis-panel__head">
-            <h3 class="si-redis-panel__title"><i class="fa fa-server me-2"></i>按 Redis 实例</h3>
-            <span class="badge bg-secondary">{{ summary.byRemote.length }}</span>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-hover mb-0 si-data-table">
-              <thead class="table-light">
-                <tr>
-                  <th>实例（remoteService）</th>
-                  <th>次数</th>
-                  <th>错误</th>
-                  <th>慢</th>
-                  <th>平均</th>
-                  <th>最大</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in summary.byRemote" :key="row.remoteService">
-                  <td class="si-redis-remote" :title="row.remoteService">{{ row.remoteService }}</td>
-                  <td>{{ row.callCount }}</td>
-                  <td :class="{ 'text-danger fw-semibold': row.errorCount > 0 }">{{ row.errorCount }}</td>
-                  <td :class="{ 'text-warning fw-semibold': row.slowCount > 0 }">{{ row.slowCount }}</td>
-                  <td>{{ formatDuration(row.avgMs) }}</td>
-                  <td>{{ formatDuration(row.maxMs) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <SiSection title="按 Redis 实例" icon="fa-server" :count="summary.byRemote.length" label="按实例聚合">
+          <SiDataTable
+            :rows="summary.byRemote"
+            :columns="remoteColumns"
+            row-key="remoteService"
+          />
+        </SiSection>
 
-        <section class="si-redis-panel" aria-label="最近 Redis">
-          <div class="si-redis-panel__head">
-            <h3 class="si-redis-panel__title"><i class="fa fa-list me-2"></i>最近 Redis Span</h3>
-            <span class="badge bg-secondary">{{ summary.recent.length }}</span>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-hover mb-0 si-data-table">
-              <thead class="table-light">
-                <tr>
-                  <th>服务</th>
-                  <th>操作</th>
-                  <th>实例</th>
-                  <th>命令 / Key</th>
-                  <th>耗时</th>
-                  <th>状态</th>
-                  <th>Trace</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(row, i) in summary.recent"
-                  :key="(row.spanId || row.traceId) + '-' + i"
-                  class="si-redis-row"
-                  @click="goTrace(row.traceId, row.spanId)"
-                >
-                  <td>{{ row.serviceName || '—' }}</td>
-                  <td>
-                    {{ row.operationName || '—' }}
-                    <span v-if="row.slow" class="badge bg-warning text-dark ms-1">慢</span>
-                  </td>
-                  <td class="si-redis-remote" :title="row.remoteService">{{ row.remoteService || '—' }}</td>
-                  <td class="si-redis-cmd" :title="[row.command, row.key].filter(Boolean).join(' ')">
-                    <span v-if="row.command" class="si-redis-cmd-type">{{ row.command }}</span>
-                    {{ row.key || '—' }}
-                  </td>
-                  <td>{{ formatDuration(row.durationMs) }}</td>
-                  <td>
-                    <span
-                      class="badge"
-                      :class="row.success === false || row.statusCode === 'ERROR' ? 'bg-danger' : 'bg-success'"
-                    >
-                      {{ row.statusCode || (row.success === false ? 'ERR' : 'OK') }}
-                    </span>
-                  </td>
-                  <td><code class="small">{{ shortId(row.traceId) }}</code></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <SiSection title="最近 Redis Span" icon="fa-list" :count="summary.recent.length" label="最近 Redis">
+          <SiDataTable
+            :rows="summary.recent"
+            :columns="recentColumns"
+            :row-key="recentKey"
+            clickable
+            @row-click="onRecentClick"
+          >
+            <template #cell-operationName="{ row }">
+              {{ row.operationName || '—' }}
+              <SiStatusBadge v-if="row.slow" class="ms-1" tone="warn">慢</SiStatusBadge>
+            </template>
+            <template #cell-command="{ row }">
+              <span v-if="row.command" class="si-redis-cmd-type">{{ row.command }}</span>
+              {{ row.key || '—' }}
+            </template>
+            <template #cell-status="{ row }">
+              <SiStatusBadge :tone="redisFailed(row) ? 'danger' : 'success'">
+                {{ row.statusCode || (row.success === false ? 'ERR' : 'OK') }}
+              </SiStatusBadge>
+            </template>
+            <template #cell-traceId="{ row }">
+              <code class="small">{{ shortId(row.traceId) }}</code>
+            </template>
+          </SiDataTable>
+        </SiSection>
       </template>
     </template>
   </div>
@@ -186,6 +139,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import SiDataTable from '../components/SiDataTable.vue'
+import SiSection from '../components/SiSection.vue'
+import SiStatusBadge from '../components/SiStatusBadge.vue'
+import type { SiColumn } from '../components/siTable'
 import { ApiService } from '../services/ApiService'
 import { formatDuration } from '../utils/traceTimeline'
 import {
@@ -208,7 +165,56 @@ const selectedService = ref('')
 const services = ref<string[]>([])
 const loading = ref(true)
 const loadError = ref('')
-const summary = ref<Awaited<ReturnType<typeof ApiService.getRedisSummary>> | null>(null)
+type RedisSummary = Awaited<ReturnType<typeof ApiService.getRedisSummary>>
+type RemoteRow = RedisSummary['byRemote'][number]
+type RecentRow = RedisSummary['recent'][number]
+
+const summary = ref<RedisSummary | null>(null)
+
+const remoteColumns: SiColumn<RemoteRow>[] = [
+  {
+    key: 'remoteService',
+    label: '实例（remoteService）',
+    truncate: true,
+    title: (row) => row.remoteService
+  },
+  { key: 'callCount', label: '次数', numeric: true },
+  {
+    key: 'errorCount',
+    label: '错误',
+    numeric: true,
+    cellClass: (row) => (row.errorCount > 0 ? 'text-danger fw-semibold' : undefined)
+  },
+  {
+    key: 'slowCount',
+    label: '慢',
+    numeric: true,
+    cellClass: (row) => (row.slowCount > 0 ? 'text-warning fw-semibold' : undefined)
+  },
+  { key: 'avgMs', label: '平均', numeric: true, value: (row) => formatDuration(row.avgMs) },
+  { key: 'maxMs', label: '最大', numeric: true, value: (row) => formatDuration(row.maxMs) }
+]
+
+const recentColumns: SiColumn<RecentRow>[] = [
+  { key: 'serviceName', label: '服务', value: (row) => row.serviceName || '—' },
+  { key: 'operationName', label: '操作' },
+  {
+    key: 'remoteService',
+    label: '实例',
+    truncate: true,
+    title: (row) => row.remoteService || undefined,
+    value: (row) => row.remoteService || '—'
+  },
+  {
+    key: 'command',
+    label: '命令 / Key',
+    truncate: true,
+    title: (row) => [row.command, row.key].filter(Boolean).join(' ') || undefined
+  },
+  { key: 'durationMs', label: '耗时', numeric: true, value: (row) => formatDuration(row.durationMs) },
+  { key: 'status', label: '状态' },
+  { key: 'traceId', label: 'Trace' }
+]
 
 const shortId = (id: string) => {
   const s = String(id || '')
@@ -239,6 +245,14 @@ const onFilterChange = () => {
 const clearServiceFilter = () => {
   selectedService.value = ''
   onFilterChange()
+}
+
+const redisFailed = (row: RecentRow) => row.success === false || row.statusCode === 'ERROR'
+
+const recentKey = (row: RecentRow, index: number) => `${row.spanId || row.traceId}-${index}`
+
+const onRecentClick = (row: RecentRow) => {
+  goTrace(row.traceId, row.spanId)
 }
 
 const goTrace = (traceId: string, spanId?: string) => {
@@ -363,38 +377,6 @@ onMounted(async () => {
   opacity: 0.55;
 }
 
-.si-redis-panel {
-  margin-bottom: 1.25rem;
-  border: 1px solid var(--card-border);
-  border-radius: 0.5rem;
-  overflow: hidden;
-  background: var(--card-bg);
-}
-
-.si-redis-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.65rem 1rem;
-  border-bottom: 1px solid var(--card-border);
-}
-
-.si-redis-panel__title {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 650;
-}
-
-.si-redis-remote,
-.si-redis-cmd {
-  max-width: 16rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.85rem;
-}
-
 .si-redis-cmd-type {
   display: inline-block;
   margin-right: 0.35rem;
@@ -405,11 +387,4 @@ onMounted(async () => {
   font-weight: 600;
 }
 
-.si-redis-row {
-  cursor: pointer;
-}
-
-.si-redis-row:hover {
-  background: rgba(15, 118, 110, 0.06);
-}
 </style>
