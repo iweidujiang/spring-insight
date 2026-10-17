@@ -68,15 +68,11 @@
                 按错误率 / 错误次数 / p95 延迟扫描，超阈值时通过 Webhook 或邮件通知；可设静默时段。
               </p>
             </div>
-            <div class="form-check form-switch mb-0">
-              <input id="alert-enabled" v-model="form.alert.enabled" class="form-check-input" type="checkbox" />
-              <label class="form-check-label" for="alert-enabled">启用扫描</label>
-            </div>
+            <SiSwitchField id="alert-enabled" v-model="form.alert.enabled" label="启用扫描" flush />
           </header>
 
           <div class="si-settings__fields">
-            <div class="si-settings__field si-settings__field--full">
-              <label class="form-label" for="alert-webhook">Webhook URL</label>
+            <SiFormField label="Webhook URL" field-id="alert-webhook" span="full">
               <div class="si-settings__webhook-row">
                 <input
                   id="alert-webhook"
@@ -105,124 +101,86 @@
                 </button>
               </div>
               <pre v-if="previewResult" class="si-settings__preview mt-2 mb-0">{{ previewResult }}</pre>
-            </div>
+            </SiFormField>
 
-            <div class="si-settings__field">
-              <label class="form-label" for="alert-metric">指标</label>
+            <SiFormField label="指标" field-id="alert-metric">
               <select id="alert-metric" v-model="form.alert.metric" class="form-select">
                 <option value="error_rate">error_rate（%）</option>
                 <option value="error_count">error_count（次）</option>
                 <option value="latency_p95">latency_p95（毫秒）</option>
               </select>
-            </div>
-            <div class="si-settings__field">
-              <label class="form-label" for="alert-threshold">
-                阈值
+            </SiFormField>
+            <SiFormField label="阈值" field-id="alert-threshold">
+              <template #hint>
                 <span class="text-muted small">{{ thresholdHint }}</span>
-              </label>
+              </template>
               <input id="alert-threshold" v-model.number="form.alert.threshold" class="form-control" type="number" min="0" step="0.1" />
-            </div>
-            <div class="si-settings__field">
-              <label class="form-label" for="alert-window">窗口（分钟）</label>
+            </SiFormField>
+            <SiFormField label="窗口（分钟）" field-id="alert-window">
               <input id="alert-window" v-model.number="form.alert.windowMinutes" class="form-control" type="number" min="1" />
-            </div>
-            <div class="si-settings__field">
-              <label class="form-label" for="alert-cooldown">冷却（分钟）</label>
+            </SiFormField>
+            <SiFormField label="冷却（分钟）" field-id="alert-cooldown">
               <input id="alert-cooldown" v-model.number="form.alert.cooldownMinutes" class="form-control" type="number" min="0" />
-            </div>
+            </SiFormField>
           </div>
 
-          <div class="si-settings__block">
-            <header class="si-settings__block-head">
-              <div>
-                <h4 class="si-settings__block-title"><i class="fa fa-moon-o me-1"></i>静默时段</h4>
-                <p class="si-settings__block-desc">时段内不推送（可跨午夜，如 22:00→08:00）。</p>
-              </div>
-              <div class="form-check form-switch mb-0">
-                <input id="quiet-enabled" v-model="form.alert.quietHoursEnabled" class="form-check-input" type="checkbox" />
-                <label class="form-check-label" for="quiet-enabled">启用静默</label>
-              </div>
-            </header>
-            <div class="si-settings__fields">
-              <div class="si-settings__field">
-                <label class="form-label" for="quiet-start">开始（HH:mm）</label>
-                <input id="quiet-start" v-model="form.alert.quietHoursStart" class="form-control" placeholder="22:00" />
-              </div>
-              <div class="si-settings__field">
-                <label class="form-label" for="quiet-end">结束（HH:mm）</label>
-                <input id="quiet-end" v-model="form.alert.quietHoursEnd" class="form-control" placeholder="08:00" />
-              </div>
-              <div class="si-settings__field si-settings__field--wide">
-                <label class="form-label" for="quiet-zone">时区（可选）</label>
-                <input
-                  id="quiet-zone"
-                  v-model="form.alert.quietHoursZone"
-                  class="form-control"
-                  placeholder="留空=服务器默认，例 Asia/Shanghai"
-                />
-              </div>
-            </div>
-          </div>
+          <SiFormBlock title="静默时段" icon="fa-moon-o" description="时段内不推送（可跨午夜，如 22:00→08:00）。">
+            <template #switch>
+              <SiSwitchField id="quiet-enabled" v-model="form.alert.quietHoursEnabled" label="启用静默" flush />
+            </template>
+            <SiFormField label="开始（HH:mm）" field-id="quiet-start">
+              <input id="quiet-start" v-model="form.alert.quietHoursStart" class="form-control" placeholder="22:00" />
+            </SiFormField>
+            <SiFormField label="结束（HH:mm）" field-id="quiet-end">
+              <input id="quiet-end" v-model="form.alert.quietHoursEnd" class="form-control" placeholder="08:00" />
+            </SiFormField>
+            <SiFormField label="时区（可选）" field-id="quiet-zone" span="wide">
+              <input
+                id="quiet-zone"
+                v-model="form.alert.quietHoursZone"
+                class="form-control"
+                placeholder="留空=服务器默认，例 Asia/Shanghai"
+              />
+            </SiFormField>
+          </SiFormBlock>
 
-          <div class="si-settings__block">
-            <header class="si-settings__block-head">
-              <div>
-                <h4 class="si-settings__block-title"><i class="fa fa-envelope me-1"></i>邮件 SMTP</h4>
-                <p class="si-settings__block-desc">可选；与 Webhook 可同时启用。</p>
-              </div>
-              <div class="form-check form-switch mb-0">
-                <input id="email-enabled" v-model="form.alert.email.enabled" class="form-check-input" type="checkbox" />
-                <label class="form-check-label" for="email-enabled">启用邮件</label>
-              </div>
-            </header>
-
-            <div class="si-settings__fields">
-              <div class="si-settings__field si-settings__field--wide">
-                <label class="form-label" for="smtp-host">SMTP Host</label>
-                <input id="smtp-host" v-model="form.alert.email.host" class="form-control" placeholder="smtp.example.com" />
-              </div>
-              <div class="si-settings__field si-settings__field--narrow">
-                <label class="form-label" for="smtp-port">端口</label>
-                <input id="smtp-port" v-model.number="form.alert.email.port" class="form-control" type="number" min="1" />
-              </div>
-              <div class="si-settings__field">
-                <label class="form-label" for="smtp-user">用户名</label>
-                <input id="smtp-user" v-model="form.alert.email.username" class="form-control" autocomplete="off" />
-              </div>
-              <div class="si-settings__field">
-                <label class="form-label" for="smtp-pass">
-                  密码
-                  <span v-if="passwordConfigured" class="text-muted small">（已配置，留空不改）</span>
-                </label>
-                <input
-                  id="smtp-pass"
-                  v-model="form.alert.email.password"
-                  class="form-control"
-                  type="password"
-                  autocomplete="new-password"
-                  :placeholder="passwordConfigured ? '••••••••' : ''"
-                />
-              </div>
-              <div class="si-settings__field">
-                <label class="form-label" for="smtp-from">发件人 From</label>
-                <input id="smtp-from" v-model="form.alert.email.from" class="form-control" type="email" />
-              </div>
-              <div class="si-settings__field">
-                <label class="form-label" for="smtp-to">收件人 To（逗号分隔）</label>
-                <input id="smtp-to" v-model="form.alert.email.to" class="form-control" />
-              </div>
-              <div class="si-settings__field si-settings__field--toggles">
-                <div class="form-check form-switch">
-                  <input id="email-starttls" v-model="form.alert.email.startTls" class="form-check-input" type="checkbox" />
-                  <label class="form-check-label" for="email-starttls">STARTTLS</label>
-                </div>
-                <div class="form-check form-switch">
-                  <input id="email-ssl" v-model="form.alert.email.ssl" class="form-check-input" type="checkbox" />
-                  <label class="form-check-label" for="email-ssl">SSL</label>
-                </div>
-              </div>
-            </div>
-          </div>
+          <SiFormBlock title="邮件 SMTP" icon="fa-envelope" description="可选；与 Webhook 可同时启用。">
+            <template #switch>
+              <SiSwitchField id="email-enabled" v-model="form.alert.email.enabled" label="启用邮件" flush />
+            </template>
+            <SiFormField label="SMTP Host" field-id="smtp-host" span="wide">
+              <input id="smtp-host" v-model="form.alert.email.host" class="form-control" placeholder="smtp.example.com" />
+            </SiFormField>
+            <SiFormField label="端口" field-id="smtp-port" span="narrow">
+              <input id="smtp-port" v-model.number="form.alert.email.port" class="form-control" type="number" min="1" />
+            </SiFormField>
+            <SiFormField label="用户名" field-id="smtp-user">
+              <input id="smtp-user" v-model="form.alert.email.username" class="form-control" autocomplete="off" />
+            </SiFormField>
+            <SiFormField label="密码" field-id="smtp-pass">
+              <template v-if="passwordConfigured" #hint>
+                <span class="text-muted small">（已配置，留空不改）</span>
+              </template>
+              <input
+                id="smtp-pass"
+                v-model="form.alert.email.password"
+                class="form-control"
+                type="password"
+                autocomplete="new-password"
+                :placeholder="passwordConfigured ? '••••••••' : ''"
+              />
+            </SiFormField>
+            <SiFormField label="发件人 From" field-id="smtp-from">
+              <input id="smtp-from" v-model="form.alert.email.from" class="form-control" type="email" />
+            </SiFormField>
+            <SiFormField label="收件人 To（逗号分隔）" field-id="smtp-to">
+              <input id="smtp-to" v-model="form.alert.email.to" class="form-control" />
+            </SiFormField>
+            <SiFormField span="toggles">
+              <SiSwitchField id="email-starttls" v-model="form.alert.email.startTls" label="STARTTLS" />
+              <SiSwitchField id="email-ssl" v-model="form.alert.email.ssl" label="SSL" />
+            </SiFormField>
+          </SiFormBlock>
         </section>
 
         <!-- AI -->
@@ -502,6 +460,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import SiFormBlock from '../components/SiFormBlock.vue'
+import SiFormField from '../components/SiFormField.vue'
+import SiSwitchField from '../components/SiSwitchField.vue'
 import { ApiService, type RuntimeSettingsSaveBody } from '../services/ApiService'
 import { capacityWarnMessage } from '../utils/timeRange'
 
@@ -960,7 +921,8 @@ onUnmounted(() => {
 }
 
 .si-settings__card-head,
-.si-settings__block-head {
+.si-settings__block-head,
+:deep(.si-settings__block-head) {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -969,19 +931,22 @@ onUnmounted(() => {
 }
 
 .si-settings__card-title,
-.si-settings__block-title {
+.si-settings__block-title,
+:deep(.si-settings__block-title) {
   margin: 0 0 0.25rem;
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--si-ink);
 }
 
-.si-settings__block-title {
+.si-settings__block-title,
+:deep(.si-settings__block-title) {
   font-size: 0.95rem;
 }
 
 .si-settings__card-desc,
-.si-settings__block-desc {
+.si-settings__block-desc,
+:deep(.si-settings__block-desc) {
   margin: 0;
   max-width: 36rem;
   font-size: 0.86rem;
@@ -989,31 +954,36 @@ onUnmounted(() => {
   color: var(--si-muted);
 }
 
-.si-settings__block {
+.si-settings__block,
+:deep(.si-settings__block) {
   margin-top: 1.15rem;
   padding-top: 1.1rem;
   border-top: 1px dashed rgba(15, 118, 110, 0.18);
 }
 
-.si-settings__fields {
+.si-settings__fields,
+:deep(.si-settings__fields) {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.85rem 0.75rem;
 }
 
 @media (max-width: 991px) {
-  .si-settings__fields {
+  .si-settings__fields,
+:deep(.si-settings__fields) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 575px) {
-  .si-settings__fields {
+  .si-settings__fields,
+:deep(.si-settings__fields) {
     grid-template-columns: 1fr;
   }
 }
 
-.si-settings__field--full {
+.si-settings__field--full,
+:deep(.si-settings__field--full) {
   grid-column: 1 / -1;
 }
 
@@ -1050,21 +1020,25 @@ onUnmounted(() => {
   word-break: break-word;
 }
 
-.si-settings__field--wide {
+.si-settings__field--wide,
+:deep(.si-settings__field--wide) {
   grid-column: span 3;
 }
 
-.si-settings__field--narrow {
+.si-settings__field--narrow,
+:deep(.si-settings__field--narrow) {
   grid-column: span 1;
 }
 
 @media (max-width: 991px) {
-  .si-settings__field--wide {
+  .si-settings__field--wide,
+:deep(.si-settings__field--wide) {
     grid-column: 1 / -1;
   }
 }
 
-.si-settings__field--toggles {
+.si-settings__field--toggles,
+:deep(.si-settings__field--toggles) {
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
