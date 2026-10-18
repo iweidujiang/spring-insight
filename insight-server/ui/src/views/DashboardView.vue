@@ -38,26 +38,26 @@
     <div v-show="!loading" class="si-dashboard__content">
       <section class="si-dashboard__kpis" aria-label="关键指标">
         <button
-          v-for="(stat, index) in stats"
-          :key="index"
           type="button"
-          class="card stat-card si-dashboard__kpi"
-          :style="{ animationDelay: `${index * 0.06}s` }"
-          @click="onKpiClick(stat.to)"
+          class="si-dashboard__kpi si-dashboard__kpi--lead"
+          :class="{ 'is-alert': leadKpi.alert }"
+          @click="onKpiClick(leadKpi.to)"
         >
-          <div class="card-body">
-            <div class="d-flex align-items-center justify-content-between">
-              <div class="text-start">
-                <div class="text-xs font-weight-bold text-uppercase mb-0 si-dashboard__kpi-label" :class="`text-${stat.color}`">
-                  {{ stat.title }}
-                </div>
-                <div class="si-dashboard__kpi-value">{{ stat.value }}</div>
-                <div class="si-dashboard__kpi-hint">{{ stat.hint }}</div>
-              </div>
-              <i :class="`fa ${stat.icon} si-dashboard__kpi-icon text-${stat.color}`"></i>
-            </div>
-          </div>
+          <span class="si-dashboard__kpi-value">{{ leadKpi.value }}</span>
+          <span class="si-dashboard__kpi-name">{{ leadKpi.title }}</span>
         </button>
+        <div class="si-dashboard__kpi-side">
+          <button
+            v-for="stat in sideKpis"
+            :key="stat.key"
+            type="button"
+            class="si-dashboard__kpi"
+            @click="onKpiClick(stat.to)"
+          >
+            <span class="si-dashboard__kpi-value">{{ stat.value }}</span>
+            <span class="si-dashboard__kpi-name">{{ stat.title }}</span>
+          </button>
+        </div>
       </section>
 
       <section class="si-period" aria-label="时段摘要">
@@ -691,40 +691,36 @@ const durationShare = (tr: any) => {
   return Math.max(8, Math.round(((Number(tr?.durationMs) || 0) / max) * 100))
 }
 
-const stats = computed(() => [
-  {
-    title: '监控服务',
-    value: `${services.value.length} 个`,
-    icon: 'fa-server',
-    color: 'primary',
-    hint: '进入链路筛选',
-    to: '/traces'
-  },
-  {
-    title: '链路总数',
-    value: `${totalSpans.value} 条`,
-    icon: 'fa-list-ul',
-    color: 'success',
-    hint: '最近上报 Span',
-    to: '/traces'
-  },
-  {
-    title: '依赖关系',
-    value: `${dependencies.value.length} 条`,
-    icon: 'fa-sitemap',
-    color: 'info',
-    hint: '打开拓扑图',
-    to: '/topology'
-  },
-  {
-    title: '异常服务',
-    value: `${errorAnalysis.value.length} 个`,
-    icon: 'fa-exclamation-triangle',
-    color: 'warning',
-    hint: '错误分析',
-    to: '/error-analysis'
-  }
-])
+type DashKpi = {
+  key: string
+  title: string
+  value: string
+  to: string
+  alert?: boolean
+}
+
+const kpiStats = computed<DashKpi[]>(() => {
+  const errorCount = errorAnalysis.value.length
+  return [
+    { key: 'services', title: '监控服务', value: `${services.value.length} 个`, to: '/traces' },
+    { key: 'spans', title: '链路总数', value: `${totalSpans.value} 条`, to: '/traces' },
+    { key: 'deps', title: '依赖关系', value: `${dependencies.value.length} 条`, to: '/topology' },
+    {
+      key: 'errors',
+      title: '异常服务',
+      value: `${errorCount} 个`,
+      to: '/error-analysis',
+      alert: errorCount > 0
+    }
+  ]
+})
+
+const leadKpi = computed(() => {
+  const rows = kpiStats.value
+  return rows.find((row) => row.alert) || rows.find((row) => row.key === 'spans') || rows[0]
+})
+
+const sideKpis = computed(() => kpiStats.value.filter((row) => row.key !== leadKpi.value.key))
 
 const updateCurrentTime = () => {
   currentTime.value = new Date().toTimeString().split(' ')[0]
@@ -1208,64 +1204,96 @@ onUnmounted(() => {
 .si-dashboard__kpis {
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: minmax(10rem, 1.15fr) minmax(0, 2.2fr);
+  gap: 1.25rem 1.75rem;
+  align-items: end;
 }
 
 @media (max-width: 991px) {
-  .si-dashboard__kpis { grid-template-columns: repeat(2, 1fr); }
+  .si-dashboard__kpis {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
 }
 
 .si-dashboard__kpi {
-  min-height: 5.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
   text-align: left;
   cursor: pointer;
   appearance: none;
   width: 100%;
-  padding: 0;
-  background: inherit;
 }
 
 .si-dashboard__kpi:focus-visible {
   outline: 2px solid var(--si-teal);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
-.si-dashboard__kpi :deep(.card-body) {
-  padding: 1rem 1.15rem;
-  height: 100%;
-  display: flex;
-  align-items: center;
+.si-dashboard__kpi--lead {
+  padding-bottom: 0.2rem;
+  border-bottom: 2px solid var(--si-teal);
 }
 
-.si-dashboard__kpi :deep(.card-body > .d-flex) { width: 100%; }
+.si-dashboard__kpi--lead.is-alert {
+  border-bottom-color: var(--danger-color);
+}
 
-.si-dashboard__kpi-label {
-  font-size: 0.72rem !important;
-  letter-spacing: 0.08em;
-  margin-bottom: 0.25rem !important;
+.si-dashboard__kpi--lead.is-alert .si-dashboard__kpi-value {
+  color: var(--danger-color);
+}
+
+.si-dashboard__kpi-side {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  align-items: end;
+}
+
+@media (max-width: 640px) {
+  .si-dashboard__kpi-side {
+    grid-template-columns: 1fr;
+  }
+}
+
+.si-dashboard__kpi-side .si-dashboard__kpi {
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--card-border);
 }
 
 .si-dashboard__kpi-value {
   font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
-  font-size: clamp(1.45rem, 2.4vw, 1.85rem);
   font-weight: 700;
   color: var(--si-ink);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  line-height: 1;
+  letter-spacing: -0.03em;
 }
 
-.si-dashboard__kpi-hint {
-  margin-top: 0.25rem;
-  font-size: 0.68rem;
-  color: var(--si-muted);
+.si-dashboard__kpi--lead .si-dashboard__kpi-value {
+  font-size: clamp(2.4rem, 4.2vw, 3.35rem);
+}
+
+.si-dashboard__kpi-side .si-dashboard__kpi-value {
+  font-size: 1.35rem;
+}
+
+.si-dashboard__kpi-name {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
   font-weight: 600;
+  color: var(--si-ink-soft);
 }
 
-.si-dashboard__kpi-icon {
-  font-size: 2rem !important;
-  opacity: 0.88;
+.si-dashboard__kpi--lead .si-dashboard__kpi-name {
+  font-size: 0.95rem;
 }
 
 /* 时段摘要：与上方 KPI 卡同系卡片，弱化横幅感 */
