@@ -7,11 +7,27 @@
     </SiPageHeader>
 
     <section class="si-about__sheet" aria-label="项目与运行">
-      <div class="si-about__identity">
-        <div class="si-about__lead">
-          <h3 class="si-about__name">Spring Insight</h3>
-          <p class="si-about__desc">面向 Spring 微服务的轻量分布式监测中心（Agent + Server）</p>
-        </div>
+      <div class="si-about__project">
+        <h3 class="si-about__name">Spring Insight</h3>
+        <p class="si-about__desc">面向 Spring 微服务的轻量分布式监测中心（Agent + Server）</p>
+        <ul class="si-about__tags" aria-label="技术栈">
+          <li>Spring Boot 3.5</li>
+          <li>Java 17+</li>
+          <li>Vue 3</li>
+          <li>TypeScript</li>
+          <li>ECharts</li>
+        </ul>
+        <a
+          class="si-about__github"
+          href="https://github.com/iweidujiang/spring-insight"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <i class="fa fa-github" aria-hidden="true"></i>
+          iweidujiang/spring-insight
+        </a>
+      </div>
+      <aside class="si-about__runtime" aria-label="运行">
         <div class="si-about__versions">
           <p class="si-about__ver si-about__ver--lead">
             <span class="si-about__ver-value">{{ serverVersion }}</span>
@@ -22,39 +38,29 @@
             <span class="si-about__ver-name">Agent</span>
           </p>
         </div>
-      </div>
-      <dl class="si-about__facts">
-        <div>
-          <dd class="si-about__num">9966</dd>
-          <dt>默认端口</dt>
+        <dl class="si-about__facts">
+          <div>
+            <dt>默认端口</dt>
+            <dd class="si-about__num">9966</dd>
+          </div>
+          <div>
+            <dt>存储模式</dt>
+            <dd>{{ storageMode || '—' }}</dd>
+          </div>
+          <div>
+            <dt>界面</dt>
+            <dd>Vue 3 + TypeScript + Vite</dd>
+          </div>
+          <div>
+            <dt>构建/运行</dt>
+            <dd>{{ buildTime }}</dd>
+          </div>
+        </dl>
+        <div class="si-about__links">
+          <a href="/v3/api-docs" target="_blank" rel="noopener noreferrer">/v3/api-docs</a>
+          <a href="/swagger-ui.html" target="_blank" rel="noopener noreferrer">Swagger UI</a>
         </div>
-        <div>
-          <dd>{{ storageMode || '—' }}</dd>
-          <dt>存储模式</dt>
-        </div>
-        <div>
-          <dd>Vue 3 + TypeScript + Vite</dd>
-          <dt>界面</dt>
-        </div>
-        <div>
-          <dd>{{ buildTime }}</dd>
-          <dt>构建/运行</dt>
-        </div>
-      </dl>
-      <div class="si-about__links">
-        <a href="https://github.com/iweidujiang/spring-insight" target="_blank" rel="noopener noreferrer">
-          <i class="fa fa-github me-1"></i>iweidujiang/spring-insight
-        </a>
-        <a href="/v3/api-docs" target="_blank" rel="noopener noreferrer">/v3/api-docs</a>
-        <a href="/swagger-ui.html" target="_blank" rel="noopener noreferrer">Swagger UI</a>
-      </div>
-      <div class="si-about__tags">
-        <span>Spring Boot 3.5</span>
-        <span>Java 17+</span>
-        <span>Vue 3</span>
-        <span>TypeScript</span>
-        <span>ECharts</span>
-      </div>
+      </aside>
     </section>
 
     <section class="si-about__demo" aria-label="演示路径">
@@ -132,52 +138,94 @@ onUnmounted(() => {
 
 <style scoped>
 .si-about__sheet {
-  padding: 0.95rem 1.1rem 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(16.5rem, 0.9fr);
   border-radius: 10px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   box-shadow: var(--box-shadow);
+  overflow: hidden;
 }
 
-.si-about__identity {
+.si-about__project {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem 1.75rem;
-}
-
-.si-about__lead {
+  flex-direction: column;
   min-width: 0;
+  padding: 1.45rem 1.6rem 1.4rem;
 }
 
 .si-about__name {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.45rem;
+  font-size: clamp(1.75rem, 2.5vw, 2.1rem);
   font-weight: 600;
   color: var(--si-ink);
-  line-height: 1.15;
+  line-height: 1.1;
 }
 
 .si-about__desc {
-  margin: 0.35rem 0 0;
-  max-width: 36rem;
-  font-size: 0.92rem;
-  line-height: 1.45;
+  margin: 0.7rem 0 0;
+  max-width: 32rem;
+  font-size: 1rem;
+  line-height: 1.55;
   color: var(--si-ink-soft);
+}
+
+.si-about__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1.2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.si-about__tags li {
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--si-forest);
+  background: var(--si-teal-soft);
+  border: 1px solid rgba(15, 118, 110, 0.25);
+}
+
+.si-about__github {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 1.35rem;
+  font-weight: 600;
+  color: var(--si-teal);
+  text-decoration: none;
+}
+
+.si-about__github:hover {
+  text-decoration: underline;
+}
+
+.si-about__runtime {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+  padding: 1.3rem 1.35rem 1.2rem;
+  border-left: 1px solid var(--card-border);
+  background: var(--si-paper);
 }
 
 .si-about__versions {
   display: flex;
-  align-items: baseline;
-  gap: 1.35rem;
-  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
 }
 
 .si-about__ver {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.4rem;
+  gap: 0.45rem;
   margin: 0;
 }
 
@@ -185,14 +233,14 @@ onUnmounted(() => {
   font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   line-height: 1;
   letter-spacing: -0.03em;
   color: var(--si-ink);
 }
 
 .si-about__ver--lead .si-about__ver-value {
-  font-size: clamp(1.7rem, 2.4vw, 2.15rem);
+  font-size: clamp(1.85rem, 2.6vw, 2.25rem);
 }
 
 .si-about__ver-name {
@@ -208,23 +256,32 @@ onUnmounted(() => {
 
 .si-about__facts {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem 1.5rem;
-  margin: 0.9rem 0 0;
-  padding-top: 0.8rem;
-  border-top: 1px solid var(--card-border);
+  flex-direction: column;
+  margin: 0;
 }
 
 .si-about__facts > div {
-  display: flex;
+  display: grid;
+  grid-template-columns: 5.25rem minmax(0, 1fr);
+  gap: 0.6rem;
   align-items: baseline;
-  gap: 0.4rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--card-border);
+}
+
+.si-about__facts dt {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--si-ink-soft);
 }
 
 .si-about__facts dd {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   font-weight: 600;
+  line-height: 1.35;
+  text-align: right;
   color: var(--si-ink);
 }
 
@@ -235,18 +292,12 @@ onUnmounted(() => {
   letter-spacing: -0.02em;
 }
 
-.si-about__facts dt {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--si-ink-soft);
-}
-
 .si-about__links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 1rem;
-  margin-top: 0.8rem;
+  gap: 0.35rem 0.9rem;
+  margin-top: auto;
+  padding-top: 0.15rem;
 }
 
 .si-about__links a,
@@ -260,28 +311,14 @@ onUnmounted(() => {
   text-decoration: underline;
 }
 
-.si-about__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.75rem;
-}
+@media (max-width: 800px) {
+  .si-about__sheet {
+    grid-template-columns: 1fr;
+  }
 
-.si-about__tags span {
-  display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--si-forest);
-  background: var(--si-teal-soft);
-  border: 1px solid rgba(15, 118, 110, 0.25);
-}
-
-@media (max-width: 767px) {
-  .si-about__identity {
-    flex-direction: column;
-    align-items: flex-start;
+  .si-about__runtime {
+    border-left: 0;
+    border-top: 1px solid var(--card-border);
   }
 }
 
