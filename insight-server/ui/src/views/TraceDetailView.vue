@@ -230,40 +230,21 @@
           <summary class="trace-span-fold__summary">
             <i class="fa fa-list me-2"></i>Span 列表（{{ spans.length }}）
           </summary>
-          <div class="table-responsive">
-            <table class="table table-hover mb-0 si-data-table">
-              <thead class="table-light">
-                <tr>
-                  <th>服务</th>
-                  <th>操作</th>
-                  <th>类型</th>
-                  <th>偏移</th>
-                  <th>耗时</th>
-                  <th>状态</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(row, i) in timeline.rows"
-                  :key="row.span.spanId || i"
-                  :class="{ 'table-active': selectedSpanId === row.span.spanId, 'table-danger': row.isError }"
-                  style="cursor: pointer"
-                  @click="selectSpan(row.span.spanId)"
-                >
-                  <td>{{ row.span.serviceName }}</td>
-                  <td class="text-truncate" style="max-width: 280px">{{ row.span.operationName }}</td>
-                  <td>{{ row.span.spanKind }}</td>
-                  <td>+{{ formatDuration(row.offsetMs) }}</td>
-                  <td>{{ formatDuration(row.durationMs) }}</td>
-                  <td>
-                    <span class="badge" :class="row.isError ? 'bg-danger' : 'bg-success'">
-                      {{ row.span.statusCode || (row.isError ? 'ERR' : 'OK') }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <SiDataTable
+            :rows="timeline.rows"
+            :columns="spanColumns"
+            :row-key="spanRowKey"
+            clickable
+            :row-class="spanRowClass"
+            empty-text=""
+            @row-click="onSpanRowClick"
+          >
+            <template #cell-status="{ row }">
+              <span class="badge" :class="row.isError ? 'bg-danger' : 'bg-success'">
+                {{ row.span.statusCode || (row.isError ? 'ERR' : 'OK') }}
+              </span>
+            </template>
+          </SiDataTable>
         </details>
       </template>
     </template>
@@ -277,6 +258,8 @@ import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
 import SiLoading from '../components/SiLoading.vue'
+import SiDataTable from '../components/SiDataTable.vue'
+import type { SiColumn } from '../components/siTable'
 import {
   buildTraceTimeline,
   formatDuration,
@@ -328,6 +311,34 @@ const aiExplainTitle = computed(() => {
 })
 
 const timeline = computed(() => buildTraceTimeline(spans.value))
+
+const spanColumns: SiColumn<WaterfallRow>[] = [
+  { key: 'service', label: '服务', value: (row) => row.span.serviceName },
+  {
+    key: 'operation',
+    label: '操作',
+    cellClass: 'trace-span-op',
+    value: (row) => row.span.operationName,
+    title: (row) => row.span.operationName
+  },
+  { key: 'kind', label: '类型', value: (row) => row.span.spanKind },
+  { key: 'offset', label: '偏移', value: (row) => `+${formatDuration(row.offsetMs)}` },
+  { key: 'duration', label: '耗时', value: (row) => formatDuration(row.durationMs) },
+  { key: 'status', label: '状态' }
+]
+
+const spanRowKey = (row: WaterfallRow, index: number) => row.span.spanId || index
+
+const spanRowClass = (row: WaterfallRow) => {
+  const classes: string[] = []
+  if (selectedSpanId.value === row.span.spanId) classes.push('table-active')
+  if (row.isError) classes.push('table-danger')
+  return classes.join(' ')
+}
+
+const onSpanRowClick = (row: WaterfallRow) => {
+  selectSpan(row.span.spanId)
+}
 
 const errorSpanIds = computed(() =>
   timeline.value.rows.filter((r) => r.isError && r.span.spanId).map((r) => r.span.spanId as string)
@@ -974,6 +985,13 @@ onMounted(async () => {
 
 .trace-span-fold__summary::-webkit-details-marker {
   display: none;
+}
+
+:deep(.trace-span-op) {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .trace-span-fold__summary::before {
