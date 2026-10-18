@@ -214,47 +214,30 @@
         <summary class="si-topo-fold__summary">
           <i class="fa fa-list me-2"></i>依赖关系列表（{{ dependencies.length }}）
         </summary>
-        <div class="table-responsive">
-          <table class="table table-hover mb-0 si-data-table">
-            <thead class="table-light">
-              <tr>
-                <th>源服务</th>
-                <th></th>
-                <th>目标服务</th>
-                <th>调用次数</th>
-                <th>平均耗时</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="dep in sortedDependencies"
-                :key="`${dep.sourceService}-${dep.targetService}`"
-                :class="{
-                  'table-active':
-                    selection.kind === 'edge' &&
-                    selection.service === dep.sourceService &&
-                    selection.peer === dep.targetService
-                }"
-                style="cursor: pointer"
-                @click="selectEdge(dep.sourceService, dep.targetService)"
-              >
-                <td><code class="si-svc">{{ dep.sourceService }}</code></td>
-                <td class="text-center text-info"><i class="fa fa-long-arrow-right"></i></td>
-                <td><code class="si-svc">{{ dep.targetService }}</code></td>
-                <td>{{ dep.callCount }}</td>
-                <td :class="dep.avgDuration > 1000 ? 'text-danger' : dep.avgDuration > 500 ? 'text-warning' : 'text-success'">
-                  {{ formatMs(dep.avgDuration || 0) }}
-                </td>
-                <td @click.stop>
-                  <button class="btn btn-sm btn-outline-primary" type="button" @click="goServiceTraces(dep.sourceService)">
-                    链路
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <SiDataTable
+          :rows="sortedDependencies"
+          :columns="depColumns"
+          :row-key="depRowKey"
+          clickable
+          :row-class="depRowClass"
+          empty-text=""
+          @row-click="onDepClick"
+        >
+          <template #cell-source="{ row }">
+            <code class="si-svc">{{ row.sourceService }}</code>
+          </template>
+          <template #cell-arrow>
+            <i class="fa fa-long-arrow-right"></i>
+          </template>
+          <template #cell-target="{ row }">
+            <code class="si-svc">{{ row.targetService }}</code>
+          </template>
+          <template #cell-action="{ row }">
+            <button class="btn btn-sm btn-outline-primary" type="button" @click="goServiceTraces(row.sourceService)">
+              链路
+            </button>
+          </template>
+        </SiDataTable>
       </details>
     </div>
   </div>
@@ -270,6 +253,8 @@ import SiAlert from '../components/SiAlert.vue'
 import SiFilterBar from '../components/SiFilterBar.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
+import SiDataTable from '../components/SiDataTable.vue'
+import type { SiColumn } from '../components/siTable'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
 import { useChartTheme } from '../composables/useChartTheme'
@@ -330,6 +315,50 @@ const sortedDependencies = computed(() =>
 )
 
 const formatMs = (ms: number) => formatDuration(Number(ms) || 0)
+
+type DepRow = {
+  sourceService: string
+  targetService: string
+  callCount?: number
+  avgDuration?: number
+}
+
+const depColumns: SiColumn<DepRow>[] = [
+  { key: 'source', label: '源服务' },
+  { key: 'arrow', label: '', cellClass: 'text-center text-info' },
+  { key: 'target', label: '目标服务' },
+  { key: 'count', label: '调用次数', value: (row) => row.callCount ?? 0 },
+  {
+    key: 'avg',
+    label: '平均耗时',
+    value: (row) => formatMs(row.avgDuration || 0),
+    cellClass: (row) => {
+      const ms = Number(row.avgDuration) || 0
+      if (ms > 1000) return 'text-danger'
+      if (ms > 500) return 'text-warning'
+      return 'text-success'
+    }
+  },
+  { key: 'action', label: '', stopRowClick: true }
+]
+
+const depRowKey = (row: DepRow) => `${row.sourceService}-${row.targetService}`
+
+const depRowClass = (row: DepRow) => {
+  const current = selection.value
+  if (
+    current.kind === 'edge' &&
+    current.service === row.sourceService &&
+    current.peer === row.targetService
+  ) {
+    return 'table-active'
+  }
+  return ''
+}
+
+const onDepClick = (row: DepRow) => {
+  selectEdge(String(row.sourceService || ''), String(row.targetService || ''))
+}
 const traceFailed = (tr: any) => !!(tr?.hasError || tr?.statusCode === 'ERROR')
 const traceMethod = (tr: any) => {
   const op = String(tr?.operationName || '')
