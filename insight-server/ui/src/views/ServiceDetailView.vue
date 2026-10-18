@@ -90,31 +90,15 @@
               <div v-if="summary.slowOperations.length === 0" class="p-3 text-muted small">
                 {{ emptyRequestsMessage(hours) }}
               </div>
-              <div v-else class="table-responsive">
-                <table class="table table-sm table-hover mb-0 si-data-table">
-                  <thead class="table-light">
-                    <tr>
-                      <th>操作</th>
-                      <th>次数</th>
-                      <th>错误</th>
-                      <th>p95</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="(op, i) in summary.slowOperations"
-                      :key="i"
-                      style="cursor: pointer"
-                      @click="goTraces({ q: op.operationName, minDurationMs: Math.max(0, Math.floor(op.p95Ms)) })"
-                    >
-                      <td class="text-truncate" style="max-width: 240px" :title="op.operationName">{{ op.operationName }}</td>
-                      <td>{{ op.spanCount }}</td>
-                      <td :class="{ 'text-danger': op.errorCount > 0 }">{{ op.errorCount }}</td>
-                      <td>{{ formatDuration(op.p95Ms) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              <SiDataTable
+                v-else
+                class="si-svc-detail__table--sm"
+                :rows="summary.slowOperations"
+                :columns="slowColumns"
+                :row-key="slowRowKey"
+                clickable
+                @row-click="onSlowOpClick"
+              />
             </div>
           </section>
         </div>
@@ -157,35 +141,23 @@
               <div v-if="summary.recentTraces.length === 0" class="p-3 text-muted small">
                 {{ emptyRequestsMessage(hours) }}
               </div>
-              <div v-else class="table-responsive">
-                <table class="table table-hover mb-0 si-data-table">
-                  <thead class="table-light">
-                    <tr>
-                      <th>操作</th>
-                      <th>耗时</th>
-                      <th>状态</th>
-                      <th>Trace</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="(row, i) in summary.recentTraces"
-                      :key="row.traceId || i"
-                      style="cursor: pointer"
-                      @click="goTrace(row.traceId)"
-                    >
-                      <td class="text-truncate" style="max-width: 320px">{{ row.operationName || '—' }}</td>
-                      <td>{{ formatDuration(Number(row.durationMs) || 0) }}</td>
-                      <td>
-                        <span class="badge" :class="row.hasError ? 'bg-danger' : 'bg-success'">
-                          {{ row.statusCode || (row.hasError ? 'ERR' : 'OK') }}
-                        </span>
-                      </td>
-                      <td><code class="small">{{ shortId(row.traceId) }}</code></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              <SiDataTable
+                v-else
+                :rows="summary.recentTraces"
+                :columns="recentColumns"
+                :row-key="recentRowKey"
+                clickable
+                @row-click="onRecentClick"
+              >
+                <template #cell-status="{ row }">
+                  <span class="badge" :class="row.hasError ? 'bg-danger' : 'bg-success'">
+                    {{ row.statusCode || (row.hasError ? 'ERR' : 'OK') }}
+                  </span>
+                </template>
+                <template #cell-trace="{ row }">
+                  <code class="small">{{ shortId(row.traceId) }}</code>
+                </template>
+              </SiDataTable>
             </div>
           </section>
         </div>
@@ -199,6 +171,8 @@ import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
+import SiDataTable from '../components/SiDataTable.vue'
+import type { SiColumn } from '../components/siTable'
 import { formatDuration } from '../utils/traceTimeline'
 import { TIME_RANGE_OPTIONS, emptyRequestsMessage } from '../utils/timeRange'
 import { resolveHours, persistHours, persistService, mergeQuery } from '../utils/insightQuery'
@@ -214,9 +188,67 @@ const loadError = ref('')
 const deeplinkHint = ref('')
 const summary = ref<Awaited<ReturnType<typeof ApiService.getServiceSummary>> | null>(null)
 
-const shortId = (id: string) => {
+const shortId = (id?: string) => {
   const s = String(id || '')
   return s.length > 12 ? `${s.slice(0, 8)}…` : s || '—'
+}
+
+type SlowOpRow = {
+  operationName: string
+  spanCount: number
+  errorCount: number
+  p95Ms: number
+}
+
+type RecentTraceRow = {
+  traceId?: string
+  operationName?: string
+  durationMs?: number
+  hasError?: boolean
+  statusCode?: string
+}
+
+const slowColumns: SiColumn<SlowOpRow>[] = [
+  {
+    key: 'operation',
+    label: '操作',
+    cellClass: 'si-svc-detail__op',
+    value: (row) => row.operationName,
+    title: (row) => row.operationName
+  },
+  { key: 'count', label: '次数', value: (row) => row.spanCount },
+  {
+    key: 'errors',
+    label: '错误',
+    value: (row) => row.errorCount,
+    cellClass: (row) => (row.errorCount > 0 ? 'text-danger' : undefined)
+  },
+  { key: 'p95', label: 'p95', value: (row) => formatDuration(row.p95Ms) }
+]
+
+const slowRowKey = (row: SlowOpRow, index: number) => `${row.operationName}-${index}`
+
+const onSlowOpClick = (row: SlowOpRow) => {
+  goTraces({ q: row.operationName, minDurationMs: Math.max(0, Math.floor(row.p95Ms)) })
+}
+
+const recentColumns: SiColumn<RecentTraceRow>[] = [
+  {
+    key: 'operation',
+    label: '操作',
+    cellClass: 'si-svc-detail__trace-op',
+    value: (row) => row.operationName || '—',
+    title: (row) => row.operationName || undefined
+  },
+  { key: 'duration', label: '耗时', value: (row) => formatDuration(Number(row.durationMs) || 0) },
+  { key: 'status', label: '状态' },
+  { key: 'trace', label: 'Trace' }
+]
+
+const recentRowKey = (row: RecentTraceRow, index: number) => row.traceId || index
+
+const onRecentClick = (row: RecentTraceRow) => {
+  goTrace(String(row.traceId || ''))
 }
 
 const syncHoursToRoute = () => {
@@ -427,5 +459,24 @@ onMounted(() => {
   display: flex;
   align-items: baseline;
   gap: 0.25rem;
+}
+
+.si-svc-detail__table--sm :deep(td),
+.si-svc-detail__table--sm :deep(th) {
+  padding: 0.25rem;
+}
+
+:deep(.si-svc-detail__op) {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:deep(.si-svc-detail__trace-op) {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
