@@ -140,34 +140,24 @@
               <span class="badge bg-secondary">{{ byStatusCode.length }}</span>
             </div>
             <div v-if="byStatusCode.length === 0" class="si-err-panel__empty">暂无 HTTP 状态类错误</div>
-            <div v-else class="table-responsive">
-              <table class="table table-hover mb-0 si-err-table si-err-table--compact si-data-table">
-                <thead class="table-light">
-                  <tr>
-                    <th>状态码</th>
-                    <th>次数</th>
-                    <th>服务</th>
-                    <th>样例</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="row in byStatusCode"
-                    :key="'st-' + row.key"
-                    class="si-err-row"
-                    @click="viewCategoryTraces(row.key)"
-                  >
-                    <td><span class="si-err-code">{{ row.label }}</span></td>
-                    <td class="text-danger fw-semibold">{{ row.count }}</td>
-                    <td class="small">
-                      {{ row.services.slice(0, 2).join('、') }}
-                      <span v-if="row.serviceCount > 2" class="text-muted"> 等{{ row.serviceCount }}</span>
-                    </td>
-                    <td class="si-err-sample" :title="row.sampleMessage">{{ row.sampleMessage || '—' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <SiDataTable
+              v-else
+              class="si-err-compact"
+              :rows="byStatusCode"
+              :columns="statusColumns"
+              row-key="key"
+              clickable
+              :row-class="categoryRowClass"
+              @row-click="onCategoryClick"
+            >
+              <template #cell-label="{ row }">
+                <span class="si-err-code">{{ row.label }}</span>
+              </template>
+              <template #cell-services="{ row }">
+                {{ bucketServiceNames(row) }}
+                <span v-if="row.serviceCount > 2" class="text-muted"> 等{{ row.serviceCount }}</span>
+              </template>
+            </SiDataTable>
           </section>
 
           <section class="si-err-panel">
@@ -176,34 +166,24 @@
               <span class="badge bg-warning text-dark">{{ byException.length }}</span>
             </div>
             <div v-if="byException.length === 0" class="si-err-panel__empty">暂无异常类错误</div>
-            <div v-else class="table-responsive">
-              <table class="table table-hover mb-0 si-err-table si-err-table--compact si-data-table">
-                <thead class="table-light">
-                  <tr>
-                    <th>异常</th>
-                    <th>次数</th>
-                    <th>服务</th>
-                    <th>样例</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="row in byException"
-                    :key="'ex-' + row.key"
-                    class="si-err-row"
-                    @click="viewCategoryTraces(row.key)"
-                  >
-                    <td><code class="si-err-ex">{{ row.label }}</code></td>
-                    <td class="text-danger fw-semibold">{{ row.count }}</td>
-                    <td class="small">
-                      {{ row.services.slice(0, 2).join('、') }}
-                      <span v-if="row.serviceCount > 2" class="text-muted"> 等{{ row.serviceCount }}</span>
-                    </td>
-                    <td class="si-err-sample" :title="row.sampleMessage">{{ row.sampleMessage || '—' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <SiDataTable
+              v-else
+              class="si-err-compact"
+              :rows="byException"
+              :columns="exceptionColumns"
+              row-key="key"
+              clickable
+              :row-class="categoryRowClass"
+              @row-click="onCategoryClick"
+            >
+              <template #cell-label="{ row }">
+                <code class="si-err-ex">{{ row.label }}</code>
+              </template>
+              <template #cell-services="{ row }">
+                {{ bucketServiceNames(row) }}
+                <span v-if="row.serviceCount > 2" class="text-muted"> 等{{ row.serviceCount }}</span>
+              </template>
+            </SiDataTable>
           </section>
         </div>
 
@@ -211,29 +191,15 @@
           <summary class="si-err-fold__summary">
             <i class="fa fa-question-circle me-2"></i>其它错误（{{ byOther.length }}）
           </summary>
-          <div class="table-responsive">
-            <table class="table table-hover mb-0 si-err-table si-err-table--compact si-data-table">
-              <thead class="table-light">
-                <tr>
-                  <th>分类</th>
-                  <th>次数</th>
-                  <th>服务</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="row in byOther"
-                  :key="'ot-' + row.key"
-                  class="si-err-row"
-                  @click="viewCategoryTraces(row.key)"
-                >
-                  <td>{{ row.label }}</td>
-                  <td>{{ row.count }}</td>
-                  <td class="small">{{ row.services.join('、') || '—' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <SiDataTable
+            class="si-err-compact"
+            :rows="byOther"
+            :columns="otherColumns"
+            row-key="key"
+            clickable
+            :row-class="categoryRowClass"
+            @row-click="onCategoryClick"
+          />
         </details>
 
         <AiExplainPanel
@@ -329,6 +295,55 @@ const errorServiceRowStyle = (_row: ErrorServiceRow, index: number) => ({
 
 const onErrorServiceClick = (row: ErrorServiceRow) => {
   viewServiceDetails(String(row.serviceName || ''))
+}
+
+type ErrorBucketRow = Record<string, any>
+
+const bucketServiceNames = (row: ErrorBucketRow) => {
+  const names = Array.isArray(row.services) ? row.services.map((name: unknown) => String(name)) : []
+  return names.slice(0, 2).join('、')
+}
+
+const categorySampleColumn = (label: string): SiColumn<ErrorBucketRow> => ({
+  key: 'sample',
+  label,
+  cellClass: 'si-err-sample',
+  value: (row) => row.sampleMessage || '—',
+  title: (row) => (row.sampleMessage ? String(row.sampleMessage) : undefined)
+})
+
+const statusColumns: SiColumn<ErrorBucketRow>[] = [
+  { key: 'label', label: '状态码' },
+  { key: 'count', label: '次数', cellClass: 'text-danger fw-semibold', value: (row) => row.count },
+  { key: 'services', label: '服务', cellClass: 'small' },
+  categorySampleColumn('样例')
+]
+
+const exceptionColumns: SiColumn<ErrorBucketRow>[] = [
+  { key: 'label', label: '异常' },
+  { key: 'count', label: '次数', cellClass: 'text-danger fw-semibold', value: (row) => row.count },
+  { key: 'services', label: '服务', cellClass: 'small' },
+  categorySampleColumn('样例')
+]
+
+const otherColumns: SiColumn<ErrorBucketRow>[] = [
+  { key: 'label', label: '分类', value: (row) => row.label },
+  { key: 'count', label: '次数', value: (row) => row.count },
+  {
+    key: 'services',
+    label: '服务',
+    cellClass: 'small',
+    value: (row) => {
+      const names = Array.isArray(row.services) ? row.services.map((name: unknown) => String(name)) : []
+      return names.join('、') || '—'
+    }
+  }
+]
+
+const categoryRowClass = () => 'si-err-row'
+
+const onCategoryClick = (row: ErrorBucketRow) => {
+  viewCategoryTraces(String(row.key || ''))
 }
 
 const updateCurrentTime = () => {
@@ -711,18 +726,15 @@ onUnmounted(() => {
   color: var(--si-ink);
 }
 
-.si-err-table .si-err-row,
 :deep(.si-err-row) {
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
-.si-err-table .si-err-row:hover,
 :deep(.si-err-row:hover) {
   background: rgba(15, 118, 110, 0.05);
 }
 
-.si-err-table .si-err-row.is-severe:hover,
 :deep(.si-err-row.is-severe:hover) {
   background: rgba(185, 28, 28, 0.06);
 }
@@ -810,13 +822,13 @@ onUnmounted(() => {
   color: var(--si-muted);
 }
 
-.si-err-table--compact td,
-.si-err-table--compact th {
+.si-err-compact :deep(td),
+.si-err-compact :deep(th) {
   font-size: 0.84rem;
   vertical-align: middle;
 }
 
-.si-err-sample {
+:deep(.si-err-sample) {
   max-width: 12rem;
   overflow: hidden;
   text-overflow: ellipsis;
