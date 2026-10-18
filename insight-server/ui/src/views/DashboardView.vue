@@ -36,14 +36,17 @@
     <SiAlert v-if="loadError" tone="danger" class="mx-3 mb-0">{{ loadError }}</SiAlert>
 
     <div v-show="!loading" class="si-dashboard__content">
-      <section class="si-dashboard__kpis" aria-label="关键指标">
+      <section class="si-dashboard__kpis" :class="{ 'is-alert': leadKpi.alert }" aria-label="关键指标">
         <button
           type="button"
           class="si-dashboard__kpi si-dashboard__kpi--lead"
           :class="{ 'is-alert': leadKpi.alert }"
           @click="onKpiClick(leadKpi.to)"
         >
-          <span class="si-dashboard__kpi-value">{{ leadKpi.value }}</span>
+          <span class="si-dashboard__kpi-figure">
+            <span class="si-dashboard__kpi-value">{{ leadKpi.count }}</span>
+            <span class="si-dashboard__kpi-unit">{{ leadKpi.unit }}</span>
+          </span>
           <span class="si-dashboard__kpi-name">{{ leadKpi.title }}</span>
         </button>
         <div class="si-dashboard__kpi-side">
@@ -54,7 +57,10 @@
             class="si-dashboard__kpi"
             @click="onKpiClick(stat.to)"
           >
-            <span class="si-dashboard__kpi-value">{{ stat.value }}</span>
+            <span class="si-dashboard__kpi-figure">
+              <span class="si-dashboard__kpi-value">{{ stat.count }}</span>
+              <span class="si-dashboard__kpi-unit">{{ stat.unit }}</span>
+            </span>
             <span class="si-dashboard__kpi-name">{{ stat.title }}</span>
           </button>
         </div>
@@ -694,7 +700,8 @@ const durationShare = (tr: any) => {
 type DashKpi = {
   key: string
   title: string
-  value: string
+  count: string
+  unit: string
   to: string
   alert?: boolean
 }
@@ -702,13 +709,14 @@ type DashKpi = {
 const kpiStats = computed<DashKpi[]>(() => {
   const errorCount = errorAnalysis.value.length
   return [
-    { key: 'services', title: '监控服务', value: `${services.value.length} 个`, to: '/traces' },
-    { key: 'spans', title: '链路总数', value: `${totalSpans.value} 条`, to: '/traces' },
-    { key: 'deps', title: '依赖关系', value: `${dependencies.value.length} 条`, to: '/topology' },
+    { key: 'services', title: '监控服务', count: String(services.value.length), unit: '个', to: '/traces' },
+    { key: 'spans', title: '链路总数', count: String(totalSpans.value), unit: '条', to: '/traces' },
+    { key: 'deps', title: '依赖关系', count: String(dependencies.value.length), unit: '条', to: '/topology' },
     {
       key: 'errors',
       title: '异常服务',
-      value: `${errorCount} 个`,
+      count: String(errorCount),
+      unit: '个',
       to: '/error-analysis',
       alert: errorCount > 0
     }
@@ -1203,47 +1211,52 @@ onUnmounted(() => {
 
 .si-dashboard__kpis {
   flex-shrink: 0;
-  display: grid;
-  grid-template-columns: minmax(10rem, 1.15fr) minmax(0, 2.2fr);
-  gap: 1.25rem 1.75rem;
-  align-items: end;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.7rem 0.45rem 0.7rem 1.05rem;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--box-shadow);
 }
 
-@media (max-width: 991px) {
-  .si-dashboard__kpis {
-    grid-template-columns: 1fr;
-    gap: 0.85rem;
-  }
+.si-dashboard__kpis.is-alert {
+  box-shadow: inset 3px 0 0 var(--danger-color), var(--box-shadow);
 }
 
 .si-dashboard__kpi {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.2rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
   margin: 0;
-  padding: 0;
+  padding: 0.2rem 0.7rem;
   border: 0;
+  border-radius: 8px;
   background: transparent;
   color: inherit;
+  font: inherit;
   text-align: left;
   cursor: pointer;
   appearance: none;
-  width: 100%;
+}
+
+.si-dashboard__kpi:hover .si-dashboard__kpi-name {
+  color: var(--si-teal);
 }
 
 .si-dashboard__kpi:focus-visible {
   outline: 2px solid var(--si-teal);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
 .si-dashboard__kpi--lead {
-  padding-bottom: 0.2rem;
-  border-bottom: 2px solid var(--si-teal);
-}
-
-.si-dashboard__kpi--lead.is-alert {
-  border-bottom-color: var(--danger-color);
+  flex: 0 0 auto;
+  gap: 0.7rem;
+  padding: 0.15rem 1.15rem 0.15rem 0.15rem;
+  margin-right: 0.35rem;
+  border-right: 1px solid var(--card-border);
+  border-radius: 0;
 }
 
 .si-dashboard__kpi--lead.is-alert .si-dashboard__kpi-value {
@@ -1251,21 +1264,20 @@ onUnmounted(() => {
 }
 
 .si-dashboard__kpi-side {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem 1rem;
-  align-items: end;
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 1.65rem;
+  min-width: 0;
+  padding-left: 0.45rem;
 }
 
-@media (max-width: 640px) {
-  .si-dashboard__kpi-side {
-    grid-template-columns: 1fr;
-  }
-}
-
-.si-dashboard__kpi-side .si-dashboard__kpi {
-  padding-top: 0.35rem;
-  border-top: 1px solid var(--card-border);
+.si-dashboard__kpi-figure {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.18rem;
+  flex: 0 0 auto;
 }
 
 .si-dashboard__kpi-value {
@@ -1278,22 +1290,64 @@ onUnmounted(() => {
 }
 
 .si-dashboard__kpi--lead .si-dashboard__kpi-value {
-  font-size: clamp(2.4rem, 4.2vw, 3.35rem);
+  font-size: clamp(1.85rem, 2.6vw, 2.35rem);
 }
 
 .si-dashboard__kpi-side .si-dashboard__kpi-value {
-  font-size: 1.35rem;
+  font-size: 1.15rem;
 }
 
-.si-dashboard__kpi-name {
+.si-dashboard__kpi-unit {
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--si-ink-soft);
 }
 
+.si-dashboard__kpi--lead .si-dashboard__kpi-unit {
+  font-size: 0.88rem;
+}
+
+.si-dashboard__kpi-name {
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--si-ink-soft);
+  white-space: nowrap;
+}
+
 .si-dashboard__kpi--lead .si-dashboard__kpi-name {
   font-size: 0.95rem;
+  color: var(--si-ink);
+}
+
+@media (max-width: 991px) {
+  .si-dashboard__kpis {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .si-dashboard__kpi--lead {
+    margin-right: 0;
+    padding: 0.1rem 0 0.55rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  .si-dashboard__kpi-side .si-dashboard__kpi {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .si-dashboard__kpi-side {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+    padding-left: 0;
+  }
 }
 
 /* 时段摘要：与上方 KPI 卡同系卡片，弱化横幅感 */
