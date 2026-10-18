@@ -34,7 +34,6 @@
           <span>{{ soloName.slice(0, 1).toUpperCase() }}</span>
         </div>
         <div class="si-topo-solo__copy">
-          <p class="si-topo-solo__kicker">单应用</p>
           <h3>{{ soloName }}</h3>
           <div class="si-topo-solo__actions">
             <button type="button" class="btn btn-primary btn-sm" @click="goServiceDetail(soloName)">服务详情</button>
@@ -938,17 +937,8 @@ onUnmounted(() => {
   box-shadow: 0 0 0 8px var(--si-hover-teal);
 }
 
-.si-topo-solo__kicker {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--si-teal);
-}
-
 .si-topo-solo__copy h3 {
-  margin: 0.15rem 0 0.35rem;
+  margin: 0 0 0.45rem;
   font-family: var(--font-display);
   font-size: clamp(1.45rem, 2.4vw, 1.9rem);
   font-weight: 700;

@@ -200,7 +200,6 @@
       <section v-if="isSolo" class="si-app" aria-label="单应用概览">
         <div class="si-app__head">
           <div>
-            <p class="si-app__kicker">当前服务</p>
             <h3 class="si-app__name">{{ soloProfile.name }}</h3>
           </div>
           <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTraces()">全部链路</button>
@@ -2049,22 +2048,13 @@ onUnmounted(() => {
 .si-app__head {
   flex-shrink: 0;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
 }
 
-.si-app__kicker {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--si-teal);
-}
-
 .si-app__name {
-  margin: 0.15rem 0 0.25rem;
+  margin: 0;
   font-family: var(--font-display);
   font-size: clamp(1.6rem, 2.6vw, 2.1rem);
   font-weight: 700;
