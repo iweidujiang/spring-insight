@@ -1119,10 +1119,10 @@ onUnmounted(() => {
 }
 
 .si-settings__usage-head strong {
-  font-family: var(--font-display);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
   color: var(--si-ink);
-  font-variant-numeric: tabular-nums;
 }
 
 .si-settings__usage-bar {
@@ -1182,11 +1182,11 @@ onUnmounted(() => {
 }
 
 .si-settings__storage-item strong {
-  font-family: var(--font-display);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--si-ink);
-  font-variant-numeric: tabular-nums;
 }
 
 .si-settings__path {

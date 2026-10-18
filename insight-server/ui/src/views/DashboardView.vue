@@ -1247,7 +1247,8 @@ onUnmounted(() => {
 }
 
 .si-dashboard__kpi-value {
-  font-family: var(--font-display);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
   font-size: clamp(1.45rem, 2.4vw, 1.85rem);
   font-weight: 700;
   color: var(--si-ink);
@@ -2024,7 +2025,8 @@ onUnmounted(() => {
 .si-app__metric strong {
   display: block;
   margin-top: 0.2rem;
-  font-family: var(--font-display);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
   font-size: 1.45rem;
   font-weight: 700;
   color: var(--si-ink);

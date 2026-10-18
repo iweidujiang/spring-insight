@@ -989,7 +989,8 @@ onUnmounted(() => {
 .si-topo-solo__metric strong {
   display: block;
   margin-top: 0.2rem;
-  font-family: var(--font-display);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
   font-size: 1.4rem;
   font-weight: 700;
   color: var(--si-ink);

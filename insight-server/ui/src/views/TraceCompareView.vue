@@ -576,6 +576,8 @@ onMounted(() => load())
 }
 
 :deep(.si-cwf__dur) {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--si-ink-soft);

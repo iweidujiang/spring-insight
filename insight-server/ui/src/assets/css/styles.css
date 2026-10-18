@@ -1,5 +1,5 @@
 /* Spring Insight — 浅色纸感 + 墨青（方案 A） */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
 :root {
   --si-nav-offset: 0px;
@@ -41,6 +41,8 @@
 
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
   --font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
+  --font-numeric: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
   /* 0.4 表面 / 字阶 / 间距 */
   --si-surface-1: #fffcfa;
@@ -471,6 +473,14 @@ body {
   position: relative;
 }
 
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
 /* 细密纸纹，不挡操作 */
 body::before {
   content: '';
@@ -885,7 +895,8 @@ body::before {
 
 .stat-card .h4,
 .stat-card .h5 {
-  font-family: var(--font-display);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
   font-size: 1.5rem;
   font-weight: 700;
   margin-top: 0.35rem;
@@ -1415,6 +1426,7 @@ body::before {
   font-style: normal;
   font-size: 0.82rem;
   font-weight: 700;
+  font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
   text-align: right;
   color: var(--si-ink-soft);

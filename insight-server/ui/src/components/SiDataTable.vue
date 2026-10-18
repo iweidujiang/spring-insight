@@ -117,6 +117,7 @@ function onCellClick(event: MouseEvent, column: SiColumn<T>) {
 .si-data-table th.si-data-table__num,
 .si-data-table td.si-data-table__num {
   text-align: right;
+  font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
 }
 

@@ -313,6 +313,8 @@ onMounted(async () => {
 
 .si-redis-kpi__value {
   margin-top: 0.25rem;
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
   font-size: 1.35rem;
   font-weight: 700;
   color: var(--si-ink);

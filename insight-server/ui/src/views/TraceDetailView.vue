@@ -592,7 +592,7 @@ onMounted(async () => {
 }
 
 .trace-strip__value {
-  font-family: var(--font-display);
+  font-family: var(--font-numeric);
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--si-ink);
@@ -846,6 +846,8 @@ onMounted(async () => {
 
 .trace-waterfall__dur {
   text-align: right;
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--si-ink-soft);

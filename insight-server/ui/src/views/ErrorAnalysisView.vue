@@ -662,7 +662,7 @@ onUnmounted(() => {
 }
 
 .si-err-strip__value {
-  font-family: var(--font-display);
+  font-family: var(--font-numeric);
   font-size: 1.05rem;
   font-weight: 700;
   color: var(--si-ink);
