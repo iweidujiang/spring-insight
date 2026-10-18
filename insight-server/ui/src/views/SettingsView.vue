@@ -813,10 +813,10 @@ onUnmounted(() => {
 
 .si-settings__tab {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.65rem;
   width: 100%;
-  padding: 0.9rem 1rem;
+  padding: 0.85rem 1rem;
   border: 1px solid var(--card-border);
   border-radius: 10px;
   background: var(--card-bg);
@@ -846,17 +846,14 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 8px;
-  background: rgba(15, 118, 110, 0.1);
-  color: var(--si-teal);
   flex-shrink: 0;
+  color: var(--si-teal);
+  font-size: 1.05rem;
+  line-height: 1;
 }
 
 .si-settings__tab.is-danger .si-settings__tab-icon {
-  background: rgba(185, 28, 28, 0.1);
-  color: #b91c1c;
+  color: var(--danger-color);
 }
 
 .si-settings__tab-text {
