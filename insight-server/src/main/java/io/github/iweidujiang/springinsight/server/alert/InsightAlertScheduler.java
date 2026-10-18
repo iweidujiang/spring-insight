@@ -39,8 +39,7 @@ public class InsightAlertScheduler {
 
     private final InsightRuntimeSettingsService settingsService;
     private final TraceSpanPersistenceService persistenceService;
-    private final InsightAlertWebhookSender webhookSender;
-    private final InsightAlertEmailSender emailSender;
+    private final List<InsightAlertChannelSender> channelSenders;
     private final InsightAlertMetrics metrics;
     private final InsightAiExplainService aiExplainService;
 
@@ -53,21 +52,18 @@ public class InsightAlertScheduler {
     /**
      * @param settingsService     运行时设置
      * @param persistenceService  聚合
-     * @param webhookSender       Webhook
-     * @param emailSender         邮件
+     * @param channelSenders      已注册的推送渠道
      * @param metrics             结果计数
      * @param aiExplainService    可选告警 AI 解读
      */
     public InsightAlertScheduler(InsightRuntimeSettingsService settingsService,
                                  TraceSpanPersistenceService persistenceService,
-                                 InsightAlertWebhookSender webhookSender,
-                                 InsightAlertEmailSender emailSender,
+                                 List<InsightAlertChannelSender> channelSenders,
                                  InsightAlertMetrics metrics,
                                  InsightAiExplainService aiExplainService) {
         this.settingsService = settingsService;
         this.persistenceService = persistenceService;
-        this.webhookSender = webhookSender;
-        this.emailSender = emailSender;
+        this.channelSenders = channelSenders == null ? List.of() : List.copyOf(channelSenders);
         this.metrics = metrics;
         this.aiExplainService = aiExplainService;
     }
@@ -242,20 +238,43 @@ public class InsightAlertScheduler {
      * @return 任一已配置通道成功即为 true
      */
     private boolean deliver(InsightServerAlertProperties properties, Map<String, Object> payload) {
+        AlertPayload alertPayload = new AlertPayload(payload);
+        ChannelConfig config = new ChannelConfig(properties.normalizedWebhookUrl(), properties);
         boolean anySuccess = false;
         boolean attempted = false;
         if (properties.isWebhookSendReady()) {
             attempted = true;
-            boolean ok = webhookSender.post(properties.normalizedWebhookUrl(), payload);
+            boolean ok = dispatch("webhook", alertPayload, config);
             metrics.record("webhook", ok ? "success" : "failure");
             anySuccess = anySuccess || ok;
         }
         if (properties.isEmailSendReady()) {
             attempted = true;
-            boolean ok = emailSender.send(properties, payload);
+            boolean ok = dispatch("email", alertPayload, config);
             metrics.record("email", ok ? "success" : "failure");
             anySuccess = anySuccess || ok;
         }
         return attempted && anySuccess;
+    }
+
+    private boolean dispatch(String channelType, AlertPayload payload, ChannelConfig config) {
+        InsightAlertChannelSender sender = null;
+        for (InsightAlertChannelSender candidate : channelSenders) {
+            if (channelType.equals(candidate.channelType())) {
+                sender = candidate;
+                break;
+            }
+        }
+        if (sender == null) {
+            log.warn("[告警] 未注册渠道: {}", channelType);
+            return false;
+        }
+        try {
+            sender.send(payload, config);
+            return true;
+        } catch (Exception e) {
+            log.warn("[告警] {} 发送失败: {}", channelType, e.getMessage());
+            return false;
+        }
     }
 }

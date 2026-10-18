@@ -20,7 +20,22 @@ import java.util.Properties;
  */
 @Slf4j
 @Component
-public class InsightAlertEmailSender {
+public class InsightAlertEmailSender implements InsightAlertChannelSender {
+
+    @Override
+    public String channelType() {
+        return "email";
+    }
+
+    /**
+     * 按渠道配置发邮件。未就绪或 SMTP 失败时抛出异常。
+     */
+    @Override
+    public void send(AlertPayload payload, ChannelConfig config) throws Exception {
+        if (!send(config.alertProperties(), payload.fields())) {
+            throw new IllegalStateException("email send failed");
+        }
+    }
 
     /**
      * 使用调用方传入的生效配置发送邮件。

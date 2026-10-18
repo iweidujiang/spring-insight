@@ -19,7 +19,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-public class InsightAlertWebhookSender {
+public class InsightAlertWebhookSender implements InsightAlertChannelSender {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
@@ -34,6 +34,22 @@ public class InsightAlertWebhookSender {
     public InsightAlertWebhookSender(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
+    }
+
+    @Override
+    public String channelType() {
+        return "webhook";
+    }
+
+    /**
+     * 按渠道配置 POST 告警 JSON。非 2xx 或网络失败时抛出异常。
+     */
+    @Override
+    public void send(AlertPayload payload, ChannelConfig config) throws Exception {
+        PostResult result = postDetailed(config.webhookUrl(), payload.fields());
+        if (!result.ok()) {
+            throw new IllegalStateException(result.error().isBlank() ? "webhook send failed" : result.error());
+        }
     }
 
     /**

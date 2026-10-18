@@ -101,8 +101,7 @@ class InsightAlertSchedulerTest {
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
                 settings,
                 storeWithSlowSpan(250L),
-                new InsightAlertWebhookSender(new ObjectMapper()),
-                new InsightAlertEmailSender(),
+                senders(),
                 lastMetrics,
                 mockAi());
         scheduler.scan();
@@ -133,8 +132,7 @@ class InsightAlertSchedulerTest {
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
                 settings,
                 storeWithOneError(),
-                new InsightAlertWebhookSender(new ObjectMapper()),
-                new InsightAlertEmailSender(),
+                senders(),
                 lastMetrics,
                 mockAi());
         scheduler.scan();
@@ -157,13 +155,16 @@ class InsightAlertSchedulerTest {
         InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
         when(settings.effectiveAlert()).thenReturn(props);
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
-                settings, persistence, new InsightAlertWebhookSender(new ObjectMapper()),
-                new InsightAlertEmailSender(), metrics, mockAi());
+                settings, persistence, senders(), metrics, mockAi());
         scheduler.scan();
         scheduler.scan();
         assertEquals(2, hits.get());
         assertEquals(2.0, metrics.count("failure"));
         assertEquals(0.0, metrics.count("success"));
+    }
+
+    private static List<InsightAlertChannelSender> senders() {
+        return List.of(new InsightAlertWebhookSender(new ObjectMapper()), new InsightAlertEmailSender());
     }
 
     private InsightAlertMetrics lastMetrics;
@@ -176,8 +177,7 @@ class InsightAlertSchedulerTest {
         return new InsightAlertScheduler(
                 settings,
                 storeWithOneError(),
-                new InsightAlertWebhookSender(new ObjectMapper()),
-                new InsightAlertEmailSender(),
+                senders(),
                 lastMetrics,
                 mockAi());
     }
