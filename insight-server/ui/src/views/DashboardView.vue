@@ -260,35 +260,16 @@
               <span><i class="fa fa-heartbeat me-2"></i>服务健康</span>
               <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goSlowTraces()">慢链路</button>
             </div>
-            <div v-if="healthSnapshot.length > 0" class="table-responsive si-overview__scroll">
-              <table class="table table-hover mb-0 si-dashboard__diag-table si-data-table">
-                <thead class="table-light">
-                  <tr>
-                    <th>服务</th>
-                    <th>均耗时</th>
-                    <th>p95</th>
-                    <th>错误</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="row in healthSnapshot"
-                    :key="'health-' + row.serviceName"
-                    class="si-dashboard__diag-row"
-                    @click="goServiceSlow(row)"
-                  >
-                    <td class="text-truncate" style="max-width: 9rem" :title="row.serviceName">{{ row.serviceName }}</td>
-                    <td>{{ formatMs(row.avgMs) }}</td>
-                    <td :class="row.p95Ms >= 1000 ? 'text-danger fw-bold' : row.p95Ms >= 500 ? 'text-warning' : ''">
-                      {{ formatMs(row.p95Ms) }}
-                    </td>
-                    <td :class="(row.errorCount || 0) > 0 ? 'text-danger' : 'text-muted'">
-                      {{ row.errorCount || 0 }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <SiDataTable
+              v-if="healthSnapshot.length > 0"
+              class="si-overview__scroll si-dashboard__diag-table"
+              :rows="healthSnapshot"
+              :columns="healthColumns"
+              row-key="serviceName"
+              clickable
+              :row-class="healthRowClass"
+              @row-click="goServiceSlow"
+            />
             <div v-else class="si-dashboard__diag-empty si-dashboard__diag-empty--rich">
               <p class="mb-1">{{ emptyLatencySampleMessage(hours) }}</p>
               <button type="button" class="btn btn-sm btn-outline-primary" @click="expandAllStored">扩大到全部已存</button>
@@ -399,6 +380,8 @@ import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
+import SiDataTable from '../components/SiDataTable.vue'
+import type { SiColumn } from '../components/siTable'
 import { ApiService, type AiExplainResult, type PeriodInsight, type PeriodInsightLink } from '../services/ApiService'
 import { formatDuration } from '../utils/traceTimeline'
 import { useChartTheme } from '../composables/useChartTheme'
@@ -657,6 +640,40 @@ const hotDependencies = computed(() =>
 )
 
 const formatMs = (ms: number) => formatDuration(Number(ms) || 0)
+
+type HealthRow = {
+  serviceName: string
+  avgMs?: number
+  p95Ms?: number
+  p50Ms?: number
+  errorCount?: number
+}
+
+const healthColumns: SiColumn<HealthRow>[] = [
+  {
+    key: 'service',
+    label: '服务',
+    cellClass: 'si-dashboard__svc',
+    value: (row) => row.serviceName,
+    title: (row) => row.serviceName
+  },
+  { key: 'avg', label: '均耗时', value: (row) => formatMs(row.avgMs || 0) },
+  {
+    key: 'p95',
+    label: 'p95',
+    value: (row) => formatMs(row.p95Ms || 0),
+    cellClass: (row) =>
+      (row.p95Ms || 0) >= 1000 ? 'text-danger fw-bold' : (row.p95Ms || 0) >= 500 ? 'text-warning' : undefined
+  },
+  {
+    key: 'errors',
+    label: '错误',
+    value: (row) => row.errorCount || 0,
+    cellClass: (row) => ((row.errorCount || 0) > 0 ? 'text-danger' : 'text-muted')
+  }
+]
+
+const healthRowClass = () => 'si-dashboard__diag-row'
 
 const traceFailed = (tr: any) => !!(tr?.hasError || tr?.statusCode === 'ERROR')
 
@@ -1770,8 +1787,15 @@ onUnmounted(() => {
   color: var(--si-muted);
 }
 
-.si-dashboard__diag-row {
+:deep(.si-dashboard__diag-row) {
   cursor: pointer;
+}
+
+:deep(.si-dashboard__svc) {
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .si-dashboard__dep-cell {
