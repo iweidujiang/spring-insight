@@ -38,35 +38,26 @@
     <SiAlert v-else-if="!loading && deeplinkHint" tone="warning" role="alert" class="mb-3">{{ deeplinkHint }}</SiAlert>
 
     <template v-if="!loading && summary">
-      <section class="si-svc-detail__kpis" aria-label="关键指标">
-        <div class="card si-svc-detail__kpi">
-          <div class="card-body">
-            <div class="text-xs text-uppercase text-muted">Span 数</div>
-            <div class="si-svc-detail__kpi-value">{{ summary.kpis.spanCount }}</div>
-          </div>
+      <section class="si-svc-detail__kpis" :class="{ 'is-alert': leadKpi.alert }" aria-label="关键指标">
+        <div class="si-svc-detail__kpi si-svc-detail__kpi--lead" :class="{ 'is-alert': leadKpi.alert }">
+          <span class="si-svc-detail__kpi-figure">
+            <span class="si-svc-detail__kpi-value">{{ leadKpi.count }}</span>
+            <span v-if="leadKpi.unit" class="si-svc-detail__kpi-unit">{{ leadKpi.unit }}</span>
+          </span>
+          <span class="si-svc-detail__kpi-name">{{ leadKpi.title }}</span>
         </div>
-        <div class="card si-svc-detail__kpi">
-          <div class="card-body">
-            <div class="text-xs text-uppercase text-muted">错误</div>
-            <div class="si-svc-detail__kpi-value" :class="{ 'text-danger': summary.kpis.errorCount > 0 }">
-              {{ summary.kpis.errorCount }}
-              <span class="si-svc-detail__kpi-sub">{{ summary.kpis.errorRate.toFixed(1) }}%</span>
-            </div>
-          </div>
-        </div>
-        <div class="card si-svc-detail__kpi">
-          <div class="card-body">
-            <div class="text-xs text-uppercase text-muted">p95</div>
-            <div class="si-svc-detail__kpi-value">{{ formatDuration(summary.kpis.p95Ms) }}</div>
-          </div>
-        </div>
-        <div class="card si-svc-detail__kpi">
-          <div class="card-body">
-            <div class="text-xs text-uppercase text-muted">平均 / 最大</div>
-            <div class="si-svc-detail__kpi-value si-svc-detail__kpi-value--sm">
-              {{ formatDuration(summary.kpis.avgMs) }}
-              <span class="si-svc-detail__kpi-sub">/ {{ formatDuration(summary.kpis.maxMs) }}</span>
-            </div>
+        <div class="si-svc-detail__kpi-side">
+          <div v-for="stat in sideKpis" :key="stat.key" class="si-svc-detail__kpi" :class="{ 'is-alert': stat.alert }">
+            <span class="si-svc-detail__kpi-figure">
+              <span class="si-svc-detail__kpi-value">{{ stat.count }}</span>
+              <span v-if="stat.unit" class="si-svc-detail__kpi-unit">{{ stat.unit }}</span>
+              <template v-if="stat.extra">
+                <span class="si-svc-detail__kpi-sep">/</span>
+                <span class="si-svc-detail__kpi-value">{{ stat.extra }}</span>
+                <span v-if="stat.extraUnit" class="si-svc-detail__kpi-unit">{{ stat.extraUnit }}</span>
+              </template>
+            </span>
+            <span class="si-svc-detail__kpi-name">{{ stat.title }}</span>
           </div>
         </div>
       </section>
@@ -162,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
@@ -182,6 +173,62 @@ const loading = ref(true)
 const loadError = ref('')
 const deeplinkHint = ref('')
 const summary = ref<Awaited<ReturnType<typeof ApiService.getServiceSummary>> | null>(null)
+
+type SvcKpi = {
+  key: string
+  title: string
+  count: string
+  unit: string
+  extra?: string
+  extraUnit?: string
+  alert?: boolean
+}
+
+const durationParts = (ms: number) => {
+  const text = formatDuration(ms)
+  const matched = text.match(/^([<>]?\d+(?:\.\d+)?)([a-zA-Z]+)$/)
+  if (!matched) return { count: text, unit: '' }
+  return { count: matched[1], unit: matched[2] }
+}
+
+const kpiStats = computed<SvcKpi[]>(() => {
+  const kpis = summary.value?.kpis
+  if (!kpis) return []
+  const p95 = durationParts(kpis.p95Ms)
+  const avg = durationParts(kpis.avgMs)
+  const max = durationParts(kpis.maxMs)
+  return [
+    { key: 'spans', title: 'Span 数', count: String(kpis.spanCount), unit: '' },
+    {
+      key: 'errors',
+      title: '错误',
+      count: String(kpis.errorCount),
+      unit: `${kpis.errorRate.toFixed(1)}%`,
+      alert: kpis.errorCount > 0
+    },
+    { key: 'p95', title: 'p95', count: p95.count, unit: p95.unit },
+    {
+      key: 'avg',
+      title: '平均 / 最大',
+      count: avg.count,
+      unit: avg.unit,
+      extra: max.count,
+      extraUnit: max.unit
+    }
+  ]
+})
+
+const leadKpi = computed(() => {
+  const rows = kpiStats.value
+  return rows.find((row) => row.alert) || rows.find((row) => row.key === 'spans') || rows[0] || {
+    key: 'spans',
+    title: 'Span 数',
+    count: '0',
+    unit: ''
+  }
+})
+
+const sideKpis = computed(() => kpiStats.value.filter((row) => row.key !== leadKpi.value.key))
 
 const shortId = (id?: string) => {
   const s = String(id || '')
@@ -407,30 +454,126 @@ onMounted(() => {
 }
 
 .si-svc-detail__kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   margin-bottom: 0.85rem;
+  padding: 0.7rem 0.45rem 0.7rem 1.05rem;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--box-shadow);
+}
+
+.si-svc-detail__kpis.is-alert {
+  box-shadow: inset 3px 0 0 var(--danger-color), var(--box-shadow);
+}
+
+.si-svc-detail__kpi {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.15rem 0.55rem;
+}
+
+.si-svc-detail__kpi--lead {
+  flex: 0 0 auto;
+  gap: 0.7rem;
+  padding: 0.15rem 1.15rem 0.15rem 0.15rem;
+  margin-right: 0.35rem;
+  border-right: 1px solid var(--card-border);
+}
+
+.si-svc-detail__kpi-side {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 1.35rem;
+  min-width: 0;
+  padding-left: 0.35rem;
+}
+
+.si-svc-detail__kpi-figure {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.18rem;
+  flex: 0 0 auto;
 }
 
 .si-svc-detail__kpi-value {
   font-family: var(--font-numeric);
   font-variant-numeric: tabular-nums;
-  font-size: 1.35rem;
   font-weight: 700;
   color: var(--si-ink);
-  line-height: 1.2;
+  line-height: 1;
+  letter-spacing: -0.03em;
 }
 
-.si-svc-detail__kpi-value--sm {
-  font-size: 1.1rem;
+.si-svc-detail__kpi--lead .si-svc-detail__kpi-value {
+  font-size: clamp(1.85rem, 2.6vw, 2.35rem);
 }
 
-.si-svc-detail__kpi-sub {
+.si-svc-detail__kpi-side .si-svc-detail__kpi-value {
+  font-size: 1.15rem;
+}
+
+.si-svc-detail__kpi.is-alert .si-svc-detail__kpi-value {
+  color: var(--danger-color);
+}
+
+.si-svc-detail__kpi-unit,
+.si-svc-detail__kpi-sep {
+  font-family: var(--font-body);
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--si-muted);
-  margin-left: 0.25rem;
+  color: var(--si-ink-soft);
+}
+
+.si-svc-detail__kpi--lead .si-svc-detail__kpi-unit {
+  font-size: 0.88rem;
+}
+
+.si-svc-detail__kpi-name {
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--si-ink-soft);
+  white-space: nowrap;
+}
+
+.si-svc-detail__kpi--lead .si-svc-detail__kpi-name {
+  font-size: 0.95rem;
+  color: var(--si-ink);
+}
+
+@media (max-width: 991px) {
+  .si-svc-detail__kpis {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .si-svc-detail__kpi--lead {
+    margin-right: 0;
+    padding: 0.1rem 0 0.55rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  .si-svc-detail__kpi-side {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .si-svc-detail__kpi-side {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
 }
 
 .si-svc-detail__ctas {
