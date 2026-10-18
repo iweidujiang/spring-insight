@@ -8,11 +8,6 @@
         <h2 class="si-svc-detail__title">
           <i class="fa fa-cube me-2"></i>{{ serviceName || '服务详情' }}
         </h2>
-        <p class="si-svc-detail__subtitle">
-          {{ summary?.external
-            ? '外部依赖（如数据库）：汇总指向它的出站 CLIENT Span'
-            : '近窗请求量 · 错误 · 慢操作 · 最近链路' }}
-        </p>
       </div>
       <div class="si-svc-detail__actions">
         <label class="visually-hidden" for="svc-detail-hours">时间范围</label>
@@ -372,15 +367,9 @@ onMounted(() => {
   color: var(--si-ink);
 }
 
-.si-svc-detail__subtitle,
 .si-svc-detail__back {
   color: var(--si-muted);
   text-decoration: none;
-}
-
-.si-svc-detail__subtitle {
-  margin: 0;
-  font-size: 0.85rem;
 }
 
 .si-svc-detail__actions {

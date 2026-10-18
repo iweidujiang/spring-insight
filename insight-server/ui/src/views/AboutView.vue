@@ -1,9 +1,6 @@
 <template>
   <div class="si-page fade-in si-about">
     <SiPageHeader class="mb-1" title="关于" icon="fa-info-circle">
-      <template #description>
-        基本信息与演示路径 · 推荐配套 Agent {{ agentVersion }}
-      </template>
       <span class="badge bg-info">
         <i class="fa fa-clock me-1"></i>{{ currentTime }}
       </span>

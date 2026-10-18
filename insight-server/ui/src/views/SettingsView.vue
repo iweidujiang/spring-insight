@@ -1,14 +1,6 @@
 <template>
   <div class="si-page fade-in si-settings">
     <SiPageHeader class="mb-3" title="设置" icon="fa-cog">
-      <template #description>
-        告警推送、链路 AI 解读与容量保留
-        <template v-if="section !== 'data'">
-          · 保存后即时生效，写入
-          <code v-if="settingsPath">{{ settingsPath }}</code>
-          <span v-else>runtime-settings.json</span>
-        </template>
-      </template>
       <button
         v-if="section !== 'data'"
         type="button"

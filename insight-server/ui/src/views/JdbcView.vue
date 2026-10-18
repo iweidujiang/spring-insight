@@ -1,9 +1,6 @@
 <template>
   <div class="si-page fade-in si-jdbc-page">
     <SiPageHeader title="数据库" icon="fa-database">
-      <template #description>
-        JDBC 出站调用汇总，可在此查看慢 SQL / 错误
-      </template>
       <SiFilterBar
         v-model:service="selectedService"
         v-model:hours="hours"

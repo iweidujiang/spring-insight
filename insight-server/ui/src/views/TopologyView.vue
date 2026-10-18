@@ -1,11 +1,6 @@
 <template>
   <div class="si-page fade-in si-topo-page">
     <SiPageHeader title="服务拓扑图" icon="fa-sitemap">
-      <template #description>
-        {{ isSolo
-          ? '当前只有一个应用、还没有跨服务调用。'
-          : '箭头：调用方 → 被调用方；点击节点或调用链路先选中，再从旁栏下钻' }}
-      </template>
       <SiFilterBar
         v-model:hours="hours"
         :show-service="false"
@@ -41,9 +36,6 @@
         <div class="si-topo-solo__copy">
           <p class="si-topo-solo__kicker">单应用</p>
           <h3>{{ soloName }}</h3>
-          <p class="si-topo-solo__desc">
-            链路追踪可看这个应用的每次请求。
-          </p>
           <div class="si-topo-solo__actions">
             <button type="button" class="btn btn-primary btn-sm" @click="goServiceDetail(soloName)">服务详情</button>
             <button type="button" class="btn btn-outline-primary btn-sm" @click="goServiceTraces(soloName)">查看链路</button>
@@ -964,13 +956,6 @@ onUnmounted(() => {
   color: var(--si-ink);
 }
 
-.si-topo-solo__desc {
-  margin: 0 0 0.75rem;
-  max-width: 40rem;
-  font-size: 0.9rem;
-  color: var(--si-muted);
-  line-height: 1.55;
-}
 
 .si-topo-solo__actions {
   display: flex;

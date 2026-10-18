@@ -5,9 +5,6 @@
         <h2 class="si-dashboard__title">
           <i class="fa fa-tachometer me-2"></i>监控仪表盘
         </h2>
-        <p class="si-dashboard__subtitle">
-          {{ isSolo ? '单应用 · 请求、延迟与错误' : '健康度 · 异常 · 依赖一览' }}
-        </p>
       </div>
       <div class="si-dashboard__status" v-show="!loading">
         <span v-if="!errorAnalysis || errorAnalysis.length === 0" class="si-dashboard__pill si-dashboard__pill--ok">
@@ -1018,13 +1015,6 @@ onUnmounted(() => {
 }
 
 .si-dashboard__title i { color: var(--si-teal); }
-
-.si-dashboard__subtitle {
-  margin: 0.2rem 0 0;
-  font-size: 0.8rem;
-  color: var(--si-muted);
-  letter-spacing: 0.04em;
-}
 
 .si-dashboard__status { justify-self: center; }
 

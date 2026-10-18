@@ -1,9 +1,6 @@
 <template>
   <div class="si-page fade-in">
     <SiPageHeader title="链路追踪" icon="fa-list-ul">
-      <template #description>
-        一行 = 一次请求（一个 TraceId）。点整行看详情；勾选两条可对比
-      </template>
       <div class="si-page__toolbar">
         <span class="badge bg-info">
           <i class="fa fa-clock me-1"></i>{{ currentTime }}

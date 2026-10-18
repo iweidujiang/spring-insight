@@ -1,9 +1,6 @@
 <template>
   <div class="si-page fade-in si-err-page">
     <SiPageHeader title="错误分析" icon="fa-exclamation-triangle">
-      <template #description>
-        按服务、HTTP 状态码与异常类聚合；点整行可下钻到异常链路
-      </template>
       <SiFilterBar
         v-model:hours="hours"
         :show-service="false"
@@ -31,11 +28,6 @@
         </span>
       </SiFilterBar>
     </SiPageHeader>
-
-    <p class="si-err-hint-line">
-      <i class="fa fa-info-circle me-1"></i>
-      分类优先读 http.status_code，其次异常类名 · {{ formatHoursLabel(hours) }}
-    </p>
 
     <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
 
@@ -591,12 +583,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.si-err-hint-line {
-  margin: -0.35rem 0 0.85rem;
-  font-size: 0.78rem;
-  color: var(--si-muted);
-}
-
 .si-err-body {
   display: flex;
   flex-direction: column;

@@ -8,7 +8,6 @@
         <h2 class="si-compare__title">
           <i class="fa fa-columns me-2"></i>Trace 对比
         </h2>
-        <p class="si-compare__sub">并排瀑布（各自时间轴）· 操作差分可展开查看</p>
       </div>
     </header>
 
@@ -350,14 +349,11 @@ onMounted(() => load())
   color: var(--si-ink);
 }
 
-.si-compare__sub,
 .si-compare__back {
   color: var(--si-muted);
   text-decoration: none;
   font-size: 0.85rem;
 }
-
-.si-compare__sub { margin: 0; }
 
 .si-compare__list-bar {
   display: flex;

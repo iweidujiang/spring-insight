@@ -1,9 +1,6 @@
 <template>
   <div class="si-page fade-in si-redis-page">
     <SiPageHeader title="缓存" icon="fa-cube">
-      <template #description>
-        Redis 出站调用汇总，可在此查看慢命令 / 错误
-      </template>
       <SiFilterBar
         v-model:service="selectedService"
         v-model:hours="hours"

@@ -175,9 +175,6 @@ async function onSubmit() {
           </div>
         </div>
         <h1>看清每一次调用</h1>
-        <p class="si-login__lead">
-          轻量监测中心。服务拓扑、链路瀑布、错误与延迟放在一处，用来看清谁调了谁、慢在哪、错在哪。
-        </p>
       </section>
 
       <section class="si-login__panel">
@@ -394,13 +391,6 @@ async function onSubmit() {
   color: var(--si-login-brand-heading);
 }
 
-.si-login__lead {
-  margin: 0;
-  max-width: 22rem;
-  font-size: 0.92rem;
-  line-height: 1.7;
-  color: var(--si-login-brand-lead);
-}
 
 .si-login__panel {
   display: flex;
