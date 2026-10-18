@@ -86,34 +86,20 @@
         </div>
         <div v-show="diffExpanded" class="card-body p-0">
           <div v-if="diffRows.length === 0" class="p-3 text-muted small">无可对比操作</div>
-          <div v-else class="table-responsive">
-            <table class="table table-sm table-hover mb-0 si-data-table">
-              <thead class="table-light">
-                <tr>
-                  <th>服务</th>
-                  <th>操作</th>
-                  <th>A max</th>
-                  <th>B max</th>
-                  <th>Δ</th>
-                  <th>次数 A/B</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(row, i) in diffRows" :key="i" :class="diffRowClass(row)">
-                  <td>{{ row.serviceName }}</td>
-                  <td class="text-truncate" style="max-width: 280px" :title="row.operationName">
-                    {{ row.operationName }}
-                    <span v-if="row.onlyLeft" class="badge bg-secondary ms-1">仅 A</span>
-                    <span v-if="row.onlyRight" class="badge bg-secondary ms-1">仅 B</span>
-                  </td>
-                  <td>{{ row.onlyRight ? '—' : formatDuration(row.leftMaxMs) }}</td>
-                  <td>{{ row.onlyLeft ? '—' : formatDuration(row.rightMaxMs) }}</td>
-                  <td class="fw-semibold">{{ formatDelta(row.deltaMs, row) }}</td>
-                  <td>{{ row.leftCount }} / {{ row.rightCount }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <SiDataTable
+            v-else
+            class="si-compare__diff-table"
+            :rows="diffRows"
+            :columns="diffColumns"
+            :row-key="diffRowKey"
+            :row-class="diffRowClass"
+          >
+            <template #cell-operation="{ row }">
+              {{ row.operationName }}
+              <span v-if="row.onlyLeft" class="badge bg-secondary ms-1">仅 A</span>
+              <span v-if="row.onlyRight" class="badge bg-secondary ms-1">仅 B</span>
+            </template>
+          </SiDataTable>
         </div>
       </section>
     </template>
@@ -125,6 +111,8 @@ import { computed, defineComponent, h, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
+import SiDataTable from '../components/SiDataTable.vue'
+import type { SiColumn } from '../components/siTable'
 import {
   buildOpDurationDiff,
   buildTraceTimeline,
@@ -260,6 +248,35 @@ const formatDelta = (delta: number, row: OpDiffRow) => {
   const sign = delta > 0 ? '+' : '−'
   return `${sign}${formatDuration(Math.abs(delta))}`
 }
+
+const diffColumns: SiColumn<OpDiffRow>[] = [
+  { key: 'service', label: '服务', value: (row) => row.serviceName },
+  {
+    key: 'operation',
+    label: '操作',
+    cellClass: 'si-compare__op',
+    title: (row) => row.operationName
+  },
+  {
+    key: 'leftMax',
+    label: 'A max',
+    value: (row) => (row.onlyRight ? '—' : formatDuration(row.leftMaxMs))
+  },
+  {
+    key: 'rightMax',
+    label: 'B max',
+    value: (row) => (row.onlyLeft ? '—' : formatDuration(row.rightMaxMs))
+  },
+  {
+    key: 'delta',
+    label: 'Δ',
+    cellClass: 'fw-semibold',
+    value: (row) => formatDelta(row.deltaMs, row)
+  },
+  { key: 'counts', label: '次数 A/B', value: (row) => `${row.leftCount} / ${row.rightCount}` }
+]
+
+const diffRowKey = (row: OpDiffRow, index: number) => `${row.serviceName}\0${row.operationName}\0${index}`
 
 const diffRowClass = (row: OpDiffRow) => {
   if (row.onlyLeft || row.onlyRight) return 'si-compare__diff-muted'
@@ -426,9 +443,21 @@ onMounted(() => load())
   color: var(--si-muted);
 }
 
-.si-compare__diff-slow { background: var(--si-error-row-bg); }
-.si-compare__diff-fast { background: var(--si-success-row-bg); }
-.si-compare__diff-muted { opacity: 0.85; }
+.si-compare__diff-table :deep(td),
+.si-compare__diff-table :deep(th) {
+  padding: 0.25rem;
+}
+
+:deep(.si-compare__op) {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:deep(.si-compare__diff-slow) { background: var(--si-error-row-bg); }
+:deep(.si-compare__diff-fast) { background: var(--si-success-row-bg); }
+:deep(.si-compare__diff-muted) { opacity: 0.85; }
 
 /* compact waterfall */
 :deep(.si-cwf) {
