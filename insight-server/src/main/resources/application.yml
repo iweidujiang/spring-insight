@@ -29,7 +29,7 @@ spring:
         ui-username: admin
         ui-password: ""
         ui-session-ttl-hours: 24
-      # 轻量告警（默认关；enabled 且 webhook、邮件、钉钉或飞书就绪后约每 60 秒扫描）
+      # 轻量告警（默认关；enabled 且 webhook、邮件、钉钉、飞书或企业微信就绪后约每 60 秒扫描）
       # metric: error_rate | error_count | latency_p95（阈值单位分别为 % / 次 / 毫秒）
       alert:
         enabled: false
@@ -63,6 +63,10 @@ spring:
           webhook-url: ""
           # 留空则不签名
           secret: ""
+          server-url: ""
+        wecom:
+          enabled: false
+          webhook-url: ""
           server-url: ""
       # 0.3：AI 解释 Trace（默认关；openai-compatible，可换 DeepSeek 等）
       ai:

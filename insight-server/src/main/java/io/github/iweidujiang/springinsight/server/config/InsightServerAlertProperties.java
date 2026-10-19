@@ -81,6 +81,11 @@ public class InsightServerAlertProperties {
     private Feishu feishu = new Feishu();
 
     /**
+     * 企业微信群机器人（Webhook，无需加签；默认关）
+     */
+    private Wecom wecom = new Wecom();
+
+    /**
      * SMTP / 收件配置。
      */
     @Data
@@ -158,6 +163,19 @@ public class InsightServerAlertProperties {
     }
 
     /**
+     * 企业微信群机器人。{@code serverUrl} 用于 Markdown 里的「查看详情」。
+     *
+     * @author 苏渡苇
+     * @since 2026-10-19
+     */
+    @Data
+    public static class Wecom {
+        private boolean enabled = false;
+        private String webhookUrl = "";
+        private String serverUrl = "";
+    }
+
+    /**
      * @return 规范化后的 webhook URL
      */
     public String normalizedWebhookUrl() {
@@ -212,10 +230,21 @@ public class InsightServerAlertProperties {
     }
 
     /**
+     * @return 企业微信通道是否可发（须有 Webhook）
+     */
+    public boolean isWecomSendReady() {
+        if (!enabled || wecom == null || !wecom.isEnabled()) {
+            return false;
+        }
+        return StringUtils.hasText(trim(wecom.getWebhookUrl()));
+    }
+
+    /**
      * @return 是否至少有一个发送通道就绪
      */
     public boolean isSendReady() {
-        return isWebhookSendReady() || isEmailSendReady() || isDingtalkSendReady() || isFeishuSendReady();
+        return isWebhookSendReady() || isEmailSendReady() || isDingtalkSendReady()
+                || isFeishuSendReady() || isWecomSendReady();
     }
 
     private static String trim(String s) {

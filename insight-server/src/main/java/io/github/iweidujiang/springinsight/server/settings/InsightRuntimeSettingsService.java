@@ -161,6 +161,15 @@ public class InsightRuntimeSettingsService {
             f.setServerUrl(nullToEmpty(p.getServerUrl()));
             out.setFeishu(f);
         }
+        if (patch.getWecom() != null) {
+            InsightRuntimeSettings.WecomSettings w = out.getWecom() != null
+                    ? deepCopyWecom(out.getWecom()) : new InsightRuntimeSettings.WecomSettings();
+            InsightRuntimeSettings.WecomSettings p = patch.getWecom();
+            w.setEnabled(p.isEnabled());
+            w.setWebhookUrl(nullToEmpty(p.getWebhookUrl()));
+            w.setServerUrl(nullToEmpty(p.getServerUrl()));
+            out.setWecom(w);
+        }
         if (patch.getEmail() != null) {
             InsightRuntimeSettings.EmailSettings e = deepCopyEmail(out.getEmail());
             InsightRuntimeSettings.EmailSettings p = patch.getEmail();
@@ -241,6 +250,13 @@ public class InsightRuntimeSettingsService {
         feishu.put("secretConfigured", StringUtils.hasText(f.getSecret()));
         feishu.put("serverUrl", nullToEmpty(f.getServerUrl()));
         m.put("feishu", feishu);
+        InsightRuntimeSettings.WecomSettings w = a.getWecom() != null
+                ? a.getWecom() : new InsightRuntimeSettings.WecomSettings();
+        Map<String, Object> wecom = new LinkedHashMap<>();
+        wecom.put("enabled", w.isEnabled());
+        wecom.put("webhookUrl", nullToEmpty(w.getWebhookUrl()));
+        wecom.put("serverUrl", nullToEmpty(w.getServerUrl()));
+        m.put("wecom", wecom);
         return m;
     }
 
@@ -299,6 +315,13 @@ public class InsightRuntimeSettingsService {
             f.setSecret(nullToEmpty(p.getFeishu().getSecret()));
             f.setServerUrl(nullToEmpty(p.getFeishu().getServerUrl()));
             a.setFeishu(f);
+        }
+        if (p.getWecom() != null) {
+            InsightRuntimeSettings.WecomSettings w = new InsightRuntimeSettings.WecomSettings();
+            w.setEnabled(p.getWecom().isEnabled());
+            w.setWebhookUrl(nullToEmpty(p.getWecom().getWebhookUrl()));
+            w.setServerUrl(nullToEmpty(p.getWecom().getServerUrl()));
+            a.setWecom(w);
         }
         return a;
     }
@@ -359,6 +382,13 @@ public class InsightRuntimeSettingsService {
             f.setServerUrl(nullToEmpty(a.getFeishu().getServerUrl()));
             p.setFeishu(f);
         }
+        if (a.getWecom() != null) {
+            InsightServerAlertProperties.Wecom w = new InsightServerAlertProperties.Wecom();
+            w.setEnabled(a.getWecom().isEnabled());
+            w.setWebhookUrl(nullToEmpty(a.getWecom().getWebhookUrl()));
+            w.setServerUrl(nullToEmpty(a.getWecom().getServerUrl()));
+            p.setWecom(w);
+        }
         return p;
     }
 
@@ -403,6 +433,22 @@ public class InsightRuntimeSettingsService {
         c.setEmail(deepCopyEmail(a.getEmail()));
         c.setDingtalk(deepCopyDingtalk(a.getDingtalk()));
         c.setFeishu(deepCopyFeishu(a.getFeishu()));
+        c.setWecom(deepCopyWecom(a.getWecom()));
+        return c;
+    }
+
+    /**
+     * @param w 企业微信设置，可空
+     * @return 副本；入参为空时返回 null
+     */
+    private static InsightRuntimeSettings.WecomSettings deepCopyWecom(InsightRuntimeSettings.WecomSettings w) {
+        if (w == null) {
+            return null;
+        }
+        InsightRuntimeSettings.WecomSettings c = new InsightRuntimeSettings.WecomSettings();
+        c.setEnabled(w.isEnabled());
+        c.setWebhookUrl(w.getWebhookUrl());
+        c.setServerUrl(w.getServerUrl());
         return c;
     }
 

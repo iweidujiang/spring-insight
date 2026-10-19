@@ -36,6 +36,21 @@ public class InsightRuntimeSettings {
         private DingtalkSettings dingtalk;
         /** 缺省为 null，避免旧控制台保存时把未提交的飞书配置清空 */
         private FeishuSettings feishu;
+        /** 缺省为 null，避免旧控制台保存时把未提交的企业微信配置清空 */
+        private WecomSettings wecom;
+    }
+
+    /**
+     * 企业微信机器人。
+     *
+     * @author 苏渡苇
+     * @since 2026-10-19
+     */
+    @Data
+    public static class WecomSettings {
+        private boolean enabled = false;
+        private String webhookUrl = "";
+        private String serverUrl = "";
     }
 
     /**
