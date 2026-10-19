@@ -32,13 +32,12 @@ public class DingtalkAlertChannelSender implements InsightAlertChannelSender {
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
+    /**
+     * 只保留这一个构造器。多个构造器时 Spring 会去找无参构造，上下文起不来。
+     */
     public DingtalkAlertChannelSender(ObjectMapper objectMapper) {
-        this(objectMapper, HttpClient.newBuilder().connectTimeout(TIMEOUT).build());
-    }
-
-    DingtalkAlertChannelSender(ObjectMapper objectMapper, HttpClient httpClient) {
         this.objectMapper = objectMapper;
-        this.httpClient = httpClient;
+        this.httpClient = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
     }
 
     @Override
