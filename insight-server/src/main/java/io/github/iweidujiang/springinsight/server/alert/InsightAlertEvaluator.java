@@ -8,7 +8,9 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,13 +28,93 @@ public final class InsightAlertEvaluator {
 
     /**
      * @param properties 告警配置
-     * @return 是否为已支持的 error_rate / error_count / latency_p95
+     * @return 是否为已支持的 error_rate / error_count / latency_p95 / span_count
      */
     public static boolean supportedMetric(InsightServerAlertProperties properties) {
-        String metric = properties.normalizedMetric();
+        return supportedMetricName(properties.normalizedMetric());
+    }
+
+    /**
+     * @param metric 指标名
+     * @return 是否为已知指标
+     */
+    public static boolean supportedMetricName(String metric) {
         return "error_rate".equals(metric)
                 || "error_count".equals(metric)
-                || "latency_p95".equals(metric);
+                || "latency_p95".equals(metric)
+                || "span_count".equals(metric);
+    }
+
+    /**
+     * 遍历条件。每一条都成立才触发，并把成立的条件放进结果。
+     *
+     * @param properties 告警配置（有 conditions 时用它，否则用旧的指标和阈值）
+     * @param errorRate  错误率（百分比）
+     * @param errorCount 窗口内错误 Span 数
+     * @param p95Ms      p95 耗时（毫秒）
+     * @param spanCount  窗口内 Span 数
+     * @return 是否触发，以及哪些条件成立
+     */
+    public static AlertEvaluation evaluate(InsightServerAlertProperties properties,
+                                           double errorRate,
+                                           long errorCount,
+                                           long p95Ms,
+                                           long spanCount) {
+        List<AlertCondition> conditions = properties == null
+                ? List.of()
+                : properties.effectiveConditions();
+        List<AlertEvaluation.MatchedCondition> matched = new ArrayList<>();
+        if (conditions.isEmpty()) {
+            return new AlertEvaluation(false, matched);
+        }
+        boolean all = true;
+        for (AlertCondition condition : conditions) {
+            String metric = condition == null || condition.getMetric() == null
+                    ? "" : condition.getMetric().trim().toLowerCase();
+            Double value = metricValue(metric, errorRate, errorCount, p95Ms, spanCount);
+            if (condition == null || value == null || !matches(value, condition.getOperator(), condition.getThreshold())) {
+                all = false;
+                continue;
+            }
+            matched.add(new AlertEvaluation.MatchedCondition(condition, value));
+        }
+        return new AlertEvaluation(all, List.copyOf(matched));
+    }
+
+    /**
+     * @param metric     指标名
+     * @param errorRate  错误率
+     * @param errorCount 错误次数
+     * @param p95Ms      p95 毫秒
+     * @param spanCount  Span 数
+     * @return 当前值；未知指标为 null
+     */
+    public static Double metricValue(String metric, double errorRate, long errorCount, long p95Ms, long spanCount) {
+        return switch (metric) {
+            case "error_rate" -> errorRate;
+            case "error_count" -> (double) errorCount;
+            case "latency_p95" -> (double) p95Ms;
+            case "span_count" -> (double) spanCount;
+            default -> null;
+        };
+    }
+
+    /**
+     * @param value     当前值
+     * @param operator  gt / lt / gte / lte / eq；空则按 gte
+     * @param threshold 阈值
+     * @return 比较是否成立
+     */
+    public static boolean matches(double value, String operator, double threshold) {
+        String op = operator == null || operator.isBlank() ? "gte" : operator.trim().toLowerCase();
+        return switch (op) {
+            case "gt" -> value > threshold;
+            case "lt" -> value < threshold;
+            case "gte" -> value >= threshold;
+            case "lte" -> value <= threshold;
+            case "eq" -> Double.compare(value, threshold) == 0;
+            default -> false;
+        };
     }
 
     /**

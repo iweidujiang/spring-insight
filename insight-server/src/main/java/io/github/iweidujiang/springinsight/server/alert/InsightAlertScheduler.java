@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -120,8 +122,8 @@ public class InsightAlertScheduler {
             return;
         }
         warnedNotReady.set(false);
-        if (!InsightAlertEvaluator.supportedMetric(properties)) {
-            log.warn("[告警] 不支持的 metric={}，仅接受 error_rate / error_count / latency_p95",
+        if (!hasSupportedCondition(properties)) {
+            log.warn("[告警] 不支持的 metric={}，仅接受 error_rate / error_count / latency_p95 / span_count",
                     properties.normalizedMetric());
             return;
         }
@@ -137,43 +139,67 @@ public class InsightAlertScheduler {
         long since = Instant.now().minus(windowMinutes, ChronoUnit.MINUTES).toEpochMilli();
         long now = System.currentTimeMillis();
         String at = Instant.ofEpochMilli(now).truncatedTo(ChronoUnit.SECONDS).toString();
+        scanServices(properties, since, now, at);
+    }
 
-        if (InsightAlertEvaluator.isLatencyMetric(properties)) {
-            scanLatency(properties, since, now, at);
-        } else {
-            scanErrors(properties, since, now, at);
+    /**
+     * @param properties 告警配置
+     * @return 生效条件里是否至少有一条已知指标
+     */
+    private static boolean hasSupportedCondition(InsightServerAlertProperties properties) {
+        for (AlertCondition condition : properties.effectiveConditions()) {
+            String metric = condition.getMetric() == null ? "" : condition.getMetric().trim().toLowerCase();
+            if (InsightAlertEvaluator.supportedMetricName(metric)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 同一服务上同时看错误率、错误次数、p95 和 Span 数，全部条件成立才推送。
+     */
+    private void scanServices(InsightServerAlertProperties properties, long since, long now, String at) {
+        List<Map<String, Object>> rows = persistenceService.getServiceLatencySummariesSince(since, Integer.MAX_VALUE);
+        for (Map<String, Object> row : rows) {
+            String service = String.valueOf(row.get("service_name"));
+            double errorRate = number(row.get("error_rate"));
+            long errorCount = (long) number(row.get("error_count"));
+            long p95 = (long) number(row.get("p95_ms"));
+            long spanCount = (long) number(row.get("span_count"));
+            AlertEvaluation evaluation = InsightAlertEvaluator.evaluate(
+                    properties, errorRate, errorCount, p95, spanCount);
+            if (!evaluation.fired() || evaluation.matched().isEmpty()) {
+                continue;
+            }
+            tryDeliver(properties, service, evaluation, now, at);
         }
     }
 
-    private void scanErrors(InsightServerAlertProperties properties, long since, long now, String at) {
-        List<Map<String, Object>> rows = persistenceService.findHighErrorServicesSince(since);
-        for (Map<String, Object> row : rows) {
-            String service = String.valueOf(row.get("service_name"));
-            long errorCalls = ((Number) row.get("error_calls")).longValue();
-            double errorRate = ((Number) row.get("error_rate")).doubleValue();
-            if (!InsightAlertEvaluator.exceeds(properties, errorCalls, errorRate)) {
-                continue;
-            }
-            double value = InsightAlertEvaluator.metricValue(properties, errorCalls, errorRate);
-            tryDeliver(properties, service, value, now, at);
-        }
+    private static double number(Object value) {
+        return value instanceof Number number ? number.doubleValue() : 0.0;
     }
 
-    private void scanLatency(InsightServerAlertProperties properties, long since, long now, String at) {
-        List<Map<String, Object>> rows = persistenceService.getServiceLatencySummariesSince(since, 50);
-        for (Map<String, Object> row : rows) {
-            String service = String.valueOf(row.get("service_name"));
-            long p95 = ((Number) row.get("p95_ms")).longValue();
-            if (!InsightAlertEvaluator.exceedsLatency(properties, p95)) {
-                continue;
-            }
-            tryDeliver(properties, service, p95, now, at);
+    /**
+     * @param evaluation 已触发的判定
+     * @return 写入告警体的成立条件
+     */
+    private static List<Map<String, Object>> matchedConditions(AlertEvaluation evaluation) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (AlertEvaluation.MatchedCondition matched : evaluation.matched()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("metric", matched.condition().getMetric());
+            row.put("operator", matched.condition().getOperator());
+            row.put("threshold", matched.condition().getThreshold());
+            row.put("value", matched.value());
+            rows.add(row);
         }
+        return rows;
     }
 
     private void tryDeliver(InsightServerAlertProperties properties,
                             String service,
-                            double value,
+                            AlertEvaluation evaluation,
                             long now,
                             String at) {
         Long fired = lastFiredAt.get(service);
@@ -182,14 +208,19 @@ public class InsightAlertScheduler {
             log.debug("[告警] 冷却中跳过: service={}", service);
             return;
         }
+        AlertEvaluation.MatchedCondition first = evaluation.matched().get(0);
+        double value = first.value();
         Map<String, Object> payload = InsightAlertEvaluator.payload(properties, service, value, at);
+        payload.put("metric", first.condition().getMetric());
+        payload.put("threshold", first.condition().getThreshold());
+        payload.put("matchedConditions", matchedConditions(evaluation));
         attachAiIfNeeded(payload, properties, service, value);
         boolean delivered = deliver(properties, payload);
         if (delivered) {
             lastFiredAt.put(service, now);
             metrics.record("success");
             log.info("[告警] 已推送: service={}, metric={}, value={}, aiAttached={}",
-                    service, properties.normalizedMetric(), value, payload.getOrDefault("aiAttached", false));
+                    service, first.condition().getMetric(), value, payload.getOrDefault("aiAttached", false));
         } else {
             metrics.record("failure");
         }

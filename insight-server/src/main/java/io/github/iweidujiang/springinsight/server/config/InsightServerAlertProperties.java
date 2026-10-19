@@ -1,8 +1,11 @@
 package io.github.iweidujiang.springinsight.server.config;
 
+import io.github.iweidujiang.springinsight.server.alert.AlertCondition;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.StringUtils;
+
+import java.util.List;
 
 /**
  * insight-server 轻量告警配置（Webhook + 可选 SMTP 邮件；默认关闭）。
@@ -26,14 +29,26 @@ public class InsightServerAlertProperties {
 
     /**
      * 指标：{@code error_rate}（百分比）、{@code error_count}（窗口内错误 Span 数）、
-     * {@code latency_p95}（窗口内 p95 耗时，毫秒）
+     * {@code latency_p95}（窗口内 p95 耗时，毫秒）。未配置 {@link #conditions} 时仍生效。
+     *
+     * @deprecated 请改用 {@link #conditions}
      */
+    @Deprecated
     private String metric = "error_rate";
 
     /**
-     * 阈值：error_rate 为百分比；error_count 为次数；latency_p95 为毫秒
+     * 阈值：error_rate 为百分比；error_count 为次数；latency_p95 为毫秒。
+     * 未配置 {@link #conditions} 时按大于等于该值判断。
+     *
+     * @deprecated 请改用 {@link #conditions}
      */
+    @Deprecated
     private double threshold = 10.0;
+
+    /**
+     * 组合条件。非空时优先于 {@link #metric} 和 {@link #threshold}，全部成立才告警。
+     */
+    private List<AlertCondition> conditions;
 
     /**
      * 统计窗口（分钟）
@@ -187,6 +202,13 @@ public class InsightServerAlertProperties {
      */
     public String normalizedMetric() {
         return metric == null ? "error_rate" : metric.trim().toLowerCase();
+    }
+
+    /**
+     * @return 实际参与判定的条件。已配置 conditions 时用它，否则把旧指标收成一条 gte
+     */
+    public List<AlertCondition> effectiveConditions() {
+        return AlertCondition.resolve(conditions, normalizedMetric(), threshold);
     }
 
     /**

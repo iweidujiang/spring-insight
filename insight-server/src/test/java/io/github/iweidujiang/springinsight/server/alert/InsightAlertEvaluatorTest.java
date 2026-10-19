@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -48,6 +49,59 @@ class InsightAlertEvaluatorTest {
         assertFalse(InsightAlertEvaluator.exceedsLatency(p, 199L));
         assertFalse(InsightAlertEvaluator.exceeds(p, 99, 99.0));
         assertEquals("latency_threshold", InsightAlertEvaluator.payloadType(p));
+    }
+
+    /**
+     * 旧的单个指标和阈值按大于等于收成一条条件。
+     */
+    @Test
+    void legacySingleConditionStillFires() {
+        InsightServerAlertProperties rate = props("error_rate", 10.0);
+        AlertEvaluation hit = InsightAlertEvaluator.evaluate(rate, 50.0, 1, 0, 2);
+        assertTrue(hit.fired());
+        assertEquals(1, hit.matched().size());
+        assertEquals("error_rate", hit.matched().get(0).condition().getMetric());
+        assertEquals("gte", hit.matched().get(0).condition().getOperator());
+        assertEquals(50.0, hit.matched().get(0).value());
+
+        AlertEvaluation miss = InsightAlertEvaluator.evaluate(rate, 9.9, 1, 0, 2);
+        assertFalse(miss.fired());
+        assertTrue(miss.matched().isEmpty());
+    }
+
+    /**
+     * 多条条件全部成立才触发，结果里带上每一条。
+     */
+    @Test
+    void allConditionsMustMatch() {
+        InsightServerAlertProperties rules = props("error_rate", 1.0);
+        rules.setConditions(List.of(
+                condition("error_rate", "gte", 10.0),
+                condition("latency_p95", "gt", 200.0),
+                condition("span_count", "eq", 4.0)));
+
+        AlertEvaluation hit = InsightAlertEvaluator.evaluate(rules, 12.0, 1, 250, 4);
+        assertTrue(hit.fired());
+        assertEquals(3, hit.matched().size());
+        assertEquals("latency_p95", hit.matched().get(1).condition().getMetric());
+        assertEquals("error_rate", rules.effectiveConditions().get(0).getMetric());
+    }
+
+    /**
+     * 只满足其中一部分时不触发，但仍返回已经成立的条件。
+     */
+    @Test
+    void partialConditionsDoNotFire() {
+        InsightServerAlertProperties rules = props("error_count", 99.0);
+        rules.setConditions(List.of(
+                condition("error_rate", "gte", 10.0),
+                condition("latency_p95", "lte", 100.0)));
+
+        AlertEvaluation partial = InsightAlertEvaluator.evaluate(rules, 50.0, 9, 180, 3);
+        assertFalse(partial.fired());
+        assertEquals(1, partial.matched().size());
+        assertEquals("error_rate", partial.matched().get(0).condition().getMetric());
+        assertEquals("error_rate", rules.effectiveConditions().get(0).getMetric());
     }
 
     /**
@@ -127,6 +181,14 @@ class InsightAlertEvaluatorTest {
 
     private static ZonedDateTime at(LocalDate day, String hhmm, ZoneId zone) {
         return ZonedDateTime.of(day, LocalTime.parse(hhmm), zone);
+    }
+
+    private static AlertCondition condition(String metric, String operator, double threshold) {
+        AlertCondition condition = new AlertCondition();
+        condition.setMetric(metric);
+        condition.setOperator(operator);
+        condition.setThreshold(threshold);
+        return condition;
     }
 
     private static InsightServerAlertProperties props(String metric, double threshold) {

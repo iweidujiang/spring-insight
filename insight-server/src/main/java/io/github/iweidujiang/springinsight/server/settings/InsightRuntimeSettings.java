@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.server.settings;
 
+import io.github.iweidujiang.springinsight.server.alert.AlertCondition;
 import lombok.Data;
 
 import java.util.List;
@@ -56,8 +57,25 @@ public class InsightRuntimeSettings {
     public static class AlertSettings {
         private boolean enabled = false;
         private String webhookUrl = "";
+        /**
+         * 旧的单指标。未配置 {@link #conditions} 时仍生效。
+         *
+         * @deprecated 请改用 {@link #conditions}
+         */
+        @Deprecated
         private String metric = "error_rate";
+        /**
+         * 旧的单阈值，比较方式为大于等于。
+         *
+         * @deprecated 请改用 {@link #conditions}
+         */
+        @Deprecated
         private double threshold = 10.0;
+        /**
+         * 组合条件。非空时优先于 {@link #metric} 和 {@link #threshold}。
+         * 缺省为 null，避免旧控制台保存时把未提交的条件清空。
+         */
+        private List<AlertCondition> conditions;
         private int windowMinutes = 15;
         private int cooldownMinutes = 30;
         /** 静默时段（本地时区 HH:mm；可跨午夜） */

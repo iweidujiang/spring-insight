@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.server.settings;
 
+import io.github.iweidujiang.springinsight.server.alert.AlertCondition;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAiProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
 import jakarta.annotation.PostConstruct;
@@ -149,6 +150,9 @@ public class InsightRuntimeSettingsService {
         out.setWebhookUrl(nullToEmpty(patch.getWebhookUrl()));
         out.setMetric(StringUtils.hasText(patch.getMetric()) ? patch.getMetric() : out.getMetric());
         out.setThreshold(patch.getThreshold());
+        if (patch.getConditions() != null) {
+            out.setConditions(copyConditions(patch.getConditions()));
+        }
         out.setWindowMinutes(patch.getWindowMinutes());
         out.setCooldownMinutes(patch.getCooldownMinutes());
         out.setQuietHoursEnabled(patch.isQuietHoursEnabled());
@@ -240,6 +244,7 @@ public class InsightRuntimeSettingsService {
         m.put("webhookUrl", nullToEmpty(a.getWebhookUrl()));
         m.put("metric", a.getMetric());
         m.put("threshold", a.getThreshold());
+        m.put("conditions", publicConditions(a));
         m.put("windowMinutes", a.getWindowMinutes());
         m.put("cooldownMinutes", a.getCooldownMinutes());
         m.put("quietHoursEnabled", a.isQuietHoursEnabled());
@@ -510,12 +515,50 @@ public class InsightRuntimeSettingsService {
         return m;
     }
 
+    /**
+     * 对外返回实际生效的条件。未单独配置时由旧指标和阈值生成一条 gte。
+     */
+    private static List<Map<String, Object>> publicConditions(InsightRuntimeSettings.AlertSettings alert) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (AlertCondition condition : AlertCondition.resolve(
+                alert.getConditions(), alert.getMetric(), alert.getThreshold())) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("metric", condition.getMetric());
+            row.put("operator", condition.getOperator());
+            row.put("threshold", condition.getThreshold());
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    /**
+     * @param conditions 条件列表
+     * @return 副本
+     */
+    private static List<AlertCondition> copyConditions(List<AlertCondition> conditions) {
+        List<AlertCondition> copy = new ArrayList<>();
+        for (AlertCondition condition : conditions) {
+            if (condition == null) {
+                continue;
+            }
+            AlertCondition item = new AlertCondition();
+            item.setMetric(condition.getMetric());
+            item.setOperator(condition.getOperator());
+            item.setThreshold(condition.getThreshold());
+            copy.add(item);
+        }
+        return copy;
+    }
+
     static InsightRuntimeSettings.AlertSettings fromAlertProperties(InsightServerAlertProperties p) {
         InsightRuntimeSettings.AlertSettings a = new InsightRuntimeSettings.AlertSettings();
         a.setEnabled(p.isEnabled());
         a.setWebhookUrl(nullToEmpty(p.getWebhookUrl()));
         a.setMetric(p.getMetric());
         a.setThreshold(p.getThreshold());
+        if (p.getConditions() != null) {
+            a.setConditions(copyConditions(p.getConditions()));
+        }
         a.setWindowMinutes(p.getWindowMinutes());
         a.setCooldownMinutes(p.getCooldownMinutes());
         a.setQuietHoursEnabled(p.isQuietHoursEnabled());
@@ -582,6 +625,9 @@ public class InsightRuntimeSettingsService {
         p.setWebhookUrl(nullToEmpty(a.getWebhookUrl()));
         p.setMetric(a.getMetric());
         p.setThreshold(a.getThreshold());
+        if (a.getConditions() != null) {
+            p.setConditions(copyConditions(a.getConditions()));
+        }
         p.setWindowMinutes(a.getWindowMinutes());
         p.setCooldownMinutes(a.getCooldownMinutes());
         p.setQuietHoursEnabled(a.isQuietHoursEnabled());
@@ -665,6 +711,9 @@ public class InsightRuntimeSettingsService {
         c.setWebhookUrl(a.getWebhookUrl());
         c.setMetric(a.getMetric());
         c.setThreshold(a.getThreshold());
+        if (a.getConditions() != null) {
+            c.setConditions(copyConditions(a.getConditions()));
+        }
         c.setWindowMinutes(a.getWindowMinutes());
         c.setCooldownMinutes(a.getCooldownMinutes());
         c.setQuietHoursEnabled(a.isQuietHoursEnabled());

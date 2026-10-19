@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.server.settings;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.iweidujiang.springinsight.server.alert.AlertCondition;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAiProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
@@ -130,6 +131,42 @@ class InsightRuntimeSettingsServiceTest {
         assertEquals(1, channels.size());
         assertEquals(Boolean.TRUE, channels.get(0).get("secretConfigured"));
         assertFalse(channels.get(0).containsKey("secret"));
+    }
+
+    /**
+     * 旧文件只有指标和阈值时，按一条大于等于条件生效；显式 conditions 优先于旧字段。
+     */
+    @Test
+    void legacyMetricYieldsToExplicitConditions() throws Exception {
+        String legacy = """
+                {"alert":{"enabled":true,"metric":"error_count","threshold":3.0}}
+                """;
+        InsightRuntimeSettings parsed = new ObjectMapper().readValue(legacy, InsightRuntimeSettings.class);
+        assertTrue(parsed.getAlert().getConditions() == null || parsed.getAlert().getConditions().isEmpty());
+        assertEquals("error_count", AlertCondition.resolve(
+                parsed.getAlert().getConditions(),
+                parsed.getAlert().getMetric(),
+                parsed.getAlert().getThreshold()).get(0).getMetric());
+
+        InsightRuntimeSettingsService service = newService();
+        AlertCondition latency = new AlertCondition();
+        latency.setMetric("latency_p95");
+        latency.setOperator("gt");
+        latency.setThreshold(200);
+        InsightRuntimeSettings withRules = new InsightRuntimeSettings();
+        withRules.getAlert().setMetric("error_rate");
+        withRules.getAlert().setThreshold(10);
+        withRules.getAlert().setConditions(java.util.List.of(latency));
+        service.updateAndApply(withRules);
+
+        assertEquals("latency_p95", service.effectiveAlert().effectiveConditions().get(0).getMetric());
+        assertEquals("gt", service.effectiveAlert().effectiveConditions().get(0).getOperator());
+
+        InsightRuntimeSettings metricOnly = new InsightRuntimeSettings();
+        metricOnly.getAlert().setMetric("error_count");
+        metricOnly.getAlert().setThreshold(4);
+        service.updateAndApply(metricOnly);
+        assertEquals("latency_p95", service.effectiveAlert().effectiveConditions().get(0).getMetric());
     }
 
     private InsightRuntimeSettingsService newService() {
