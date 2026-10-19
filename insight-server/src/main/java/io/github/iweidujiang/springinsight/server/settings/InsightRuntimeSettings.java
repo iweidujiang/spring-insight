@@ -2,6 +2,8 @@ package io.github.iweidujiang.springinsight.server.settings;
 
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 控制台可改的运行时设置（告警 + AI）；持久化到数据目录 JSON。
  *
@@ -13,6 +15,39 @@ public class InsightRuntimeSettings {
 
     private AlertSettings alert = new AlertSettings();
     private AiSettings ai = new AiSettings();
+    /**
+     * 通知渠道。缺省为 null，避免旧控制台保存时把未提交的渠道清空。
+     * 非空时调度只按这份列表发送。
+     */
+    private List<ChannelConfig> channels;
+
+    /**
+     * 一条通知渠道。密钥留空表示保存时不覆盖已有值。
+     *
+     * @author 苏渡苇
+     * @since 2026-10-19
+     */
+    @Data
+    public static class ChannelConfig {
+        private String id = "";
+        /** webhook、email、dingtalk、feishu、wecom */
+        private String type = "";
+        private boolean enabled = false;
+        private String name = "";
+        private String webhookUrl = "";
+        private String secret = "";
+        private String token = "";
+        /** 控制台根地址，用于消息里的「查看详情」 */
+        private String serverUrl = "";
+        private String smtpHost = "";
+        private int smtpPort = 587;
+        private String smtpUsername = "";
+        private String smtpPassword = "";
+        private String smtpFrom = "";
+        private String smtpTo = "";
+        private boolean startTls = true;
+        private boolean ssl = false;
+    }
 
     /**
      * 告警设置。

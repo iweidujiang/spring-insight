@@ -5,6 +5,7 @@ import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.ai.InsightAiExplainService;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettings;
 import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
 import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
@@ -161,6 +162,36 @@ class InsightAlertSchedulerTest {
         assertEquals(2, hits.get());
         assertEquals(2.0, metrics.count("failure"));
         assertEquals(0.0, metrics.count("success"));
+    }
+
+    /**
+     * 保存了渠道列表时，按渠道地址发送，不再使用旧的 Webhook 字段。
+     */
+    @Test
+    void scanUsesSavedChannel() throws IOException {
+        AtomicInteger hits = new AtomicInteger();
+        AtomicReference<String> body = new AtomicReference<>();
+        int port = startHook(204, hits, body);
+        InsightServerAlertProperties props = new InsightServerAlertProperties();
+        props.setEnabled(true);
+        props.setMetric("error_rate");
+        props.setThreshold(10.0);
+        props.setWindowMinutes(15);
+        props.setCooldownMinutes(30);
+        InsightRuntimeSettings.ChannelConfig channel = new InsightRuntimeSettings.ChannelConfig();
+        channel.setId("webhook");
+        channel.setType("webhook");
+        channel.setEnabled(true);
+        channel.setWebhookUrl("http://127.0.0.1:" + port + "/hook");
+        lastMetrics = new InsightAlertMetrics(new SimpleMeterRegistry());
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAlert()).thenReturn(props);
+        when(settings.effectiveChannels()).thenReturn(List.of(channel));
+        InsightAlertScheduler scheduler = new InsightAlertScheduler(
+                settings, storeWithOneError(), senders(), lastMetrics, mockAi());
+        scheduler.scan();
+        assertEquals(1, hits.get());
+        assertTrue(body.get().contains("\"serviceName\":\"sca-order\""));
     }
 
     private static List<InsightAlertChannelSender> senders() {

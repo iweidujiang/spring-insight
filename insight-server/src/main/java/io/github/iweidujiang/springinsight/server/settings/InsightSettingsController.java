@@ -1,6 +1,10 @@
 package io.github.iweidujiang.springinsight.server.settings;
 
+import io.github.iweidujiang.springinsight.server.alert.AlertPayload;
+import io.github.iweidujiang.springinsight.server.alert.ChannelConfig;
+import io.github.iweidujiang.springinsight.server.alert.InsightAlertChannelSender;
 import io.github.iweidujiang.springinsight.server.alert.InsightAlertEvaluator;
+import io.github.iweidujiang.springinsight.server.alert.InsightAlertScheduler;
 import io.github.iweidujiang.springinsight.server.alert.InsightAlertWebhookSender;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -35,6 +40,7 @@ public class InsightSettingsController {
 
     private final InsightRuntimeSettingsService settingsService;
     private final InsightAlertWebhookSender webhookSender;
+    private final List<InsightAlertChannelSender> channelSenders;
 
     /**
      * @return 脱敏后的当前设置
@@ -118,5 +124,121 @@ public class InsightSettingsController {
             resp.put("responseBody", result.responseBody());
         }
         return ResponseEntity.ok(resp);
+    }
+
+    /**
+     * 按渠道试发一条样本。密钥、令牌、SMTP 密码留空时用已保存的值。{@code send=false} 只返回样本。
+     *
+     * @param body 渠道草稿
+     * @return 样本和发送结果
+     * @since 2026-10-19
+     */
+    @PostMapping("/alert/channel-test")
+    public ResponseEntity<?> channelTest(@RequestBody(required = false) Map<String, Object> body) {
+        Map<String, Object> request = body == null ? Map.of() : body;
+        String type = text(request.get("type")).toLowerCase();
+        boolean send = Boolean.TRUE.equals(request.get("send")) || "true".equalsIgnoreCase(text(request.get("send")));
+        InsightRuntimeSettings.ChannelConfig draft = draftChannel(request);
+        fillSavedSecrets(draft);
+        InsightServerAlertProperties alert = settingsService.effectiveAlert();
+        String at = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
+        Map<String, Object> payload = InsightAlertEvaluator.previewPayload(alert, at);
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("payload", payload);
+        resp.put("type", type);
+        if (!send) {
+            resp.put("dryRun", true);
+            resp.put("sent", false);
+            return ResponseEntity.ok(resp);
+        }
+        InsightAlertChannelSender sender = findSender(type);
+        if (sender == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "不支持的通知渠道", "sent", false));
+        }
+        try {
+            sender.send(new AlertPayload(payload), InsightAlertScheduler.channelConfig(alert, draft, type));
+            resp.put("dryRun", false);
+            resp.put("sent", true);
+            resp.put("ok", true);
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            resp.put("dryRun", false);
+            resp.put("sent", true);
+            resp.put("ok", false);
+            resp.put("error", e.getMessage() == null ? "发送失败" : e.getMessage());
+            return ResponseEntity.ok(resp);
+        }
+    }
+
+    /**
+     * @param type 渠道类型
+     * @return 已注册的发送器；没有时为 null
+     */
+    private InsightAlertChannelSender findSender(String type) {
+        for (InsightAlertChannelSender sender : channelSenders) {
+            if (type.equals(sender.channelType())) {
+                return sender;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 草稿里的密钥留空时，沿用同一 id 已保存的值。
+     */
+    private void fillSavedSecrets(InsightRuntimeSettings.ChannelConfig draft) {
+        for (InsightRuntimeSettings.ChannelConfig saved : settingsService.effectiveChannels()) {
+            if (saved.getId() != null && saved.getId().equals(draft.getId())) {
+                if (!StringUtils.hasText(draft.getSecret())) {
+                    draft.setSecret(saved.getSecret());
+                }
+                if (!StringUtils.hasText(draft.getToken())) {
+                    draft.setToken(saved.getToken());
+                }
+                if (!StringUtils.hasText(draft.getSmtpPassword())) {
+                    draft.setSmtpPassword(saved.getSmtpPassword());
+                }
+                return;
+            }
+        }
+    }
+
+    /**
+     * @param request 试发请求
+     * @return 渠道草稿
+     */
+    private static InsightRuntimeSettings.ChannelConfig draftChannel(Map<String, Object> request) {
+        InsightRuntimeSettings.ChannelConfig channel = new InsightRuntimeSettings.ChannelConfig();
+        channel.setId(text(request.get("id")));
+        channel.setType(text(request.get("type")).toLowerCase());
+        channel.setEnabled(true);
+        channel.setWebhookUrl(text(request.get("webhookUrl")));
+        channel.setSecret(text(request.get("secret")));
+        channel.setToken(text(request.get("token")));
+        channel.setServerUrl(text(request.get("serverUrl")));
+        channel.setSmtpHost(text(request.get("smtpHost")));
+        channel.setSmtpPort(number(request.get("smtpPort"), 587));
+        channel.setSmtpUsername(text(request.get("smtpUsername")));
+        channel.setSmtpPassword(text(request.get("smtpPassword")));
+        channel.setSmtpFrom(text(request.get("smtpFrom")));
+        channel.setSmtpTo(text(request.get("smtpTo")));
+        channel.setStartTls(!Boolean.FALSE.equals(request.get("startTls")));
+        channel.setSsl(Boolean.TRUE.equals(request.get("ssl")));
+        return channel;
+    }
+
+    private static String text(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private static int number(Object value, int fallback) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.parseInt(text(value));
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
     }
 }

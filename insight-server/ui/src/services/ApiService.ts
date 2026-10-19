@@ -543,6 +543,14 @@ export class ApiService {
   }
 
   /** 告警 Webhook 预览；send=true 时真正 POST 样本（不计冷却） */
+  /** 按渠道预览或试发样本。密钥留空时使用已保存的值。 */
+  static async testAlertChannel(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return request('/settings/alert/channel-test', {
+      method: 'POST',
+      data: body
+    })
+  }
+
   static async previewAlertWebhook(body: {
     send?: boolean
     webhookUrl?: string
@@ -818,6 +826,26 @@ export interface AiExplainResult {
   target?: string
 }
 
+/** 设置页里的一条通知渠道（不含密钥明文） */
+export interface AlertChannelView {
+  id: string
+  type: string
+  enabled: boolean
+  name?: string
+  webhookUrl?: string
+  secretConfigured?: boolean
+  tokenConfigured?: boolean
+  serverUrl?: string
+  smtpHost?: string
+  smtpPort?: number
+  smtpUsername?: string
+  passwordConfigured?: boolean
+  smtpFrom?: string
+  smtpTo?: string
+  startTls?: boolean
+  ssl?: boolean
+}
+
 /** GET /settings 脱敏视图 */
 export interface RuntimeSettingsView {
   settingsPath?: string
@@ -843,7 +871,9 @@ export interface RuntimeSettingsView {
       startTls: boolean
       ssl: boolean
     }
+    channels?: AlertChannelView[]
   }
+  channels?: AlertChannelView[]
   ai: {
     enabled: boolean
     provider: string
@@ -861,6 +891,7 @@ export interface RuntimeSettingsView {
 
 /** PUT /settings 请求体 */
 export interface RuntimeSettingsSaveBody {
+  channels?: Array<Record<string, unknown>>
   alert: {
     enabled: boolean
     webhookUrl: string

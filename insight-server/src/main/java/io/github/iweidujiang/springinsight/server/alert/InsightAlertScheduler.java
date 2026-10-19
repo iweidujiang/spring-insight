@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.server.alert;
 
 import io.github.iweidujiang.springinsight.server.ai.InsightAiExplainService;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
+import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettings;
 import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import jakarta.annotation.PostConstruct;
@@ -112,7 +113,7 @@ public class InsightAlertScheduler {
         if (!properties.isEnabled()) {
             return;
         }
-        if (!properties.isSendReady()) {
+        if (!canDeliver(properties)) {
             if (warnedNotReady.compareAndSet(false, true)) {
                 log.warn("[告警] 已启用但未配置可用通道（webhook-url、邮件、钉钉、飞书或企业微信机器人）");
             }
@@ -233,11 +234,38 @@ public class InsightAlertScheduler {
     }
 
     /**
+     * 有已保存渠道时只看渠道是否齐；否则沿用 Webhook、邮件和机器人字段。
+     *
+     * @param properties 当前生效告警配置
+     * @return 是否至少有一条可投递通道
+     */
+    private boolean canDeliver(InsightServerAlertProperties properties) {
+        List<InsightRuntimeSettings.ChannelConfig> channels = settingsService.effectiveChannels();
+        if (channels != null && !channels.isEmpty()) {
+            for (InsightRuntimeSettings.ChannelConfig channel : channels) {
+                if (channel == null || !channel.isEnabled()) {
+                    continue;
+                }
+                String type = channel.getType() == null ? "" : channel.getType().trim().toLowerCase();
+                if (channelReady(channel, type)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return properties.isSendReady();
+    }
+
+    /**
      * @param properties 当前生效告警配置
      * @param payload    告警体
      * @return 任一已配置通道成功即为 true
      */
     private boolean deliver(InsightServerAlertProperties properties, Map<String, Object> payload) {
+        List<InsightRuntimeSettings.ChannelConfig> channels = settingsService.effectiveChannels();
+        if (channels != null && !channels.isEmpty()) {
+            return deliverChannels(properties, payload, channels);
+        }
         AlertPayload alertPayload = new AlertPayload(payload);
         ChannelConfig config = new ChannelConfig(properties.normalizedWebhookUrl(), properties);
         boolean anySuccess = false;
@@ -281,6 +309,99 @@ public class InsightAlertScheduler {
             anySuccess = anySuccess || ok;
         }
         return attempted && anySuccess;
+    }
+
+    /**
+     * 按已保存的渠道列表投递。未启用或地址不齐的渠道跳过。
+     *
+     * @param properties 扫描用的告警配置（指标仍来自这里）
+     * @param payload    告警体
+     * @param channels   渠道列表
+     * @return 任一渠道成功
+     */
+    private boolean deliverChannels(InsightServerAlertProperties properties,
+                                    Map<String, Object> payload,
+                                    List<InsightRuntimeSettings.ChannelConfig> channels) {
+        AlertPayload alertPayload = new AlertPayload(payload);
+        boolean anySuccess = false;
+        boolean attempted = false;
+        for (InsightRuntimeSettings.ChannelConfig channel : channels) {
+            if (channel == null || !channel.isEnabled()) {
+                continue;
+            }
+            String type = channel.getType() == null ? "" : channel.getType().trim().toLowerCase();
+            if (!channelReady(channel, type)) {
+                continue;
+            }
+            attempted = true;
+            boolean ok = dispatch(type, alertPayload, channelConfig(properties, channel, type));
+            metrics.record(type, ok ? "success" : "failure");
+            anySuccess = anySuccess || ok;
+        }
+        return attempted && anySuccess;
+    }
+
+    /**
+     * @param channel 渠道
+     * @param type    小写类型
+     * @return 必填项是否齐全
+     */
+    private static boolean channelReady(InsightRuntimeSettings.ChannelConfig channel, String type) {
+        return switch (type) {
+            case "email" -> hasText(channel.getSmtpHost()) && hasText(channel.getSmtpFrom()) && hasText(channel.getSmtpTo());
+            case "dingtalk" -> hasText(channel.getWebhookUrl()) && hasText(channel.getSecret());
+            case "webhook", "feishu", "wecom" -> hasText(channel.getWebhookUrl());
+            default -> false;
+        };
+    }
+
+    /**
+     * 把一条渠道收成发送器使用的配置。邮件字段写进临时的告警配置，避免改到正在扫描的对象。
+     */
+    public static ChannelConfig channelConfig(InsightServerAlertProperties properties,
+                                               InsightRuntimeSettings.ChannelConfig channel,
+                                               String type) {
+        InsightServerAlertProperties carrier = new InsightServerAlertProperties();
+        carrier.setEnabled(true);
+        if ("email".equals(type)) {
+            InsightServerAlertProperties.Email email = new InsightServerAlertProperties.Email();
+            email.setEnabled(true);
+            email.setHost(channel.getSmtpHost());
+            email.setPort(channel.getSmtpPort() > 0 ? channel.getSmtpPort() : 587);
+            email.setUsername(channel.getSmtpUsername());
+            email.setPassword(channel.getSmtpPassword());
+            email.setFrom(channel.getSmtpFrom());
+            email.setTo(channel.getSmtpTo());
+            email.setStartTls(channel.isStartTls());
+            email.setSsl(channel.isSsl());
+            carrier.setEmail(email);
+        }
+        String serverUrl = channel.getServerUrl() == null ? "" : channel.getServerUrl();
+        if ("dingtalk".equals(type)) {
+            InsightServerAlertProperties.Dingtalk dingtalk = new InsightServerAlertProperties.Dingtalk();
+            dingtalk.setServerUrl(serverUrl);
+            carrier.setDingtalk(dingtalk);
+        } else if ("feishu".equals(type)) {
+            InsightServerAlertProperties.Feishu feishu = new InsightServerAlertProperties.Feishu();
+            feishu.setServerUrl(serverUrl);
+            carrier.setFeishu(feishu);
+        } else if ("wecom".equals(type)) {
+            InsightServerAlertProperties.Wecom wecom = new InsightServerAlertProperties.Wecom();
+            wecom.setServerUrl(serverUrl);
+            carrier.setWecom(wecom);
+        } else if (properties != null) {
+            carrier.setDingtalk(properties.getDingtalk());
+            carrier.setFeishu(properties.getFeishu());
+            carrier.setWecom(properties.getWecom());
+        }
+        String secret = channel.getSecret() == null ? "" : channel.getSecret();
+        String token = channel.getToken() == null ? "" : channel.getToken();
+        String url = channel.getWebhookUrl() == null ? "" : channel.getWebhookUrl().trim();
+        return new ChannelConfig(url, carrier, secret, token);
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private boolean dispatch(String channelType, AlertPayload payload, ChannelConfig config) {

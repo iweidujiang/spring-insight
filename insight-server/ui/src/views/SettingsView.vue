@@ -52,44 +52,13 @@
             <div>
               <h3 class="si-settings__card-title"><i class="fa fa-bell me-2"></i>告警推送</h3>
               <p class="si-settings__card-desc">
-                按错误率 / 错误次数 / p95 延迟扫描，超阈值时通过 Webhook 或邮件通知；可设静默时段。
+                按错误率 / 错误次数 / p95 延迟扫描。超阈值时按下面启用的渠道发送，可同时使用多个渠道。
               </p>
             </div>
             <SiSwitchField id="alert-enabled" v-model="form.alert.enabled" label="启用扫描" flush />
           </header>
 
           <div class="si-settings__fields">
-            <SiFormField label="Webhook URL" field-id="alert-webhook" span="full">
-              <div class="si-settings__webhook-row">
-                <input
-                  id="alert-webhook"
-                  v-model="form.alert.webhookUrl"
-                  class="form-control"
-                  type="url"
-                  placeholder="https://… 或 http://host.docker.internal:…"
-                />
-                <button
-                  type="button"
-                  class="btn btn-outline-secondary btn-sm"
-                  :disabled="previewing"
-                  title="只生成样本 JSON，不发送"
-                  @click="previewWebhook(false)"
-                >
-                  <i class="fa fa-eye me-1"></i>预览
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-outline-primary btn-sm"
-                  :disabled="previewing || !form.alert.webhookUrl.trim()"
-                  title="向当前 URL 发送一条带 preview=true 的样本（不计冷却）"
-                  @click="previewWebhook(true)"
-                >
-                  <i class="fa fa-paper-plane me-1"></i>试发
-                </button>
-              </div>
-              <pre v-if="previewResult" class="si-settings__preview mt-2 mb-0">{{ previewResult }}</pre>
-            </SiFormField>
-
             <SiFormField label="指标" field-id="alert-metric">
               <select id="alert-metric" v-model="form.alert.metric" class="form-select">
                 <option value="error_rate">error_rate（%）</option>
@@ -131,43 +100,80 @@
             </SiFormField>
           </SiFormBlock>
 
-          <SiFormBlock title="邮件 SMTP" icon="fa-envelope" description="可选；与 Webhook 可同时启用。">
-            <template #switch>
-              <SiSwitchField id="email-enabled" v-model="form.alert.email.enabled" label="启用邮件" flush />
-            </template>
-            <SiFormField label="SMTP Host" field-id="smtp-host" span="wide">
-              <input id="smtp-host" v-model="form.alert.email.host" class="form-control" placeholder="smtp.example.com" />
-            </SiFormField>
-            <SiFormField label="端口" field-id="smtp-port" span="narrow">
-              <input id="smtp-port" v-model.number="form.alert.email.port" class="form-control" type="number" min="1" />
-            </SiFormField>
-            <SiFormField label="用户名" field-id="smtp-user">
-              <input id="smtp-user" v-model="form.alert.email.username" class="form-control" autocomplete="off" />
-            </SiFormField>
-            <SiFormField label="密码" field-id="smtp-pass">
-              <template v-if="passwordConfigured" #hint>
-                <span class="text-muted small">（已配置，留空不改）</span>
-              </template>
-              <input
-                id="smtp-pass"
-                v-model="form.alert.email.password"
-                class="form-control"
-                type="password"
-                autocomplete="new-password"
-                :placeholder="passwordConfigured ? '••••••••' : ''"
-              />
-            </SiFormField>
-            <SiFormField label="发件人 From" field-id="smtp-from">
-              <input id="smtp-from" v-model="form.alert.email.from" class="form-control" type="email" />
-            </SiFormField>
-            <SiFormField label="收件人 To（逗号分隔）" field-id="smtp-to">
-              <input id="smtp-to" v-model="form.alert.email.to" class="form-control" />
-            </SiFormField>
-            <SiFormField span="toggles">
-              <SiSwitchField id="email-starttls" v-model="form.alert.email.startTls" label="STARTTLS" />
-              <SiSwitchField id="email-ssl" v-model="form.alert.email.ssl" label="SSL" />
-            </SiFormField>
-          </SiFormBlock>
+          <div class="si-channels">
+            <div class="si-channels__head">
+              <h4 class="si-settings__block-title"><i class="fa fa-share-alt me-2"></i>通知渠道</h4>
+              <p class="si-settings__block-desc">钉钉、飞书需 Webhook 和加签密钥；企业微信只需 Webhook；通用 Webhook 可另填令牌。</p>
+            </div>
+            <article v-for="channel in channels" :key="channel.id" class="si-channel">
+              <div class="si-channel__head">
+                <button type="button" class="si-channel__toggle" @click="toggleChannel(channel.id)">
+                  <i class="fa" :class="openChannels[channel.id] ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                  <i class="fa" :class="channelIcon(channel.type)"></i>
+                  <strong>{{ channel.name }}</strong>
+                </button>
+                <SiSwitchField :id="'channel-enabled-' + channel.id" v-model="channel.enabled" label="启用" flush />
+              </div>
+              <div v-show="openChannels[channel.id]" class="si-channel__body si-settings__fields">
+                <template v-if="channel.type === 'email'">
+                  <SiFormField label="SMTP Host" :field-id="'smtp-host-' + channel.id" span="wide">
+                    <input :id="'smtp-host-' + channel.id" v-model="channel.smtpHost" class="form-control" placeholder="smtp.example.com" />
+                  </SiFormField>
+                  <SiFormField label="端口" :field-id="'smtp-port-' + channel.id" span="narrow">
+                    <input :id="'smtp-port-' + channel.id" v-model.number="channel.smtpPort" class="form-control" type="number" min="1" />
+                  </SiFormField>
+                  <SiFormField label="用户名" :field-id="'smtp-user-' + channel.id">
+                    <input :id="'smtp-user-' + channel.id" v-model="channel.smtpUsername" class="form-control" autocomplete="off" />
+                  </SiFormField>
+                  <SiFormField label="密码" :field-id="'smtp-pass-' + channel.id">
+                    <template v-if="channel.passwordConfigured" #hint>
+                      <span class="text-muted small">（已配置，留空不改）</span>
+                    </template>
+                    <input :id="'smtp-pass-' + channel.id" v-model="channel.smtpPassword" class="form-control" type="password" autocomplete="new-password" :placeholder="channel.passwordConfigured ? '••••••••' : ''" />
+                  </SiFormField>
+                  <SiFormField label="发件人 From" :field-id="'smtp-from-' + channel.id">
+                    <input :id="'smtp-from-' + channel.id" v-model="channel.smtpFrom" class="form-control" type="email" />
+                  </SiFormField>
+                  <SiFormField label="收件人 To（逗号分隔）" :field-id="'smtp-to-' + channel.id">
+                    <input :id="'smtp-to-' + channel.id" v-model="channel.smtpTo" class="form-control" />
+                  </SiFormField>
+                  <SiFormField span="toggles">
+                    <SiSwitchField :id="'email-starttls-' + channel.id" v-model="channel.startTls" label="STARTTLS" />
+                    <SiSwitchField :id="'email-ssl-' + channel.id" v-model="channel.ssl" label="SSL" />
+                  </SiFormField>
+                </template>
+                <template v-else>
+                  <SiFormField label="Webhook URL" :field-id="'hook-' + channel.id" span="full">
+                    <input :id="'hook-' + channel.id" v-model="channel.webhookUrl" class="form-control" type="url" placeholder="https://…" />
+                  </SiFormField>
+                  <SiFormField v-if="channel.type === 'dingtalk' || channel.type === 'feishu'" label="加签密钥" :field-id="'secret-' + channel.id" span="wide">
+                    <template v-if="channel.secretConfigured" #hint>
+                      <span class="text-muted small">（已配置，留空不改）</span>
+                    </template>
+                    <input :id="'secret-' + channel.id" v-model="channel.secret" class="form-control" type="password" autocomplete="new-password" :placeholder="channel.secretConfigured ? '••••••••' : ''" />
+                  </SiFormField>
+                  <SiFormField v-if="channel.type === 'webhook'" label="令牌（可选）" :field-id="'token-' + channel.id" span="wide">
+                    <template v-if="channel.tokenConfigured" #hint>
+                      <span class="text-muted small">（已配置，留空不改）</span>
+                    </template>
+                    <input :id="'token-' + channel.id" v-model="channel.token" class="form-control" type="password" autocomplete="new-password" :placeholder="channel.tokenConfigured ? '••••••••' : 'Authorization: Bearer'" />
+                  </SiFormField>
+                  <SiFormField v-if="channel.type !== 'webhook'" label="控制台地址" :field-id="'server-' + channel.id" span="wide">
+                    <input :id="'server-' + channel.id" v-model="channel.serverUrl" class="form-control" placeholder="http://127.0.0.1:9966" />
+                  </SiFormField>
+                </template>
+                <div class="si-channel__actions">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="testingId === channel.id" @click="testChannel(channel, false)">
+                    <i class="fa fa-eye me-1"></i>预览
+                  </button>
+                  <button type="button" class="btn btn-outline-primary btn-sm" :disabled="testingId === channel.id" @click="testChannel(channel, true)">
+                    <i class="fa fa-paper-plane me-1"></i>测试发送
+                  </button>
+                </div>
+                <pre v-if="channelResults[channel.id]" class="si-settings__preview">{{ channelResults[channel.id] }}</pre>
+              </div>
+            </article>
+          </div>
         </section>
 
         <!-- AI -->
@@ -438,14 +444,14 @@ import SiFormBlock from '../components/SiFormBlock.vue'
 import SiFormField from '../components/SiFormField.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
 import SiSwitchField from '../components/SiSwitchField.vue'
-import { ApiService, type RuntimeSettingsSaveBody } from '../services/ApiService'
+import { ApiService, type AlertChannelView, type RuntimeSettingsSaveBody } from '../services/ApiService'
 import { capacityWarnMessage } from '../utils/timeRange'
 
 type SettingsSection = 'alert' | 'ai' | 'data'
 type ClearScope = 'all' | 'older_than' | 'service'
 
 const sections: { id: SettingsSection; label: string; icon: string; desc: string }[] = [
-  { id: 'alert', label: '告警推送', icon: 'fa-bell', desc: 'Webhook / 邮件通知规则' },
+  { id: 'alert', label: '告警推送', icon: 'fa-bell', desc: '扫描规则与通知渠道' },
   { id: 'ai', label: 'AI 解读', icon: 'fa-magic', desc: '配置模型，解读链路与错误' },
   { id: 'data', label: '容量与保留', icon: 'fa-database', desc: '占用、保留策略与清理' }
 ]
@@ -458,7 +464,6 @@ const clearing = ref(false)
 const message = ref('')
 const messageOk = ref(false)
 const settingsPath = ref('')
-const passwordConfigured = ref(false)
 const apiKeyConfigured = ref(false)
 const aiServerReason = ref('')
 const aiServerLabel = ref('')
@@ -506,8 +511,36 @@ const clearDialog = reactive({
   body: ''
 })
 
-const previewing = ref(false)
-const previewResult = ref('')
+type ChannelType = 'webhook' | 'email' | 'dingtalk' | 'feishu' | 'wecom'
+
+interface ChannelDraft {
+  id: string
+  type: ChannelType
+  enabled: boolean
+  name: string
+  webhookUrl: string
+  secret: string
+  token: string
+  serverUrl: string
+  secretConfigured: boolean
+  tokenConfigured: boolean
+  passwordConfigured: boolean
+  smtpHost: string
+  smtpPort: number
+  smtpUsername: string
+  smtpPassword: string
+  smtpFrom: string
+  smtpTo: string
+  startTls: boolean
+  ssl: boolean
+}
+
+const CHANNEL_TYPES: ChannelType[] = ['webhook', 'email', 'dingtalk', 'feishu', 'wecom']
+
+const testingId = ref('')
+const channelResults = reactive<Record<string, string>>({})
+const openChannels = reactive<Record<string, boolean>>({ webhook: true })
+const channels = ref<ChannelDraft[]>([])
 
 const aiDraftReady = computed(() => {
   if (!form.ai.enabled) return false
@@ -550,6 +583,90 @@ const aiDraftReason = computed(() => {
   const model = form.ai.model?.trim()
   return model ? `草稿就绪：保存后可调用模型 ${model}` : '草稿就绪：保存后可调用模型。'
 })
+
+function blankChannel(type: ChannelType): ChannelDraft {
+  const names: Record<ChannelType, string> = {
+    webhook: 'Webhook',
+    email: '邮件',
+    dingtalk: '钉钉',
+    feishu: '飞书',
+    wecom: '企业微信'
+  }
+  return {
+    id: type,
+    type,
+    enabled: false,
+    name: names[type],
+    webhookUrl: '',
+    secret: '',
+    token: '',
+    serverUrl: '',
+    secretConfigured: false,
+    tokenConfigured: false,
+    passwordConfigured: false,
+    smtpHost: '',
+    smtpPort: 587,
+    smtpUsername: '',
+    smtpPassword: '',
+    smtpFrom: '',
+    smtpTo: '',
+    startTls: true,
+    ssl: false
+  }
+}
+
+channels.value = CHANNEL_TYPES.map((type) => blankChannel(type))
+
+function channelIcon(type: ChannelType) {
+  if (type === 'email') return 'fa-envelope'
+  if (type === 'dingtalk') return 'fa-commenting'
+  if (type === 'feishu') return 'fa-paper-plane'
+  if (type === 'wecom') return 'fa-weixin'
+  return 'fa-link'
+}
+
+function toggleChannel(id: string) {
+  openChannels[id] = !openChannels[id]
+}
+
+function applyChannels(rows: AlertChannelView[] | undefined) {
+  const byType = new Map((rows || []).map((row) => [row.type, row]))
+  channels.value = CHANNEL_TYPES.map((type) => {
+    const row = byType.get(type)
+    const draft = blankChannel(type)
+    if (!row) return draft
+    draft.enabled = !!row.enabled
+    draft.name = row.name || draft.name
+    draft.webhookUrl = row.webhookUrl || ''
+    draft.serverUrl = row.serverUrl || ''
+    draft.secretConfigured = !!row.secretConfigured
+    draft.tokenConfigured = !!row.tokenConfigured
+    draft.passwordConfigured = !!row.passwordConfigured
+    draft.smtpHost = row.smtpHost || ''
+    draft.smtpPort = Number(row.smtpPort ?? 587)
+    draft.smtpUsername = row.smtpUsername || ''
+    draft.smtpFrom = row.smtpFrom || ''
+    draft.smtpTo = row.smtpTo || ''
+    draft.startTls = row.startTls !== false
+    draft.ssl = !!row.ssl
+    return draft
+  })
+}
+
+function syncLegacyFromChannels() {
+  const webhook = channels.value.find((item) => item.type === 'webhook')
+  const email = channels.value.find((item) => item.type === 'email')
+  form.alert.webhookUrl = webhook?.webhookUrl || ''
+  form.alert.email.enabled = !!email?.enabled
+  form.alert.email.host = email?.smtpHost || ''
+  form.alert.email.port = email?.smtpPort || 587
+  form.alert.email.username = email?.smtpUsername || ''
+  form.alert.email.password = email?.smtpPassword || ''
+  form.alert.email.from = email?.smtpFrom || ''
+  form.alert.email.to = email?.smtpTo || ''
+  form.alert.email.startTls = email?.startTls !== false
+  form.alert.email.ssl = !!email?.ssl
+}
 
 const thresholdHint = computed(() => {
   const m = form.alert.metric
@@ -652,7 +769,7 @@ async function load() {
     form.alert.email.to = email?.to || ''
     form.alert.email.startTls = email?.startTls !== false
     form.alert.email.ssl = !!email?.ssl
-    passwordConfigured.value = !!email?.passwordConfigured
+    applyChannels(data.channels || data.alert?.channels)
 
     form.ai.enabled = !!data.ai?.enabled
     form.ai.provider = data.ai?.provider || 'openai-compatible'
@@ -681,14 +798,33 @@ async function onSave() {
   saving.value = true
   message.value = ''
   try {
+    syncLegacyFromChannels()
     const saved = await ApiService.saveSettings({
       alert: { ...form.alert, email: { ...form.alert.email } },
-      ai: { ...form.ai }
+      ai: { ...form.ai },
+      channels: channels.value.map((channel) => ({
+        id: channel.id,
+        type: channel.type,
+        enabled: channel.enabled,
+        name: channel.name,
+        webhookUrl: channel.webhookUrl,
+        secret: channel.secret,
+        token: channel.token,
+        serverUrl: channel.serverUrl,
+        smtpHost: channel.smtpHost,
+        smtpPort: channel.smtpPort,
+        smtpUsername: channel.smtpUsername,
+        smtpPassword: channel.smtpPassword,
+        smtpFrom: channel.smtpFrom,
+        smtpTo: channel.smtpTo,
+        startTls: channel.startTls,
+        ssl: channel.ssl
+      }))
     })
-    passwordConfigured.value = !!saved.alert?.email?.passwordConfigured
     apiKeyConfigured.value = !!saved.ai?.apiKeyConfigured
     form.alert.email.password = ''
     form.ai.apiKey = ''
+    applyChannels(saved.channels || saved.alert?.channels)
     settingsPath.value = saved.settingsPath || settingsPath.value
     await refreshAiStatus()
     showMsg('已保存并生效', true)
@@ -700,25 +836,38 @@ async function onSave() {
   }
 }
 
-async function previewWebhook(send: boolean) {
-  previewing.value = true
-  previewResult.value = ''
+async function testChannel(channel: ChannelDraft, send: boolean) {
+  testingId.value = channel.id
+  channelResults[channel.id] = ''
   try {
-    const res = await ApiService.previewAlertWebhook({
+    const res = await ApiService.testAlertChannel({
       send,
-      webhookUrl: form.alert.webhookUrl.trim() || undefined
+      id: channel.id,
+      type: channel.type,
+      webhookUrl: channel.webhookUrl,
+      secret: channel.secret,
+      token: channel.token,
+      serverUrl: channel.serverUrl,
+      smtpHost: channel.smtpHost,
+      smtpPort: channel.smtpPort,
+      smtpUsername: channel.smtpUsername,
+      smtpPassword: channel.smtpPassword,
+      smtpFrom: channel.smtpFrom,
+      smtpTo: channel.smtpTo,
+      startTls: channel.startTls,
+      ssl: channel.ssl
     })
-    previewResult.value = JSON.stringify(res, null, 2)
+    channelResults[channel.id] = JSON.stringify(res, null, 2)
     if (send) {
-      showMsg(res.ok ? `试发成功（HTTP ${res.statusCode ?? '—'}）` : `试发失败：${res.error || '非 2xx'}`, !!res.ok)
+      showMsg(res.ok ? `${channel.name} 测试发送成功` : `${channel.name} 测试发送失败：${res.error || '未成功'}`, !!res.ok)
     } else {
-      showMsg('已生成预览 payload（未发送）', true)
+      showMsg(`已生成${channel.name}预览（未发送）`, true)
     }
   } catch (e: any) {
-    const msg = e?.response?.data?.message || e?.message || '预览失败'
+    const msg = e?.response?.data?.message || e?.message || '测试失败'
     showMsg(msg, false)
   } finally {
-    previewing.value = false
+    testingId.value = ''
   }
 }
 
@@ -976,6 +1125,60 @@ onUnmounted(() => {
   align-items: center;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.si-channels {
+  margin-top: 1.15rem;
+  padding-top: 1.1rem;
+  border-top: 1px dashed var(--card-border);
+}
+
+.si-channels__head {
+  margin-bottom: 0.75rem;
+}
+
+.si-channel {
+  margin-bottom: 0.65rem;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--si-paper);
+  color: var(--si-ink);
+}
+
+.si-channel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.si-channel__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--si-ink);
+  font-weight: 650;
+}
+
+.si-channel__body {
+  padding: 0 0.75rem 0.75rem;
+}
+
+.si-channel__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.35rem;
+}
+
+.si-channel__body > .si-settings__preview {
+  grid-column: 1 / -1;
 }
 
 .si-settings__preview {

@@ -95,6 +95,43 @@ class InsightRuntimeSettingsServiceTest {
         assertEquals("sk-runtime", service.effectiveAi().getApiKey());
     }
 
+    /**
+     * 渠道密钥留空时保留原值，并出现在脱敏视图里。
+     */
+    @Test
+    void channelSecretBlankKeepsSavedValue() {
+        InsightRuntimeSettingsService service = newService();
+        InsightRuntimeSettings.ChannelConfig dingtalk = new InsightRuntimeSettings.ChannelConfig();
+        dingtalk.setId("dingtalk");
+        dingtalk.setType("dingtalk");
+        dingtalk.setEnabled(true);
+        dingtalk.setName("钉钉");
+        dingtalk.setWebhookUrl("https://oapi.dingtalk.com/robot/send?access_token=abc");
+        dingtalk.setSecret("SEC-keep");
+        dingtalk.setServerUrl("http://127.0.0.1:9966");
+        InsightRuntimeSettings first = new InsightRuntimeSettings();
+        first.setChannels(java.util.List.of(dingtalk));
+        service.updateAndApply(first);
+
+        InsightRuntimeSettings.ChannelConfig again = new InsightRuntimeSettings.ChannelConfig();
+        again.setId("dingtalk");
+        again.setType("dingtalk");
+        again.setEnabled(true);
+        again.setWebhookUrl("https://oapi.dingtalk.com/robot/send?access_token=abc");
+        again.setSecret("");
+        InsightRuntimeSettings patch = new InsightRuntimeSettings();
+        patch.setChannels(java.util.List.of(again));
+        Map<String, Object> view = service.updateAndApply(patch);
+
+        assertEquals("SEC-keep", service.effectiveChannels().get(0).getSecret());
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> channels =
+                (java.util.List<Map<String, Object>>) view.get("channels");
+        assertEquals(1, channels.size());
+        assertEquals(Boolean.TRUE, channels.get(0).get("secretConfigured"));
+        assertFalse(channels.get(0).containsKey("secret"));
+    }
+
     private InsightRuntimeSettingsService newService() {
         InsightServerStorageProperties storage = new InsightServerStorageProperties();
         storage.setMode("file");

@@ -26,6 +26,7 @@
 - **钉钉告警**：群机器人用 Webhook 加签发送 ActionCard；配置 `spring.insight.server.alert.dingtalk`
 - **飞书告警**：群机器人发送 Interactive 卡片；配置了密钥时在请求体里带秒级时间戳和签名。配置项 `spring.insight.server.alert.feishu`
 - **企业微信告警**：群机器人直接 POST Markdown，无需加签。配置项 `spring.insight.server.alert.wecom`
+- **通知渠道**：设置页可同时配置 Webhook、邮件、钉钉、飞书和企业微信；保存后写入运行时设置，告警按已启用的渠道发送
 
 ### 兼容
 - 已有 sqlite 库会自动补 `error`、`component` 列；推荐配套 Agent 仍为 **`0.5.0`**

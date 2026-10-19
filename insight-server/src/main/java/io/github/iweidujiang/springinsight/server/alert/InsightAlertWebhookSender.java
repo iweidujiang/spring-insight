@@ -46,7 +46,7 @@ public class InsightAlertWebhookSender implements InsightAlertChannelSender {
      */
     @Override
     public void send(AlertPayload payload, ChannelConfig config) throws Exception {
-        PostResult result = postDetailed(config.webhookUrl(), payload.fields());
+        PostResult result = postDetailed(config.webhookUrl(), payload.fields(), config.token());
         if (!result.ok()) {
             throw new IllegalStateException(result.error().isBlank() ? "webhook send failed" : result.error());
         }
@@ -69,13 +69,27 @@ public class InsightAlertWebhookSender implements InsightAlertChannelSender {
      * @return 结果摘要
      */
     public PostResult postDetailed(String url, Map<String, Object> body) {
+        return postDetailed(url, body, null);
+    }
+
+    /**
+     * 带可选令牌的 POST。令牌非空时加上 {@code Authorization: Bearer}。
+     *
+     * @param url   Webhook 地址
+     * @param body  payload
+     * @param token 可选令牌
+     * @return 结果摘要
+     */
+    public PostResult postDetailed(String url, Map<String, Object> body, String token) {
         try {
             String json = objectMapper.writeValueAsString(body);
-            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+            HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
                     .timeout(TIMEOUT)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(json))
-                    .build();
+                    .header("Content-Type", "application/json");
+            if (token != null && !token.isBlank()) {
+                builder.header("Authorization", "Bearer " + token.trim());
+            }
+            HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofString(json)).build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             int status = response.statusCode();
             if (status >= 200 && status < 300) {
