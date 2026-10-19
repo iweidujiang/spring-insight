@@ -32,6 +32,19 @@ public class InsightRuntimeSettings {
         /** 空 = JVM 默认时区 */
         private String quietHoursZone = "";
         private EmailSettings email = new EmailSettings();
+        /** 缺省为 null，避免旧控制台保存时把未提交的钉钉配置清空 */
+        private DingtalkSettings dingtalk;
+    }
+
+    /**
+     * 钉钉机器人。密钥只进本地设置文件，接口响应不回传明文。
+     */
+    @Data
+    public static class DingtalkSettings {
+        private boolean enabled = false;
+        private String webhookUrl = "";
+        private String secret = "";
+        private String serverUrl = "";
     }
 
     /**

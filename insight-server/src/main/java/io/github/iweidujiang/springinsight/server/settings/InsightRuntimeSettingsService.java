@@ -137,6 +137,18 @@ public class InsightRuntimeSettingsService {
             out.setQuietHoursEnd(patch.getQuietHoursEnd().trim());
         }
         out.setQuietHoursZone(nullToEmpty(patch.getQuietHoursZone()));
+        if (patch.getDingtalk() != null) {
+            InsightRuntimeSettings.DingtalkSettings d = out.getDingtalk() != null
+                    ? deepCopyDingtalk(out.getDingtalk()) : new InsightRuntimeSettings.DingtalkSettings();
+            InsightRuntimeSettings.DingtalkSettings p = patch.getDingtalk();
+            d.setEnabled(p.isEnabled());
+            d.setWebhookUrl(nullToEmpty(p.getWebhookUrl()));
+            if (StringUtils.hasText(p.getSecret())) {
+                d.setSecret(p.getSecret());
+            }
+            d.setServerUrl(nullToEmpty(p.getServerUrl()));
+            out.setDingtalk(d);
+        }
         if (patch.getEmail() != null) {
             InsightRuntimeSettings.EmailSettings e = deepCopyEmail(out.getEmail());
             InsightRuntimeSettings.EmailSettings p = patch.getEmail();
@@ -201,6 +213,14 @@ public class InsightRuntimeSettingsService {
         email.put("startTls", e.isStartTls());
         email.put("ssl", e.isSsl());
         m.put("email", email);
+        InsightRuntimeSettings.DingtalkSettings d = a.getDingtalk() != null
+                ? a.getDingtalk() : new InsightRuntimeSettings.DingtalkSettings();
+        Map<String, Object> dingtalk = new LinkedHashMap<>();
+        dingtalk.put("enabled", d.isEnabled());
+        dingtalk.put("webhookUrl", nullToEmpty(d.getWebhookUrl()));
+        dingtalk.put("secretConfigured", StringUtils.hasText(d.getSecret()));
+        dingtalk.put("serverUrl", nullToEmpty(d.getServerUrl()));
+        m.put("dingtalk", dingtalk);
         return m;
     }
 
@@ -244,6 +264,14 @@ public class InsightRuntimeSettingsService {
         e.setStartTls(pe.isStartTls());
         e.setSsl(pe.isSsl());
         a.setEmail(e);
+        if (p.getDingtalk() != null) {
+            InsightRuntimeSettings.DingtalkSettings d = new InsightRuntimeSettings.DingtalkSettings();
+            d.setEnabled(p.getDingtalk().isEnabled());
+            d.setWebhookUrl(nullToEmpty(p.getDingtalk().getWebhookUrl()));
+            d.setSecret(nullToEmpty(p.getDingtalk().getSecret()));
+            d.setServerUrl(nullToEmpty(p.getDingtalk().getServerUrl()));
+            a.setDingtalk(d);
+        }
         return a;
     }
 
@@ -287,6 +315,14 @@ public class InsightRuntimeSettingsService {
         pe.setStartTls(e.isStartTls());
         pe.setSsl(e.isSsl());
         p.setEmail(pe);
+        if (a.getDingtalk() != null) {
+            InsightServerAlertProperties.Dingtalk d = new InsightServerAlertProperties.Dingtalk();
+            d.setEnabled(a.getDingtalk().isEnabled());
+            d.setWebhookUrl(nullToEmpty(a.getDingtalk().getWebhookUrl()));
+            d.setSecret(nullToEmpty(a.getDingtalk().getSecret()));
+            d.setServerUrl(nullToEmpty(a.getDingtalk().getServerUrl()));
+            p.setDingtalk(d);
+        }
         return p;
     }
 
@@ -329,6 +365,19 @@ public class InsightRuntimeSettingsService {
         c.setQuietHoursEnd(a.getQuietHoursEnd());
         c.setQuietHoursZone(a.getQuietHoursZone());
         c.setEmail(deepCopyEmail(a.getEmail()));
+        c.setDingtalk(deepCopyDingtalk(a.getDingtalk()));
+        return c;
+    }
+
+    private static InsightRuntimeSettings.DingtalkSettings deepCopyDingtalk(InsightRuntimeSettings.DingtalkSettings d) {
+        if (d == null) {
+            return null;
+        }
+        InsightRuntimeSettings.DingtalkSettings c = new InsightRuntimeSettings.DingtalkSettings();
+        c.setEnabled(d.isEnabled());
+        c.setWebhookUrl(d.getWebhookUrl());
+        c.setSecret(d.getSecret());
+        c.setServerUrl(d.getServerUrl());
         return c;
     }
 

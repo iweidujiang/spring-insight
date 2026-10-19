@@ -114,7 +114,7 @@ public class InsightAlertScheduler {
         }
         if (!properties.isSendReady()) {
             if (warnedNotReady.compareAndSet(false, true)) {
-                log.warn("[告警] 已启用但未配置可用通道（webhook-url 或 email.host/from/to）");
+                log.warn("[告警] 已启用但未配置可用通道（webhook-url、邮件或钉钉机器人）");
             }
             return;
         }
@@ -252,6 +252,15 @@ public class InsightAlertScheduler {
             attempted = true;
             boolean ok = dispatch("email", alertPayload, config);
             metrics.record("email", ok ? "success" : "failure");
+            anySuccess = anySuccess || ok;
+        }
+        if (properties.isDingtalkSendReady()) {
+            attempted = true;
+            InsightServerAlertProperties.Dingtalk dingtalk = properties.getDingtalk();
+            ChannelConfig dingtalkConfig = new ChannelConfig(
+                    dingtalk.getWebhookUrl().trim(), properties, dingtalk.getSecret().trim());
+            boolean ok = dispatch("dingtalk", alertPayload, dingtalkConfig);
+            metrics.record("dingtalk", ok ? "success" : "failure");
             anySuccess = anySuccess || ok;
         }
         return attempted && anySuccess;

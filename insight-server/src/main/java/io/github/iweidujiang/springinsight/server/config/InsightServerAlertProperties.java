@@ -71,6 +71,11 @@ public class InsightServerAlertProperties {
     private Email email = new Email();
 
     /**
+     * 钉钉群机器人（Webhook + 加签；默认关）
+     */
+    private Dingtalk dingtalk = new Dingtalk();
+
+    /**
      * SMTP / 收件配置。
      */
     @Data
@@ -123,6 +128,17 @@ public class InsightServerAlertProperties {
     }
 
     /**
+     * 钉钉自定义机器人。{@code serverUrl} 是控制台根地址，用于消息里的「查看详情」。
+     */
+    @Data
+    public static class Dingtalk {
+        private boolean enabled = false;
+        private String webhookUrl = "";
+        private String secret = "";
+        private String serverUrl = "";
+    }
+
+    /**
      * @return 规范化后的 webhook URL
      */
     public String normalizedWebhookUrl() {
@@ -156,10 +172,21 @@ public class InsightServerAlertProperties {
     }
 
     /**
+     * @return 钉钉通道是否可发（须同时有 Webhook 与加签密钥）
+     */
+    public boolean isDingtalkSendReady() {
+        if (!enabled || dingtalk == null || !dingtalk.isEnabled()) {
+            return false;
+        }
+        return StringUtils.hasText(trim(dingtalk.getWebhookUrl()))
+                && StringUtils.hasText(trim(dingtalk.getSecret()));
+    }
+
+    /**
      * @return 是否至少有一个发送通道就绪
      */
     public boolean isSendReady() {
-        return isWebhookSendReady() || isEmailSendReady();
+        return isWebhookSendReady() || isEmailSendReady() || isDingtalkSendReady();
     }
 
     private static String trim(String s) {
