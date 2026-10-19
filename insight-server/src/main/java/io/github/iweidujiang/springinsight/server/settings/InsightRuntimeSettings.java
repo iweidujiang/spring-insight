@@ -34,6 +34,22 @@ public class InsightRuntimeSettings {
         private EmailSettings email = new EmailSettings();
         /** 缺省为 null，避免旧控制台保存时把未提交的钉钉配置清空 */
         private DingtalkSettings dingtalk;
+        /** 缺省为 null，避免旧控制台保存时把未提交的飞书配置清空 */
+        private FeishuSettings feishu;
+    }
+
+    /**
+     * 飞书机器人。密钥只进本地设置文件，接口响应不回传明文。
+     *
+     * @author 苏渡苇
+     * @since 2026-10-19
+     */
+    @Data
+    public static class FeishuSettings {
+        private boolean enabled = false;
+        private String webhookUrl = "";
+        private String secret = "";
+        private String serverUrl = "";
     }
 
     /**

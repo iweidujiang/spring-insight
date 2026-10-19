@@ -149,6 +149,18 @@ public class InsightRuntimeSettingsService {
             d.setServerUrl(nullToEmpty(p.getServerUrl()));
             out.setDingtalk(d);
         }
+        if (patch.getFeishu() != null) {
+            InsightRuntimeSettings.FeishuSettings f = out.getFeishu() != null
+                    ? deepCopyFeishu(out.getFeishu()) : new InsightRuntimeSettings.FeishuSettings();
+            InsightRuntimeSettings.FeishuSettings p = patch.getFeishu();
+            f.setEnabled(p.isEnabled());
+            f.setWebhookUrl(nullToEmpty(p.getWebhookUrl()));
+            if (StringUtils.hasText(p.getSecret())) {
+                f.setSecret(p.getSecret());
+            }
+            f.setServerUrl(nullToEmpty(p.getServerUrl()));
+            out.setFeishu(f);
+        }
         if (patch.getEmail() != null) {
             InsightRuntimeSettings.EmailSettings e = deepCopyEmail(out.getEmail());
             InsightRuntimeSettings.EmailSettings p = patch.getEmail();
@@ -221,6 +233,14 @@ public class InsightRuntimeSettingsService {
         dingtalk.put("secretConfigured", StringUtils.hasText(d.getSecret()));
         dingtalk.put("serverUrl", nullToEmpty(d.getServerUrl()));
         m.put("dingtalk", dingtalk);
+        InsightRuntimeSettings.FeishuSettings f = a.getFeishu() != null
+                ? a.getFeishu() : new InsightRuntimeSettings.FeishuSettings();
+        Map<String, Object> feishu = new LinkedHashMap<>();
+        feishu.put("enabled", f.isEnabled());
+        feishu.put("webhookUrl", nullToEmpty(f.getWebhookUrl()));
+        feishu.put("secretConfigured", StringUtils.hasText(f.getSecret()));
+        feishu.put("serverUrl", nullToEmpty(f.getServerUrl()));
+        m.put("feishu", feishu);
         return m;
     }
 
@@ -271,6 +291,14 @@ public class InsightRuntimeSettingsService {
             d.setSecret(nullToEmpty(p.getDingtalk().getSecret()));
             d.setServerUrl(nullToEmpty(p.getDingtalk().getServerUrl()));
             a.setDingtalk(d);
+        }
+        if (p.getFeishu() != null) {
+            InsightRuntimeSettings.FeishuSettings f = new InsightRuntimeSettings.FeishuSettings();
+            f.setEnabled(p.getFeishu().isEnabled());
+            f.setWebhookUrl(nullToEmpty(p.getFeishu().getWebhookUrl()));
+            f.setSecret(nullToEmpty(p.getFeishu().getSecret()));
+            f.setServerUrl(nullToEmpty(p.getFeishu().getServerUrl()));
+            a.setFeishu(f);
         }
         return a;
     }
@@ -323,6 +351,14 @@ public class InsightRuntimeSettingsService {
             d.setServerUrl(nullToEmpty(a.getDingtalk().getServerUrl()));
             p.setDingtalk(d);
         }
+        if (a.getFeishu() != null) {
+            InsightServerAlertProperties.Feishu f = new InsightServerAlertProperties.Feishu();
+            f.setEnabled(a.getFeishu().isEnabled());
+            f.setWebhookUrl(nullToEmpty(a.getFeishu().getWebhookUrl()));
+            f.setSecret(nullToEmpty(a.getFeishu().getSecret()));
+            f.setServerUrl(nullToEmpty(a.getFeishu().getServerUrl()));
+            p.setFeishu(f);
+        }
         return p;
     }
 
@@ -366,6 +402,23 @@ public class InsightRuntimeSettingsService {
         c.setQuietHoursZone(a.getQuietHoursZone());
         c.setEmail(deepCopyEmail(a.getEmail()));
         c.setDingtalk(deepCopyDingtalk(a.getDingtalk()));
+        c.setFeishu(deepCopyFeishu(a.getFeishu()));
+        return c;
+    }
+
+    /**
+     * @param f 飞书设置，可空
+     * @return 副本；入参为空时返回 null
+     */
+    private static InsightRuntimeSettings.FeishuSettings deepCopyFeishu(InsightRuntimeSettings.FeishuSettings f) {
+        if (f == null) {
+            return null;
+        }
+        InsightRuntimeSettings.FeishuSettings c = new InsightRuntimeSettings.FeishuSettings();
+        c.setEnabled(f.isEnabled());
+        c.setWebhookUrl(f.getWebhookUrl());
+        c.setSecret(f.getSecret());
+        c.setServerUrl(f.getServerUrl());
         return c;
     }
 

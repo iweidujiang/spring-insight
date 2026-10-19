@@ -76,6 +76,11 @@ public class InsightServerAlertProperties {
     private Dingtalk dingtalk = new Dingtalk();
 
     /**
+     * 飞书群机器人（Webhook，加签可选；默认关）
+     */
+    private Feishu feishu = new Feishu();
+
+    /**
      * SMTP / 收件配置。
      */
     @Data
@@ -139,6 +144,20 @@ public class InsightServerAlertProperties {
     }
 
     /**
+     * 飞书自定义机器人。未填 secret 时不签名。{@code serverUrl} 用于卡片里的「查看详情」。
+     *
+     * @author 苏渡苇
+     * @since 2026-10-19
+     */
+    @Data
+    public static class Feishu {
+        private boolean enabled = false;
+        private String webhookUrl = "";
+        private String secret = "";
+        private String serverUrl = "";
+    }
+
+    /**
      * @return 规范化后的 webhook URL
      */
     public String normalizedWebhookUrl() {
@@ -183,10 +202,20 @@ public class InsightServerAlertProperties {
     }
 
     /**
+     * @return 飞书通道是否可发（须有 Webhook；密钥可选）
+     */
+    public boolean isFeishuSendReady() {
+        if (!enabled || feishu == null || !feishu.isEnabled()) {
+            return false;
+        }
+        return StringUtils.hasText(trim(feishu.getWebhookUrl()));
+    }
+
+    /**
      * @return 是否至少有一个发送通道就绪
      */
     public boolean isSendReady() {
-        return isWebhookSendReady() || isEmailSendReady() || isDingtalkSendReady();
+        return isWebhookSendReady() || isEmailSendReady() || isDingtalkSendReady() || isFeishuSendReady();
     }
 
     private static String trim(String s) {

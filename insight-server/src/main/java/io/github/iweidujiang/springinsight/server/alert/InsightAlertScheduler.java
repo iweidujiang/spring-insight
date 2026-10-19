@@ -114,7 +114,7 @@ public class InsightAlertScheduler {
         }
         if (!properties.isSendReady()) {
             if (warnedNotReady.compareAndSet(false, true)) {
-                log.warn("[告警] 已启用但未配置可用通道（webhook-url、邮件或钉钉机器人）");
+                log.warn("[告警] 已启用但未配置可用通道（webhook-url、邮件、钉钉或飞书机器人）");
             }
             return;
         }
@@ -261,6 +261,15 @@ public class InsightAlertScheduler {
                     dingtalk.getWebhookUrl().trim(), properties, dingtalk.getSecret().trim());
             boolean ok = dispatch("dingtalk", alertPayload, dingtalkConfig);
             metrics.record("dingtalk", ok ? "success" : "failure");
+            anySuccess = anySuccess || ok;
+        }
+        if (properties.isFeishuSendReady()) {
+            attempted = true;
+            InsightServerAlertProperties.Feishu feishu = properties.getFeishu();
+            String secret = feishu.getSecret() == null ? "" : feishu.getSecret().trim();
+            ChannelConfig feishuConfig = new ChannelConfig(feishu.getWebhookUrl().trim(), properties, secret);
+            boolean ok = dispatch("feishu", alertPayload, feishuConfig);
+            metrics.record("feishu", ok ? "success" : "failure");
             anySuccess = anySuccess || ok;
         }
         return attempted && anySuccess;

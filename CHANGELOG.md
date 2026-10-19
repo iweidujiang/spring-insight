@@ -24,6 +24,7 @@
 - **链路列表分页**：`GET /api/v1/ui/traces/recent` 增加 `offset`、`limit`（最大 200）和 `sort`。带上 `offset` 时返回 `data` / `total` / `offset` / `limit`；不带 `offset` 时仍是原来的数组
 - **告警渠道**：Webhook 与邮件改为同一套渠道接口，调度按渠道类型投递；现有 Webhook 与邮件行为不变
 - **钉钉告警**：群机器人用 Webhook 加签发送 ActionCard；配置 `spring.insight.server.alert.dingtalk`
+- **飞书告警**：群机器人发送 Interactive 卡片；配置了密钥时在请求体里带秒级时间戳和签名。配置项 `spring.insight.server.alert.feishu`
 
 ### 兼容
 - 已有 sqlite 库会自动补 `error`、`component` 列；推荐配套 Agent 仍为 **`0.5.0`**
