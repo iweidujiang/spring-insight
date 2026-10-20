@@ -672,6 +672,34 @@ export class ApiService {
     return request('/storage/clear', { method: 'POST', data: body })
   }
 
+  /** 当前仪表盘布局；未保存过时后端返回默认全局概览 */
+  static async getDashboardLayout(): Promise<DashboardLayout> {
+    const raw = await request<any>('/dashboard/layout')
+    return normalizeDashboardLayout(raw)
+  }
+
+  /** 保存仪表盘布局到运行时设置 */
+  static async saveDashboardLayout(layout: DashboardLayout): Promise<void> {
+    await request('/dashboard/layout', {
+      method: 'PUT',
+      data: layout
+    })
+  }
+
+  /** 仪表盘预设模板列表 */
+  static async getDashboardTemplates(): Promise<DashboardTemplate[]> {
+    const rows = await requestWithDefault<any[]>('/dashboard/templates', [])
+    if (!Array.isArray(rows)) {
+      return []
+    }
+    return rows.map((raw) => ({
+      id: String(raw?.id ?? ''),
+      name: String(raw?.name ?? ''),
+      description: String(raw?.description ?? ''),
+      layout: normalizeDashboardLayout(raw?.layout)
+    })).filter((t) => t.id)
+  }
+
   /** 时段洞察事实（无 AI）：本时段 vs 上一同等时段 */
   static async getPeriodInsight(hours: number = 24): Promise<PeriodInsight | null> {
     try {
@@ -721,6 +749,48 @@ export class ApiService {
     } catch {
       return null
     }
+  }
+}
+
+/** 仪表盘单个面板 */
+export interface DashboardPanel {
+  id: string
+  type: string
+  x: number
+  y: number
+  w: number
+  h: number
+  visible: boolean
+}
+
+/** 仪表盘布局 */
+export interface DashboardLayout {
+  templateId?: string
+  panels: DashboardPanel[]
+}
+
+/** 仪表盘预设模板 */
+export interface DashboardTemplate {
+  id: string
+  name: string
+  description: string
+  layout: DashboardLayout
+}
+
+function normalizeDashboardLayout(raw: any): DashboardLayout {
+  const panelsRaw = Array.isArray(raw?.panels) ? raw.panels : []
+  const panels: DashboardPanel[] = panelsRaw.map((p: any) => ({
+    id: String(p?.id ?? ''),
+    type: String(p?.type ?? ''),
+    x: Number(p?.x ?? 0),
+    y: Number(p?.y ?? 0),
+    w: Math.max(1, Number(p?.w ?? 1)),
+    h: Math.max(1, Number(p?.h ?? 1)),
+    visible: p?.visible !== false
+  })).filter((p: DashboardPanel) => p.id && p.type)
+  return {
+    templateId: raw?.templateId != null ? String(raw.templateId) : undefined,
+    panels
   }
 }
 

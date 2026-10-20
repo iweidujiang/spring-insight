@@ -19,6 +19,40 @@
         <select id="dashboard-hours" class="form-select form-select-sm si-dashboard__hours" v-model.number="hours" @change="onHoursChange">
           <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
+        <div class="si-layout-menu" ref="layoutMenuRef">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary si-dashboard__btn"
+            :disabled="layoutSaving"
+            :aria-expanded="layoutMenuOpen"
+            title="切换仪表盘布局模板"
+            @click.stop="toggleLayoutMenu"
+          >
+            <i class="fa" :class="layoutSaving ? 'fa-spinner fa-spin' : 'fa-th-large'"></i>
+            布局
+            <i class="fa fa-caret-down ms-1"></i>
+          </button>
+          <ul v-show="layoutMenuOpen" class="si-layout-menu__list" role="menu">
+            <li v-for="tpl in templates" :key="tpl.id" role="none">
+              <button
+                type="button"
+                class="si-layout-menu__item"
+                :class="{ 'is-active': layout?.templateId === tpl.id }"
+                role="menuitem"
+                @click="applyTemplate(tpl)"
+              >
+                <span class="si-layout-menu__name">{{ tpl.name }}</span>
+                <span v-if="tpl.description" class="si-layout-menu__desc">{{ tpl.description }}</span>
+              </button>
+            </li>
+            <li v-if="templates.length" class="si-layout-menu__divider" role="separator"></li>
+            <li role="none">
+              <button type="button" class="si-layout-menu__item" role="menuitem" @click="resetLayout">
+                恢复默认
+              </button>
+            </li>
+          </ul>
+        </div>
         <button
           type="button"
           class="btn btn-sm btn-outline-secondary si-dashboard__btn"
@@ -45,7 +79,12 @@
     <SiAlert v-if="loadError" tone="danger" class="mx-3 mb-0">{{ loadError }}</SiAlert>
 
     <div v-show="!loading" class="si-dashboard__content">
-      <section class="si-dashboard__kpis" :class="{ 'is-alert': leadKpi.alert }" aria-label="关键指标">
+      <section
+        v-if="panelVisible('kpi')"
+        class="si-dashboard__kpis"
+        :class="{ 'is-alert': leadKpi.alert }"
+        aria-label="关键指标"
+      >
         <button
           type="button"
           class="si-dashboard__kpi si-dashboard__kpi--lead"
@@ -75,7 +114,7 @@
         </div>
       </section>
 
-      <section class="si-period" aria-label="时段摘要">
+      <section v-if="panelVisible('summary')" class="si-period" aria-label="时段摘要">
         <header class="si-period__head">
           <div class="si-period__meta">
             <span class="si-period__kicker">时段摘要</span>
@@ -126,7 +165,7 @@
       </section>
 
       <section
-        v-if="collectorStats"
+        v-if="panelVisible('collector') && collectorStats"
         class="si-dashboard__collector-strip"
         aria-label="采集器状态"
       >
@@ -144,8 +183,13 @@
         </button>
       </section>
 
-      <section class="si-infra" aria-label="库与缓存">
-        <button type="button" class="si-infra__card" @click="goJdbc()">
+      <section
+        v-if="panelVisible('jdbc') || panelVisible('redis')"
+        class="si-infra"
+        :class="{ 'si-infra--single': !(panelVisible('jdbc') && panelVisible('redis')) }"
+        aria-label="库与缓存"
+      >
+        <button v-if="panelVisible('jdbc')" type="button" class="si-infra__card" @click="goJdbc()">
           <div class="si-infra__head">
             <span class="si-infra__title"><i class="fa fa-database me-2"></i>数据库</span>
             <span class="si-infra__link">打开 <i class="fa fa-angle-right"></i></span>
@@ -175,7 +219,7 @@
           </p>
         </button>
 
-        <button type="button" class="si-infra__card" @click="goRedis()">
+        <button v-if="panelVisible('redis')" type="button" class="si-infra__card" @click="goRedis()">
           <div class="si-infra__head">
             <span class="si-infra__title"><i class="fa fa-cube me-2"></i>缓存</span>
             <span class="si-infra__link">打开 <i class="fa fa-angle-right"></i></span>
@@ -264,9 +308,27 @@
         </div>
       </section>
 
-      <section v-else class="si-overview" aria-label="服务概览">
+      <section v-else-if="showOverviewSection" class="si-overview" aria-label="服务概览">
         <div class="si-overview__grid">
-          <div class="si-overview__panel">
+          <div v-if="panelVisible('error-services')" class="si-overview__panel">
+            <div class="si-overview__head">
+              <span><i class="fa fa-exclamation-triangle me-2"></i>异常服务</span>
+              <button type="button" class="btn btn-sm btn-outline-danger py-0" @click="goErrors">错误分析</button>
+            </div>
+            <ul v-if="errorAnalysis.length" class="si-dashboard__rail-list">
+              <li
+                v-for="row in errorAnalysis.slice(0, 8)"
+                :key="'err-' + row.serviceName"
+                @click="goServiceSlow(row)"
+              >
+                <span class="si-dashboard__rail-name" :title="row.serviceName">{{ row.serviceName }}</span>
+                <em class="text-danger">{{ Number(row.errorRate || 0).toFixed(1) }}%</em>
+              </li>
+            </ul>
+            <div v-else class="si-dashboard__rail-empty">当前时间窗无异常服务</div>
+          </div>
+
+          <div v-if="panelVisible('service-health')" class="si-overview__panel">
             <div class="si-overview__head">
               <span><i class="fa fa-heartbeat me-2"></i>服务健康</span>
               <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goSlowTraces()">慢链路</button>
@@ -287,7 +349,7 @@
             </div>
           </div>
 
-          <div class="si-overview__panel">
+          <div v-if="panelVisible('slow-services')" class="si-overview__panel">
             <div class="si-overview__head">
               <span>慢服务 <PercentileHelp /></span>
               <button type="button" class="btn btn-sm btn-link py-0" @click="goSlowTraces()">更多</button>
@@ -307,7 +369,7 @@
             <div v-else class="si-dashboard__rail-empty">{{ emptyInRangeShort(hours, '延迟样本') }}</div>
           </div>
 
-          <div class="si-overview__panel">
+          <div v-if="panelVisible('hot-dependencies')" class="si-overview__panel">
             <div class="si-overview__head">
               <span>热点依赖</span>
               <button type="button" class="btn btn-sm btn-link py-0" @click="goTopology()">拓扑图</button>
@@ -331,8 +393,12 @@
           </div>
         </div>
 
-        <div class="si-overview__bottom">
-          <div class="si-overview__panel si-overview__panel--traces">
+        <div
+          v-if="panelVisible('recent-traces') || panelVisible('service-rank')"
+          class="si-overview__bottom"
+          :class="{ 'si-overview__bottom--single': !(panelVisible('recent-traces') && panelVisible('service-rank')) }"
+        >
+          <div v-if="panelVisible('recent-traces')" class="si-overview__panel si-overview__panel--traces">
             <div class="si-overview__head">
               <span><i class="fa fa-list me-2"></i>最近请求</span>
               <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goTraces()">全部链路</button>
@@ -361,7 +427,7 @@
             </ul>
           </div>
 
-          <div class="si-overview__panel si-overview__panel--rank">
+          <div v-if="panelVisible('service-rank')" class="si-overview__panel si-overview__panel--rank">
             <div class="si-overview__head">
               <span>请求排名</span>
               <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshServiceRankChart">
@@ -393,7 +459,14 @@ import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import type { SiColumn } from '../components/siTable'
-import { ApiService, type AiExplainResult, type PeriodInsight, type PeriodInsightLink } from '../services/ApiService'
+import {
+  ApiService,
+  type AiExplainResult,
+  type DashboardLayout,
+  type DashboardTemplate,
+  type PeriodInsight,
+  type PeriodInsightLink
+} from '../services/ApiService'
 import { formatDuration } from '../utils/traceTimeline'
 import { useChartTheme } from '../composables/useChartTheme'
 import {
@@ -412,6 +485,13 @@ const route = useRoute()
 const loading = ref(true)
 const loadError = ref('')
 const exporting = ref(false)
+const layoutSaving = ref(false)
+const layoutMenuOpen = ref(false)
+const layoutMenuRef = ref<HTMLElement | null>(null)
+const layout = ref<DashboardLayout | null>(null)
+const templates = ref<DashboardTemplate[]>([])
+/** 布局 API 不可用时不限制面板显隐 */
+const layoutControlsEnabled = ref(false)
 const hours = ref(72)
 const currentTime = ref('')
 const services = ref<string[]>([])
@@ -461,6 +541,27 @@ const { colors: chartColors } = useChartTheme()
 const hasDependencies = computed(() => dependencies.value.length > 0)
 /** 只有一个应用且尚无调用边：首页用单应用请求列表 */
 const isSolo = computed(() => !hasDependencies.value && services.value.length === 1)
+
+/** 按布局 visible 控制面板；无布局数据时全部显示 */
+const panelVisible = (id: string): boolean => {
+  if (!layoutControlsEnabled.value || !layout.value?.panels?.length) {
+    return true
+  }
+  const panel = layout.value.panels.find((p) => p.id === id || p.type === id)
+  if (!panel) {
+    return false
+  }
+  return panel.visible !== false
+}
+
+const showOverviewSection = computed(() =>
+  panelVisible('error-services')
+  || panelVisible('service-health')
+  || panelVisible('slow-services')
+  || panelVisible('hot-dependencies')
+  || panelVisible('recent-traces')
+  || panelVisible('service-rank')
+)
 
 const soloProfile = computed(() => {
   const name = services.value[0] || ''
@@ -961,11 +1062,11 @@ const loadData = async () => {
   }
 }
 
-/** 多服务概览挂请求排名图；单应用不挂。 */
+/** 多服务概览挂请求排名图；单应用或不显示排名面板时不挂。 */
 const syncCharts = async () => {
   serviceRankChart?.dispose()
   serviceRankChart = null
-  if (isSolo.value) return
+  if (isSolo.value || !panelVisible('service-rank')) return
   await nextTick()
   mountRankChart()
   updateCharts()
@@ -976,10 +1077,108 @@ const handleResize = () => {
   serviceRankChart?.resize()
 }
 
+const toggleLayoutMenu = () => {
+  layoutMenuOpen.value = !layoutMenuOpen.value
+}
+
+const closeLayoutMenu = () => {
+  layoutMenuOpen.value = false
+}
+
+const onDocumentClick = (ev: MouseEvent) => {
+  const root = layoutMenuRef.value
+  if (!root || !layoutMenuOpen.value) return
+  if (!root.contains(ev.target as Node)) {
+    closeLayoutMenu()
+  }
+}
+
+const persistLayout = async (next: DashboardLayout) => {
+  layoutSaving.value = true
+  try {
+    await ApiService.saveDashboardLayout(next)
+    layout.value = next
+    layoutControlsEnabled.value = true
+  } catch (error) {
+    console.error('保存仪表盘布局失败:', error)
+    loadError.value = '保存布局失败'
+  } finally {
+    layoutSaving.value = false
+  }
+}
+
+const applyTemplate = async (tpl: DashboardTemplate) => {
+  closeLayoutMenu()
+  if (!tpl?.layout?.panels?.length) return
+  const next: DashboardLayout = {
+    templateId: tpl.id,
+    panels: tpl.layout.panels.map((p) => ({ ...p }))
+  }
+  await persistLayout(next)
+  await nextTick()
+  syncCharts()
+}
+
+const DEFAULT_OVERVIEW_LAYOUT: DashboardLayout = {
+  templateId: 'overview',
+  panels: [
+    { id: 'kpi', type: 'kpi', x: 0, y: 0, w: 4, h: 1, visible: true },
+    { id: 'summary', type: 'period-summary', x: 0, y: 1, w: 4, h: 1, visible: true },
+    { id: 'collector', type: 'collector', x: 0, y: 2, w: 4, h: 1, visible: true },
+    { id: 'jdbc', type: 'jdbc', x: 0, y: 3, w: 2, h: 1, visible: true },
+    { id: 'redis', type: 'redis', x: 2, y: 3, w: 2, h: 1, visible: true },
+    { id: 'service-health', type: 'service-health', x: 0, y: 4, w: 2, h: 2, visible: true },
+    { id: 'slow-services', type: 'slow-services', x: 2, y: 4, w: 1, h: 1, visible: true },
+    { id: 'hot-dependencies', type: 'hot-dependencies', x: 3, y: 4, w: 1, h: 1, visible: true },
+    { id: 'recent-traces', type: 'recent-traces', x: 0, y: 6, w: 2, h: 2, visible: true },
+    { id: 'service-rank', type: 'service-rank', x: 2, y: 6, w: 2, h: 2, visible: true }
+  ]
+}
+
+const resetLayout = async () => {
+  closeLayoutMenu()
+  let overview = templates.value.find((t) => t.id === 'overview')
+  if (!overview) {
+    try {
+      templates.value = await ApiService.getDashboardTemplates()
+      overview = templates.value.find((t) => t.id === 'overview')
+    } catch {
+      /* ignore */
+    }
+  }
+  if (overview) {
+    await applyTemplate(overview)
+    return
+  }
+  await persistLayout({
+    templateId: DEFAULT_OVERVIEW_LAYOUT.templateId,
+    panels: DEFAULT_OVERVIEW_LAYOUT.panels.map((p) => ({ ...p }))
+  })
+  await nextTick()
+  syncCharts()
+}
+
+const loadLayoutConfig = async () => {
+  try {
+    layout.value = await ApiService.getDashboardLayout()
+    layoutControlsEnabled.value = true
+  } catch (error) {
+    console.warn('仪表盘布局 API 不可用，使用全部面板:', error)
+    layout.value = null
+    layoutControlsEnabled.value = false
+  }
+  try {
+    templates.value = await ApiService.getDashboardTemplates()
+  } catch {
+    templates.value = []
+  }
+}
+
 onMounted(async () => {
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
   window.addEventListener('resize', handleResize)
+  document.addEventListener('click', onDocumentClick)
   hours.value = resolveHours(route.query, 72)
   persistHours(hours.value)
   if (route.query.hours == null || route.query.hours === '') {
@@ -990,6 +1189,7 @@ onMounted(async () => {
   } catch {
     /* keep defaults */
   }
+  await loadLayoutConfig()
   await loadData()
 })
 
@@ -997,6 +1197,7 @@ onUnmounted(() => {
   serviceRankChart?.dispose()
   if (timeInterval) clearInterval(timeInterval)
   window.removeEventListener('resize', handleResize)
+  document.removeEventListener('click', onDocumentClick)
 })
 </script>
 
@@ -1074,6 +1275,68 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   justify-self: end;
+  flex-wrap: wrap;
+}
+
+.si-layout-menu {
+  position: relative;
+}
+
+.si-layout-menu__list {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 30;
+  min-width: 14rem;
+  max-width: min(20rem, 80vw);
+  margin: 0;
+  padding: 0.35rem 0;
+  list-style: none;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--si-dropdown-bg, var(--card-bg));
+  box-shadow: 0 10px 28px rgba(21, 36, 31, 0.14);
+}
+
+.si-layout-menu__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.45rem 0.85rem;
+  border: 0;
+  background: transparent;
+  color: var(--si-ink);
+  text-align: left;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.si-layout-menu__item:hover,
+.si-layout-menu__item.is-active {
+  background: rgba(15, 118, 110, 0.1);
+}
+
+.si-layout-menu__item.is-active {
+  font-weight: 650;
+  color: var(--si-teal);
+}
+
+.si-layout-menu__name {
+  line-height: 1.3;
+}
+
+.si-layout-menu__desc {
+  font-size: 0.72rem;
+  color: var(--si-muted);
+  line-height: 1.35;
+}
+
+.si-layout-menu__divider {
+  height: 1px;
+  margin: 0.35rem 0.65rem;
+  background: var(--card-border);
 }
 
 .si-dashboard__hours {
@@ -1581,6 +1844,10 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.si-infra--single {
+  grid-template-columns: 1fr;
+}
+
 .si-infra__card {
   display: flex;
   flex-direction: column;
@@ -1687,6 +1954,10 @@ onUnmounted(() => {
   grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
   gap: 0.75rem;
   min-height: 14rem;
+}
+
+.si-overview__bottom--single {
+  grid-template-columns: 1fr;
 }
 
 .si-overview__panel {
