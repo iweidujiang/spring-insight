@@ -496,6 +496,47 @@ export class ApiService {
     }
   }
 
+  /**
+   * 下载导出文件（携带 UI Bearer；从 Content-Disposition 取文件名）。
+   *
+   * @param path   相对 `/api/v1/ui` 的路径，如 `/export/traces`
+   * @param params 查询参数；空值会跳过
+   * @param fallbackFilename 响应未带文件名时的回退名
+   */
+  static async exportFile(
+    path: string,
+    params: Record<string, string | number | boolean | undefined | null> = {},
+    fallbackFilename = 'export.bin'
+  ): Promise<void> {
+    const qs = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) {
+      if (value === undefined || value === null || value === '') {
+        continue
+      }
+      qs.set(key, String(value))
+    }
+    const url = qs.toString() ? `${path}?${qs.toString()}` : path
+    const response = await apiClient.get(url, {
+      responseType: 'blob',
+      timeout: 120000
+    })
+    const disposition = String(response.headers['content-disposition'] || '')
+    const matched = /filename="([^"]+)"/i.exec(disposition)
+    const filename = matched?.[1] || fallbackFilename
+    const contentType = String(response.headers['content-type'] || 'application/octet-stream')
+    const blob = response.data instanceof Blob
+      ? response.data
+      : new Blob([response.data], { type: contentType })
+    const objectUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(objectUrl)
+  }
+
   /** AI 开关与是否可调用（详情页按钮 / 设置页状态条） */
   static async getAiStatus(): Promise<{
     enabled: boolean

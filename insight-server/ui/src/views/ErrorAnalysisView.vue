@@ -20,8 +20,13 @@
             {{ explaining ? '解读中…' : '一键解读' }}
           </button>
         </template>
-        <button class="btn btn-sm btn-outline-secondary" @click="downloadErrorData" :disabled="loading || !hasErrors">
-          <i class="fa fa-download"></i> 导出
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          @click="exportCsv"
+          :disabled="loading || exporting || !hasErrors"
+          title="按当前时间窗下载错误分析 CSV"
+        >
+          <i class="fa" :class="exporting ? 'fa-spinner fa-spin' : 'fa-download'"></i> 导出 CSV
         </button>
         <span class="badge bg-info">
           <i class="fa fa-clock me-1"></i>{{ currentTime }}
@@ -237,7 +242,7 @@ const byStatusCode = ref<any[]>([])
 const byException = ref<any[]>([])
 const byOther = ref<any[]>([])
 const totalErrorSpans = ref(0)
-const exportPayload = ref<any>(null)
+const exporting = ref(false)
 
 let errorRateChart: echarts.ECharts | null = null
 let errorPieChart: echarts.ECharts | null = null
@@ -505,20 +510,21 @@ async function refreshAiStatus() {
   }
 }
 
-const downloadErrorData = () => {
-  const dataStr = JSON.stringify(exportPayload.value || {
-    byService: errorAnalysis.value,
-    byStatusCode: byStatusCode.value,
-    byException: byException.value,
-    byOther: byOther.value
-  }, null, 2)
-  const dataBlob = new Blob([dataStr], { type: 'application/json' })
-  const url = URL.createObjectURL(dataBlob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `error-analysis-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`
-  link.click()
-  URL.revokeObjectURL(url)
+const exportCsv = async () => {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    await ApiService.exportFile(
+      '/export/errors',
+      { hours: hours.value, format: 'csv' },
+      'errors.csv'
+    )
+  } catch (error) {
+    console.error('导出错误分析 CSV 失败:', error)
+    loadError.value = '导出 CSV 失败'
+  } finally {
+    exporting.value = false
+  }
 }
 
 const onHoursChange = async () => {
@@ -540,7 +546,6 @@ const loadData = async () => {
     byException.value = breakdown.byException
     byOther.value = breakdown.byOther
     totalErrorSpans.value = breakdown.totalErrorSpans
-    exportPayload.value = breakdown
   } catch (error) {
     console.error('加载错误分析数据失败:', error)
     loadError.value = loadFailedMessage('错误分析')

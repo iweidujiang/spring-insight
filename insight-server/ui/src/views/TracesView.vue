@@ -2,6 +2,15 @@
   <div class="si-page fade-in">
     <SiPageHeader title="链路追踪" icon="fa-list-ul">
       <div class="si-page__toolbar">
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          :disabled="loading || exporting"
+          title="按当前筛选下载 CSV"
+          @click="exportCsv"
+        >
+          <i class="fa" :class="exporting ? 'fa-spinner fa-spin' : 'fa-download'"></i> 导出 CSV
+        </button>
         <span class="badge bg-info">
           <i class="fa fa-clock me-1"></i>{{ currentTime }}
         </span>
@@ -218,6 +227,7 @@ const query = ref('')
 const copyHint = ref('')
 const loadError = ref('')
 const autoRefresh = ref(false)
+const exporting = ref(false)
 /** 最多选 2 条 Trace 用于对比 */
 const selectedIds = ref<string[]>([])
 
@@ -282,6 +292,34 @@ const goCompare = () => {
     path: '/traces/compare',
     query: { a, b, hours: String(hours.value) }
   })
+}
+
+const exportCsv = async () => {
+  if (exporting.value) return
+  exporting.value = true
+  copyHint.value = ''
+  try {
+    await ApiService.exportFile(
+      '/export/traces',
+      {
+        hours: hours.value,
+        service: selectedService.value || undefined,
+        status: statusFilter.value || 'all',
+        format: 'csv'
+      },
+      'traces.csv'
+    )
+    copyHint.value = '已开始下载链路 CSV'
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = window.setTimeout(() => {
+      copyHint.value = ''
+    }, 3000)
+  } catch (error) {
+    console.error('导出链路 CSV 失败:', error)
+    copyHint.value = '导出 CSV 失败'
+  } finally {
+    exporting.value = false
+  }
 }
 
 const updateCurrentTime = () => {

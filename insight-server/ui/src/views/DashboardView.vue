@@ -19,6 +19,15 @@
         <select id="dashboard-hours" class="form-select form-select-sm si-dashboard__hours" v-model.number="hours" @change="onHoursChange">
           <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary si-dashboard__btn"
+          :disabled="loading || exporting"
+          title="下载当前时间窗仪表盘快照 JSON"
+          @click="exportSnapshot"
+        >
+          <i class="fa" :class="exporting ? 'fa-spinner fa-spin' : 'fa-download'"></i> 导出快照
+        </button>
         <button class="btn btn-primary btn-sm si-dashboard__btn" @click="loadData" :disabled="loading">
           <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
         </button>
@@ -402,6 +411,7 @@ const route = useRoute()
 
 const loading = ref(true)
 const loadError = ref('')
+const exporting = ref(false)
 const hours = ref(72)
 const currentTime = ref('')
 const services = ref<string[]>([])
@@ -882,6 +892,23 @@ const onHoursChange = async () => {
 const expandAllStored = async () => {
   hours.value = 0
   await onHoursChange()
+}
+
+const exportSnapshot = async () => {
+  if (exporting.value) return
+  exporting.value = true
+  try {
+    await ApiService.exportFile(
+      '/export/dashboard',
+      { hours: hours.value, format: 'json' },
+      'dashboard.json'
+    )
+  } catch (error) {
+    console.error('导出仪表盘快照失败:', error)
+    loadError.value = '导出快照失败'
+  } finally {
+    exporting.value = false
+  }
 }
 
 const loadData = async () => {
