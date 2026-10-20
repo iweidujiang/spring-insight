@@ -15,7 +15,12 @@
 
 ## [Unreleased]
 
-目标版本：**1.1.1**（补丁。1.2.0 留给新能力，不放本次存储索引）
+### 变更
+（暂无）
+
+---
+
+## [1.1.1] — 2026-10-20
 
 ### 变更
 - **SQLite 索引**：`spans` 增加按开始时间与服务、错误、组件的复合索引，便于时间窗筛选
@@ -32,6 +37,14 @@
 
 ### 兼容
 - 已有 sqlite 库会自动补 `error`、`component` 列；推荐配套 Agent 仍为 **`0.5.0`**
+- 本版以 Server / 控制台为主；Agent 坐标仍为 **`0.5.0`**（无新发 Central）
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.5.0` |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:1.1.1` |
+| Release jar | `insight-server-1.1.1.jar` |
 
 ---
 
