@@ -1,6 +1,10 @@
 package io.github.iweidujiang.springinsight.collector.controller;
 
+import io.github.iweidujiang.springinsight.server.export.ErrorAnalysisCsvExporter;
+import io.github.iweidujiang.springinsight.server.export.InsightDashboardExportService;
+import io.github.iweidujiang.springinsight.server.export.ServiceSummaryCsvExporter;
 import io.github.iweidujiang.springinsight.server.export.TraceCsvExporter;
+import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
 import io.github.iweidujiang.springinsight.storage.spi.TraceSummary;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 控制台数据导出（当前支持链路列表 CSV）。
+ * 控制台数据导出（链路 / 错误分析 / 服务汇总 CSV，以及仪表盘 JSON 快照）。
  *
  * @author 苏渡苇
  * @since 2026-10-20
@@ -50,6 +54,8 @@ public class ExportController {
             new MediaType("text", "csv", StandardCharsets.UTF_8);
 
     private final SpanStore spanStore;
+    private final TraceSpanPersistenceService persistenceService;
+    private final InsightDashboardExportService dashboardExportService;
 
     /**
      * 导出时间窗内的链路列表为 CSV。筛选条件与最近链路列表一致。
@@ -68,7 +74,7 @@ public class ExportController {
             @RequestParam(value = "status", defaultValue = "ALL") String status,
             @RequestParam(value = "format", defaultValue = "csv") String format) {
 
-        if (!"csv".equalsIgnoreCase(format == null ? "" : format.trim())) {
+        if (!isCsv(format)) {
             return ResponseEntity.badRequest().body(Map.of("message", "目前仅支持 format=csv"));
         }
 
@@ -76,14 +82,92 @@ public class ExportController {
             long since = hours <= 0 ? 0L : Instant.now().minus(hours, ChronoUnit.HOURS).toEpochMilli();
             String normalizedStatus = status == null || status.isBlank() ? "all" : status.trim().toLowerCase();
             List<TraceSummary> rows = loadTraces(since, service, normalizedStatus);
-            byte[] body = TraceCsvExporter.toCsv(rows).getBytes(StandardCharsets.UTF_8);
-            String filename = "traces-" + FILE_STAMP.format(Instant.now()) + ".csv";
+            return csvAttachment(TraceCsvExporter.toCsv(rows), "traces");
+        } catch (Exception e) {
+            log.error("导出链路 CSV 失败", e);
+            return ResponseEntity.internalServerError().body(Map.of("message", "导出失败"));
+        }
+    }
+
+    /**
+     * 导出错误分析服务级汇总 CSV。
+     *
+     * @param hours  时间窗小时；默认 1。小于等于 0 表示不设下界
+     * @param format 目前仅支持 {@code csv}
+     * @return CSV 附件
+     */
+    @GetMapping("/errors")
+    @Operation(summary = "导出错误分析 CSV")
+    public ResponseEntity<?> exportErrors(
+            @RequestParam(value = "hours", defaultValue = "1") int hours,
+            @RequestParam(value = "format", defaultValue = "csv") String format) {
+
+        if (!isCsv(format)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "目前仅支持 format=csv"));
+        }
+
+        try {
+            List<Map<String, Object>> rows = persistenceService.findErrorAnalysisExportRows(hours);
+            return csvAttachment(ErrorAnalysisCsvExporter.toCsv(rows), "errors");
+        } catch (Exception e) {
+            log.error("导出错误分析 CSV 失败", e);
+            return ResponseEntity.internalServerError().body(Map.of("message", "导出失败"));
+        }
+    }
+
+    /**
+     * 导出服务延迟汇总 CSV。
+     *
+     * @param hours  时间窗小时；默认 1。小于等于 0 表示不设下界
+     * @param format 目前仅支持 {@code csv}
+     * @return CSV 附件
+     */
+    @GetMapping("/services")
+    @Operation(summary = "导出服务汇总 CSV")
+    public ResponseEntity<?> exportServices(
+            @RequestParam(value = "hours", defaultValue = "1") int hours,
+            @RequestParam(value = "format", defaultValue = "csv") String format) {
+
+        if (!isCsv(format)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "目前仅支持 format=csv"));
+        }
+
+        try {
+            List<Map<String, Object>> rows =
+                    persistenceService.getServiceLatencySummaries(hours, MAX_ROWS);
+            return csvAttachment(ServiceSummaryCsvExporter.toCsv(rows), "services");
+        } catch (Exception e) {
+            log.error("导出服务汇总 CSV 失败", e);
+            return ResponseEntity.internalServerError().body(Map.of("message", "导出失败"));
+        }
+    }
+
+    /**
+     * 导出仪表盘快照 JSON（KPI、摘要、Top 列表等）。
+     *
+     * @param hours  时间窗小时；默认 1。小于等于 0 表示全部已存
+     * @param format 目前仅支持 {@code json}
+     * @return JSON 附件
+     */
+    @GetMapping("/dashboard")
+    @Operation(summary = "导出仪表盘快照 JSON")
+    public ResponseEntity<?> exportDashboard(
+            @RequestParam(value = "hours", defaultValue = "1") int hours,
+            @RequestParam(value = "format", defaultValue = "json") String format) {
+
+        if (!"json".equalsIgnoreCase(format == null ? "" : format.trim())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "目前仅支持 format=json"));
+        }
+
+        try {
+            Map<String, Object> body = dashboardExportService.buildSnapshot(hours);
+            String filename = "dashboard-" + FILE_STAMP.format(Instant.now()) + ".json";
             return ResponseEntity.ok()
-                    .contentType(CSV_UTF8)
+                    .contentType(MediaType.APPLICATION_JSON)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                     .body(body);
         } catch (Exception e) {
-            log.error("导出链路 CSV 失败", e);
+            log.error("导出仪表盘 JSON 失败", e);
             return ResponseEntity.internalServerError().body(Map.of("message", "导出失败"));
         }
     }
@@ -112,5 +196,18 @@ public class ExportController {
             offset += PAGE_SIZE;
         }
         return all;
+    }
+
+    private static boolean isCsv(String format) {
+        return "csv".equalsIgnoreCase(format == null ? "" : format.trim());
+    }
+
+    private static ResponseEntity<byte[]> csvAttachment(String csv, String prefix) {
+        byte[] body = csv.getBytes(StandardCharsets.UTF_8);
+        String filename = prefix + "-" + FILE_STAMP.format(Instant.now()) + ".csv";
+        return ResponseEntity.ok()
+                .contentType(CSV_UTF8)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .body(body);
     }
 }

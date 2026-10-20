@@ -615,6 +615,88 @@ public class TraceSpanPersistenceService {
     }
 
     /**
+     * 错误分析导出行：服务级错误率，并附带该服务主要 HTTP 状态与主要异常类。
+     *
+     * @param lastHours 时间窗口小时；{@code <=0} 不限
+     * @return 仅含有错误的服务行（按错误率降序）
+     */
+    public List<Map<String, Object>> findErrorAnalysisExportRows(int lastHours) {
+        long sinceTime = sinceEpochMillis(lastHours);
+        Map<String, long[]> agg = new HashMap<>();
+        Map<String, Map<String, Long>> statusByService = new HashMap<>();
+        Map<String, Map<String, Long>> exceptionByService = new HashMap<>();
+
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (s == null || n(s.getStartTime()) < sinceTime) {
+                continue;
+            }
+            String name = s.getServiceName();
+            if (name == null || name.isBlank()) {
+                continue;
+            }
+            long[] a = agg.computeIfAbsent(name, x -> new long[]{0L, 0L});
+            a[0]++;
+            if (!isError(s)) {
+                continue;
+            }
+            a[1]++;
+            ErrorSpanClassifier.Classification c = ErrorSpanClassifier.classify(s);
+            if ("status".equals(c.kind())) {
+                statusByService
+                        .computeIfAbsent(name, x -> new HashMap<>())
+                        .merge(c.label(), 1L, Long::sum);
+            } else if ("exception".equals(c.kind())) {
+                exceptionByService
+                        .computeIfAbsent(name, x -> new HashMap<>())
+                        .merge(c.label(), 1L, Long::sum);
+            }
+        }
+
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map.Entry<String, long[]> e : agg.entrySet()) {
+            long total = e.getValue()[0];
+            long err = e.getValue()[1];
+            if (err <= 0) {
+                continue;
+            }
+            String service = e.getKey();
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("service_name", service);
+            row.put("total_calls", total);
+            row.put("error_calls", err);
+            row.put("error_rate", Math.round((err * 10000.0 / total)) / 100.0);
+            row.put("primary_error_type", topLabel(statusByService.get(service)));
+            row.put("primary_exception", topLabel(exceptionByService.get(service)));
+            out.add(row);
+        }
+        out.sort((a, b) -> Double.compare(
+                ((Number) b.get("error_rate")).doubleValue(),
+                ((Number) a.get("error_rate")).doubleValue()));
+        return out;
+    }
+
+    /**
+     * @param counts 标签计数；可为 null
+     * @return 出现次数最多的标签；并列时取字典序较小者；无数据时为空串
+     */
+    private static String topLabel(Map<String, Long> counts) {
+        if (counts == null || counts.isEmpty()) {
+            return "";
+        }
+        String best = "";
+        long bestCount = -1L;
+        for (Map.Entry<String, Long> e : counts.entrySet()) {
+            long c = e.getValue() == null ? 0L : e.getValue();
+            String label = e.getKey() == null ? "" : e.getKey();
+            if (c > bestCount || (c == bestCount && label.compareTo(best) < 0)) {
+                bestCount = c;
+                best = label;
+            }
+        }
+        return best;
+    }
+
+    /**
      * 错误分析增强：在服务级之外，按 HTTP 状态码与异常类聚合。
      *
      * @param lastHours 时间窗口小时；{@code <=0} 不限

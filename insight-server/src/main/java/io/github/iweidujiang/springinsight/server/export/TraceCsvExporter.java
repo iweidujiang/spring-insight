@@ -15,8 +15,8 @@ import java.util.List;
  */
 public final class TraceCsvExporter {
 
-    /** Excel 识别 UTF-8 用的 BOM */
-    public static final char UTF8_BOM = '\uFEFF';
+    /** Excel 识别 UTF-8 用的 BOM（委托 {@link CsvExportSupport}） */
+    public static final char UTF8_BOM = CsvExportSupport.UTF8_BOM;
 
     private static final DateTimeFormatter TIME =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
@@ -29,8 +29,7 @@ public final class TraceCsvExporter {
      * @return 带 BOM 的完整 CSV
      */
     public static String toCsv(List<TraceSummary> rows) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(UTF8_BOM);
+        StringBuilder sb = CsvExportSupport.newCsv();
         sb.append("TraceId,根操作名,服务名,耗时(ms),状态,Span数,时间\n");
         if (rows == null) {
             return sb.toString();
@@ -39,33 +38,24 @@ public final class TraceCsvExporter {
             if (row == null) {
                 continue;
             }
-            sb.append(escape(row.traceId())).append(',');
-            sb.append(escape(row.operationName())).append(',');
-            sb.append(escape(row.serviceName())).append(',');
+            sb.append(CsvExportSupport.escape(row.traceId())).append(',');
+            sb.append(CsvExportSupport.escape(row.operationName())).append(',');
+            sb.append(CsvExportSupport.escape(row.serviceName())).append(',');
             sb.append(row.durationMs()).append(',');
-            sb.append(escape(statusLabel(row))).append(',');
+            sb.append(CsvExportSupport.escape(statusLabel(row))).append(',');
             sb.append(row.spanCount()).append(',');
-            sb.append(escape(formatTime(row.startTime()))).append('\n');
+            sb.append(CsvExportSupport.escape(formatTime(row.startTime()))).append('\n');
         }
         return sb.toString();
     }
 
     /**
-     * RFC 4180：含逗号、引号或换行时用双引号包裹，内部引号加倍。
-     *
      * @param value 单元格原文
      * @return 已转义的字段
+     * @see CsvExportSupport#escape(String)
      */
     public static String escape(String value) {
-        String text = value == null ? "" : value;
-        boolean needQuote = text.indexOf(',') >= 0
-                || text.indexOf('"') >= 0
-                || text.indexOf('\n') >= 0
-                || text.indexOf('\r') >= 0;
-        if (!needQuote) {
-            return text;
-        }
-        return '"' + text.replace("\"", "\"\"") + '"';
+        return CsvExportSupport.escape(value);
     }
 
     /**
