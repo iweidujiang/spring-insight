@@ -27,6 +27,8 @@ export interface ChartThemeColors {
   tooltipText: string
   danger: string
   warning: string
+  /** 降级（橙色），介于 warning 与 danger 之间 */
+  degraded: string
   success: string
 }
 
@@ -44,7 +46,8 @@ const LIGHT: ChartThemeColors = {
   tooltipText: '#15241f',
   danger: '#b91c1c',
   warning: '#b45309',
-  success: '#0f766e'
+  degraded: '#c2410c',
+  success: '#15803d'
 }
 
 const DARK: ChartThemeColors = {
@@ -61,7 +64,8 @@ const DARK: ChartThemeColors = {
   tooltipText: '#e6edf3',
   danger: '#f87171',
   warning: '#fbbf24',
-  success: '#2dd4bf'
+  degraded: '#fb923c',
+  success: '#4ade80'
 }
 
 export function getChartThemeColors(isDark: boolean): ChartThemeColors {

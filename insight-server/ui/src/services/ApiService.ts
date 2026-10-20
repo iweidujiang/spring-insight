@@ -118,6 +118,33 @@ export class ApiService {
     return rows.map(normalizeLatencyRow)
   }
 
+  /**
+   * 服务健康评分；旧 Server 无此接口时抛错，由调用方回退错误数着色。
+   *
+   * @param hours 时间窗小时
+   */
+  static async getServiceHealth(hours: number = 1): Promise<Array<{
+    service: string
+    score: number
+    level: string
+    errorRate: number
+    p95: number
+    hasData: boolean
+  }>> {
+    const rows = await request<any[]>(`/services/health?hours=${hours}`)
+    if (!Array.isArray(rows)) {
+      return []
+    }
+    return rows.map((raw) => ({
+      service: String(raw?.service ?? ''),
+      score: Number(raw?.score ?? 0),
+      level: String(raw?.level ?? 'unknown'),
+      errorRate: Number(raw?.errorRate ?? 0),
+      p95: Number(raw?.p95 ?? 0),
+      hasData: raw?.hasData !== false
+    })).filter((row) => row.service)
+  }
+
   /** 单服务详情摘要（KPI / 慢操作 / 依赖 / 最近 Trace） */
   static async getServiceSummary(
     serviceName: string,

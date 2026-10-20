@@ -112,6 +112,15 @@
                 <span>箭头 = 调用方向</span>
                 <span>·</span>
                 <span>线上数字 = 调用次数</span>
+                <template v-if="healthAvailable">
+                  <span>·</span>
+                  <span class="si-topo-legend__swatches" aria-label="健康分图例">
+                    <span class="si-topo-swatch si-topo-swatch--healthy">健康</span>
+                    <span class="si-topo-swatch si-topo-swatch--warning">警告</span>
+                    <span class="si-topo-swatch si-topo-swatch--degraded">降级</span>
+                    <span class="si-topo-swatch si-topo-swatch--critical">严重</span>
+                  </span>
+                </template>
               </p>
             </div>
             <div class="d-flex gap-2 align-items-center flex-shrink-0">
@@ -141,6 +150,13 @@
                 <div><dt>关联调用</dt><dd>{{ nodeCallCount(selection.service) }}</dd></div>
                 <div><dt>平均耗时</dt><dd>{{ formatMs(nodeAvgMs(selection.service)) }}</dd></div>
                 <div><dt>错误</dt><dd :class="{ 'text-danger': nodeErrorCount(selection.service) > 0 }">{{ nodeErrorCount(selection.service) }}</dd></div>
+                <div v-if="nodeHealth(selection.service)">
+                  <dt>健康分</dt>
+                  <dd :class="healthLevelClass(nodeHealth(selection.service)!.level)">
+                    {{ nodeHealth(selection.service)!.score }}
+                    <span class="si-topo-rail__level">{{ healthLevelText(nodeHealth(selection.service)!.level) }}</span>
+                  </dd>
+                </div>
               </dl>
               <div class="si-topo-rail__actions">
                 <button type="button" class="btn btn-primary btn-sm w-100" @click="goServiceDetail(selection.service)">
@@ -247,7 +263,11 @@ import SiPageHeader from '../components/SiPageHeader.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import type { SiColumn } from '../components/siTable'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
-import { buildTopologyOption, resolveTopologyClick } from '../utils/topologyGraph'
+import {
+  buildTopologyOption,
+  resolveTopologyClick,
+  type ServiceHealthInfo
+} from '../utils/topologyGraph'
 import { useChartTheme } from '../composables/useChartTheme'
 import { formatDuration } from '../utils/traceTimeline'
 import {
@@ -274,6 +294,8 @@ const dependencies = ref<any[]>([])
 const serviceNames = ref<string[]>([])
 const serviceLatency = ref<any[]>([])
 const recentTraces = ref<any[]>([])
+/** null = 健康 API 不可用，回退错误数着色；对象 = 按健康分着色 */
+const healthByService = ref<Record<string, ServiceHealthInfo> | null>(null)
 const chartEl = ref<HTMLElement | null>(null)
 const explaining = ref(false)
 const edgeExplain = ref<AiExplainResult | null>(null)
@@ -288,6 +310,8 @@ let topologyChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
 
 const { colors: chartColors } = useChartTheme()
+
+const healthAvailable = computed(() => healthByService.value != null)
 
 const isSolo = computed(() => dependencies.value.length === 0 && serviceNames.value.length === 1)
 const soloName = computed(() => serviceNames.value[0] || '未命名服务')
@@ -375,11 +399,55 @@ const highlightOpts = () => {
   return {}
 }
 
+const errorCountByService = () => {
+  const map: Record<string, number> = {}
+  serviceLatency.value.forEach((row: any) => {
+    const name = String(row?.serviceName || '')
+    if (name) map[name] = Number(row?.errorCount) || 0
+  })
+  return map
+}
+
 const topologyOpts = () => ({
   standaloneServices: serviceNames.value,
   theme: chartColors.value,
+  healthByService: healthByService.value,
+  errorCountByService: errorCountByService(),
   ...highlightOpts()
 })
+
+const nodeHealth = (name: string): ServiceHealthInfo | null =>
+  healthByService.value?.[name] || null
+
+const healthLevelText = (level: string) => {
+  switch (level) {
+    case 'healthy':
+      return '健康'
+    case 'warning':
+      return '警告'
+    case 'degraded':
+      return '降级'
+    case 'critical':
+      return '严重'
+    default:
+      return '未知'
+  }
+}
+
+const healthLevelClass = (level: string) => {
+  switch (level) {
+    case 'healthy':
+      return 'text-success'
+    case 'warning':
+      return 'text-warning'
+    case 'degraded':
+      return 'si-topo-text--degraded'
+    case 'critical':
+      return 'text-danger'
+    default:
+      return 'text-muted'
+  }
+}
 
 const findEdge = (source: string, target: string) =>
   dependencies.value.find((d) => d.sourceService === source && d.targetService === target)
@@ -576,16 +644,27 @@ const loadData = async () => {
     selection.value = { kind: null, service: '' }
     edgeExplain.value = null
     const h = hours.value
-    const [deps, names, latency, recent] = await Promise.all([
+    const [deps, names, latency, recent, healthResult] = await Promise.all([
       ApiService.getServiceDependencies(h),
       ApiService.getServiceNames(),
-      ApiService.getServiceLatency(h, 20),
-      ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 12 })
+      ApiService.getServiceLatency(h, 200),
+      ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 12 }),
+      ApiService.getServiceHealth(h).then(
+        (rows) => {
+          const map: Record<string, ServiceHealthInfo> = {}
+          rows.forEach((row) => {
+            if (row.service) map[row.service] = row
+          })
+          return map
+        },
+        () => null
+      )
     ])
     dependencies.value = deps
     serviceNames.value = names
     serviceLatency.value = latency
     recentTraces.value = Array.isArray(recent) ? recent : []
+    healthByService.value = healthResult
   } catch (error) {
     console.error('加载拓扑数据失败:', error)
     loadError.value = loadFailedMessage('服务拓扑')
@@ -723,6 +802,51 @@ onUnmounted(() => {
   gap: 0.25rem 0.4rem;
   font-size: 0.72rem;
   color: var(--si-muted);
+}
+
+.si-topo-legend__swatches {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.si-topo-swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.si-topo-swatch::before {
+  content: '';
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.si-topo-swatch--healthy::before { background: var(--success-color); }
+.si-topo-swatch--warning::before { background: var(--warning-color); }
+.si-topo-swatch--degraded::before { background: #c2410c; }
+.si-topo-swatch--critical::before { background: var(--danger-color); }
+
+.si-topo-text--degraded {
+  color: #c2410c;
+}
+
+:global([data-theme='dark']) .si-topo-swatch--degraded::before {
+  background: #fb923c;
+}
+
+:global([data-theme='dark']) .si-topo-text--degraded {
+  color: #fb923c;
+}
+
+.si-topo-rail__level {
+  margin-left: 0.25rem;
+  font-size: 0.85em;
+  font-weight: 500;
+  opacity: 0.85;
 }
 
 .si-topo-canvas-wrap {

@@ -15,6 +15,54 @@ export interface TopologyHighlight {
   edge?: { source: string; target: string } | null
 }
 
+/** 服务健康分（与 /services/health 对齐） */
+export interface ServiceHealthInfo {
+  service: string
+  score: number
+  level: string
+  errorRate?: number
+  p95?: number
+  hasData?: boolean
+}
+
+/**
+ * 按健康等级取节点色；无健康信息时回退错误数着色。
+ *
+ * @param level 健康等级
+ * @param errorCount 错误 Span 数（回退用）
+ * @param theme 主题色
+ * @param paletteIndex 无健康且无错误回退时的调色板下标
+ * @param healthEnabled 是否启用了健康分着色（API 可用）
+ */
+export function resolveNodeColor(
+  level: string | undefined,
+  errorCount: number,
+  theme: ChartThemeColors,
+  paletteIndex: number,
+  healthEnabled: boolean
+): string {
+  if (healthEnabled) {
+    switch (level) {
+      case 'healthy':
+        return theme.success
+      case 'warning':
+        return theme.warning
+      case 'degraded':
+        return theme.degraded
+      case 'critical':
+        return theme.danger
+      case 'unknown':
+        return theme.muted
+      default:
+        return theme.muted
+    }
+  }
+  if (errorCount > 0) {
+    return theme.danger
+  }
+  return theme.palette[paletteIndex % theme.palette.length]
+}
+
 /**
  * 按节点数量微调缩放，节点越多略缩小，减轻挤成一团。
  *
@@ -36,6 +84,10 @@ export function buildTopologyOption(
     compact?: boolean
     standaloneServices?: string[]
     spanByService?: Record<string, number>
+    /** 健康分映射；非 null 表示 API 可用 */
+    healthByService?: Record<string, ServiceHealthInfo> | null
+    /** 无健康 API 时按错误数回退着色 */
+    errorCountByService?: Record<string, number>
     highlight?: TopologyHighlight
     theme?: ChartThemeColors
   } = {}
@@ -43,6 +95,9 @@ export function buildTopologyOption(
   const compact = opts.compact === true
   const highlight = opts.highlight || {}
   const theme = opts.theme || getChartThemeColors(false)
+  const healthBy = opts.healthByService
+  const healthEnabled = healthBy != null
+  const errorBy = opts.errorCountByService || {}
   const callCounts = new Map<string, number>()
   const links: Array<Record<string, unknown>> = []
 
@@ -95,15 +150,27 @@ export function buildTopologyOption(
       !!highlight.edge &&
       (highlight.edge.source === name || highlight.edge.target === name)
     const dimmed = !!(highlight.node || highlight.edge) && !nodeHit && !onSelectedEdge
+    const health = healthBy?.[name]
+    const errorCount = Number(errorBy[name]) || 0
+    const color = resolveNodeColor(
+      health?.level,
+      errorCount,
+      theme,
+      index,
+      healthEnabled
+    )
     return {
       name,
       value,
+      healthScore: health?.score,
+      healthLevel: health?.level,
+      errorCount,
       symbolSize: Math.max(
         compact ? 34 : 42,
         Math.min(compact ? 54 : 68, 16 + Math.sqrt(value) * (compact ? 4.5 : 6.5))
       ) + (nodeHit ? 6 : 0),
       itemStyle: {
-        color: theme.palette[index % theme.palette.length],
+        color,
         borderColor: nodeHit || onSelectedEdge ? theme.teal : theme.surface,
         borderWidth: nodeHit ? 3 : 2,
         shadowBlur: nodeHit ? 14 : 8,
@@ -141,7 +208,14 @@ export function buildTopologyOption(
           return `<div style="font-weight:700">${d.source} → ${d.target}</div>调用: ${d.value} 次${avg}<br/><span style="opacity:.75">点击选中 / 下钻链路</span>`
         }
         const spanHint = solo ? '本机 Span' : '关联调用'
-        return `<div style="font-weight:700">${params.data.name}</div>${spanHint}: ${params.data.value}<br/><span style="opacity:.75">点击选中 / 下钻链路</span>`
+        const d = params.data || {}
+        let healthLine = ''
+        if (d.healthScore != null && d.healthLevel) {
+          healthLine = `<br/>健康分: <b>${d.healthScore}</b>（${levelLabel(d.healthLevel)}）`
+        } else if (d.errorCount != null && d.errorCount > 0) {
+          healthLine = `<br/>错误 Span: ${d.errorCount}`
+        }
+        return `<div style="font-weight:700">${d.name || params.name}</div>${spanHint}: ${d.value}${healthLine}<br/><span style="opacity:.75">点击选中 / 下钻链路</span>`
       }
     },
     graphic: empty
@@ -190,6 +264,23 @@ export function buildTopologyOption(
         itemStyle: { shadowBlur: 12, shadowColor: 'rgba(45, 212, 191, 0.35)' }
       }
     }]
+  }
+}
+
+function levelLabel(level: string): string {
+  switch (level) {
+    case 'healthy':
+      return '健康'
+    case 'warning':
+      return '警告'
+    case 'degraded':
+      return '降级'
+    case 'critical':
+      return '严重'
+    case 'unknown':
+      return '未知'
+    default:
+      return level
   }
 }
 
