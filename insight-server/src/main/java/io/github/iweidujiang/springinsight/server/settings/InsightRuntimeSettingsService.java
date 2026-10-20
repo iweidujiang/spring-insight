@@ -3,15 +3,20 @@ package io.github.iweidujiang.springinsight.server.settings;
 import io.github.iweidujiang.springinsight.server.alert.AlertCondition;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAiProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
+import io.github.iweidujiang.springinsight.server.dashboard.DashboardLayout;
+import io.github.iweidujiang.springinsight.server.dashboard.DashboardLayouts;
+import io.github.iweidujiang.springinsight.server.dashboard.DashboardPanel;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -133,6 +138,82 @@ public class InsightRuntimeSettingsService {
         store.save(merged);
         current.set(merged);
         return publicView();
+    }
+
+    /**
+     * 当前仪表盘布局；未保存过时返回默认「全局概览」。
+     *
+     * @return 布局副本
+     */
+    public DashboardLayout getDashboardLayout() {
+        DashboardLayout saved = current.get().getDashboardLayout();
+        if (saved == null || saved.getPanels() == null || saved.getPanels().isEmpty()) {
+            return DashboardLayouts.defaultOverview();
+        }
+        return DashboardLayouts.copy(saved);
+    }
+
+    /**
+     * 校验并持久化仪表盘布局到 runtime-settings.json。
+     *
+     * @param layout 客户端提交的布局
+     * @return 保存后的布局副本
+     */
+    public DashboardLayout updateDashboardLayout(DashboardLayout layout) {
+        DashboardLayout normalized = normalizeLayout(layout);
+        InsightRuntimeSettings merged = deepCopy(current.get());
+        merged.setDashboardLayout(normalized);
+        store.save(merged);
+        current.set(merged);
+        return DashboardLayouts.copy(normalized);
+    }
+
+    /**
+     * @param layout 原始布局
+     * @return 校验并裁剪后的布局
+     */
+    static DashboardLayout normalizeLayout(DashboardLayout layout) {
+        if (layout == null || layout.getPanels() == null || layout.getPanels().isEmpty()) {
+            throw new IllegalArgumentException("panels 不能为空");
+        }
+        if (layout.getPanels().size() > 40) {
+            throw new IllegalArgumentException("面板数量不能超过 40");
+        }
+        DashboardLayout out = new DashboardLayout();
+        out.setTemplateId(layout.getTemplateId() == null ? "" : layout.getTemplateId().trim());
+        List<DashboardPanel> panels = new ArrayList<>();
+        Set<String> ids = new HashSet<>();
+        for (DashboardPanel raw : layout.getPanels()) {
+            if (raw == null) {
+                continue;
+            }
+            String id = raw.getId() == null ? "" : raw.getId().trim();
+            String type = raw.getType() == null ? "" : raw.getType().trim();
+            if (!StringUtils.hasText(id) || !StringUtils.hasText(type)) {
+                throw new IllegalArgumentException("每个面板必须包含 id 与 type");
+            }
+            if (!ids.add(id)) {
+                throw new IllegalArgumentException("面板 id 重复: " + id);
+            }
+            DashboardPanel p = new DashboardPanel();
+            p.setId(id);
+            p.setType(type);
+            p.setX(clamp(raw.getX(), 0, 32));
+            p.setY(clamp(raw.getY(), 0, 64));
+            p.setW(clamp(raw.getW(), 1, 12));
+            p.setH(clamp(raw.getH(), 1, 12));
+            p.setVisible(raw.isVisible());
+            panels.add(p);
+        }
+        if (panels.isEmpty()) {
+            throw new IllegalArgumentException("panels 不能为空");
+        }
+        out.setPanels(panels);
+        return out;
+    }
+
+    private static int clamp(int v, int min, int max) {
+        return Math.max(min, Math.min(max, v));
     }
 
     private InsightRuntimeSettings fromBoot() {
@@ -698,6 +779,9 @@ public class InsightRuntimeSettingsService {
                 channels.add(copyChannel(channel));
             }
             c.setChannels(channels);
+        }
+        if (s.getDashboardLayout() != null) {
+            c.setDashboardLayout(DashboardLayouts.copy(s.getDashboardLayout()));
         }
         return c;
     }
