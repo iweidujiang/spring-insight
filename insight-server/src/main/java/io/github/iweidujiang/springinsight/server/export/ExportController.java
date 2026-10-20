@@ -1,9 +1,5 @@
-package io.github.iweidujiang.springinsight.collector.controller;
+package io.github.iweidujiang.springinsight.server.export;
 
-import io.github.iweidujiang.springinsight.server.export.ErrorAnalysisCsvExporter;
-import io.github.iweidujiang.springinsight.server.export.InsightDashboardExportService;
-import io.github.iweidujiang.springinsight.server.export.ServiceSummaryCsvExporter;
-import io.github.iweidujiang.springinsight.server.export.TraceCsvExporter;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
 import io.github.iweidujiang.springinsight.storage.spi.TraceSummary;
@@ -30,6 +26,9 @@ import java.util.Map;
 
 /**
  * 控制台数据导出（链路 / 错误分析 / 服务汇总 CSV，以及仪表盘 JSON 快照）。
+ * <p>
+ * 放在 {@code server.export}，避免被 Collector 切片测试的 ComponentScan 扫到却缺依赖。
+ * </p>
  *
  * @author 苏渡苇
  * @since 2026-10-20
