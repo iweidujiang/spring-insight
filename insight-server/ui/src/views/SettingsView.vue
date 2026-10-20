@@ -52,26 +52,68 @@
             <div>
               <h3 class="si-settings__card-title"><i class="fa fa-bell me-2"></i>告警推送</h3>
               <p class="si-settings__card-desc">
-                按错误率 / 错误次数 / p95 延迟扫描。超阈值时按下面启用的渠道发送，可同时使用多个渠道。
+                按下面条件扫描，全部满足时按启用的渠道发送；可同时配置多个渠道。
               </p>
             </div>
             <SiSwitchField id="alert-enabled" v-model="form.alert.enabled" label="启用扫描" flush />
           </header>
 
+          <div class="si-conditions">
+            <div class="si-conditions__head">
+              <h4 class="si-settings__block-title"><i class="fa fa-filter me-2"></i>触发条件</h4>
+              <p class="si-settings__block-desc">多条条件之间为「且」：全部成立才推送。</p>
+            </div>
+            <div
+              v-for="(row, index) in form.alert.conditions"
+              :key="'cond-' + index"
+              class="si-condition"
+            >
+              <span v-if="index > 0" class="si-condition__and" aria-hidden="true">且</span>
+              <div class="si-condition__row">
+                <select
+                  :id="'alert-metric-' + index"
+                  v-model="row.metric"
+                  class="form-select"
+                  :aria-label="'条件 ' + (index + 1) + ' 指标'"
+                >
+                  <option v-for="opt in metricOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                </select>
+                <select
+                  :id="'alert-op-' + index"
+                  v-model="row.operator"
+                  class="form-select"
+                  :aria-label="'条件 ' + (index + 1) + ' 运算符'"
+                >
+                  <option v-for="opt in operatorOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                </select>
+                <input
+                  :id="'alert-threshold-' + index"
+                  v-model.number="row.threshold"
+                  class="form-control"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  :aria-label="'条件 ' + (index + 1) + ' 阈值'"
+                  :placeholder="thresholdUnit(row.metric)"
+                />
+                <button
+                  type="button"
+                  class="btn btn-outline-danger btn-sm si-condition__remove"
+                  :disabled="form.alert.conditions.length <= 1"
+                  :title="form.alert.conditions.length <= 1 ? '至少保留一条条件' : '删除条件'"
+                  @click="removeCondition(index)"
+                >
+                  <i class="fa fa-trash" aria-hidden="true"></i>
+                  <span class="visually-hidden">删除</span>
+                </button>
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm si-conditions__add" @click="addCondition">
+              <i class="fa fa-plus me-1"></i>添加条件
+            </button>
+          </div>
+
           <div class="si-settings__fields">
-            <SiFormField label="指标" field-id="alert-metric">
-              <select id="alert-metric" v-model="form.alert.metric" class="form-select">
-                <option value="error_rate">error_rate（%）</option>
-                <option value="error_count">error_count（次）</option>
-                <option value="latency_p95">latency_p95（毫秒）</option>
-              </select>
-            </SiFormField>
-            <SiFormField label="阈值" field-id="alert-threshold">
-              <template #hint>
-                <span class="text-muted small">{{ thresholdHint }}</span>
-              </template>
-              <input id="alert-threshold" v-model.number="form.alert.threshold" class="form-control" type="number" min="0" step="0.1" />
-            </SiFormField>
             <SiFormField label="窗口（分钟）" field-id="alert-window">
               <input id="alert-window" v-model.number="form.alert.windowMinutes" class="form-control" type="number" min="1" />
             </SiFormField>
@@ -444,7 +486,12 @@ import SiFormBlock from '../components/SiFormBlock.vue'
 import SiFormField from '../components/SiFormField.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
 import SiSwitchField from '../components/SiSwitchField.vue'
-import { ApiService, type AlertChannelView, type RuntimeSettingsSaveBody } from '../services/ApiService'
+import {
+  ApiService,
+  type AlertChannelView,
+  type AlertConditionView,
+  type RuntimeSettingsSaveBody
+} from '../services/ApiService'
 import { capacityWarnMessage } from '../utils/timeRange'
 
 type SettingsSection = 'alert' | 'ai' | 'data'
@@ -668,12 +715,63 @@ function syncLegacyFromChannels() {
   form.alert.email.ssl = !!email?.ssl
 }
 
-const thresholdHint = computed(() => {
-  const m = form.alert.metric
-  if (m === 'latency_p95') return '（毫秒）'
-  if (m === 'error_count') return '（次）'
-  return '（%）'
-})
+const metricOptions = [
+  { value: 'error_rate', label: '错误率(%)' },
+  { value: 'error_count', label: '错误次数' },
+  { value: 'latency_p95', label: 'p95延迟(ms)' },
+  { value: 'span_count', label: '请求量' }
+] as const
+
+const operatorOptions = [
+  { value: 'gt', label: '大于' },
+  { value: 'lt', label: '小于' },
+  { value: 'gte', label: '大于等于' },
+  { value: 'lte', label: '小于等于' },
+  { value: 'eq', label: '等于' }
+] as const
+
+function blankCondition(metric = 'error_rate', operator = 'gte', threshold = 10): AlertConditionView {
+  return { metric, operator, threshold }
+}
+
+function thresholdUnit(metric: string) {
+  if (metric === 'latency_p95') return '毫秒'
+  if (metric === 'error_count' || metric === 'span_count') return '次'
+  return '%'
+}
+
+function normalizeCondition(row: Partial<AlertConditionView> | undefined): AlertConditionView {
+  const metric = row?.metric || 'error_rate'
+  const allowedOps = new Set<string>(operatorOptions.map((item) => item.value))
+  const operator = row?.operator && allowedOps.has(row.operator) ? row.operator : 'gte'
+  const threshold = Number(row?.threshold)
+  return blankCondition(metric, operator, Number.isFinite(threshold) ? threshold : 10)
+}
+
+function applyConditions(rows: AlertConditionView[] | undefined, metric?: string, threshold?: number) {
+  if (rows && rows.length > 0) {
+    form.alert.conditions = rows.map((row) => normalizeCondition(row))
+  } else {
+    form.alert.conditions = [blankCondition(metric || 'error_rate', 'gte', Number(threshold ?? 10))]
+  }
+  syncLegacyFromConditions()
+}
+
+function syncLegacyFromConditions() {
+  const first = form.alert.conditions[0] || blankCondition()
+  form.alert.metric = first.metric
+  form.alert.threshold = first.threshold
+}
+
+function addCondition() {
+  form.alert.conditions.push(blankCondition())
+}
+
+function removeCondition(index: number) {
+  if (form.alert.conditions.length <= 1) return
+  form.alert.conditions.splice(index, 1)
+  syncLegacyFromConditions()
+}
 
 const form = reactive<RuntimeSettingsSaveBody>({
   alert: {
@@ -681,6 +779,7 @@ const form = reactive<RuntimeSettingsSaveBody>({
     webhookUrl: '',
     metric: 'error_rate',
     threshold: 10,
+    conditions: [blankCondition()],
     windowMinutes: 15,
     cooldownMinutes: 30,
     quietHoursEnabled: false,
@@ -751,8 +850,7 @@ async function load() {
     settingsPath.value = data.settingsPath || ''
     form.alert.enabled = !!data.alert?.enabled
     form.alert.webhookUrl = data.alert?.webhookUrl || ''
-    form.alert.metric = data.alert?.metric || 'error_rate'
-    form.alert.threshold = Number(data.alert?.threshold ?? 10)
+    applyConditions(data.alert?.conditions, data.alert?.metric, data.alert?.threshold)
     form.alert.windowMinutes = Number(data.alert?.windowMinutes ?? 15)
     form.alert.cooldownMinutes = Number(data.alert?.cooldownMinutes ?? 30)
     form.alert.quietHoursEnabled = !!data.alert?.quietHoursEnabled
@@ -799,8 +897,13 @@ async function onSave() {
   message.value = ''
   try {
     syncLegacyFromChannels()
+    syncLegacyFromConditions()
     const saved = await ApiService.saveSettings({
-      alert: { ...form.alert, email: { ...form.alert.email } },
+      alert: {
+        ...form.alert,
+        email: { ...form.alert.email },
+        conditions: form.alert.conditions.map((row) => normalizeCondition(row))
+      },
       ai: { ...form.ai },
       channels: channels.value.map((channel) => ({
         id: channel.id,
@@ -824,6 +927,7 @@ async function onSave() {
     apiKeyConfigured.value = !!saved.ai?.apiKeyConfigured
     form.alert.email.password = ''
     form.ai.apiKey = ''
+    applyConditions(saved.alert?.conditions, saved.alert?.metric, saved.alert?.threshold)
     applyChannels(saved.channels || saved.alert?.channels)
     settingsPath.value = saved.settingsPath || settingsPath.value
     await refreshAiStatus()
@@ -1125,6 +1229,67 @@ onUnmounted(() => {
   align-items: center;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.si-conditions {
+  margin: 0.35rem 0 1rem;
+}
+
+.si-conditions__head {
+  margin-bottom: 0.65rem;
+}
+
+.si-condition {
+  position: relative;
+  margin-bottom: 0.55rem;
+}
+
+.si-condition__and {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.7rem;
+  margin: 0 0 0.35rem 0.15rem;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--si-paper);
+  color: var(--si-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.si-condition__row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1.4fr) minmax(6rem, 1fr) minmax(5rem, 0.9fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--si-paper);
+  color: var(--si-ink);
+}
+
+.si-condition__remove {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.si-conditions__add {
+  margin-top: 0.15rem;
+}
+
+@media (max-width: 575px) {
+  .si-condition__row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .si-condition__remove {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
 }
 
 .si-channels {

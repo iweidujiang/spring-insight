@@ -846,6 +846,13 @@ export interface AlertChannelView {
   ssl?: boolean
 }
 
+/** 告警组合条件（全部成立才推送） */
+export interface AlertConditionView {
+  metric: string
+  operator: string
+  threshold: number
+}
+
 /** GET /settings 脱敏视图 */
 export interface RuntimeSettingsView {
   settingsPath?: string
@@ -854,6 +861,7 @@ export interface RuntimeSettingsView {
     webhookUrl: string
     metric: string
     threshold: number
+    conditions?: AlertConditionView[]
     windowMinutes: number
     cooldownMinutes: number
     quietHoursEnabled?: boolean
@@ -897,6 +905,7 @@ export interface RuntimeSettingsSaveBody {
     webhookUrl: string
     metric: string
     threshold: number
+    conditions: AlertConditionView[]
     windowMinutes: number
     cooldownMinutes: number
     quietHoursEnabled: boolean
