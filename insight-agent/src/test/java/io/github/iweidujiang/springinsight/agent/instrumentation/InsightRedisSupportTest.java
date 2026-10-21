@@ -16,6 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -106,6 +110,27 @@ class InsightRedisSupportTest {
         assertEquals("REDIS", span.getComponent());
         assertEquals("REDIS SET", span.getOperationName());
         assertEquals("REDIS_ERROR", span.getErrorCode());
+        assertEquals(1, TraceContext.getStackDepth());
+    }
+
+    @Test
+    void completionStage_defersReportUntilDone_andRestoresTraceOnCallback() throws Exception {
+        properties.setRedisSlowThresholdMs(0L);
+        TraceContext.startSpan("HTTP GET /async");
+        CompletableFuture<String> future = new CompletableFuture<>();
+
+        CompletionStage<String> stage = InsightRedisSupport.traceExecute(
+                "GET", "k", "redis", properties, listener, () -> future);
+
+        verify(listener, never()).reportSpan(any());
+        assertEquals(1, TraceContext.getStackDepth());
+
+        future.complete("ok");
+        assertEquals("ok", stage.toCompletableFuture().get(2, TimeUnit.SECONDS));
+
+        ArgumentCaptor<TraceSpan> captor = ArgumentCaptor.forClass(TraceSpan.class);
+        verify(listener).reportSpan(captor.capture());
+        assertEquals("REDIS GET", captor.getValue().getOperationName());
         assertEquals(1, TraceContext.getStackDepth());
     }
 
