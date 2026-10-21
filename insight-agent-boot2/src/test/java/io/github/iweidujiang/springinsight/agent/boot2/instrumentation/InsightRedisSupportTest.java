@@ -16,6 +16,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -55,7 +59,7 @@ class InsightRedisSupportTest {
         assertEquals("SETEX", InsightRedisSupport.commandName("setEx"));
         assertEquals("user:1", InsightRedisSupport.extractKey(new Object[]{"user:1".getBytes(), "v"}));
         assertEquals("order:9", InsightRedisSupport.extractKey(new Object[]{"order:9"}));
-        String longKey = repeat("k", 200);
+        String longKey = "k".repeat(200);
         assertTrue(InsightRedisSupport.truncateKey(longKey).endsWith("…"));
     }
 
@@ -70,8 +74,7 @@ class InsightRedisSupportTest {
 
     @Test
     void resolveRemote_hostPortAndLoopback() {
-        assertEquals("cache.internal:6379",
-                InsightRedisSupport.resolveRemote(new FakeFactory("cache.internal", 6379)));
+        assertEquals("cache.internal:6379", InsightRedisSupport.resolveRemote(new FakeFactory("cache.internal", 6379)));
         assertEquals("redis", InsightRedisSupport.resolveRemote(new FakeFactory("127.0.0.1", 6379)));
         assertEquals("redis", InsightRedisSupport.resolveRemote(null));
     }
@@ -79,47 +82,27 @@ class InsightRedisSupportTest {
     @Test
     void noParent_skipsReport() throws Exception {
         Object out = InsightRedisSupport.traceExecute(
-                "GET", "k", "redis:6379", properties, listener,
-                new InsightRedisSupport.RedisCallable<Object>() {
-                    @Override
-                    public Object call() {
-                        return "ok";
-                    }
-                });
+                "GET", "k", "redis:6379", properties, listener, () -> "ok");
         assertEquals("ok", out);
-        verify(listener, never()).reportSpan(any(TraceSpan.class));
+        verify(listener, never()).reportSpan(any());
         assertEquals(0, TraceContext.getStackDepth());
     }
 
     @Test
     void fastSuccess_skipsReport() throws Exception {
         TraceContext.startSpan("HTTP GET /x");
-        InsightRedisSupport.traceExecute("GET", "k", "redis", properties, listener,
-                new InsightRedisSupport.RedisCallable<Object>() {
-                    @Override
-                    public Object call() {
-                        return "v";
-                    }
-                });
-        verify(listener, never()).reportSpan(any(TraceSpan.class));
+        InsightRedisSupport.traceExecute("GET", "k", "redis", properties, listener, () -> "v");
+        verify(listener, never()).reportSpan(any());
         assertEquals(1, TraceContext.getStackDepth());
     }
 
     @Test
     void error_reportsWithoutPushingStack() {
         TraceContext.startSpan("HTTP GET /x");
-        assertThrows(RuntimeException.class, new org.junit.jupiter.api.function.Executable() {
-            @Override
-            public void execute() throws Throwable {
-                InsightRedisSupport.traceExecute("SET", "k", "redis", properties, listener,
-                        new InsightRedisSupport.RedisCallable<Object>() {
-                            @Override
-                            public Object call() {
-                                throw new RuntimeException("boom");
-                            }
-                        });
-            }
-        });
+        assertThrows(RuntimeException.class, () ->
+                InsightRedisSupport.traceExecute("SET", "k", "redis", properties, listener, () -> {
+                    throw new RuntimeException("boom");
+                }));
         ArgumentCaptor<TraceSpan> captor = ArgumentCaptor.forClass(TraceSpan.class);
         verify(listener).reportSpan(captor.capture());
         TraceSpan span = captor.getValue();
@@ -130,15 +113,29 @@ class InsightRedisSupportTest {
         assertEquals(1, TraceContext.getStackDepth());
     }
 
-    private static String repeat(String s, int n) {
-        StringBuilder sb = new StringBuilder(n);
-        for (int i = 0; i < n; i++) {
-            sb.append(s);
-        }
-        return sb.toString();
+    @Test
+    void completionStage_defersReportUntilDone_andRestoresTraceOnCallback() throws Exception {
+        properties.setRedisSlowThresholdMs(0L);
+        TraceContext.startSpan("HTTP GET /async");
+        CompletableFuture<String> future = new CompletableFuture<>();
+
+        CompletionStage<String> stage = InsightRedisSupport.traceExecute(
+                "GET", "k", "redis", properties, listener, () -> future);
+
+        verify(listener, never()).reportSpan(any());
+        assertEquals(1, TraceContext.getStackDepth());
+
+        future.complete("ok");
+        assertEquals("ok", stage.toCompletableFuture().get(2, TimeUnit.SECONDS));
+
+        ArgumentCaptor<TraceSpan> captor = ArgumentCaptor.forClass(TraceSpan.class);
+        verify(listener).reportSpan(captor.capture());
+        assertEquals("REDIS GET", captor.getValue().getOperationName());
+        assertEquals(1, TraceContext.getStackDepth());
     }
 
     /** 反射用假工厂：提供 getHostName / getPort */
+    @SuppressWarnings("unused")
     static final class FakeFactory {
         private final String hostName;
         private final int port;

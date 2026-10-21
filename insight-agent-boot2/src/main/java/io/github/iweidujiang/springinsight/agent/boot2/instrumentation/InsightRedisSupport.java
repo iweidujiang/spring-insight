@@ -11,9 +11,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Redis CLIENT Span 辅助：命令名、key 截断、慢阈值、上报（不压入 Trace 栈）。
+ * <p>同步调用在本线程结束 Span；返回 {@link CompletionStage}（如 Lettuce 6 异步）时延后到完成回调，
+ * 并在回调线程短暂恢复调用方 {@link TraceContext} 快照。</p>
  *
  * @since 2026-10-12
  * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
@@ -117,7 +120,7 @@ public final class InsightRedisSupport {
 
     /**
      * 从 RedisConnectionFactory（或 Lettuce/Jedis 实现）解析短 {@code remoteService}。
-     * <p>优先反射 {@code getHostName}/{@code getPort}；本机 IP 归一为 {@code redis}。</p>
+     * <p>优先反射 {@code getHostName}/{@code getPort}；失败则 {@code redis}。</p>
      *
      * @param factory 连接工厂，可为 null
      * @return remoteService
@@ -153,8 +156,7 @@ public final class InsightRedisSupport {
 
     private static boolean isLoopback(String host) {
         String h = host.toLowerCase(Locale.ROOT);
-        return "127.0.0.1".equals(h) || "localhost".equals(h) || "::1".equals(h)
-                || "0:0:0:0:0:0:0:1".equals(h);
+        return "127.0.0.1".equals(h) || "localhost".equals(h) || "::1".equals(h) || "0:0:0:0:0:0:0:1".equals(h);
     }
 
     private static Method findNoArg(Class<?> type, String... names) {
@@ -181,6 +183,7 @@ public final class InsightRedisSupport {
 
     /**
      * 执行 Redis 命令并按需上报 CLIENT Span（无父 Span 时直通、不上报）。
+     * <p>若返回值为 {@link CompletionStage}，在完成时结束 Span，并在回调中恢复调用方 Trace 快照。</p>
      *
      * @param command  命令名
      * @param key      可选 key
@@ -222,24 +225,79 @@ public final class InsightRedisSupport {
             span.setRemoteEndpoint(key.length() > 120 ? key.substring(0, 120) + "…" : key);
         }
 
-        long start = System.currentTimeMillis();
+        final TraceContext.Snapshot callerSnapshot = TraceContext.capture();
+        final long start = System.currentTimeMillis();
         try {
             T result = action.call();
-            long duration = Math.max(0L, System.currentTimeMillis() - start);
-            if (!shouldReport(props, duration, false)) {
-                return result;
+            if (result instanceof CompletionStage) {
+                @SuppressWarnings("unchecked")
+                CompletionStage<Object> stage = (CompletionStage<Object>) result;
+                @SuppressWarnings("unchecked")
+                T deferred = (T) stage.whenComplete((ignored, error) ->
+                        TraceContext.runWith(callerSnapshot, () ->
+                                finishAsync(span, props, listener, start, error)));
+                return deferred;
             }
-            if (duration >= props.getRedisSlowThresholdMs() && props.getRedisSlowThresholdMs() > 0L) {
-                span.addTag("redis.slow", "true");
-            }
-            span.finish();
-            report(listener, span);
+            finishSync(span, props, listener, start, null);
             return result;
         } catch (Exception e) {
-            span.finish("REDIS_ERROR", e.getMessage());
-            report(listener, span);
+            finishSync(span, props, listener, start, e);
             throw e;
         }
+    }
+
+    /**
+     * 同步结束并按需上报。
+     *
+     * @param span     CLIENT Span
+     * @param props    配置
+     * @param listener 上报
+     * @param startMs  开始时间
+     * @param error    异常；成功时为 null
+     * @author 苏渡苇
+     * @since 2026-10-21
+     */
+    private static void finishSync(TraceSpan span,
+                                   InsightBoot2Properties props,
+                                   SpanReportingListener listener,
+                                   long startMs,
+                                   Throwable error) {
+        long duration = Math.max(0L, System.currentTimeMillis() - startMs);
+        if (error != null) {
+            span.finish("REDIS_ERROR", error.getMessage());
+            report(listener, span);
+            return;
+        }
+        if (!shouldReport(props, duration, false)) {
+            return;
+        }
+        if (duration >= props.getRedisSlowThresholdMs() && props.getRedisSlowThresholdMs() > 0L) {
+            span.addTag("redis.slow", "true");
+        }
+        span.finish();
+        report(listener, span);
+    }
+
+    /**
+     * 异步 CompletionStage 完成时结束 Span（在已恢复的 Trace 快照下执行）。
+     *
+     * @param span     CLIENT Span
+     * @param props    配置
+     * @param listener 上报
+     * @param startMs  开始时间
+     * @param error    异步失败原因
+     * @author 苏渡苇
+     * @since 2026-10-21
+     */
+    private static void finishAsync(TraceSpan span,
+                                    InsightBoot2Properties props,
+                                    SpanReportingListener listener,
+                                    long startMs,
+                                    Throwable error) {
+        if (span.isFinished()) {
+            return;
+        }
+        finishSync(span, props, listener, startMs, error);
     }
 
     private static void report(SpanReportingListener listener, TraceSpan span) {

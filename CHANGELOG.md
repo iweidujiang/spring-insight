@@ -2,7 +2,17 @@
 
 ## [Unreleased]
 
-（暂无）
+目标版本：**0.5.1**
+
+### 修复
+- **缓存追踪兼容**：Lettuce 异步命令在完成后再结束调用记录，回调中可保留原请求上下文；Jedis 连接池借出的连接可被正确追踪，归还后清理包装状态
+- **Reactive 工厂**：包装同步工厂时仍保留 Reactive 接口，Reactive 连接本身不包装（与原先「不含 Reactive」一致）
+
+### 坐标（预览）
+| 项 | 值 |
+|----|-----|
+| Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.5.1` |
+| Agent | `io.github.iweidujiang:insight-agent-boot2:0.5.1` |
 
 ---
 

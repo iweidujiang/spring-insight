@@ -1,11 +1,6 @@
 /*
  * Copyright (c) 2026, 苏渡苇. All rights reserved.
  *
- * TraceContext：基于 ThreadLocal 的 Span 调用栈（Boot2 Servlet 同步请求链路）。
- *
- * @since：2026-09-07
- * @author：苏渡苇 公众号：苏渡苇
- *
  * GitHub：https://github.com/iweidujiang
  */
 package io.github.iweidujiang.springinsight.agent.boot2.context;
@@ -18,6 +13,14 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
 
+/**
+ * TraceContext：基于 ThreadLocal 的 Span 调用栈（Boot2 Servlet 同步请求链路）。
+ *
+ * @since 2026-09-07
+ * @author 苏渡苇 公众号：苏渡苇
+ *
+ * GitHub：https://github.com/iweidujiang
+ */
 public final class TraceContext {
 
     private static final ThreadLocal<Deque<TraceSpan>> SPAN_STACK =
@@ -78,7 +81,7 @@ public final class TraceContext {
             span.setSampled(parent.isSampled());
         } else if (StringUtils.hasText(remoteTraceId) && StringUtils.hasText(remoteParentSpanId)) {
             span = new TraceSpan(remoteTraceId.trim(), remoteParentSpanId.trim());
-            span.setSampled(remoteSampled == null || remoteSampled.booleanValue());
+            span.setSampled(remoteSampled == null || remoteSampled);
         } else {
             span = new TraceSpan();
             span.setSampled(TraceSampler.decide(sampleRate));
@@ -120,5 +123,70 @@ public final class TraceContext {
             }
         }
         SPAN_STACK.remove();
+    }
+
+    /**
+     * 捕获当前线程 Trace 栈快照（Span 引用共享，便于子线程 / 异步回调挂到同一父 Span）。
+     *
+     * @return 快照；栈空时为空快照
+     * @author 苏渡苇
+     * @since 2026-10-21
+     */
+    public static Snapshot capture() {
+        Deque<TraceSpan> stack = SPAN_STACK.get();
+        if (stack == null || stack.isEmpty()) {
+            return Snapshot.EMPTY;
+        }
+        return new Snapshot(new ArrayDeque<TraceSpan>(stack));
+    }
+
+    /**
+     * 安装快照到当前线程；传入空快照则清除。
+     *
+     * @param snapshot 快照
+     */
+    public static void install(Snapshot snapshot) {
+        if (snapshot == null || snapshot.isEmpty()) {
+            SPAN_STACK.remove();
+            return;
+        }
+        SPAN_STACK.set(new ArrayDeque<TraceSpan>(snapshot.spans()));
+    }
+
+    /**
+     * 在指定 Trace 快照下执行任务，结束后恢复原上下文。
+     *
+     * @param snapshot 目标快照
+     * @param task     任务
+     */
+    public static void runWith(Snapshot snapshot, Runnable task) {
+        Snapshot previous = capture();
+        try {
+            install(snapshot);
+            task.run();
+        } finally {
+            install(previous);
+        }
+    }
+
+    /**
+     * Trace 栈不可变快照（提交线程捕获，工作线程 / 异步回调安装）。
+     */
+    public static final class Snapshot {
+        static final Snapshot EMPTY = new Snapshot(new ArrayDeque<TraceSpan>());
+
+        private final Deque<TraceSpan> spans;
+
+        private Snapshot(Deque<TraceSpan> spans) {
+            this.spans = spans;
+        }
+
+        boolean isEmpty() {
+            return spans == null || spans.isEmpty();
+        }
+
+        Deque<TraceSpan> spans() {
+            return spans;
+        }
     }
 }

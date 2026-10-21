@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.github.iweidujiang</groupId>
         <artifactId>spring-insight-boot2-parent</artifactId>
-        <version>0.5.0</version>
+        <version>0.5.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -77,6 +77,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Redis 客户端：仅测试 Jedis 连接池包装，不向宿主传递 -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

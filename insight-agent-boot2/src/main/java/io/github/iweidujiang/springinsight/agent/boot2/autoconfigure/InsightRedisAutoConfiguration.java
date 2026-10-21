@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 
 /**
- * Redis 追踪：包装 Spring 容器中的 {@link RedisConnectionFactory}（默认关闭）。
+ * Redis 追踪：包装 Spring 容器中的 {@link RedisConnectionFactory} 与 Jedis 连接池（默认关闭）。
  * <p>
  * 开启条件：{@code spring.insight.redis-tracing-enabled=true}。
  * </p>
@@ -31,7 +31,7 @@ public class InsightRedisAutoConfiguration {
     /**
      * @param properties 配置
      * @param listener   上报
-     * @return 工厂包装 BPP；未开启时返回 no-op
+     * @return 工厂 / JedisPool 包装 BPP；未开启时返回 no-op
      */
     @Bean
     public static BeanPostProcessor insightRedisConnectionFactoryPostProcessor(
@@ -41,7 +41,7 @@ public class InsightRedisAutoConfiguration {
             return new BeanPostProcessor() {
             };
         }
-        log.info("[Redis] 已启用 RedisConnectionFactory 包装（慢阈值={}ms；错误始终上报）",
+        log.info("[Redis] 已启用 RedisConnectionFactory / JedisPool 包装（慢阈值={}ms；错误始终上报）",
                 Long.valueOf(properties.getRedisSlowThresholdMs()));
         return new InsightRedisFactoryPostProcessor(listener, properties);
     }
@@ -57,11 +57,18 @@ public class InsightRedisAutoConfiguration {
 
         @Override
         public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-            if (!(bean instanceof RedisConnectionFactory) || InsightRedisProxies.isInsightWrapped(bean)) {
+            if (InsightRedisProxies.isInsightWrapped(bean)) {
                 return bean;
             }
-            log.debug("[Redis] 包装 RedisConnectionFactory bean={}", beanName);
-            return InsightRedisProxies.wrapFactory(bean, listener, properties);
+            if (bean instanceof RedisConnectionFactory) {
+                log.debug("[Redis] 包装 RedisConnectionFactory bean={}", beanName);
+                return InsightRedisProxies.wrapFactory(bean, listener, properties);
+            }
+            if (InsightRedisProxies.isJedisPool(bean)) {
+                log.debug("[Redis] 包装 JedisPool bean={}", beanName);
+                return InsightRedisProxies.wrapJedisPool(bean, listener, properties);
+            }
+            return bean;
         }
     }
 }
