@@ -15,7 +15,11 @@
 
 ## [Unreleased]
 
-目标版本：**1.1.2**
+（暂无）
+
+---
+
+## [1.1.2] — 2026-10-21
 
 ### 变更
 - **链路列表导出**：可按时间窗与服务下载 CSV，便于在表格软件里查看与分享；链路页可一键导出
@@ -26,6 +30,16 @@
 - **拓扑按健康分着色**：节点颜色随健康等级变化，悬停可见分数；旧版 Server 无接口时仍按错误数着色
 - **仪表盘布局可保存**：布局写入本地设置，重启后仍保留；仪表盘顶栏可切换预设模板，刷新后仍保持所选布局
 
+### 兼容
+- 已有本地数据可直接升级，无需手工迁移
+- 推荐配套 Agent **`0.5.1`**（缓存追踪兼容修复；`0.5.0` 仍可上报）
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.5.1` |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:1.1.2` |
+| Release jar | `insight-server-1.1.2.jar` |
 
 ---
 
@@ -365,9 +379,25 @@
 
 ## [Unreleased]
 
+（暂无）
+
+---
+
+## [0.5.1] — 2026-10-21
+
 ### 修复
 - **缓存追踪兼容**：Lettuce 异步命令在完成后再结束调用记录，回调中可保留原请求上下文；Jedis 连接池借出的连接可被正确追踪，归还后清理包装状态
 - **Reactive 工厂**：包装同步工厂时仍保留 Reactive 接口，Reactive 连接本身不包装（与原先「不含 Reactive」一致）
+- **数据库追踪**：多层 DataSource 包装时不再因代理嵌套导致栈溢出
+
+### 说明
+- 本版仅发布 **Boot 3**（`insight-agent` / `spring-insight-agent-starter`）。Boot2 同号代码已在分支 `2.7.x` 对齐，因 Maven Central 月配额暂缓发布
+
+### 坐标
+| 项 | 值 |
+|----|-----|
+| Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.5.1` |
+| Agent | `io.github.iweidujiang:insight-agent:0.5.1` |
 
 ---
 

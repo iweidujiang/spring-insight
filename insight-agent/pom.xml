@@ -8,12 +8,12 @@
     <parent>
         <groupId>io.github.iweidujiang</groupId>
         <artifactId>spring-insight-parent</artifactId>
-        <version>1.1.2-SNAPSHOT</version>
+        <version>1.1.2</version>
     </parent>
 
     <artifactId>insight-agent</artifactId>
     <!-- 须与父 POM properties.agent.version 一致；无埋点变更不 bump -->
-    <version>0.5.0</version>
+    <version>0.5.1</version>
     <name>Spring Insight Agent</name>
     <description>Spring Insight 数据采集代理</description>
 
