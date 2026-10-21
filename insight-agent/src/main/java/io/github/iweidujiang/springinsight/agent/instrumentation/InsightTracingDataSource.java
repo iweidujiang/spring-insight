@@ -8,10 +8,16 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 import java.util.logging.Logger;
 
 /**
  * 包装业务 {@link DataSource}：连接上的 Statement 执行会按配置上报 JDBC CLIENT Span。
+ * <p>
+ * 请优先通过 {@link InsightJdbcProxies#wrap} 创建，以自动防重入并限制代理层数。
+ * </p>
  *
  * @since 2026-10-11
  * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
@@ -30,6 +36,9 @@ public final class InsightTracingDataSource implements DataSource {
     public InsightTracingDataSource(DataSource delegate,
                                     SpanReportingListener listener,
                                     InsightProperties properties) {
+        if (delegate == null) {
+            throw new IllegalArgumentException("delegate DataSource 不能为空");
+        }
         this.delegate = delegate;
         this.listener = listener;
         this.properties = properties;
@@ -58,12 +67,47 @@ public final class InsightTracingDataSource implements DataSource {
         if (iface.isInstance(this)) {
             return iface.cast(this);
         }
-        return delegate.unwrap(iface);
+        return unwrapWithCycleGuard(delegate, iface, Collections.newSetFromMap(new IdentityHashMap<>()));
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return iface.isInstance(this) || delegate.isWrapperFor(iface);
+        return iface.isInstance(this) || isWrapperForWithCycleGuard(
+                delegate, iface, Collections.newSetFromMap(new IdentityHashMap<>()));
+    }
+
+    private static <T> T unwrapWithCycleGuard(DataSource cur, Class<T> iface, Set<DataSource> seen)
+            throws SQLException {
+        if (cur == null) {
+            throw new SQLException("无法 unwrap 到 " + iface.getName());
+        }
+        if (!seen.add(cur)) {
+            throw new SQLException("DataSource 委托链存在环，无法 unwrap " + iface.getName());
+        }
+        if (iface.isInstance(cur)) {
+            return iface.cast(cur);
+        }
+        if (cur instanceof InsightTracingDataSource) {
+            return unwrapWithCycleGuard(((InsightTracingDataSource) cur).getDelegate(), iface, seen);
+        }
+        return cur.unwrap(iface);
+    }
+
+    private static boolean isWrapperForWithCycleGuard(DataSource cur, Class<?> iface, Set<DataSource> seen)
+            throws SQLException {
+        if (cur == null) {
+            return false;
+        }
+        if (!seen.add(cur)) {
+            return false;
+        }
+        if (iface.isInstance(cur)) {
+            return true;
+        }
+        if (cur instanceof InsightTracingDataSource) {
+            return isWrapperForWithCycleGuard(((InsightTracingDataSource) cur).getDelegate(), iface, seen);
+        }
+        return cur.isWrapperFor(iface);
     }
 
     @Override

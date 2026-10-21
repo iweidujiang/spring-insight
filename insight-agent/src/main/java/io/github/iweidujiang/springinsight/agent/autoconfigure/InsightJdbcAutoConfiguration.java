@@ -1,6 +1,6 @@
 package io.github.iweidujiang.springinsight.agent.autoconfigure;
 
-import io.github.iweidujiang.springinsight.agent.instrumentation.InsightTracingDataSource;
+import io.github.iweidujiang.springinsight.agent.instrumentation.InsightJdbcProxies;
 import io.github.iweidujiang.springinsight.agent.listener.SpanReportingListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
@@ -66,12 +66,14 @@ public class InsightJdbcAutoConfiguration {
 
         @Override
         public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
-            if (!(bean instanceof DataSource) || bean instanceof InsightTracingDataSource) {
+            if (!(bean instanceof DataSource)) {
                 return bean;
             }
-            DataSource ds = (DataSource) bean;
-            log.debug("[JDBC] 包装 DataSource bean={}", beanName);
-            return new InsightTracingDataSource(ds, listener, properties);
+            DataSource wrapped = InsightJdbcProxies.wrap((DataSource) bean, listener, properties);
+            if (wrapped != bean) {
+                log.debug("[JDBC] 包装 DataSource bean={}", beanName);
+            }
+            return wrapped;
         }
     }
 }
