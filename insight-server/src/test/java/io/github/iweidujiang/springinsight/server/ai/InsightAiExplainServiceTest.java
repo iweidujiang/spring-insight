@@ -83,6 +83,70 @@ class InsightAiExplainServiceTest {
     }
 
     /**
+     * Trace 对比：AI 未启用返回 statusLabel=未启用。
+     */
+    @Test
+    void compareTraces_disabledReturnsStatusLabel() {
+        InMemorySpanStore store = twoTracesStore();
+        InsightAiExplainService svc = serviceWithStore(props(false, "http://127.0.0.1:1/v1", "k"), store);
+        Map<String, Object> body = svc.explainCompareTraces("tA", "tB");
+        assertNotNull(body);
+        assertTrue(Boolean.TRUE.equals(body.get("degraded")));
+        assertEquals("未启用", body.get("statusLabel"));
+        assertEquals("compare-traces", body.get("kind"));
+    }
+
+    /**
+     * Trace 对比：有显著差异时经 Chat Completions 返回结构化结论与耗时证据。
+     *
+     * @throws Exception mock 失败
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void compareTraces_successViaCompatibleApi() throws Exception {
+        AtomicInteger hits = new AtomicInteger();
+        int port = startMockLlm(hits, 200,
+                "{\"choices\":[{\"message\":{\"content\":\"{\\\"summary\\\":\\\"Trace B 比 A 慢约 200ms，主要是 GET /order\\\",\\\"evidence\\\":[{\\\"span\\\":\\\"GET /order\\\",\\\"service\\\":\\\"order-db\\\",\\\"analysis\\\":\\\"下游变慢\\\"}],\\\"suggestions\\\":[\\\"查 order-db 慢查询\\\"]}\"}}]}");
+
+        InsightServerAiProperties p = props(true, "http://127.0.0.1:" + port + "/v1", "sk-test");
+        p.setModel("deepseek-chat");
+        p.setProvider("deepseek");
+        InsightAiExplainService svc = serviceWithStore(p, twoTracesStore());
+
+        Map<String, Object> body = svc.explainCompareTraces("tA", "tB");
+        assertEquals(1, hits.get());
+        assertFalse(Boolean.TRUE.equals(body.get("degraded")));
+        assertEquals("就绪", body.get("statusLabel"));
+        assertTrue(String.valueOf(body.get("summary")).contains("慢"));
+        List<Map<String, Object>> evidence = (List<Map<String, Object>>) body.get("evidence");
+        assertFalse(evidence.isEmpty());
+        assertEquals("GET /order", evidence.get(0).get("span"));
+        assertEquals(100L, ((Number) evidence.get(0).get("durationA")).longValue());
+        assertEquals(300L, ((Number) evidence.get(0).get("durationB")).longValue());
+        assertEquals(200L, ((Number) evidence.get(0).get("delta")).longValue());
+        assertTrue(String.valueOf(evidence.get(0).get("analysis")).contains("下游"));
+    }
+
+    /**
+     * Trace 对比：上游失败返回 statusLabel=失败。
+     *
+     * @throws Exception mock 失败
+     */
+    @Test
+    void compareTraces_upstreamErrorStatusFailed() throws Exception {
+        AtomicInteger hits = new AtomicInteger();
+        int port = startMockLlm(hits, 500, "{\"error\":\"boom\"}");
+        InsightServerAiProperties p = props(true, "http://127.0.0.1:" + port + "/v1", "sk-test");
+        InsightAiExplainService svc = serviceWithStore(p, twoTracesStore());
+        Map<String, Object> body = svc.explainCompareTraces("tA", "tB");
+        assertEquals(1, hits.get());
+        assertTrue(Boolean.TRUE.equals(body.get("degraded")));
+        assertEquals("失败", body.get("statusLabel"));
+        assertTrue(String.valueOf(body.get("reason")).contains("失败")
+                || String.valueOf(body.get("message")).contains("失败"));
+    }
+
+    /**
      * 无 key 时 degraded。
      */
     @Test
@@ -373,6 +437,26 @@ class InsightAiExplainServiceTest {
                 settings, export, persistence, period, new InsightAiAuditLog(), new ObjectMapper());
     }
 
+    private static InsightAiExplainService serviceWithStore(InsightServerAiProperties props, InMemorySpanStore store) {
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAi()).thenReturn(props);
+        TraceSpanPersistenceService persistence = new TraceSpanPersistenceService(store);
+        InsightPeriodInsightService period = mock(InsightPeriodInsightService.class);
+        when(period.build(org.mockito.ArgumentMatchers.anyInt())).thenReturn(Map.of(
+                "schemaVersion", 1,
+                "hours", 24,
+                "headline", "",
+                "current", Map.of("spanCount", 0L, "errorSpanCount", 0L)
+        ));
+        return new InsightAiExplainService(
+                settings,
+                new TraceContextExportService(store),
+                persistence,
+                period,
+                new InsightAiAuditLog(),
+                new ObjectMapper());
+    }
+
     private static TraceContextExportService storeWithTrace() {
         InsightServerStorageProperties storage = new InsightServerStorageProperties();
         InMemorySpanStore store = new InMemorySpanStore(storage, "memory");
@@ -387,6 +471,32 @@ class InsightAiExplainServiceTest {
         span.setStartTime(System.currentTimeMillis());
         store.saveAll(List.of(span));
         return new TraceContextExportService(store);
+    }
+
+    /** 两条 Trace：同名 GET /order 耗时 100 vs 300（差异 &gt; 20%）。 */
+    private static InMemorySpanStore twoTracesStore() {
+        InsightServerStorageProperties storage = new InsightServerStorageProperties();
+        InMemorySpanStore store = new InMemorySpanStore(storage, "memory");
+        TraceSpan a = new TraceSpan();
+        a.setTraceId("tA");
+        a.setSpanId("a1");
+        a.setServiceName("sca-order");
+        a.setOperationName("GET /order");
+        a.setRemoteService("order-db");
+        a.setDurationMs(100L);
+        a.setStartTime(System.currentTimeMillis());
+        a.setSuccess(true);
+        TraceSpan b = new TraceSpan();
+        b.setTraceId("tB");
+        b.setSpanId("b1");
+        b.setServiceName("sca-order");
+        b.setOperationName("GET /order");
+        b.setRemoteService("order-db");
+        b.setDurationMs(300L);
+        b.setStartTime(System.currentTimeMillis());
+        b.setSuccess(true);
+        store.saveAll(List.of(a, b));
+        return store;
     }
 
     private int startMockLlm(AtomicInteger hits, int status, String json) throws IOException {

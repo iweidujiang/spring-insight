@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.server.ai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAiProperties;
 import io.github.iweidujiang.springinsight.server.insight.InsightPeriodInsightService;
 import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
@@ -15,6 +16,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,7 +25,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
- * 基于 OpenAI 兼容 Chat Completions 做结构化解读（Trace / 错误聚合 / 拓扑调用链路 / 时段）。
+ * 基于 OpenAI 兼容 Chat Completions 做结构化解读（Trace / 错误聚合 / 拓扑调用链路 / 时段 / Trace 对比）。
  * <p>
  * 配置取自 {@link InsightRuntimeSettingsService#effectiveAi()}；结果为 schemaVersion=1
  *（summary / evidence / suggestions），并保留 markdown 兼容字段。
@@ -183,6 +185,194 @@ public class InsightAiExplainService {
                     String.valueOf(degraded.getOrDefault("summary", "")));
             return degraded;
         }
+    }
+
+    /**
+     * 对比两条 Trace：对齐同名操作、筛出耗时差 &gt; 20% 的 Span，再调用模型解读。
+     *
+     * @param traceIdA Trace A
+     * @param traceIdB Trace B
+     * @return 对比解读；任一侧 Trace 不存在时返回 null
+     */
+    public Map<String, Object> explainCompareTraces(String traceIdA, String traceIdB) {
+        String idA = traceIdA != null ? traceIdA.trim() : "";
+        String idB = traceIdB != null ? traceIdB.trim() : "";
+        if (!StringUtils.hasText(idA) || !StringUtils.hasText(idB)) {
+            return InsightAiExplainSchema.buildCompareResponse(
+                    true, "失败", "请提供 traceIdA 与 traceIdB",
+                    "", "", "", List.of(), List.of(), idA, idB);
+        }
+        if (idA.equals(idB)) {
+            return InsightAiExplainSchema.buildCompareResponse(
+                    true, "失败", "请选择两条不同的 Trace",
+                    "", "", "", List.of(), List.of(), idA, idB);
+        }
+
+        List<TraceSpan> spansA = persistenceService.getTraceById(idA);
+        List<TraceSpan> spansB = persistenceService.getTraceById(idB);
+        if (spansA == null || spansA.isEmpty() || spansB == null || spansB.isEmpty()) {
+            return null;
+        }
+
+        InsightServerAiProperties properties = settingsService.effectiveAi();
+        String subject = idA + "|" + idB;
+        Map<String, Object> gate = compareGateOrNull(properties, idA, idB);
+        if (gate != null) {
+            auditLog.record("compare-traces", subject, true, properties.getModel(),
+                    String.valueOf(gate.getOrDefault("summary", "")));
+            return gate;
+        }
+
+        List<InsightAiTraceCompare.DiffRow> diffs = InsightAiTraceCompare.significantDiffs(spansA, spansB);
+        List<Map<String, Object>> factRows = InsightAiTraceCompare.toPayloadRows(diffs);
+        long rootA = InsightAiTraceCompare.rootDurationMs(spansA);
+        long rootB = InsightAiTraceCompare.rootDurationMs(spansB);
+
+        if (factRows.isEmpty()) {
+            String summary = "两条 Trace 对齐后未发现耗时差异超过 20% 的操作（A 约 "
+                    + rootA + "ms，B 约 " + rootB + "ms）。";
+            Map<String, Object> empty = InsightAiExplainSchema.buildCompareResponse(
+                    false, "就绪", null,
+                    properties.getModel(), properties.getProvider(),
+                    summary, List.of(),
+                    List.of("可核对瀑布中仅单侧出现的操作，或换一对耗时差更大的 Trace"),
+                    idA, idB);
+            auditLog.record("compare-traces", subject, false, properties.getModel(), summary);
+            return empty;
+        }
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("traceIdA", idA);
+        payload.put("traceIdB", idB);
+        payload.put("rootDurationA", rootA);
+        payload.put("rootDurationB", rootB);
+        payload.put("rootDelta", rootB - rootA);
+        payload.put("significantDiffs", factRows);
+        payload.put("threshold", "相对差 > 20%（按 operationName+remoteService 对齐，取同名 max 耗时）");
+
+        try {
+            String raw = callChatCompletions(
+                    properties,
+                    """
+                            你是 Spring Insight 链路对比助手。用户提供两条 Trace 的显著差异操作（已按 operationName+remoteService 对齐）。
+                            """ + InsightAiExplainSchema.COMPARE_JSON_OUTPUT_RULES + """
+                            对本场景：说明 B 相对 A 变慢或变快的主要贡献操作，并给出可执行排查建议。
+                            """,
+                    "请对比解读以下 Trace 差异：\n```json\n"
+                            + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload)
+                            + "\n```");
+            Map<String, Object> parsed = InsightAiExplainSchema.parseCompareStructured(factRows, raw, objectMapper);
+            if (!InsightAiExplainSchema.isStructuredOk(parsed)) {
+                String msg = String.valueOf(parsed.getOrDefault("summary",
+                        "模型未输出结构化结论。可换非推理模型，或增大 max_tokens 后重试。"));
+                Map<String, Object> degraded = InsightAiExplainSchema.buildCompareResponse(
+                        true, "失败", msg,
+                        properties.getModel(), properties.getProvider(),
+                        msg, factRowsWithBlankAnalysis(factRows), List.of(), idA, idB);
+                auditLog.record("compare-traces", subject, true, properties.getModel(), msg);
+                return degraded;
+            }
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> evidence = (List<Map<String, Object>>) parsed.getOrDefault("evidence", factRows);
+            @SuppressWarnings("unchecked")
+            List<String> suggestions = (List<String>) parsed.getOrDefault("suggestions", List.of());
+            String summary = String.valueOf(parsed.getOrDefault("summary", ""));
+            Map<String, Object> ok = InsightAiExplainSchema.buildCompareResponse(
+                    false, "就绪", null,
+                    properties.getModel(), properties.getProvider(),
+                    summary, evidence, suggestions, idA, idB);
+            auditLog.record("compare-traces", subject, false, properties.getModel(), summary);
+            return ok;
+        } catch (HttpTimeoutException e) {
+            log.warn("[AI] Trace 对比超时: {} error={}", subject, e.getMessage());
+            Map<String, Object> degraded = InsightAiExplainSchema.buildCompareResponse(
+                    true, "超时", "模型调用超时，请稍后重试或增大 timeout。",
+                    properties.getModel(), properties.getProvider(),
+                    null, factRowsWithBlankAnalysis(factRows), List.of(), idA, idB);
+            auditLog.record("compare-traces", subject, true, properties.getModel(),
+                    String.valueOf(degraded.getOrDefault("summary", "")));
+            return degraded;
+        } catch (Exception e) {
+            log.warn("[AI] Trace 对比失败: {} error={}", subject, e.getMessage());
+            String reason = "模型调用失败：" + safeMsg(e);
+            if (isTimeoutMessage(e)) {
+                Map<String, Object> degraded = InsightAiExplainSchema.buildCompareResponse(
+                        true, "超时", "模型调用超时，请稍后重试或增大 timeout。",
+                        properties.getModel(), properties.getProvider(),
+                        null, factRowsWithBlankAnalysis(factRows), List.of(), idA, idB);
+                auditLog.record("compare-traces", subject, true, properties.getModel(),
+                        String.valueOf(degraded.getOrDefault("summary", "")));
+                return degraded;
+            }
+            Map<String, Object> degraded = InsightAiExplainSchema.buildCompareResponse(
+                    true, "失败", reason,
+                    properties.getModel(), properties.getProvider(),
+                    null, factRowsWithBlankAnalysis(factRows), List.of(), idA, idB);
+            auditLog.record("compare-traces", subject, true, properties.getModel(),
+                    String.valueOf(degraded.getOrDefault("summary", "")));
+            return degraded;
+        }
+    }
+
+    /**
+     * 对比场景门禁：未启用 / 未配齐 / provider 不支持。
+     *
+     * @param properties AI 配置
+     * @param traceIdA   A
+     * @param traceIdB   B
+     * @return 降级体或 null
+     */
+    private Map<String, Object> compareGateOrNull(InsightServerAiProperties properties,
+                                                  String traceIdA,
+                                                  String traceIdB) {
+        if (!properties.isEnabled()) {
+            return InsightAiExplainSchema.buildCompareResponse(
+                    true, "未启用",
+                    "AI 未启用。请到控制台「设置」打开 AI 后再试。",
+                    properties.getModel(), properties.getProvider(),
+                    null, List.of(), List.of(), traceIdA, traceIdB);
+        }
+        if (!properties.isInvokeReady()) {
+            return InsightAiExplainSchema.buildCompareResponse(
+                    true, "失败",
+                    "AI 已启用但未配齐 base-url / api-key。请到「设置」页填写后重试。",
+                    properties.getModel(), properties.getProvider(),
+                    null, List.of(), List.of(), traceIdA, traceIdB);
+        }
+        if (!isOpenAiCompatible(properties.getProvider())) {
+            return InsightAiExplainSchema.buildCompareResponse(
+                    true, "失败",
+                    "当前仅支持 provider=openai-compatible（可用 DeepSeek / OpenAI / 兼容网关）。",
+                    properties.getModel(), properties.getProvider(),
+                    null, List.of(), List.of(), traceIdA, traceIdB);
+        }
+        return null;
+    }
+
+    private static List<Map<String, Object>> factRowsWithBlankAnalysis(List<Map<String, Object>> facts) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        if (facts == null) {
+            return out;
+        }
+        for (Map<String, Object> fact : facts) {
+            Map<String, Object> row = new LinkedHashMap<>(fact);
+            row.putIfAbsent("analysis", "");
+            row.remove("ratio");
+            out.add(row);
+            if (out.size() >= 5) {
+                break;
+            }
+        }
+        return out;
+    }
+
+    private static boolean isTimeoutMessage(Exception e) {
+        String name = e.getClass().getName();
+        if (name.contains("Timeout")) {
+            return true;
+        }
+        String m = e.getMessage();
+        return m != null && m.toLowerCase().contains("timed out");
     }
 
     /**

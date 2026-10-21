@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -93,6 +94,36 @@ public class InsightAiController {
             @RequestParam("target") String target,
             @RequestParam(value = "hours", defaultValue = "24") int hours) {
         return ResponseEntity.ok(explainService.explainDependency(source, target, hours));
+    }
+
+    /**
+     * Trace 对比 AI 解读：对齐同名操作并解释耗时差异。
+     *
+     * @param body {@code traceIdA} / {@code traceIdB}
+     * @return 结构化对比；Trace 缺失时 404
+     */
+    @PostMapping("/ai/compare-traces")
+    public ResponseEntity<?> compareTraces(@RequestBody Map<String, Object> body) {
+        String traceIdA = body != null ? String.valueOf(body.getOrDefault("traceIdA", "")) : "";
+        String traceIdB = body != null ? String.valueOf(body.getOrDefault("traceIdB", "")) : "";
+        if ("null".equals(traceIdA)) {
+            traceIdA = "";
+        }
+        if ("null".equals(traceIdB)) {
+            traceIdB = "";
+        }
+        try {
+            Map<String, Object> result = explainService.explainCompareTraces(traceIdA, traceIdB);
+            if (result == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("[AI] Trace 对比未预期异常: a={} b={}", traceIdA, traceIdB, e);
+            return ResponseEntity.ok(InsightAiExplainSchema.buildCompareResponse(
+                    true, "失败", "内部错误，请稍后重试",
+                    "", "", "", List.of(), List.of(), traceIdA, traceIdB));
+        }
     }
 
     /**

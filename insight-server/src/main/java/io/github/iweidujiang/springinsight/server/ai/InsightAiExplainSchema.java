@@ -42,6 +42,24 @@ public final class InsightAiExplainSchema {
             3. evidence 最多 5 条；suggestions 最多 5 条；summary 不超过 80 字。
             """;
 
+    /** Trace 对比解读：evidence 带耗时差字段。 */
+    public static final String COMPARE_JSON_OUTPUT_RULES = """
+            你必须只输出一个 JSON 对象（可包在 ```json 代码块中），不要输出其它说明文字。
+            若模型支持「思考 / reasoning」，最终答案必须写在正式回复正文（content）里，不要只写在思考过程中。
+            字段：
+            {
+              "summary": "一句话对比结论（含谁更慢、大约慢多少）",
+              "evidence": [
+                {"span":"操作名","service":"服务名","analysis":"该操作变慢/变快的可能原因"}
+              ],
+              "suggestions": ["可执行排查建议，最多 5 条"]
+            }
+            规则：
+            1. 只依据用户提供的 JSON（含 durationA/durationB/delta），勿编造未出现的操作或服务。
+            2. evidence.span / service 必须与输入中的 span / service 一致；analysis 不超过 60 字。
+            3. evidence 最多 5 条；suggestions 最多 5 条；summary 不超过 80 字。
+            """;
+
     private InsightAiExplainSchema() {
     }
 
@@ -103,6 +121,179 @@ public final class InsightAiExplainSchema {
         return parsed != null
                 && Boolean.TRUE.equals(parsed.get("structured"))
                 && StringUtils.hasText(String.valueOf(parsed.getOrDefault("summary", "")));
+    }
+
+    /**
+     * 组装 Trace 对比解读响应（evidence 含 span、service、两侧耗时、delta、analysis）。
+     *
+     * @param degraded     是否降级
+     * @param statusLabel  未启用 / 失败 / 超时 / 就绪
+     * @param reason       失败原因；可空
+     * @param model        模型名
+     * @param provider     提供方
+     * @param summary      结论
+     * @param evidence     证据行
+     * @param suggestions  建议
+     * @param traceIdA     Trace A
+     * @param traceIdB     Trace B
+     * @return 响应 Map
+     */
+    public static Map<String, Object> buildCompareResponse(boolean degraded,
+                                                           String statusLabel,
+                                                           String reason,
+                                                           String model,
+                                                           String provider,
+                                                           String summary,
+                                                           List<Map<String, Object>> evidence,
+                                                           List<String> suggestions,
+                                                           String traceIdA,
+                                                           String traceIdB) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("schemaVersion", SCHEMA_VERSION);
+        body.put("kind", "compare-traces");
+        body.put("degraded", degraded);
+        body.put("statusLabel", statusLabel != null ? statusLabel : "");
+        if (StringUtils.hasText(reason)) {
+            body.put("reason", reason);
+            body.put("message", reason);
+        }
+        body.put("model", model != null ? model : "");
+        body.put("provider", provider != null ? provider : "");
+        String sum = StringUtils.hasText(summary) ? summary.trim()
+                : (StringUtils.hasText(reason) ? reason.trim() : "未能自动对比");
+        List<Map<String, Object>> ev = evidence != null ? evidence : List.of();
+        List<String> sug = suggestions != null ? suggestions : List.of();
+        body.put("structured", !degraded && StringUtils.hasText(summary));
+        body.put("summary", sum);
+        body.put("evidence", ev);
+        body.put("suggestions", sug);
+        body.put("markdown", renderCompareMarkdown(sum, ev, sug) + DISCLAIMER);
+        body.put("traceIdA", traceIdA != null ? traceIdA : "");
+        body.put("traceIdB", traceIdB != null ? traceIdB : "");
+        return body;
+    }
+
+    /**
+     * 对比页 Markdown（证据含耗时差）。
+     *
+     * @param summary     摘要
+     * @param evidence    证据
+     * @param suggestions 建议
+     * @return Markdown
+     */
+    public static String renderCompareMarkdown(String summary,
+                                               List<Map<String, Object>> evidence,
+                                               List<String> suggestions) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("### 结论\n\n");
+        sb.append(StringUtils.hasText(summary) ? summary.trim() : "（无）");
+        sb.append("\n\n");
+        if (evidence != null && !evidence.isEmpty()) {
+            sb.append("### 显著差异\n\n");
+            for (Map<String, Object> item : evidence) {
+                String span = String.valueOf(item.getOrDefault("span", ""));
+                String service = String.valueOf(item.getOrDefault("service", ""));
+                Object delta = item.get("delta");
+                String analysis = String.valueOf(item.getOrDefault("analysis", item.getOrDefault("reason", "")));
+                sb.append("- **").append(span);
+                if (StringUtils.hasText(service) && !"null".equals(service)) {
+                    sb.append(" @ ").append(service);
+                }
+                sb.append("**");
+                if (delta != null) {
+                    sb.append("（Δ ").append(delta).append("ms）");
+                }
+                if (StringUtils.hasText(analysis) && !"null".equals(analysis)) {
+                    sb.append("：").append(analysis);
+                }
+                sb.append('\n');
+            }
+            sb.append('\n');
+        }
+        if (suggestions != null && !suggestions.isEmpty()) {
+            sb.append("### 建议\n\n");
+            int i = 1;
+            for (String s : suggestions) {
+                if (!StringUtils.hasText(s)) {
+                    continue;
+                }
+                sb.append(i++).append(". ").append(s.trim()).append('\n');
+            }
+        }
+        return sb.toString().trim();
+    }
+
+    /**
+     * 将模型对比 evidence（span/service/analysis）与事实耗时行合并。
+     *
+     * @param facts      本地算出的差异行
+     * @param rawModel   模型原文
+     * @param mapper     Jackson
+     * @return summary / evidence / suggestions / structured
+     */
+    public static Map<String, Object> parseCompareStructured(List<Map<String, Object>> facts,
+                                                             String rawModel,
+                                                             ObjectMapper mapper) {
+        Map<String, Object> base = parseStructured(rawModel, mapper);
+        Map<String, String> analysisByKey = new LinkedHashMap<>();
+        // 对比场景 evidence 字段为 span/service/analysis，需从原文 JSON 再抽一次
+        String json = extractJsonObject(rawModel != null ? rawModel : "");
+        if (StringUtils.hasText(json) && mapper != null) {
+            try {
+                JsonNode root = mapper.readTree(json);
+                JsonNode evNode = root.get("evidence");
+                if (evNode != null && evNode.isArray()) {
+                    for (JsonNode item : evNode) {
+                        if (item == null || !item.isObject()) {
+                            continue;
+                        }
+                        String span = textOrEmpty(item.get("span"));
+                        if (!StringUtils.hasText(span)) {
+                            span = textOrEmpty(item.get("label"));
+                        }
+                        if (!StringUtils.hasText(span)) {
+                            span = textOrEmpty(item.get("ref"));
+                        }
+                        String service = textOrEmpty(item.get("service"));
+                        String analysis = textOrEmpty(item.get("analysis"));
+                        if (!StringUtils.hasText(analysis)) {
+                            analysis = textOrEmpty(item.get("reason"));
+                        }
+                        if (StringUtils.hasText(span) && StringUtils.hasText(analysis)) {
+                            analysisByKey.put(span + "\0" + service, analysis);
+                            analysisByKey.putIfAbsent(span + "\0", analysis);
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+                // 沿用 base 即可
+            }
+        }
+        List<Map<String, Object>> merged = new ArrayList<>();
+        if (facts != null) {
+            for (Map<String, Object> fact : facts) {
+                Map<String, Object> row = new LinkedHashMap<>(fact);
+                String span = str(fact.get("span"));
+                String service = str(fact.get("service"));
+                String analysis = analysisByKey.get(span + "\0" + service);
+                if (!StringUtils.hasText(analysis)) {
+                    analysis = analysisByKey.get(span + "\0");
+                }
+                row.put("analysis", analysis != null ? analysis : "");
+                row.remove("ratio");
+                merged.add(row);
+                if (merged.size() >= 5) {
+                    break;
+                }
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("structured", Boolean.TRUE.equals(base.get("structured")));
+        out.put("summary", base.getOrDefault("summary", ""));
+        out.put("evidence", merged);
+        out.put("suggestions", base.getOrDefault("suggestions", List.of()));
+        out.put("rawText", base.getOrDefault("rawText", ""));
+        return out;
     }
 
     /**
