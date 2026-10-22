@@ -597,6 +597,21 @@ export class ApiService {
     }
   }
 
+  /**
+   * Trace 对比 AI 解读；失败时后端仍可能返回 degraded=true 的 200。
+   */
+  static async compareTracesAi(traceIdA: string, traceIdB: string): Promise<AiCompareResult | null> {
+    try {
+      return await request(`/ai/compare-traces`, {
+        method: 'POST',
+        data: { traceIdA, traceIdB },
+        timeout: 60000
+      })
+    } catch {
+      return null
+    }
+  }
+
   /** 控制台运行时设置（告警 / AI；密钥仅 configured 标志） */
   static async getSettings(): Promise<RuntimeSettingsView> {
     return request<RuntimeSettingsView>('/settings')
@@ -938,11 +953,18 @@ export interface AiEvidenceNav {
 
 /** AI 证据项 */
 export interface AiEvidence {
-  type: string
-  ref: string
-  label: string
-  reason: string
+  type?: string
+  ref?: string
+  label?: string
+  reason?: string
   nav?: AiEvidenceNav
+  /** Trace 对比证据字段 */
+  span?: string
+  service?: string
+  durationA?: number
+  durationB?: number
+  delta?: number
+  analysis?: string
 }
 
 /** schemaVersion=1 结构化解读（仍含 markdown 兼容字段） */
@@ -958,10 +980,18 @@ export interface AiExplainResult {
   message?: string
   model?: string
   provider?: string
+  statusLabel?: string
+  reason?: string
   traceId?: string
   hours?: number
   source?: string
   target?: string
+}
+
+/** Trace 对比解读（compare-traces） */
+export interface AiCompareResult extends AiExplainResult {
+  traceIdA?: string
+  traceIdB?: string
 }
 
 /** 设置页里的一条通知渠道（不含密钥明文） */

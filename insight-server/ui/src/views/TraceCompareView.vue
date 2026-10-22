@@ -13,6 +13,9 @@
 
     <SiAlert v-if="hint" tone="warning" role="alert" class="mb-3">{{ hint }}</SiAlert>
     <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
+    <SiAlert v-if="explainHint" :tone="explainResult?.degraded ? 'warning' : 'success'" class="mb-3">
+      {{ explainHint }}
+    </SiAlert>
 
     <div v-if="loading" class="si-compare__loading">
       <i class="fa fa-spinner fa-spin"></i><span class="ms-2">加载对比数据…</span>
@@ -22,6 +25,16 @@
       <div class="si-compare__list-bar mb-2">
         <span class="si-compare__list-bar-label">并排瀑布</span>
         <div class="si-compare__actions">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-info"
+            :disabled="loading || explaining || !canExplain"
+            :title="aiExplainTitle"
+            @click="runCompareExplain"
+          >
+            <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-lightbulb-o'"></i>
+            {{ explaining ? '解读中…' : 'AI 解读' }}
+          </button>
           <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="!canSwap" @click="swapSides">
             <i class="fa fa-exchange"></i> 交换两侧
           </button>
@@ -31,6 +44,14 @@
           </button>
         </div>
       </div>
+
+      <AiExplainPanel
+        v-if="explainResult"
+        :result="explainResult"
+        title="AI 对比解读"
+        :meta="explainMeta"
+        @close="explainResult = null"
+      />
 
       <div class="row g-3 si-compare__panels">
         <div class="col-lg-6">
@@ -108,7 +129,8 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ApiService } from '../services/ApiService'
+import { ApiService, type AiCompareResult } from '../services/ApiService'
+import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import type { SiColumn } from '../components/siTable'
@@ -195,12 +217,25 @@ const router = useRouter()
 const loading = ref(true)
 const loadError = ref('')
 const hint = ref('')
+const explainHint = ref('')
 const traceA = ref('')
 const traceB = ref('')
 const leftSpans = ref<TraceSpanLike[] | null>(null)
 const rightSpans = ref<TraceSpanLike[] | null>(null)
 /** 差分表默认收起，把视口留给瀑布 */
 const diffExpanded = ref(false)
+const explainResult = ref<AiCompareResult | null>(null)
+const explainMeta = ref('')
+const explaining = ref(false)
+const aiStatus = ref({
+  enabled: false,
+  invokeReady: false,
+  provider: '',
+  model: '',
+  baseUrl: '',
+  statusLabel: '未启用',
+  reason: ''
+})
 
 const leftTimeline = computed(() => buildTraceTimeline(leftSpans.value || []))
 const rightTimeline = computed(() => buildTraceTimeline(rightSpans.value || []))
@@ -208,6 +243,23 @@ const diffRows = computed(() =>
   buildOpDurationDiff(leftSpans.value || [], rightSpans.value || [], 40)
 )
 const canSwap = computed(() => !!(traceA.value && traceB.value && !loading.value))
+const canExplain = computed(
+  () =>
+    !!(
+      aiStatus.value.invokeReady &&
+      traceA.value &&
+      traceB.value &&
+      leftSpans.value?.length &&
+      rightSpans.value?.length
+    )
+)
+const aiExplainTitle = computed(() => {
+  if (aiStatus.value.reason) return aiStatus.value.reason
+  if (aiStatus.value.invokeReady) {
+    return `调用 ${aiStatus.value.provider || 'AI'} / ${aiStatus.value.model || 'model'} 对比两条 Trace`
+  }
+  return 'AI 未就绪：请到「设置 → AI 解读」配置'
+})
 
 const shortId = (id: string) => {
   const s = String(id || '')
@@ -234,10 +286,32 @@ const openDetail = (id: string) => {
 
 const swapSides = () => {
   if (!canSwap.value) return
+  explainResult.value = null
+  explainHint.value = ''
   router.replace({
     path: '/traces/compare',
     query: { a: traceB.value, b: traceA.value, hours: hoursForBack() }
   })
+}
+
+const runCompareExplain = async () => {
+  if (!canExplain.value || explaining.value) return
+  explaining.value = true
+  explainHint.value = ''
+  try {
+    const res = await ApiService.compareTracesAi(traceA.value, traceB.value)
+    if (!res) {
+      explainHint.value = '对比解读请求失败（网络或鉴权）'
+      return
+    }
+    explainResult.value = res
+    explainMeta.value = [res.provider, res.model].filter(Boolean).join(' · ')
+    if (res.degraded) {
+      explainHint.value = res.message || res.reason || '已降级：请检查 AI 配置'
+    }
+  } finally {
+    explaining.value = false
+  }
 }
 
 const formatDelta = (delta: number, row: OpDiffRow) => {
@@ -293,6 +367,8 @@ const load = async () => {
   rightSpans.value = null
   loadError.value = ''
   hint.value = ''
+  explainResult.value = null
+  explainHint.value = ''
 
   if (!a || !b) {
     loading.value = false
@@ -329,7 +405,10 @@ const load = async () => {
 }
 
 watch(() => [route.query.a, route.query.b], () => load())
-onMounted(() => load())
+onMounted(async () => {
+  aiStatus.value = await ApiService.getAiStatus()
+  await load()
+})
 </script>
 
 <style scoped>

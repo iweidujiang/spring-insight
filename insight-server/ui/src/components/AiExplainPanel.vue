@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import type { AiEvidence, AiExplainResult } from '../services/ApiService'
+import type { AiCompareResult, AiEvidence, AiExplainResult } from '../services/ApiService'
 
 const props = withDefaults(
   defineProps<{
-    result: AiExplainResult
+    result: AiExplainResult | AiCompareResult
     title?: string
     meta?: string
   }>(),
@@ -23,6 +23,10 @@ const emit = defineEmits<{
 
 const router = useRouter()
 
+const compareResult = computed(() =>
+  props.result.kind === 'compare-traces' ? (props.result as AiCompareResult) : null
+)
+const isCompare = computed(() => !!compareResult.value)
 const summary = computed(() => props.result.summary || props.result.message || '')
 const evidence = computed(() => props.result.evidence || [])
 const suggestions = computed(() => props.result.suggestions || [])
@@ -34,7 +38,8 @@ const modelLine = computed(() => {
   const parts: string[] = []
   if (props.result.provider) parts.push(String(props.result.provider))
   if (props.result.model) parts.push(String(props.result.model))
-  if (props.result.degraded) parts.push('调用失败或已降级')
+  if (props.result.statusLabel) parts.push(String(props.result.statusLabel))
+  else if (props.result.degraded) parts.push('调用失败或已降级')
   return parts.join(' · ')
 })
 const showRawMarkdown = computed(
@@ -43,12 +48,45 @@ const showRawMarkdown = computed(
     !!props.result.markdown &&
     (!summary.value || props.result.markdown.trim() !== summary.value.trim())
 )
+const evidenceTitle = computed(() => (isCompare.value ? '显著差异' : '可疑证据'))
+
+const evidenceLabel = (item: AiEvidence) => {
+  if (item.label) return item.label
+  if (item.span) {
+    const svc = item.service ? ` @ ${item.service}` : ''
+    return `${item.span}${svc}`
+  }
+  return item.ref || '—'
+}
+
+const evidenceReason = (item: AiEvidence) => {
+  if (item.reason) return item.reason
+  const bits: string[] = []
+  if (item.durationA != null || item.durationB != null) {
+    const a = item.durationA != null ? `${item.durationA}ms` : '—'
+    const b = item.durationB != null ? `${item.durationB}ms` : '—'
+    const d =
+      item.delta != null
+        ? `Δ ${item.delta > 0 ? '+' : ''}${item.delta}ms`
+        : ''
+    bits.push(`A ${a} → B ${b}${d ? `（${d}）` : ''}`)
+  }
+  if (item.analysis) bits.push(item.analysis)
+  return bits.join(' · ')
+}
 
 const onEvidence = (item: AiEvidence) => {
   const nav = item.nav
-  if (!nav?.kind) return
+  if (!nav?.kind) {
+    // 对比证据无 spanId 时：跳到 Trace B（变慢侧常更值得看），否则 A
+    const tid =
+      compareResult.value?.traceIdB || compareResult.value?.traceIdA || props.result.traceId
+    if (tid) {
+      router.push({ path: `/traces/${encodeURIComponent(tid)}` })
+    }
+    return
+  }
   if (nav.kind === 'span' && nav.spanId) {
-    // 同页：交给父组件选中；跨 Trace 则跳转
     if (nav.traceId && props.result.traceId && nav.traceId !== props.result.traceId) {
       router.push({ path: `/traces/${encodeURIComponent(nav.traceId)}`, query: { span: nav.spanId } })
       return
@@ -84,7 +122,22 @@ const onEvidence = (item: AiEvidence) => {
   }
 }
 
-const canClick = (item: AiEvidence) => !!item.nav?.kind
+const canClick = (item: AiEvidence) => {
+  if (item.nav?.kind) return true
+  if (isCompare.value) {
+    return !!(
+      compareResult.value?.traceIdA ||
+      compareResult.value?.traceIdB ||
+      props.result.traceId
+    )
+  }
+  return false
+}
+
+const openTrace = (id?: string) => {
+  if (!id) return
+  router.push({ path: `/traces/${encodeURIComponent(id)}` })
+}
 </script>
 
 <template>
@@ -98,18 +151,41 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
       <button type="button" class="btn btn-sm btn-outline-secondary" @click="emit('close')">关闭</button>
     </div>
 
+    <div
+      v-if="compareResult && (compareResult.traceIdA || compareResult.traceIdB)"
+      class="si-ai-panel__trace-links"
+    >
+      <button
+        v-if="compareResult.traceIdA"
+        type="button"
+        class="btn btn-link btn-sm px-0"
+        @click="openTrace(compareResult.traceIdA)"
+      >
+        打开 Trace A
+      </button>
+      <span v-if="compareResult.traceIdA && compareResult.traceIdB" class="text-muted px-1">·</span>
+      <button
+        v-if="compareResult.traceIdB"
+        type="button"
+        class="btn btn-link btn-sm px-0"
+        @click="openTrace(compareResult.traceIdB)"
+      >
+        打开 Trace B
+      </button>
+    </div>
+
     <div v-if="result.degraded" class="si-ai-panel__fail" role="status">
       <i class="fa fa-exclamation-triangle me-1"></i>
-      <span>{{ result.message || summary || 'AI 调用失败或未就绪，已降级为提示信息。' }}</span>
+      <span>{{ result.message || result.reason || summary || 'AI 调用失败或未就绪，已降级为提示信息。' }}</span>
     </div>
 
     <p
-      v-if="summary && (!result.degraded || summary !== (result.message || ''))"
+      v-if="summary && (!result.degraded || summary !== (result.message || result.reason || ''))"
       class="si-ai-panel__summary"
     >{{ summary }}</p>
 
     <div v-if="evidence.length" class="si-ai-panel__block">
-      <h4 class="si-ai-panel__sub">可疑证据</h4>
+      <h4 class="si-ai-panel__sub">{{ evidenceTitle }}</h4>
       <ul class="si-ai-panel__list">
         <li v-for="(item, i) in evidence" :key="i">
           <button
@@ -118,13 +194,13 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
             class="si-ai-panel__ev-btn"
             @click="onEvidence(item)"
           >
-            <strong>{{ item.label || item.ref }}</strong>
-            <span v-if="item.reason" class="si-ai-panel__reason">{{ item.reason }}</span>
+            <strong>{{ evidenceLabel(item) }}</strong>
+            <span v-if="evidenceReason(item)" class="si-ai-panel__reason">{{ evidenceReason(item) }}</span>
             <span class="si-ai-panel__go">查看</span>
           </button>
           <div v-else class="si-ai-panel__ev-static">
-            <strong>{{ item.label || item.ref }}</strong>
-            <span v-if="item.reason" class="si-ai-panel__reason">{{ item.reason }}</span>
+            <strong>{{ evidenceLabel(item) }}</strong>
+            <span v-if="evidenceReason(item)" class="si-ai-panel__reason">{{ evidenceReason(item) }}</span>
           </div>
         </li>
       </ul>
@@ -151,9 +227,10 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
 .si-ai-panel {
   margin-top: 1rem;
   padding: 1rem 1.1rem;
-  border: 1px solid var(--si-border, #d6d3d1);
+  border: 1px solid var(--card-border, var(--si-border, #d6d3d1));
   border-radius: 10px;
-  background: var(--si-paper, #fafaf9);
+  background: var(--card-bg, var(--si-paper, #fafaf9));
+  color: var(--si-ink, #1c1917);
 }
 .si-ai-panel__head {
   display: flex;
@@ -166,6 +243,15 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
   margin: 0;
   font-size: 1rem;
   font-weight: 650;
+  color: var(--si-ink);
+}
+.si-ai-panel__trace-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem;
+  margin: -0.25rem 0 0.65rem;
+  font-size: 0.85rem;
 }
 .si-ai-panel__summary {
   margin: 0 0 0.75rem;
@@ -180,7 +266,7 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
   margin: 0 0 0.75rem;
   padding: 0.55rem 0.7rem;
   border-radius: 8px;
-  border: 1px solid rgba(180, 83, 9, 0.35);
+  border: 1px solid var(--si-warn-bullet-border, rgba(180, 83, 9, 0.35));
   background: var(--si-amber-bg);
   font-size: 0.85rem;
   line-height: 1.45;
@@ -222,16 +308,16 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
   padding: 0.45rem 0.6rem;
   border-radius: 8px;
   border: 1px solid transparent;
-  background: rgba(15, 118, 110, 0.06);
+  background: var(--si-teal-soft, rgba(15, 118, 110, 0.06));
+  color: var(--si-ink);
 }
 .si-ai-panel__ev-btn {
   cursor: pointer;
-  color: inherit;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .si-ai-panel__ev-btn:hover {
-  border-color: rgba(15, 118, 110, 0.35);
-  background: rgba(15, 118, 110, 0.1);
+  border-color: var(--si-form-border, rgba(15, 118, 110, 0.35));
+  background: var(--si-hover-teal, rgba(15, 118, 110, 0.1));
 }
 .si-ai-panel__reason {
   flex: 1 1 12rem;
@@ -241,17 +327,19 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
 .si-ai-panel__go {
   font-size: 0.75rem;
   font-weight: 650;
-  color: #0f766e;
+  color: var(--si-teal, #0f766e);
 }
 .si-ai-panel__suggestions {
   margin: 0;
   padding-left: 1.2rem;
   font-size: 0.9rem;
   line-height: 1.5;
+  color: var(--si-ink);
 }
 .si-ai-panel__raw {
   margin-top: 0.5rem;
   font-size: 0.85rem;
+  color: var(--si-ink-soft);
 }
 .si-ai-panel__md {
   white-space: pre-wrap;
@@ -260,8 +348,9 @@ const canClick = (item: AiEvidence) => !!item.nav?.kind
   font-size: 0.8rem;
   margin: 0.4rem 0 0;
   padding: 0.5rem 0.65rem;
-  background: rgba(0, 0, 0, 0.03);
+  background: var(--si-surface-2, rgba(0, 0, 0, 0.03));
   border-radius: 6px;
+  color: var(--si-ink-soft);
 }
 .si-ai-panel__note {
   margin: 0.5rem 0 0;
