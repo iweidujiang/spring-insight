@@ -1,6 +1,8 @@
 package io.github.iweidujiang.springinsight.server.alert;
 
 import io.github.iweidujiang.springinsight.server.ai.InsightAiExplainService;
+import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetectionResult;
+import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetector;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
 import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettings;
 import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettingsService;
@@ -45,6 +47,7 @@ public class InsightAlertScheduler {
     private final List<InsightAlertChannelSender> channelSenders;
     private final InsightAlertMetrics metrics;
     private final InsightAiExplainService aiExplainService;
+    private final AnomalyDetector anomalyDetector;
 
     /** 服务名 → 上次成功推送的 epoch 毫秒 */
     private final ConcurrentHashMap<String, Long> lastFiredAt = new ConcurrentHashMap<>();
@@ -58,17 +61,20 @@ public class InsightAlertScheduler {
      * @param channelSenders      已注册的推送渠道
      * @param metrics             结果计数
      * @param aiExplainService    可选告警 AI 解读
+     * @param anomalyDetector     无阈值异常检测
      */
     public InsightAlertScheduler(InsightRuntimeSettingsService settingsService,
                                  TraceSpanPersistenceService persistenceService,
                                  List<InsightAlertChannelSender> channelSenders,
                                  InsightAlertMetrics metrics,
-                                 InsightAiExplainService aiExplainService) {
+                                 InsightAiExplainService aiExplainService,
+                                 AnomalyDetector anomalyDetector) {
         this.settingsService = settingsService;
         this.persistenceService = persistenceService;
         this.channelSenders = channelSenders == null ? List.of() : List.copyOf(channelSenders);
         this.metrics = metrics;
         this.aiExplainService = aiExplainService;
+        this.anomalyDetector = anomalyDetector;
     }
 
     /**
@@ -108,13 +114,24 @@ public class InsightAlertScheduler {
     }
 
     /**
-     * 按窗口聚合指标，对超阈值且不在冷却期的服务推送已配置通道。
+     * 按窗口聚合指标；先写入异常检测滑动窗，再对超阈值且不在冷却期的服务推送。
+     * <p>
+     * 异常检测在「告警已启用」时即运行，不依赖通道是否配齐；无规则命中时仍会留下异常标记供 UI 读取。
+     * </p>
      */
     void scan() {
         InsightServerAlertProperties properties = settingsService.effectiveAlert();
         if (!properties.isEnabled()) {
             return;
         }
+
+        int windowMinutes = properties.getWindowMinutes() > 0 ? properties.getWindowMinutes() : 15;
+        long since = Instant.now().minus(windowMinutes, ChronoUnit.MINUTES).toEpochMilli();
+        long now = System.currentTimeMillis();
+        String at = Instant.ofEpochMilli(now).truncatedTo(ChronoUnit.SECONDS).toString();
+        List<Map<String, Object>> rows = persistenceService.getServiceLatencySummariesSince(since, Integer.MAX_VALUE);
+        sampleAnomalies(rows);
+
         if (!canDeliver(properties)) {
             if (warnedNotReady.compareAndSet(false, true)) {
                 log.warn("[告警] 已启用但未配置可用通道（webhook-url、邮件、钉钉、飞书或企业微信机器人）");
@@ -135,11 +152,29 @@ public class InsightAlertScheduler {
             return;
         }
 
-        int windowMinutes = properties.getWindowMinutes() > 0 ? properties.getWindowMinutes() : 15;
-        long since = Instant.now().minus(windowMinutes, ChronoUnit.MINUTES).toEpochMilli();
-        long now = System.currentTimeMillis();
-        String at = Instant.ofEpochMilli(now).truncatedTo(ChronoUnit.SECONDS).toString();
-        scanServices(properties, since, now, at);
+        scanServices(properties, rows, now, at);
+    }
+
+    /**
+     * 复用告警扫描同一批服务指标，写入异常检测窗口。
+     *
+     * @param rows {@link TraceSpanPersistenceService#getServiceLatencySummariesSince} 结果
+     */
+    private void sampleAnomalies(List<Map<String, Object>> rows) {
+        if (rows == null || anomalyDetector == null) {
+            return;
+        }
+        for (Map<String, Object> row : rows) {
+            String service = String.valueOf(row.get("service_name"));
+            double errorRate = number(row.get("error_rate"));
+            long errorCount = (long) number(row.get("error_count"));
+            long p95 = (long) number(row.get("p95_ms"));
+            long spanCount = (long) number(row.get("span_count"));
+            anomalyDetector.detect("error_rate", service, errorRate);
+            anomalyDetector.detect("error_count", service, errorCount);
+            anomalyDetector.detect("latency_p95", service, p95);
+            anomalyDetector.detect("span_count", service, spanCount);
+        }
     }
 
     /**
@@ -158,9 +193,16 @@ public class InsightAlertScheduler {
 
     /**
      * 同一服务上同时看错误率、错误次数、p95 和 Span 数，全部条件成立才推送。
+     *
+     * @param rows 本轮已聚合的服务指标（与异常采样共用）
      */
-    private void scanServices(InsightServerAlertProperties properties, long since, long now, String at) {
-        List<Map<String, Object>> rows = persistenceService.getServiceLatencySummariesSince(since, Integer.MAX_VALUE);
+    private void scanServices(InsightServerAlertProperties properties,
+                              List<Map<String, Object>> rows,
+                              long now,
+                              String at) {
+        if (rows == null) {
+            return;
+        }
         for (Map<String, Object> row : rows) {
             String service = String.valueOf(row.get("service_name"));
             double errorRate = number(row.get("error_rate"));
@@ -214,6 +256,7 @@ public class InsightAlertScheduler {
         payload.put("metric", first.condition().getMetric());
         payload.put("threshold", first.condition().getThreshold());
         payload.put("matchedConditions", matchedConditions(evaluation));
+        attachAnomaly(payload, service, first.condition().getMetric());
         attachAiIfNeeded(payload, properties, service, value);
         boolean delivered = deliver(properties, payload);
         if (delivered) {
@@ -223,6 +266,26 @@ public class InsightAlertScheduler {
                     service, first.condition().getMetric(), value, payload.getOrDefault("aiAttached", false));
         } else {
             metrics.record("failure");
+        }
+    }
+
+    /**
+     * 把本轮异常检测结果挂到告警体（无异常或样本不足也会写入，便于对账）。
+     *
+     * @param payload 告警体
+     * @param service 服务
+     * @param metric  触发指标
+     */
+    private void attachAnomaly(Map<String, Object> payload, String service, String metric) {
+        if (anomalyDetector == null) {
+            return;
+        }
+        AnomalyDetectionResult result = anomalyDetector.latest(metric, service);
+        if (result == null) {
+            result = anomalyDetector.latestAnomalyForService(service);
+        }
+        if (result != null) {
+            payload.put("anomaly", result.toMap());
         }
     }
 

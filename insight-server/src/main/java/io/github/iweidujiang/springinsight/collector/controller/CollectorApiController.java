@@ -1,6 +1,8 @@
 package io.github.iweidujiang.springinsight.collector.controller;
 
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
+import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetectionResult;
+import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetector;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
@@ -41,19 +43,22 @@ public class CollectorApiController {
     private final TraceContextExportService traceContextExportService;
     private final TroubleshootPackExportService troubleshootPackExportService;
     private final SpanStore spanStore;
+    private final AnomalyDetector anomalyDetector;
 
     public CollectorApiController(TraceSpanPersistenceService traceSpanPersistenceService,
                                   TraceSpanCollectorService traceSpanCollectorService,
                                   InsightServerStorageProperties storageProperties,
                                   TraceContextExportService traceContextExportService,
                                   TroubleshootPackExportService troubleshootPackExportService,
-                                  SpanStore spanStore) {
+                                  SpanStore spanStore,
+                                  AnomalyDetector anomalyDetector) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.storageProperties = storageProperties;
         this.traceContextExportService = traceContextExportService;
         this.troubleshootPackExportService = troubleshootPackExportService;
         this.spanStore = spanStore;
+        this.anomalyDetector = anomalyDetector;
     }
 
     /**
@@ -171,11 +176,37 @@ public class CollectorApiController {
             @RequestParam(value = "limit", defaultValue = "20") int limit) {
         try {
             var rows = traceSpanPersistenceService.getServiceLatencySummaries(hours, limit);
-            return ResponseEntity.ok(rows);
+            return ResponseEntity.ok(attachAnomalyMarks(rows));
         } catch (Exception e) {
             log.error("获取服务延迟摘要失败", e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    /**
+     * 把无阈值异常检测结果挂到服务行，便于 UI 在无告警规则命中时仍可标记。
+     *
+     * @param rows 延迟摘要
+     * @return 附带 {@code anomaly} / {@code anomalyDetail} 的行
+     */
+    private List<Map<String, Object>> attachAnomalyMarks(List<Map<String, Object>> rows) {
+        if (rows == null || anomalyDetector == null) {
+            return rows;
+        }
+        for (Map<String, Object> row : rows) {
+            if (row == null) {
+                continue;
+            }
+            String service = String.valueOf(row.getOrDefault("service_name", ""));
+            AnomalyDetectionResult hit = anomalyDetector.latestAnomalyForService(service);
+            if (hit != null && hit.isAnomaly()) {
+                row.put("anomaly", true);
+                row.put("anomalyDetail", hit.toMap());
+            } else {
+                row.put("anomaly", false);
+            }
+        }
+        return rows;
     }
 
     /**

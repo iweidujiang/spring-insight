@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.server.alert;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.ai.InsightAiExplainService;
+import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetector;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.server.settings.InsightRuntimeSettings;
@@ -104,7 +105,8 @@ class InsightAlertSchedulerTest {
                 storeWithSlowSpan(250L),
                 senders(),
                 lastMetrics,
-                mockAi());
+                mockAi(),
+                new AnomalyDetector());
         scheduler.scan();
 
         assertEquals(1, hits.get());
@@ -135,7 +137,8 @@ class InsightAlertSchedulerTest {
                 storeWithOneError(),
                 senders(),
                 lastMetrics,
-                mockAi());
+                mockAi(),
+                new AnomalyDetector());
         scheduler.scan();
         assertEquals(0, hits.get());
         assertEquals(1.0, lastMetrics.count("quiet"));
@@ -156,7 +159,7 @@ class InsightAlertSchedulerTest {
         InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
         when(settings.effectiveAlert()).thenReturn(props);
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
-                settings, persistence, senders(), metrics, mockAi());
+                settings, persistence, senders(), metrics, mockAi(), new AnomalyDetector());
         scheduler.scan();
         scheduler.scan();
         assertEquals(2, hits.get());
@@ -188,7 +191,7 @@ class InsightAlertSchedulerTest {
         when(settings.effectiveAlert()).thenReturn(props);
         when(settings.effectiveChannels()).thenReturn(List.of(channel));
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
-                settings, storeWithOneError(), senders(), lastMetrics, mockAi());
+                settings, storeWithOneError(), senders(), lastMetrics, mockAi(), new AnomalyDetector());
         scheduler.scan();
         assertEquals(1, hits.get());
         assertTrue(body.get().contains("\"serviceName\":\"sca-order\""));
@@ -210,7 +213,8 @@ class InsightAlertSchedulerTest {
                 storeWithOneError(),
                 senders(),
                 lastMetrics,
-                mockAi());
+                mockAi(),
+                new AnomalyDetector());
     }
 
     private static InsightAiExplainService mockAi() {

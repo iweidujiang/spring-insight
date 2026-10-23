@@ -94,7 +94,9 @@ function normalizeLatencyRow(raw: any) {
     avgMs: Number(raw.avg_ms ?? raw.avgMs ?? 0),
     p50Ms: Number(raw.p50_ms ?? raw.p50Ms ?? 0),
     p95Ms: Number(raw.p95_ms ?? raw.p95Ms ?? 0),
-    maxMs: Number(raw.max_ms ?? raw.maxMs ?? 0)
+    maxMs: Number(raw.max_ms ?? raw.maxMs ?? 0),
+    anomaly: Boolean(raw.anomaly),
+    anomalyDetail: raw.anomalyDetail ?? null
   }
 }
 
@@ -116,6 +118,20 @@ export class ApiService {
   static async getServiceLatency(hours: number = 24, limit: number = 20): Promise<any[]> {
     const rows = await requestWithDefault<any[]>(`/services/latency?hours=${hours}&limit=${limit}`, [])
     return rows.map(normalizeLatencyRow)
+  }
+
+  /**
+   * 最近无阈值异常检测结果（告警扫描写入；旧 Server 无接口时返回空）。
+   *
+   * @param limit 条数
+   */
+  static async getAnomalies(limit: number = 20): Promise<any[]> {
+    try {
+      const body = await request<{ items?: any[] }>(`/anomalies?limit=${limit}`)
+      return Array.isArray(body?.items) ? body.items : []
+    } catch {
+      return []
+    }
   }
 
   /**

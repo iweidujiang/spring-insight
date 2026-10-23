@@ -760,6 +760,8 @@ type HealthRow = {
   p95Ms?: number
   p50Ms?: number
   errorCount?: number
+  anomaly?: boolean
+  anomalyDetail?: { message?: string } | null
 }
 
 const healthColumns: SiColumn<HealthRow>[] = [
@@ -767,8 +769,11 @@ const healthColumns: SiColumn<HealthRow>[] = [
     key: 'service',
     label: '服务',
     cellClass: 'si-dashboard__svc',
-    value: (row) => row.serviceName,
-    title: (row) => row.serviceName
+    value: (row) => (row.anomaly ? `${row.serviceName} · 异常` : row.serviceName),
+    title: (row) =>
+      row.anomaly && row.anomalyDetail?.message
+        ? String(row.anomalyDetail.message)
+        : row.serviceName
   },
   { key: 'avg', label: '均耗时', value: (row) => formatMs(row.avgMs || 0) },
   {
@@ -786,7 +791,8 @@ const healthColumns: SiColumn<HealthRow>[] = [
   }
 ]
 
-const healthRowClass = () => 'si-dashboard__diag-row'
+const healthRowClass = (row: HealthRow) =>
+  row.anomaly ? 'si-dashboard__diag-row is-anomaly' : 'si-dashboard__diag-row'
 
 const traceFailed = (tr: any) => !!(tr?.hasError || tr?.statusCode === 'ERROR')
 
@@ -2159,6 +2165,10 @@ onUnmounted(() => {
 
 :deep(.si-dashboard__diag-row) {
   cursor: pointer;
+}
+
+:deep(.si-dashboard__diag-row.is-anomaly) {
+  background: color-mix(in srgb, var(--si-danger, #dc3545) 8%, transparent);
 }
 
 :deep(.si-dashboard__svc) {
