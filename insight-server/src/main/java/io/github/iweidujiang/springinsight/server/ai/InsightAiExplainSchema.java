@@ -60,6 +60,22 @@ public final class InsightAiExplainSchema {
             3. evidence 最多 5 条；suggestions 最多 5 条；summary 不超过 80 字。
             """;
 
+    /** 上线前后变更归因：possibleCauses + suggestions。 */
+    public static final String CHANGE_ATTRIBUTION_JSON_OUTPUT_RULES = """
+            你必须只输出一个 JSON 对象（可包在 ```json 代码块中），不要输出其它说明文字。
+            若模型支持「思考 / reasoning」，最终答案必须写在正式回复正文（content）里，不要只写在思考过程中。
+            字段：
+            {
+              "summary": "一句话说明上线后最显著的变化（含服务名与指标）",
+              "possibleCauses": ["可能原因，最多 5 条"],
+              "suggestions": ["可执行排查建议，最多 5 条"]
+            }
+            规则：
+            1. 只依据用户提供的 JSON（changes 中的 metric/service/before/after/delta），勿编造未出现的服务或错误类型。
+            2. possibleCauses / suggestions 各最多 5 条；summary 不超过 80 字。
+            3. metric 含义：error_rate=错误率(%)；p95_ms=p95 延迟；request_count=请求量；new_error_type=新增错误类型；new_dependency=新增依赖边。
+            """;
+
     private InsightAiExplainSchema() {
     }
 
@@ -291,6 +307,163 @@ public final class InsightAiExplainSchema {
         out.put("structured", Boolean.TRUE.equals(base.get("structured")));
         out.put("summary", base.getOrDefault("summary", ""));
         out.put("evidence", merged);
+        out.put("suggestions", base.getOrDefault("suggestions", List.of()));
+        out.put("rawText", base.getOrDefault("rawText", ""));
+        return out;
+    }
+
+    /**
+     * 组装变更归因响应（summary / changes / possibleCauses / suggestions）。
+     *
+     * @param degraded       是否降级
+     * @param statusLabel    未启用 / 失败 / 超时 / 就绪
+     * @param reason         失败原因；可空
+     * @param model          模型名
+     * @param provider       提供方
+     * @param summary        结论
+     * @param changes        事实变更行
+     * @param possibleCauses 可能原因
+     * @param suggestions    建议
+     * @param hoursBefore    上线前小时
+     * @param hoursAfter     上线后小时
+     * @return 响应 Map
+     */
+    public static Map<String, Object> buildChangeAttributionResponse(boolean degraded,
+                                                                     String statusLabel,
+                                                                     String reason,
+                                                                     String model,
+                                                                     String provider,
+                                                                     String summary,
+                                                                     List<Map<String, Object>> changes,
+                                                                     List<String> possibleCauses,
+                                                                     List<String> suggestions,
+                                                                     int hoursBefore,
+                                                                     int hoursAfter) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("schemaVersion", SCHEMA_VERSION);
+        body.put("kind", "change-attribution");
+        body.put("degraded", degraded);
+        body.put("statusLabel", statusLabel != null ? statusLabel : "");
+        if (StringUtils.hasText(reason)) {
+            body.put("reason", reason);
+            body.put("message", reason);
+        }
+        body.put("model", model != null ? model : "");
+        body.put("provider", provider != null ? provider : "");
+        String sum = StringUtils.hasText(summary) ? summary.trim()
+                : (StringUtils.hasText(reason) ? reason.trim() : "未能自动归因");
+        List<Map<String, Object>> ch = changes != null ? changes : List.of();
+        List<String> causes = possibleCauses != null ? possibleCauses : List.of();
+        List<String> sug = suggestions != null ? suggestions : List.of();
+        body.put("structured", !degraded && StringUtils.hasText(summary));
+        body.put("summary", sum);
+        body.put("changes", ch);
+        body.put("possibleCauses", causes);
+        body.put("suggestions", sug);
+        body.put("markdown", renderChangeAttributionMarkdown(sum, ch, causes, sug) + DISCLAIMER);
+        body.put("hoursBefore", hoursBefore);
+        body.put("hoursAfter", hoursAfter);
+        return body;
+    }
+
+    /**
+     * 变更归因 Markdown。
+     *
+     * @param summary        摘要
+     * @param changes        变更
+     * @param possibleCauses 可能原因
+     * @param suggestions    建议
+     * @return Markdown
+     */
+    public static String renderChangeAttributionMarkdown(String summary,
+                                                         List<Map<String, Object>> changes,
+                                                         List<String> possibleCauses,
+                                                         List<String> suggestions) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("### 结论\n\n");
+        sb.append(StringUtils.hasText(summary) ? summary.trim() : "（无）");
+        sb.append("\n\n");
+        if (changes != null && !changes.isEmpty()) {
+            sb.append("### 显著变更\n\n");
+            for (Map<String, Object> item : changes) {
+                String metric = String.valueOf(item.getOrDefault("metric", ""));
+                String service = String.valueOf(item.getOrDefault("service", ""));
+                Object delta = item.get("delta");
+                sb.append("- **").append(metric);
+                if (StringUtils.hasText(service) && !"null".equals(service)) {
+                    sb.append(" @ ").append(service);
+                }
+                sb.append("**");
+                if (delta != null) {
+                    sb.append("（Δ ").append(delta).append("）");
+                }
+                String label = String.valueOf(item.getOrDefault("label", ""));
+                if (StringUtils.hasText(label) && !"null".equals(label)) {
+                    sb.append("：").append(label);
+                }
+                String target = String.valueOf(item.getOrDefault("target", ""));
+                if (StringUtils.hasText(target) && !"null".equals(target)) {
+                    sb.append(" → ").append(target);
+                }
+                sb.append('\n');
+            }
+            sb.append('\n');
+        }
+        if (possibleCauses != null && !possibleCauses.isEmpty()) {
+            sb.append("### 可能原因\n\n");
+            int i = 1;
+            for (String s : possibleCauses) {
+                if (!StringUtils.hasText(s)) {
+                    continue;
+                }
+                sb.append(i++).append(". ").append(s.trim()).append('\n');
+            }
+            sb.append('\n');
+        }
+        if (suggestions != null && !suggestions.isEmpty()) {
+            sb.append("### 建议\n\n");
+            int i = 1;
+            for (String s : suggestions) {
+                if (!StringUtils.hasText(s)) {
+                    continue;
+                }
+                sb.append(i++).append(". ").append(s.trim()).append('\n');
+            }
+        }
+        return sb.toString().trim();
+    }
+
+    /**
+     * 解析变更归因模型输出；changes 始终用本地事实。
+     *
+     * @param factChanges 本地变更行
+     * @param rawModel    模型原文
+     * @param mapper      Jackson
+     * @return summary / possibleCauses / suggestions / structured
+     */
+    public static Map<String, Object> parseChangeAttributionStructured(List<Map<String, Object>> factChanges,
+                                                                       String rawModel,
+                                                                       ObjectMapper mapper) {
+        Map<String, Object> base = parseStructured(rawModel, mapper);
+        List<String> causes = List.of();
+        String json = extractJsonObject(rawModel != null ? rawModel : "");
+        if (StringUtils.hasText(json) && mapper != null) {
+            try {
+                JsonNode root = mapper.readTree(json);
+                JsonNode causesNode = root.get("possibleCauses");
+                if (causesNode == null) {
+                    causesNode = root.get("possible_causes");
+                }
+                causes = parseSuggestions(causesNode);
+            } catch (Exception ignored) {
+                // 沿用空列表
+            }
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("structured", Boolean.TRUE.equals(base.get("structured")));
+        out.put("summary", base.getOrDefault("summary", ""));
+        out.put("changes", factChanges != null ? factChanges : List.of());
+        out.put("possibleCauses", causes);
         out.put("suggestions", base.getOrDefault("suggestions", List.of()));
         out.put("rawText", base.getOrDefault("rawText", ""));
         return out;

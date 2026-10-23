@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 /**
- * 基于 OpenAI 兼容 Chat Completions 做结构化解读（Trace / 错误聚合 / 拓扑调用链路 / 时段 / Trace 对比）。
+ * 基于 OpenAI 兼容 Chat Completions 做结构化解读（Trace / 错误聚合 / 拓扑调用链路 / 时段 / Trace 对比 / 变更归因）。
  * <p>
  * 配置取自 {@link InsightRuntimeSettingsService#effectiveAi()}；结果为 schemaVersion=1
  *（summary / evidence / suggestions），并保留 markdown 兼容字段。
@@ -312,6 +312,151 @@ public class InsightAiExplainService {
                     String.valueOf(degraded.getOrDefault("summary", "")));
             return degraded;
         }
+    }
+
+    /**
+     * 上线前后变更归因：对比 hoursBefore / hoursAfter 两窗指标，由 AI 给出可能原因与排查建议。
+     *
+     * @param hoursBefore 上线前窗口小时
+     * @param hoursAfter  上线后窗口小时（相对当前时刻）
+     * @return 结构化结果（含 changes / possibleCauses）；降级时 degraded=true
+     */
+    public Map<String, Object> explainChangeAttribution(int hoursBefore, int hoursAfter) {
+        InsightAiChangeAttribution.WindowBounds bounds =
+                InsightAiChangeAttribution.bounds(hoursBefore, hoursAfter, System.currentTimeMillis());
+        int hb = bounds.hoursBefore();
+        int ha = bounds.hoursAfter();
+        String subject = hb + "h|" + ha + "h";
+
+        Map<String, Object> beforeWin = persistenceService.summarizeChangeWindow(
+                bounds.beforeFrom(), bounds.beforeTo());
+        Map<String, Object> afterWin = persistenceService.summarizeChangeWindow(
+                bounds.afterFrom(), bounds.afterTo());
+        List<Map<String, Object>> changes = InsightAiChangeAttribution.diffChanges(beforeWin, afterWin);
+        String factSummary = InsightAiChangeAttribution.factSummary(changes, hb, ha);
+
+        InsightServerAiProperties properties = settingsService.effectiveAi();
+        Map<String, Object> gate = changeAttributionGateOrNull(properties, changes, factSummary, hb, ha);
+        if (gate != null) {
+            auditLog.record("change-attribution", subject, true, properties.getModel(),
+                    String.valueOf(gate.getOrDefault("summary", "")));
+            return gate;
+        }
+
+        if (changes.isEmpty()) {
+            Map<String, Object> empty = InsightAiExplainSchema.buildChangeAttributionResponse(
+                    false, "就绪", null,
+                    properties.getModel(), properties.getProvider(),
+                    factSummary, List.of(), List.of(),
+                    List.of("可扩大 hoursBefore / hoursAfter，或确认近期确有流量与发布"),
+                    hb, ha);
+            auditLog.record("change-attribution", subject, false, properties.getModel(), factSummary);
+            return empty;
+        }
+
+        Map<String, Object> payload = InsightAiChangeAttribution.buildPayload(
+                bounds, beforeWin, afterWin, changes);
+        try {
+            String raw = callChatCompletions(
+                    properties,
+                    """
+                            你是 Spring Insight 变更归因助手。以下是一个服务上线前后的指标对比（before=上线前窗口，after=上线后窗口）。
+                            请分析可能的原因和排查建议。
+                            """ + InsightAiExplainSchema.CHANGE_ATTRIBUTION_JSON_OUTPUT_RULES,
+                    "请解读以下上线前后变更：\n```json\n"
+                            + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload)
+                            + "\n```");
+            Map<String, Object> parsed = InsightAiExplainSchema.parseChangeAttributionStructured(
+                    changes, raw, objectMapper);
+            if (!InsightAiExplainSchema.isStructuredOk(parsed)) {
+                String msg = String.valueOf(parsed.getOrDefault("summary",
+                        "模型未输出结构化结论。可换非推理模型，或增大 max_tokens 后重试。"));
+                Map<String, Object> degraded = InsightAiExplainSchema.buildChangeAttributionResponse(
+                        true, "失败", msg,
+                        properties.getModel(), properties.getProvider(),
+                        msg, changes, List.of(), List.of(), hb, ha);
+                auditLog.record("change-attribution", subject, true, properties.getModel(), msg);
+                return degraded;
+            }
+            @SuppressWarnings("unchecked")
+            List<String> causes = (List<String>) parsed.getOrDefault("possibleCauses", List.of());
+            @SuppressWarnings("unchecked")
+            List<String> suggestions = (List<String>) parsed.getOrDefault("suggestions", List.of());
+            String summary = String.valueOf(parsed.getOrDefault("summary", factSummary));
+            Map<String, Object> ok = InsightAiExplainSchema.buildChangeAttributionResponse(
+                    false, "就绪", null,
+                    properties.getModel(), properties.getProvider(),
+                    summary, changes, causes, suggestions, hb, ha);
+            auditLog.record("change-attribution", subject, false, properties.getModel(), summary);
+            return ok;
+        } catch (HttpTimeoutException e) {
+            log.warn("[AI] 变更归因超时: {} error={}", subject, e.getMessage());
+            Map<String, Object> degraded = InsightAiExplainSchema.buildChangeAttributionResponse(
+                    true, "超时", "模型调用超时，请稍后重试或增大 timeout。",
+                    properties.getModel(), properties.getProvider(),
+                    factSummary, changes, List.of(), List.of(), hb, ha);
+            auditLog.record("change-attribution", subject, true, properties.getModel(),
+                    String.valueOf(degraded.getOrDefault("summary", "")));
+            return degraded;
+        } catch (Exception e) {
+            log.warn("[AI] 变更归因失败: {} error={}", subject, e.getMessage());
+            String reason = "模型调用失败：" + safeMsg(e);
+            if (isTimeoutMessage(e)) {
+                Map<String, Object> degraded = InsightAiExplainSchema.buildChangeAttributionResponse(
+                        true, "超时", "模型调用超时，请稍后重试或增大 timeout。",
+                        properties.getModel(), properties.getProvider(),
+                        factSummary, changes, List.of(), List.of(), hb, ha);
+                auditLog.record("change-attribution", subject, true, properties.getModel(),
+                        String.valueOf(degraded.getOrDefault("summary", "")));
+                return degraded;
+            }
+            Map<String, Object> degraded = InsightAiExplainSchema.buildChangeAttributionResponse(
+                    true, "失败", reason,
+                    properties.getModel(), properties.getProvider(),
+                    factSummary, changes, List.of(), List.of(), hb, ha);
+            auditLog.record("change-attribution", subject, true, properties.getModel(),
+                    String.valueOf(degraded.getOrDefault("summary", "")));
+            return degraded;
+        }
+    }
+
+    /**
+     * 变更归因门禁：未启用 / 未配齐 / provider 不支持（仍返回本地 changes）。
+     *
+     * @param properties   AI 配置
+     * @param changes      事实变更
+     * @param factSummary  事实摘要
+     * @param hoursBefore  上线前小时
+     * @param hoursAfter   上线后小时
+     * @return 降级体或 null
+     */
+    private Map<String, Object> changeAttributionGateOrNull(InsightServerAiProperties properties,
+                                                            List<Map<String, Object>> changes,
+                                                            String factSummary,
+                                                            int hoursBefore,
+                                                            int hoursAfter) {
+        if (!properties.isEnabled()) {
+            return InsightAiExplainSchema.buildChangeAttributionResponse(
+                    true, "未启用",
+                    "AI 未启用。请到控制台「设置」打开 AI 后再试。",
+                    properties.getModel(), properties.getProvider(),
+                    factSummary, changes, List.of(), List.of(), hoursBefore, hoursAfter);
+        }
+        if (!properties.isInvokeReady()) {
+            return InsightAiExplainSchema.buildChangeAttributionResponse(
+                    true, "失败",
+                    "AI 已启用但未配齐 base-url / api-key。请到「设置」页填写后重试。",
+                    properties.getModel(), properties.getProvider(),
+                    factSummary, changes, List.of(), List.of(), hoursBefore, hoursAfter);
+        }
+        if (!isOpenAiCompatible(properties.getProvider())) {
+            return InsightAiExplainSchema.buildChangeAttributionResponse(
+                    true, "失败",
+                    "当前仅支持 provider=openai-compatible（可用 DeepSeek / OpenAI / 兼容网关）。",
+                    properties.getModel(), properties.getProvider(),
+                    factSummary, changes, List.of(), List.of(), hoursBefore, hoursAfter);
+        }
+        return null;
     }
 
     /**

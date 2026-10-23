@@ -127,6 +127,47 @@ public class InsightAiController {
     }
 
     /**
+     * 上线前后变更归因：对比两窗错误率 / p95 / 请求量与新增错误类型、依赖边。
+     *
+     * @param body {@code hoursBefore} / {@code hoursAfter}，缺省均为 2
+     * @return summary / changes / possibleCauses / suggestions
+     */
+    @PostMapping("/ai/change-attribution")
+    public ResponseEntity<?> changeAttribution(@RequestBody(required = false) Map<String, Object> body) {
+        int hoursBefore = intOrDefault(body, "hoursBefore", InsightAiChangeAttribution.DEFAULT_HOURS);
+        int hoursAfter = intOrDefault(body, "hoursAfter", InsightAiChangeAttribution.DEFAULT_HOURS);
+        try {
+            return ResponseEntity.ok(explainService.explainChangeAttribution(hoursBefore, hoursAfter));
+        } catch (Exception e) {
+            log.error("[AI] 变更归因未预期异常: before={} after={}", hoursBefore, hoursAfter, e);
+            return ResponseEntity.ok(InsightAiExplainSchema.buildChangeAttributionResponse(
+                    true, "失败", "内部错误，请稍后重试",
+                    "", "", "", List.of(), List.of(), List.of(), hoursBefore, hoursAfter));
+        }
+    }
+
+    /**
+     * @param body 请求体
+     * @param key  字段名
+     * @param def  缺省
+     * @return 解析后的整数
+     */
+    private static int intOrDefault(Map<String, Object> body, String key, int def) {
+        if (body == null || !body.containsKey(key) || body.get(key) == null) {
+            return def;
+        }
+        Object v = body.get(key);
+        if (v instanceof Number n) {
+            return n.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(v).trim());
+        } catch (NumberFormatException e) {
+            return def;
+        }
+    }
+
+    /**
      * 最近 AI 调用审计（含摘要）。
      *
      * @param limit 条数

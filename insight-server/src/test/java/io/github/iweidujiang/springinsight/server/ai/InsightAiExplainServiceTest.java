@@ -147,6 +147,74 @@ class InsightAiExplainServiceTest {
     }
 
     /**
+     * 变更归因：AI 未启用返回降级，但仍带本地 changes。
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void changeAttribution_disabledReturnsDegradedWithChanges() {
+        InsightAiExplainService svc = serviceWithStore(
+                props(false, "http://127.0.0.1:1/v1", "k"), changeAttributionStore());
+        Map<String, Object> body = svc.explainChangeAttribution(2, 2);
+        assertTrue(Boolean.TRUE.equals(body.get("degraded")));
+        assertEquals("未启用", body.get("statusLabel"));
+        assertEquals("change-attribution", body.get("kind"));
+        List<Map<String, Object>> changes = (List<Map<String, Object>>) body.get("changes");
+        assertNotNull(changes);
+        assertTrue(changes.stream().anyMatch(c -> "error_rate".equals(c.get("metric"))
+                && "sca-user".equals(c.get("service"))));
+    }
+
+    /**
+     * 变更归因：有显著差异时经 Chat Completions 返回结构化结论。
+     *
+     * @throws Exception mock 失败
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void changeAttribution_successViaCompatibleApi() throws Exception {
+        AtomicInteger hits = new AtomicInteger();
+        int port = startMockLlm(hits, 200,
+                "{\"choices\":[{\"message\":{\"content\":\"{\\\"summary\\\":\\\"上线后 sca-user 错误率从 0% 升至 100%\\\",\\\"possibleCauses\\\":[\\\"发布引入空指针\\\"],\\\"suggestions\\\":[\\\"查 sca-user 最近错误 Trace\\\"]}\"}}]}");
+
+        InsightServerAiProperties p = props(true, "http://127.0.0.1:" + port + "/v1", "sk-test");
+        p.setModel("deepseek-chat");
+        p.setProvider("deepseek");
+        InsightAiExplainService svc = serviceWithStore(p, changeAttributionStore());
+
+        Map<String, Object> body = svc.explainChangeAttribution(2, 2);
+        assertEquals(1, hits.get());
+        assertFalse(Boolean.TRUE.equals(body.get("degraded")));
+        assertEquals("就绪", body.get("statusLabel"));
+        assertTrue(String.valueOf(body.get("summary")).contains("sca-user"));
+        List<Map<String, Object>> changes = (List<Map<String, Object>>) body.get("changes");
+        assertFalse(changes.isEmpty());
+        List<String> causes = (List<String>) body.get("possibleCauses");
+        assertTrue(causes.stream().anyMatch(s -> s.contains("空指针")));
+        List<String> suggestions = (List<String>) body.get("suggestions");
+        assertTrue(suggestions.stream().anyMatch(s -> s.contains("错误")));
+    }
+
+    /**
+     * 变更归因：上游失败降级，仍返回事实 changes。
+     *
+     * @throws Exception mock 失败
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void changeAttribution_upstreamErrorDegrades() throws Exception {
+        AtomicInteger hits = new AtomicInteger();
+        int port = startMockLlm(hits, 500, "{\"error\":\"boom\"}");
+        InsightServerAiProperties p = props(true, "http://127.0.0.1:" + port + "/v1", "sk-test");
+        InsightAiExplainService svc = serviceWithStore(p, changeAttributionStore());
+        Map<String, Object> body = svc.explainChangeAttribution(2, 2);
+        assertEquals(1, hits.get());
+        assertTrue(Boolean.TRUE.equals(body.get("degraded")));
+        assertEquals("失败", body.get("statusLabel"));
+        List<Map<String, Object>> changes = (List<Map<String, Object>>) body.get("changes");
+        assertFalse(changes.isEmpty());
+    }
+
+    /**
      * 无 key 时 degraded。
      */
     @Test
@@ -471,6 +539,49 @@ class InsightAiExplainServiceTest {
         span.setStartTime(System.currentTimeMillis());
         store.saveAll(List.of(span));
         return new TraceContextExportService(store);
+    }
+
+    /**
+     * 上线前 2h 无错误、上线后 2h sca-user 全错；另有新增依赖边 order-api。
+     */
+    private static InMemorySpanStore changeAttributionStore() {
+        InsightServerStorageProperties storage = new InsightServerStorageProperties();
+        InMemorySpanStore store = new InMemorySpanStore(storage, "memory");
+        long now = System.currentTimeMillis();
+        long hour = 3_600_000L;
+        // before 窗：now-4h .. now-2h，全部成功
+        TraceSpan beforeOk = new TraceSpan();
+        beforeOk.setTraceId("tb1");
+        beforeOk.setSpanId("b1");
+        beforeOk.setServiceName("sca-user");
+        beforeOk.setOperationName("GET /user");
+        beforeOk.setDurationMs(30L);
+        beforeOk.setStartTime(now - 3 * hour);
+        beforeOk.setSuccess(true);
+        beforeOk.setRemoteService("user-db");
+        // after 窗：错误
+        TraceSpan afterErr = new TraceSpan();
+        afterErr.setTraceId("ta1");
+        afterErr.setSpanId("a1");
+        afterErr.setServiceName("sca-user");
+        afterErr.setOperationName("GET /user");
+        afterErr.setDurationMs(40L);
+        afterErr.setStartTime(now - hour / 2);
+        afterErr.setSuccess(false);
+        afterErr.setStatusCode("ERROR");
+        afterErr.setErrorMessage("NullPointerException");
+        afterErr.setRemoteService("user-db");
+        TraceSpan afterEdge = new TraceSpan();
+        afterEdge.setTraceId("ta2");
+        afterEdge.setSpanId("a2");
+        afterEdge.setServiceName("sca-user");
+        afterEdge.setOperationName("GET /profile");
+        afterEdge.setDurationMs(20L);
+        afterEdge.setStartTime(now - hour / 3);
+        afterEdge.setSuccess(true);
+        afterEdge.setRemoteService("order-api");
+        store.saveAll(List.of(beforeOk, afterErr, afterEdge));
+        return store;
     }
 
     /** 两条 Trace：同名 GET /order 耗时 100 vs 300（差异 &gt; 20%）。 */

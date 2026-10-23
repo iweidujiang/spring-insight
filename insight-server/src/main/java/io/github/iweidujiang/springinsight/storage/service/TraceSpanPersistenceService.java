@@ -1043,6 +1043,127 @@ public class TraceSpanPersistenceService {
     }
 
     /**
+     * 变更归因用半开区间聚合：按服务请求量 / 错误率 / p95、错误类型、依赖边。
+     * <p>
+     * {@code fromInclusiveMs <= 0} 不设下界；{@code toExclusiveMs <= 0} 不设上界。
+     * </p>
+     *
+     * @param fromInclusiveMs 起始（含）
+     * @param toExclusiveMs   结束（不含）
+     * @return services / errorTypes / edges / spanCount / errorSpanCount
+     */
+    public Map<String, Object> summarizeChangeWindow(long fromInclusiveMs, long toExclusiveMs) {
+        long spanCount = 0L;
+        long errorSpanCount = 0L;
+        Map<String, long[]> byService = new HashMap<>();
+        Map<String, List<Long>> durationsByService = new HashMap<>();
+        Map<String, Map<String, Object>> errorTypeBuckets = new HashMap<>();
+        Map<String, long[]> edgeAgg = new HashMap<>();
+
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (s == null) {
+                continue;
+            }
+            long t = n(s.getStartTime());
+            if (fromInclusiveMs > 0L && t < fromInclusiveMs) {
+                continue;
+            }
+            if (toExclusiveMs > 0L && t >= toExclusiveMs) {
+                continue;
+            }
+            spanCount++;
+            boolean err = isError(s);
+            if (err) {
+                errorSpanCount++;
+            }
+            String name = s.getServiceName();
+            if (name != null && !name.isBlank()) {
+                long[] ea = byService.computeIfAbsent(name, x -> new long[]{0L, 0L});
+                ea[0]++;
+                if (err) {
+                    ea[1]++;
+                }
+                long dur = n(s.getDurationMs());
+                if (dur <= 0 && s.getEndTime() != null) {
+                    dur = Math.max(0L, n(s.getEndTime()) - t);
+                }
+                durationsByService.computeIfAbsent(name, x -> new ArrayList<>()).add(Math.max(0L, dur));
+            }
+            if (err) {
+                ErrorSpanClassifier.Classification c = ErrorSpanClassifier.classify(s);
+                String mapKey = c.kind() + "|" + c.key();
+                Map<String, Object> row = errorTypeBuckets.computeIfAbsent(mapKey, k -> {
+                    Map<String, Object> init = new LinkedHashMap<>();
+                    init.put("category", c.kind());
+                    init.put("key", c.key());
+                    init.put("label", c.label());
+                    init.put("count", 0L);
+                    return init;
+                });
+                row.put("count", ((Number) row.get("count")).longValue() + 1L);
+            }
+            if (!isTopologyExcludedRemote(s)) {
+                String remote = s.getRemoteService();
+                if (remote != null && !remote.isBlank()) {
+                    String src = name != null ? name : "";
+                    String key = src + "\0" + remote;
+                    long[] a = edgeAgg.computeIfAbsent(key, x -> new long[]{0L});
+                    a[0]++;
+                }
+            }
+        }
+
+        List<Map<String, Object>> services = new ArrayList<>();
+        for (Map.Entry<String, long[]> e : byService.entrySet()) {
+            long total = e.getValue()[0];
+            long err = e.getValue()[1];
+            List<Long> durs = durationsByService.getOrDefault(e.getKey(), List.of());
+            List<Long> sorted = new ArrayList<>(durs);
+            sorted.sort(Long::compareTo);
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("serviceName", e.getKey());
+            row.put("requestCount", total);
+            row.put("errorCount", err);
+            row.put("errorRate", total > 0 ? Math.round((err * 10000.0 / total)) / 100.0 : 0.0);
+            row.put("p95Ms", sorted.isEmpty() ? 0L : percentile(sorted, 0.95));
+            services.add(row);
+        }
+        services.sort((a, b) -> Long.compare(
+                ((Number) b.get("requestCount")).longValue(),
+                ((Number) a.get("requestCount")).longValue()));
+
+        List<Map<String, Object>> errorTypes = new ArrayList<>(errorTypeBuckets.values());
+        errorTypes.sort((a, b) -> Long.compare(
+                ((Number) b.get("count")).longValue(),
+                ((Number) a.get("count")).longValue()));
+
+        List<Map<String, Object>> edges = new ArrayList<>();
+        for (Map.Entry<String, long[]> e : edgeAgg.entrySet()) {
+            long cnt = e.getValue()[0];
+            if (cnt <= 0) {
+                continue;
+            }
+            String[] parts = e.getKey().split("\0", 2);
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("sourceService", parts[0]);
+            row.put("targetService", parts.length > 1 ? parts[1] : "");
+            row.put("callCount", cnt);
+            edges.add(row);
+        }
+        edges.sort((a, b) -> Long.compare(
+                ((Number) b.get("callCount")).longValue(),
+                ((Number) a.get("callCount")).longValue()));
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("spanCount", spanCount);
+        body.put("errorSpanCount", errorSpanCount);
+        body.put("services", services);
+        body.put("errorTypes", errorTypes);
+        body.put("edges", edges);
+        return body;
+    }
+
+    /**
      * @param serviceName 服务名
      * @param limit       条数
      * @return 该服务最近 Span
