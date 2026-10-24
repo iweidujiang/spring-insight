@@ -1154,6 +1154,11 @@ export interface RuntimeSettingsView {
     quietHoursStart?: string
     quietHoursEnd?: string
     quietHoursZone?: string
+    escalation?: {
+      enabled: boolean
+      afterMinutes: number
+      channelId: string
+    }
     email: {
       enabled: boolean
       host: string
@@ -1198,6 +1203,11 @@ export interface RuntimeSettingsSaveBody {
     quietHoursStart: string
     quietHoursEnd: string
     quietHoursZone: string
+    escalation?: {
+      enabled: boolean
+      afterMinutes: number
+      channelId: string
+    }
     email: {
       enabled: boolean
       host: string

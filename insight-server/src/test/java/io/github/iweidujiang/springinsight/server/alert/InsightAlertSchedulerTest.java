@@ -25,6 +25,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -46,6 +49,9 @@ class InsightAlertSchedulerTest {
     void stopServer() {
         if (server != null) {
             server.stop(0);
+        }
+        if (escalateServer != null) {
+            escalateServer.stop(0);
         }
     }
 
@@ -168,6 +174,74 @@ class InsightAlertSchedulerTest {
     }
 
     /**
+     * 持续未恢复超过阈值时向升级渠道发送一次；再次扫描不重复升级；恢复后清除状态。
+     *
+     * @throws IOException 起本地 HTTP 失败
+     */
+    @Test
+    void escalatesOnceThenStopsAfterRecovery() throws IOException {
+        AtomicInteger firstHits = new AtomicInteger();
+        AtomicInteger escalateHits = new AtomicInteger();
+        AtomicReference<String> escalateBody = new AtomicReference<>();
+        int firstPort = startHook(204, firstHits, new AtomicReference<>());
+        int escPort = startHookEscalation(204, escalateHits, escalateBody);
+
+        InsightServerAlertProperties props = baseProps(firstPort, "error_rate", 10.0, 60);
+        InsightRuntimeSettings.ChannelConfig first = new InsightRuntimeSettings.ChannelConfig();
+        first.setId("dingtalk-main");
+        first.setType("webhook");
+        first.setEnabled(true);
+        first.setWebhookUrl("http://127.0.0.1:" + firstPort + "/hook");
+        InsightRuntimeSettings.ChannelConfig mail = new InsightRuntimeSettings.ChannelConfig();
+        mail.setId("email-escalation");
+        mail.setType("webhook");
+        mail.setEnabled(true);
+        mail.setWebhookUrl("http://127.0.0.1:" + escPort + "/escalate");
+
+        InsightRuntimeSettings.AlertEscalation escalation = new InsightRuntimeSettings.AlertEscalation();
+        escalation.setEnabled(true);
+        escalation.setAfterMinutes(30);
+        escalation.setChannelId("email-escalation");
+        InsightRuntimeSettings.AlertSettings alertSettings = new InsightRuntimeSettings.AlertSettings();
+        alertSettings.setEnabled(true);
+        alertSettings.setEscalation(escalation);
+        InsightRuntimeSettings snap = new InsightRuntimeSettings();
+        snap.setAlert(alertSettings);
+
+        lastMetrics = new InsightAlertMetrics(new SimpleMeterRegistry());
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAlert()).thenReturn(props);
+        when(settings.effectiveChannels()).thenReturn(List.of(first, mail));
+        when(settings.snapshot()).thenReturn(snap);
+
+        TraceSpanPersistenceService firing = storeWithOneError();
+        InsightAlertScheduler scheduler = new InsightAlertScheduler(
+                settings, firing, senders(), lastMetrics, mockAi(), new AnomalyDetector());
+
+        scheduler.scan();
+        assertEquals(1, firstHits.get());
+        assertEquals(0, escalateHits.get());
+        assertNotNull(scheduler.activeAlert("sca-order"));
+        assertFalse(scheduler.activeAlert("sca-order").escalated());
+
+        scheduler.putActiveAlert("sca-order", System.currentTimeMillis() - 31 * 60_000L, false);
+        scheduler.scan();
+        assertEquals(1, escalateHits.get());
+        assertTrue(escalateBody.get().contains("\"escalation\":true"));
+        assertTrue(escalateBody.get().contains("durationMinutes"));
+        assertTrue(scheduler.activeAlert("sca-order").escalated());
+
+        scheduler.scan();
+        assertEquals(1, escalateHits.get());
+
+        InsightAlertScheduler recovered = new InsightAlertScheduler(
+                settings, storeAllOk(), senders(), lastMetrics, mockAi(), new AnomalyDetector());
+        recovered.putActiveAlert("sca-order", System.currentTimeMillis() - 31 * 60_000L, true);
+        recovered.scan();
+        assertNull(recovered.activeAlert("sca-order"));
+    }
+
+    /**
      * 保存了渠道列表时，按渠道地址发送，不再使用旧的 Webhook 字段。
      */
     @Test
@@ -256,6 +330,33 @@ class InsightAlertSchedulerTest {
         ok.setStartTime(System.currentTimeMillis());
         persistence.saveTraceSpans(List.of(err, ok));
         return persistence;
+    }
+
+    private static TraceSpanPersistenceService storeAllOk() {
+        InsightServerStorageProperties storage = new InsightServerStorageProperties();
+        InMemorySpanStore store = new InMemorySpanStore(storage, "memory");
+        TraceSpanPersistenceService persistence = new TraceSpanPersistenceService(store);
+        TraceSpan ok = new TraceSpan();
+        ok.setServiceName("sca-order");
+        ok.setSuccess(true);
+        ok.setStatusCode("OK");
+        ok.setStartTime(System.currentTimeMillis());
+        persistence.saveTraceSpans(List.of(ok));
+        return persistence;
+    }
+
+    private HttpServer escalateServer;
+
+    private int startHookEscalation(int status, AtomicInteger hits, AtomicReference<String> body) throws IOException {
+        escalateServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        escalateServer.createContext("/escalate", exchange -> {
+            hits.incrementAndGet();
+            body.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            exchange.sendResponseHeaders(status, -1);
+            exchange.close();
+        });
+        escalateServer.start();
+        return escalateServer.getAddress().getPort();
     }
 
     private static TraceSpanPersistenceService storeWithSlowSpan(long durationMs) {

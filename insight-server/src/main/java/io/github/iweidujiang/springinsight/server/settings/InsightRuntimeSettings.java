@@ -101,6 +101,25 @@ public class InsightRuntimeSettings {
         private FeishuSettings feishu;
         /** 缺省为 null，避免旧控制台保存时把未提交的企业微信配置清空 */
         private WecomSettings wecom;
+        /**
+         * 未恢复升级。缺省为 null，避免旧控制台保存时清空。
+         */
+        private AlertEscalation escalation;
+    }
+
+    /**
+     * 告警持续未恢复时的二次通知升级。
+     *
+     * @author 苏渡苇
+     * @since 2026-10-24
+     */
+    @Data
+    public static class AlertEscalation {
+        private boolean enabled = false;
+        /** 持续未恢复超过该分钟数后升级；默认 30 */
+        private int afterMinutes = 30;
+        /** 升级通知使用的渠道 id（{@link ChannelConfig#getId()}） */
+        private String channelId = "";
     }
 
     /**

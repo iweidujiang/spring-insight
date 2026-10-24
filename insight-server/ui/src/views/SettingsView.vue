@@ -142,6 +142,33 @@
             </SiFormField>
           </SiFormBlock>
 
+          <SiFormBlock
+            title="告警升级"
+            icon="fa-level-up"
+            description="持续未恢复超过设定时长后，向指定渠道再发一次升级通知（同一告警只升一次）。"
+          >
+            <template #switch>
+              <SiSwitchField id="esc-enabled" v-model="form.alert.escalation!.enabled" label="启用升级" flush />
+            </template>
+            <SiFormField label="持续未恢复（分钟）" field-id="esc-after">
+              <input
+                id="esc-after"
+                v-model.number="form.alert.escalation!.afterMinutes"
+                class="form-control"
+                type="number"
+                min="1"
+              />
+            </SiFormField>
+            <SiFormField label="升级渠道" field-id="esc-channel" span="wide">
+              <select id="esc-channel" v-model="form.alert.escalation!.channelId" class="form-select">
+                <option value="">请选择渠道</option>
+                <option v-for="ch in channels" :key="'esc-' + ch.id" :value="ch.id">
+                  {{ ch.name || ch.id }}（{{ ch.type }}）
+                </option>
+              </select>
+            </SiFormField>
+          </SiFormBlock>
+
           <div class="si-channels">
             <div class="si-channels__head">
               <h4 class="si-settings__block-title"><i class="fa fa-share-alt me-2"></i>通知渠道</h4>
@@ -886,6 +913,11 @@ const form = reactive<RuntimeSettingsSaveBody>({
     quietHoursStart: '22:00',
     quietHoursEnd: '08:00',
     quietHoursZone: '',
+    escalation: {
+      enabled: false,
+      afterMinutes: 30,
+      channelId: ''
+    },
     email: {
       enabled: false,
       host: '',
@@ -1022,6 +1054,11 @@ async function load() {
     form.alert.quietHoursStart = data.alert?.quietHoursStart || '22:00'
     form.alert.quietHoursEnd = data.alert?.quietHoursEnd || '08:00'
     form.alert.quietHoursZone = data.alert?.quietHoursZone || ''
+    form.alert.escalation = {
+      enabled: !!data.alert?.escalation?.enabled,
+      afterMinutes: Number(data.alert?.escalation?.afterMinutes ?? 30) || 30,
+      channelId: data.alert?.escalation?.channelId || ''
+    }
     const email = data.alert?.email
     form.alert.email.enabled = !!email?.enabled
     form.alert.email.host = email?.host || ''

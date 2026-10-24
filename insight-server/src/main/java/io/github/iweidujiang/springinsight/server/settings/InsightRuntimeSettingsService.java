@@ -309,6 +309,16 @@ public class InsightRuntimeSettingsService {
             e.setSsl(p.isSsl());
             out.setEmail(e);
         }
+        if (patch.getEscalation() != null) {
+            InsightRuntimeSettings.AlertEscalation esc = out.getEscalation() != null
+                    ? deepCopyEscalation(out.getEscalation())
+                    : new InsightRuntimeSettings.AlertEscalation();
+            InsightRuntimeSettings.AlertEscalation p = patch.getEscalation();
+            esc.setEnabled(p.isEnabled());
+            esc.setAfterMinutes(p.getAfterMinutes() > 0 ? p.getAfterMinutes() : 30);
+            esc.setChannelId(nullToEmpty(p.getChannelId()));
+            out.setEscalation(esc);
+        }
         return out;
     }
 
@@ -347,6 +357,13 @@ public class InsightRuntimeSettingsService {
         m.put("quietHoursStart", nullToEmpty(a.getQuietHoursStart()));
         m.put("quietHoursEnd", nullToEmpty(a.getQuietHoursEnd()));
         m.put("quietHoursZone", nullToEmpty(a.getQuietHoursZone()));
+        InsightRuntimeSettings.AlertEscalation esc = a.getEscalation() != null
+                ? a.getEscalation() : new InsightRuntimeSettings.AlertEscalation();
+        Map<String, Object> escalation = new LinkedHashMap<>();
+        escalation.put("enabled", esc.isEnabled());
+        escalation.put("afterMinutes", esc.getAfterMinutes() > 0 ? esc.getAfterMinutes() : 30);
+        escalation.put("channelId", nullToEmpty(esc.getChannelId()));
+        m.put("escalation", escalation);
         InsightRuntimeSettings.EmailSettings e = a.getEmail() != null ? a.getEmail() : new InsightRuntimeSettings.EmailSettings();
         Map<String, Object> email = new LinkedHashMap<>();
         email.put("enabled", e.isEnabled());
@@ -837,6 +854,23 @@ public class InsightRuntimeSettingsService {
         c.setDingtalk(deepCopyDingtalk(a.getDingtalk()));
         c.setFeishu(deepCopyFeishu(a.getFeishu()));
         c.setWecom(deepCopyWecom(a.getWecom()));
+        c.setEscalation(deepCopyEscalation(a.getEscalation()));
+        return c;
+    }
+
+    /**
+     * @param e 升级配置，可空
+     * @return 副本；入参为空时返回 null
+     */
+    private static InsightRuntimeSettings.AlertEscalation deepCopyEscalation(
+            InsightRuntimeSettings.AlertEscalation e) {
+        if (e == null) {
+            return null;
+        }
+        InsightRuntimeSettings.AlertEscalation c = new InsightRuntimeSettings.AlertEscalation();
+        c.setEnabled(e.isEnabled());
+        c.setAfterMinutes(e.getAfterMinutes() > 0 ? e.getAfterMinutes() : 30);
+        c.setChannelId(nullToEmpty(e.getChannelId()));
         return c;
     }
 
