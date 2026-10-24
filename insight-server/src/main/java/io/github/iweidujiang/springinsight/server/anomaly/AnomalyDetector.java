@@ -146,10 +146,6 @@ public class AnomalyDetector {
         }
     }
 
-    /**
-     * @param key 窗口键
-     * @return 当前窗口长度（单测）
-     */
     int windowSize(String metric, String serviceName) {
         Deque<Double> w = windows.get(key(normalizeMetric(metric), serviceName == null ? "" : serviceName.trim()));
         return w == null ? 0 : w.size();
