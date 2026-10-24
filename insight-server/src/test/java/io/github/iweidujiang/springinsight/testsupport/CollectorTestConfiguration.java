@@ -2,7 +2,9 @@ package io.github.iweidujiang.springinsight.testsupport;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
+import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetector;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.server.topology.TopologyDiffService;
 import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
@@ -94,5 +96,22 @@ public class CollectorTestConfiguration {
     @Bean
     public TraceSpanCollectorService traceSpanCollectorService(TraceSpanPersistenceService persistence) {
         return new TraceSpanCollectorService(persistence);
+    }
+
+    /**
+     * @return 无阈值异常检测（CollectorApiController 依赖）
+     */
+    @Bean
+    public AnomalyDetector anomalyDetector() {
+        return new AnomalyDetector();
+    }
+
+    /**
+     * @param persistence 持久化
+     * @return 拓扑时段对比
+     */
+    @Bean
+    public TopologyDiffService topologyDiffService(TraceSpanPersistenceService persistence) {
+        return new TopologyDiffService(persistence);
     }
 }
