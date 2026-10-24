@@ -1,5 +1,8 @@
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
+import ElementPlus from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import DashboardView from './views/DashboardView.vue'
 import TopologyView from './views/TopologyView.vue'
@@ -16,10 +19,12 @@ import LoginView from './views/LoginView.vue'
 import { fetchAuthStatus, getUiToken } from './services/AuthService'
 import { initTheme } from './composables/useTheme'
 
-// 导入样式
+// 导入样式（Bootstrap 栅格保留；Element Plus 主题变量在品牌色之后覆盖）
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'font-awesome/css/font-awesome.min.css'
+import 'element-plus/dist/index.css'
 import './assets/css/styles.css'
+import './assets/css/element-plus-theme.css'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -132,4 +137,8 @@ initTheme()
 
 const app = createApp(App)
 app.use(router)
+app.use(ElementPlus, { locale: zhCn })
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+  app.component(key, component)
+}
 app.mount('#app')

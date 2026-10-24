@@ -1,7 +1,7 @@
 {
   "name": "insight-server-ui",
   "private": true,
-  "version": "0.7.1",
+  "version": "2.0.0-SNAPSHOT",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,12 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.4.21",
-    "vue-router": "^4.3.0",
+    "@element-plus/icons-vue": "^2.3.2",
     "axios": "^1.6.7",
-    "echarts": "^5.5.0",
     "bootstrap": "^5.3.3",
-    "font-awesome": "^4.7.0"
+    "echarts": "^5.5.0",
+    "element-plus": "^2.14.7",
+    "font-awesome": "^4.7.0",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
