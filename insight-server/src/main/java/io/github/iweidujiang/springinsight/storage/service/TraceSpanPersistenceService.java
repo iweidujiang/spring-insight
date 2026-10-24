@@ -219,15 +219,36 @@ public class TraceSpanPersistenceService {
      * 服务间依赖边汇总（拓扑用）。
      * <p>不含 {@code component=JDBC}/{@code REDIS}：库 / 缓存不进服务拓扑。</p>
      *
-     * @param lastHours 时间窗口
+     * @param lastHours 时间窗口；{@code <=0} 不限
      * @return 依赖边汇总
      */
     public List<Map<String, Object>> getServiceDependencies(int lastHours) {
-        long sinceTime = sinceEpochMillis(lastHours);
+        return getServiceDependenciesBetween(sinceEpochMillis(lastHours), 0L);
+    }
+
+    /**
+     * 半开区间 {@code [fromInclusiveMs, toExclusiveMs)} 内的拓扑边。
+     * <p>
+     * {@code fromInclusiveMs <= 0} 不设下界；{@code toExclusiveMs <= 0} 不设上界。
+     * </p>
+     *
+     * @param fromInclusiveMs 起始（含）
+     * @param toExclusiveMs   结束（不含）
+     * @return 依赖边汇总（含 last_seen）
+     */
+    public List<Map<String, Object>> getServiceDependenciesBetween(long fromInclusiveMs, long toExclusiveMs) {
         record Key(String src, String tgt) {}
+        // [callCount, durationSum, lastStartMs]
         Map<Key, long[]> agg = new HashMap<>();
         for (TraceSpan s : spanStore.snapshot()) {
-            if (n(s.getStartTime()) < sinceTime) {
+            if (s == null) {
+                continue;
+            }
+            long t = n(s.getStartTime());
+            if (fromInclusiveMs > 0L && t < fromInclusiveMs) {
+                continue;
+            }
+            if (toExclusiveMs > 0L && t >= toExclusiveMs) {
                 continue;
             }
             if (isTopologyExcludedRemote(s)) {
@@ -239,9 +260,12 @@ public class TraceSpanPersistenceService {
             }
             String src = s.getServiceName() != null ? s.getServiceName() : "";
             Key k = new Key(src, remote);
-            long[] a = agg.computeIfAbsent(k, x -> new long[]{0L, 0L});
+            long[] a = agg.computeIfAbsent(k, x -> new long[]{0L, 0L, 0L});
             a[0]++;
             a[1] += n(s.getDurationMs());
+            if (t > a[2]) {
+                a[2] = t;
+            }
         }
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map.Entry<Key, long[]> e : agg.entrySet()) {
@@ -254,6 +278,11 @@ public class TraceSpanPersistenceService {
             row.put("target_service", e.getKey().tgt());
             row.put("call_count", cnt);
             row.put("avg_duration", (double) e.getValue()[1] / (double) cnt);
+            long lastMs = e.getValue()[2];
+            if (lastMs > 0L) {
+                row.put("last_seen", Instant.ofEpochMilli(lastMs).truncatedTo(ChronoUnit.SECONDS).toString());
+                row.put("last_seen_epoch_ms", lastMs);
+            }
             out.add(row);
         }
         return out;

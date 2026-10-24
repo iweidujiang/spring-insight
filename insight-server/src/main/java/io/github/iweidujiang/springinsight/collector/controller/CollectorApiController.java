@@ -4,6 +4,7 @@ import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorS
 import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetectionResult;
 import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetector;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.server.topology.TopologyDiffService;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import io.github.iweidujiang.springinsight.storage.service.TroubleshootPackExportService;
@@ -44,6 +45,7 @@ public class CollectorApiController {
     private final TroubleshootPackExportService troubleshootPackExportService;
     private final SpanStore spanStore;
     private final AnomalyDetector anomalyDetector;
+    private final TopologyDiffService topologyDiffService;
 
     public CollectorApiController(TraceSpanPersistenceService traceSpanPersistenceService,
                                   TraceSpanCollectorService traceSpanCollectorService,
@@ -51,7 +53,8 @@ public class CollectorApiController {
                                   TraceContextExportService traceContextExportService,
                                   TroubleshootPackExportService troubleshootPackExportService,
                                   SpanStore spanStore,
-                                  AnomalyDetector anomalyDetector) {
+                                  AnomalyDetector anomalyDetector,
+                                  TopologyDiffService topologyDiffService) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.storageProperties = storageProperties;
@@ -59,6 +62,7 @@ public class CollectorApiController {
         this.troubleshootPackExportService = troubleshootPackExportService;
         this.spanStore = spanStore;
         this.anomalyDetector = anomalyDetector;
+        this.topologyDiffService = topologyDiffService;
     }
 
     /**
@@ -128,6 +132,37 @@ public class CollectorApiController {
         } catch (Exception e) {
             log.error("获取服务依赖关系失败", e);
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 拓扑边（与 {@code /dependencies} 相同数据，便于按拓扑语义调用）。
+     *
+     * @param hours 时间窗小时
+     * @return 依赖边列表
+     */
+    @GetMapping("/topology")
+    public ResponseEntity<?> getTopology(
+            @RequestParam(value = "hours", defaultValue = "24") int hours) {
+        return getDependencies(hours);
+    }
+
+    /**
+     * 两时段拓扑差异：新增边 / 消失边 / 调用量变化超过 50% 的边。
+     *
+     * @param hoursA 基线窗口小时
+     * @param hoursB 对比窗口小时
+     * @return added / removed / changed
+     */
+    @GetMapping("/topology/diff")
+    public ResponseEntity<?> getTopologyDiff(
+            @RequestParam(value = "hoursA", defaultValue = "24") int hoursA,
+            @RequestParam(value = "hoursB", defaultValue = "1") int hoursB) {
+        try {
+            return ResponseEntity.ok(topologyDiffService.diff(hoursA, hoursB));
+        } catch (Exception e) {
+            log.error("拓扑对比失败: hoursA={} hoursB={}", hoursA, hoursB, e);
+            return ResponseEntity.internalServerError().body(Map.of("message", "拓扑对比失败"));
         }
     }
 
