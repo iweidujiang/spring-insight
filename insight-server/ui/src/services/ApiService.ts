@@ -134,6 +134,58 @@ export class ApiService {
     }
   }
 
+  /** 列出 SLO 配置 */
+  static async listSlos(): Promise<ServiceSlo[]> {
+    try {
+      const body = await request<{ items?: any[] }>('/slo')
+      return Array.isArray(body?.items) ? body.items.map(normalizeSlo) : []
+    } catch {
+      return []
+    }
+  }
+
+  /** 创建 SLO */
+  static async createSlo(body: ServiceSlo): Promise<ServiceSlo> {
+    const raw = await request<any>('/slo', { method: 'POST', data: body })
+    return normalizeSlo(raw)
+  }
+
+  /** 更新 SLO */
+  static async updateSlo(serviceName: string, body: ServiceSlo): Promise<ServiceSlo> {
+    const raw = await request<any>(`/slo/${encodeURIComponent(serviceName)}`, {
+      method: 'PUT',
+      data: body
+    })
+    return normalizeSlo(raw)
+  }
+
+  /** 删除 SLO */
+  static async deleteSlo(serviceName: string): Promise<void> {
+    await request(`/slo/${encodeURIComponent(serviceName)}`, { method: 'DELETE' })
+  }
+
+  /** 单服务错误预算 */
+  static async getSloBudget(serviceName: string, hours?: number): Promise<SloBudget | null> {
+    try {
+      const q = hours != null && hours > 0 ? `?hours=${hours}` : ''
+      const raw = await request<any>(`/slo/${encodeURIComponent(serviceName)}/budget${q}`)
+      return normalizeSloBudget(raw)
+    } catch {
+      return null
+    }
+  }
+
+  /** 全部已配置服务的错误预算（仪表盘） */
+  static async listSloBudgets(hours: number = 0): Promise<SloBudget[]> {
+    try {
+      const q = hours > 0 ? `?hours=${hours}` : ''
+      const body = await request<{ items?: any[] }>(`/slo/budgets${q}`)
+      return Array.isArray(body?.items) ? body.items.map(normalizeSloBudget) : []
+    } catch {
+      return []
+    }
+  }
+
   /**
    * 服务健康评分；旧 Server 无此接口时抛错，由调用方回退错误数着色。
    *
@@ -951,6 +1003,56 @@ function normalizePeriodInsight(raw: any, hours: number): PeriodInsight {
       sampleErrorTrace: normalizePeriodLink(linksRaw.sampleErrorTrace),
       hotEdge: normalizePeriodLink(linksRaw.hotEdge)
     }
+  }
+}
+
+/** 服务 SLO 配置 */
+export interface ServiceSlo {
+  serviceName: string
+  targetAvailability: number
+  windowHours: number
+}
+
+/** 错误预算快照 */
+export interface SloBudget {
+  service: string
+  target: number
+  actualAvailability: number
+  budgetTotal: number
+  budgetConsumed: number
+  budgetRemaining: number
+  status: 'healthy' | 'warning' | 'exhausted' | string
+  burnRate: number
+  estimatedExhaustion: string
+  windowHours?: number
+  elapsedHours?: number
+  totalCount?: number
+  errorCount?: number
+}
+
+function normalizeSlo(raw: any): ServiceSlo {
+  return {
+    serviceName: String(raw?.serviceName ?? ''),
+    targetAvailability: Number(raw?.targetAvailability ?? 0.999),
+    windowHours: Number(raw?.windowHours ?? 720)
+  }
+}
+
+function normalizeSloBudget(raw: any): SloBudget {
+  return {
+    service: String(raw?.service ?? ''),
+    target: Number(raw?.target ?? 0),
+    actualAvailability: Number(raw?.actualAvailability ?? 0),
+    budgetTotal: Number(raw?.budgetTotal ?? 0),
+    budgetConsumed: Number(raw?.budgetConsumed ?? 0),
+    budgetRemaining: Number(raw?.budgetRemaining ?? 0),
+    status: String(raw?.status ?? ''),
+    burnRate: Number(raw?.burnRate ?? 0),
+    estimatedExhaustion: String(raw?.estimatedExhaustion ?? ''),
+    windowHours: raw?.windowHours != null ? Number(raw.windowHours) : undefined,
+    elapsedHours: raw?.elapsedHours != null ? Number(raw.elapsedHours) : undefined,
+    totalCount: raw?.totalCount != null ? Number(raw.totalCount) : undefined,
+    errorCount: raw?.errorCount != null ? Number(raw.errorCount) : undefined
   }
 }
 

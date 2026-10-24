@@ -369,6 +369,28 @@
             <div v-else class="si-dashboard__rail-empty">{{ emptyInRangeShort(hours, '延迟样本') }}</div>
           </div>
 
+          <div v-if="showSloPanel" class="si-overview__panel si-overview__panel--slo">
+            <div class="si-overview__head">
+              <span><i class="fa fa-bullseye me-2"></i>错误预算</span>
+              <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goSloSettings">设置</button>
+            </div>
+            <ul v-if="sloBudgets.length" class="si-dashboard__rail-list">
+              <li
+                v-for="row in sloBudgets.slice(0, 8)"
+                :key="'slo-' + row.service"
+                :title="sloBudgetTitle(row)"
+              >
+                <span class="si-dashboard__rail-name" :title="row.service">{{ row.service }}</span>
+                <em :class="sloStatusClass(row.status)">
+                  {{ sloStatusLabel(row.status) }} · {{ formatPct(row.actualAvailability) }}
+                </em>
+              </li>
+            </ul>
+            <div v-else class="si-dashboard__rail-empty">
+              暂无 SLO。可到设置页按服务配置可用性目标。
+            </div>
+          </div>
+
           <div v-if="panelVisible('hot-dependencies')" class="si-overview__panel">
             <div class="si-overview__head">
               <span>热点依赖</span>
@@ -465,7 +487,8 @@ import {
   type DashboardLayout,
   type DashboardTemplate,
   type PeriodInsight,
-  type PeriodInsightLink
+  type PeriodInsightLink,
+  type SloBudget
 } from '../services/ApiService'
 import { formatDuration } from '../utils/traceTimeline'
 import { useChartTheme } from '../composables/useChartTheme'
@@ -498,6 +521,7 @@ const services = ref<string[]>([])
 const dependencies = ref<any[]>([])
 const serviceStats = ref<any[]>([])
 const serviceLatency = ref<any[]>([])
+const sloBudgets = ref<SloBudget[]>([])
 const errorAnalysis = ref<any[]>([])
 const collectorStats = ref<any>({})
 const totalSpans = ref(0)
@@ -554,11 +578,23 @@ const panelVisible = (id: string): boolean => {
   return panel.visible !== false
 }
 
+const showSloPanel = computed(() => {
+  if (!layoutControlsEnabled.value || !layout.value?.panels?.length) {
+    return true
+  }
+  const panel = layout.value.panels.find((p) => p.id === 'slo-budget' || p.type === 'slo-budget')
+  if (!panel) {
+    return sloBudgets.value.length > 0
+  }
+  return panel.visible !== false
+})
+
 const showOverviewSection = computed(() =>
   panelVisible('error-services')
   || panelVisible('service-health')
   || panelVisible('slow-services')
   || panelVisible('hot-dependencies')
+  || showSloPanel.value
   || panelVisible('recent-traces')
   || panelVisible('service-rank')
 )
@@ -859,6 +895,26 @@ const goJdbc = () => router.push({ path: '/jdbc', query: { hours: String(hours.v
 const goRedis = () => router.push({ path: '/redis', query: { hours: String(hours.value) } })
 const goTraces = (query: Record<string, string> = {}) => router.push({ path: '/traces', query })
 const goErrors = () => router.push('/error-analysis')
+const goSloSettings = () => router.push({ path: '/settings', query: { section: 'slo' } })
+
+const formatPct = (ratio: number) => `${(Number(ratio) * 100).toFixed(2)}%`
+
+const sloStatusLabel = (status: string) => {
+  if (status === 'healthy') return '健康'
+  if (status === 'warning') return '告警'
+  if (status === 'exhausted') return '耗尽'
+  return status || '—'
+}
+
+const sloStatusClass = (status: string) => {
+  if (status === 'exhausted') return 'text-danger'
+  if (status === 'warning') return 'text-warning'
+  if (status === 'healthy') return 'text-success'
+  return 'text-muted'
+}
+
+const sloBudgetTitle = (row: SloBudget) =>
+  `目标 ${formatPct(row.target)} · 剩余预算 ${row.budgetRemaining.toFixed(4)} · 燃烧率 ${row.burnRate}`
 const goTraceDetail = (traceId: string) => {
   if (!traceId) return
   router.push({ name: 'trace-detail', params: { traceId } })
@@ -1033,7 +1089,8 @@ const loadData = async () => {
       recent,
       period,
       jdbcSummary,
-      redisSummary
+      redisSummary,
+      budgets
     ] = await Promise.all([
       ApiService.getServiceNames(),
       ApiService.getServiceDependencies(h),
@@ -1044,7 +1101,8 @@ const loadData = async () => {
       ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 16 }),
       ApiService.getPeriodInsight(h),
       ApiService.getJdbcSummary(h, undefined, 1).catch(() => null),
-      ApiService.getRedisSummary(h, undefined, 1).catch(() => null)
+      ApiService.getRedisSummary(h, undefined, 1).catch(() => null),
+      ApiService.listSloBudgets(h === 0 ? 0 : h)
     ])
     services.value = serviceNames
     dependencies.value = serviceDeps
@@ -1057,6 +1115,7 @@ const loadData = async () => {
     periodExplain.value = null
     jdbcKpis.value = jdbcSummary?.kpis ?? null
     redisKpis.value = redisSummary?.kpis ?? null
+    sloBudgets.value = budgets
     totalSpans.value = serviceStatsData.reduce((sum: number, s: any) => sum + (s.totalSpans || 0), 0)
   } catch (error) {
     console.error('加载仪表盘数据失败:', error)
@@ -1136,8 +1195,9 @@ const DEFAULT_OVERVIEW_LAYOUT: DashboardLayout = {
     { id: 'service-health', type: 'service-health', x: 0, y: 4, w: 2, h: 2, visible: true },
     { id: 'slow-services', type: 'slow-services', x: 2, y: 4, w: 1, h: 1, visible: true },
     { id: 'hot-dependencies', type: 'hot-dependencies', x: 3, y: 4, w: 1, h: 1, visible: true },
-    { id: 'recent-traces', type: 'recent-traces', x: 0, y: 6, w: 2, h: 2, visible: true },
-    { id: 'service-rank', type: 'service-rank', x: 2, y: 6, w: 2, h: 2, visible: true }
+    { id: 'slo-budget', type: 'slo-budget', x: 0, y: 6, w: 4, h: 1, visible: true },
+    { id: 'recent-traces', type: 'recent-traces', x: 0, y: 7, w: 2, h: 2, visible: true },
+    { id: 'service-rank', type: 'service-rank', x: 2, y: 7, w: 2, h: 2, visible: true }
   ]
 }
 

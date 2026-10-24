@@ -6,6 +6,7 @@ import io.github.iweidujiang.springinsight.server.config.InsightServerAlertPrope
 import io.github.iweidujiang.springinsight.server.dashboard.DashboardLayout;
 import io.github.iweidujiang.springinsight.server.dashboard.DashboardLayouts;
 import io.github.iweidujiang.springinsight.server.dashboard.DashboardPanel;
+import io.github.iweidujiang.springinsight.server.slo.ServiceSlo;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -68,6 +69,20 @@ public class InsightRuntimeSettingsService {
      */
     public InsightRuntimeSettings snapshot() {
         return deepCopy(current.get());
+    }
+
+    /**
+     * 整份替换并持久化（SLO 等局部更新用）；保留传入对象中的全部字段。
+     *
+     * @param settings 完整设置副本
+     */
+    public void replaceSettings(InsightRuntimeSettings settings) {
+        if (settings == null) {
+            throw new IllegalArgumentException("settings 不能为空");
+        }
+        InsightRuntimeSettings merged = deepCopy(settings);
+        store.save(merged);
+        current.set(merged);
     }
 
     /**
@@ -782,6 +797,20 @@ public class InsightRuntimeSettingsService {
         }
         if (s.getDashboardLayout() != null) {
             c.setDashboardLayout(DashboardLayouts.copy(s.getDashboardLayout()));
+        }
+        if (s.getSlos() != null) {
+            List<ServiceSlo> slos = new ArrayList<>();
+            for (ServiceSlo slo : s.getSlos()) {
+                if (slo == null) {
+                    continue;
+                }
+                ServiceSlo copy = new ServiceSlo();
+                copy.setServiceName(slo.getServiceName());
+                copy.setTargetAvailability(slo.getTargetAvailability());
+                copy.setWindowHours(slo.getWindowHours());
+                slos.add(copy);
+            }
+            c.setSlos(slos);
         }
         return c;
     }

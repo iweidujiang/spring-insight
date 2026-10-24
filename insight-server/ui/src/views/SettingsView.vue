@@ -2,7 +2,7 @@
   <div class="si-page fade-in si-settings">
     <SiPageHeader class="mb-3" title="设置" icon="fa-cog">
       <button
-        v-if="section !== 'data'"
+        v-if="section !== 'data' && section !== 'slo'"
         type="button"
         class="btn btn-primary"
         :disabled="loading || saving"
@@ -314,6 +314,93 @@
           </p>
         </section>
 
+        <!-- SLO -->
+        <section v-show="section === 'slo'" class="si-settings__card">
+          <header class="si-settings__card-head">
+            <div>
+              <h3 class="si-settings__card-title"><i class="fa fa-bullseye me-2"></i>服务 SLO</h3>
+              <p class="si-settings__card-desc">
+                按服务设定可用性目标与观察窗口，控制台据此计算错误预算；配置写入本机 runtime-settings.json。
+              </p>
+            </div>
+          </header>
+
+          <div class="si-settings__slo-form si-settings__grid">
+            <SiFormField label="服务名" field-id="slo-service">
+              <input
+                id="slo-service"
+                v-model="sloDraft.serviceName"
+                class="form-control"
+                list="slo-service-list"
+                placeholder="如 sca-user"
+              />
+              <datalist id="slo-service-list">
+                <option v-for="name in serviceNames" :key="'slo-' + name" :value="name" />
+              </datalist>
+            </SiFormField>
+            <SiFormField label="目标可用性" field-id="slo-target">
+              <input
+                id="slo-target"
+                v-model.number="sloDraft.targetAvailability"
+                class="form-control"
+                type="number"
+                min="0.9"
+                max="1"
+                step="0.0001"
+                placeholder="0.999"
+              />
+              <p class="si-settings__hint mb-0">例如 0.999 = 99.9%</p>
+            </SiFormField>
+            <SiFormField label="窗口（小时）" field-id="slo-window">
+              <input
+                id="slo-window"
+                v-model.number="sloDraft.windowHours"
+                class="form-control"
+                type="number"
+                min="1"
+                placeholder="720"
+              />
+              <p class="si-settings__hint mb-0">默认 720（约 30 天）</p>
+            </SiFormField>
+          </div>
+          <div class="d-flex gap-2 mb-3">
+            <button
+              type="button"
+              class="btn btn-primary"
+              :disabled="sloSaving || !sloDraft.serviceName.trim()"
+              @click="saveSloDraft"
+            >
+              <i class="fa" :class="sloSaving ? 'fa-spinner fa-spin' : 'fa-plus'"></i>
+              {{ sloEditing ? '更新 SLO' : '添加 SLO' }}
+            </button>
+            <button
+              v-if="sloEditing"
+              type="button"
+              class="btn btn-outline-secondary"
+              :disabled="sloSaving"
+              @click="resetSloDraft"
+            >
+              取消编辑
+            </button>
+          </div>
+
+          <div v-if="!sloRows.length" class="text-muted small">尚未配置 SLO，添加后可在仪表盘查看错误预算。</div>
+          <ul v-else class="si-settings__slo-list list-unstyled mb-0">
+            <li v-for="row in sloRows" :key="row.serviceName" class="si-settings__slo-item">
+              <div>
+                <strong>{{ row.serviceName }}</strong>
+                <span class="text-muted ms-2">
+                  目标 {{ (row.targetAvailability * 100).toFixed(2) }}% · 窗口 {{ row.windowHours }}h
+                </span>
+              </div>
+              <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-secondary" @click="editSlo(row)">编辑</button>
+                <button type="button" class="btn btn-outline-danger" @click="removeSlo(row.serviceName)">删除</button>
+              </div>
+            </li>
+          </ul>
+        </section>
+
         <!-- 容量与保留 -->
         <section v-show="section === 'data'" class="si-settings__card si-settings__card--danger">
           <header class="si-settings__card-head">
@@ -482,6 +569,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import SiFormBlock from '../components/SiFormBlock.vue'
 import SiFormField from '../components/SiFormField.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
@@ -490,19 +578,22 @@ import {
   ApiService,
   type AlertChannelView,
   type AlertConditionView,
-  type RuntimeSettingsSaveBody
+  type RuntimeSettingsSaveBody,
+  type ServiceSlo
 } from '../services/ApiService'
 import { capacityWarnMessage } from '../utils/timeRange'
 
-type SettingsSection = 'alert' | 'ai' | 'data'
+type SettingsSection = 'alert' | 'ai' | 'slo' | 'data'
 type ClearScope = 'all' | 'older_than' | 'service'
 
 const sections: { id: SettingsSection; label: string; icon: string; desc: string }[] = [
   { id: 'alert', label: '告警推送', icon: 'fa-bell', desc: '扫描规则与通知渠道' },
   { id: 'ai', label: 'AI 解读', icon: 'fa-magic', desc: '配置模型，解读链路与错误' },
+  { id: 'slo', label: '服务 SLO', icon: 'fa-bullseye', desc: '可用性目标与错误预算' },
   { id: 'data', label: '容量与保留', icon: 'fa-database', desc: '占用、保留策略与清理' }
 ]
 
+const route = useRoute()
 const section = ref<SettingsSection>('alert')
 
 const loading = ref(true)
@@ -517,6 +608,15 @@ const aiServerLabel = ref('')
 const clearOlderHours = ref(24)
 const clearServiceName = ref('')
 const serviceNames = ref<string[]>([])
+const sloRows = ref<ServiceSlo[]>([])
+const sloSaving = ref(false)
+const sloEditing = ref(false)
+const sloEditOriginal = ref('')
+const sloDraft = reactive<ServiceSlo>({
+  serviceName: '',
+  targetAvailability: 0.999,
+  windowHours: 720
+})
 const storage = reactive({
   mode: '',
   stored: 0,
@@ -842,6 +942,71 @@ async function refreshAiStatus() {
   }
 }
 
+function resetSloDraft() {
+  sloEditing.value = false
+  sloEditOriginal.value = ''
+  sloDraft.serviceName = ''
+  sloDraft.targetAvailability = 0.999
+  sloDraft.windowHours = 720
+}
+
+function editSlo(row: ServiceSlo) {
+  sloEditing.value = true
+  sloEditOriginal.value = row.serviceName
+  sloDraft.serviceName = row.serviceName
+  sloDraft.targetAvailability = row.targetAvailability
+  sloDraft.windowHours = row.windowHours
+  section.value = 'slo'
+}
+
+async function loadSlos() {
+  sloRows.value = await ApiService.listSlos()
+}
+
+async function saveSloDraft() {
+  const name = sloDraft.serviceName.trim()
+  if (!name) {
+    showMsg('请填写服务名', false)
+    return
+  }
+  const target = Number(sloDraft.targetAvailability)
+  if (!(target > 0 && target <= 1)) {
+    showMsg('目标可用性须在 (0, 1] 内，例如 0.999', false)
+    return
+  }
+  const windowHours = Number(sloDraft.windowHours) > 0 ? Number(sloDraft.windowHours) : 720
+  sloSaving.value = true
+  message.value = ''
+  try {
+    const body: ServiceSlo = { serviceName: name, targetAvailability: target, windowHours }
+    if (sloEditing.value && sloEditOriginal.value) {
+      await ApiService.updateSlo(sloEditOriginal.value, body)
+      showMsg(`已更新 ${name} 的 SLO`, true)
+    } else {
+      await ApiService.createSlo(body)
+      showMsg(`已添加 ${name} 的 SLO`, true)
+    }
+    resetSloDraft()
+    await loadSlos()
+  } catch (e: any) {
+    showMsg(e?.response?.data?.message || e?.message || '保存 SLO 失败', false)
+  } finally {
+    sloSaving.value = false
+  }
+}
+
+async function removeSlo(serviceName: string) {
+  if (!serviceName || !window.confirm(`确定删除 ${serviceName} 的 SLO？`)) return
+  try {
+    await ApiService.deleteSlo(serviceName)
+    if (sloEditOriginal.value === serviceName) resetSloDraft()
+    await loadSlos()
+    showMsg(`已删除 ${serviceName}`, true)
+  } catch (e: any) {
+    showMsg(e?.response?.data?.message || e?.message || '删除失败', false)
+  }
+}
+
 async function load() {
   loading.value = true
   message.value = ''
@@ -885,6 +1050,7 @@ async function load() {
     await refreshStorage()
     await refreshAiStatus()
     serviceNames.value = await ApiService.getServiceNames()
+    await loadSlos()
   } catch (e: any) {
     showMsg(e?.message || '加载设置失败', false)
   } finally {
@@ -1042,6 +1208,10 @@ function onClearDialogKey(e: KeyboardEvent) {
 }
 
 onMounted(() => {
+  const q = String(route.query.section || '')
+  if (q === 'alert' || q === 'ai' || q === 'slo' || q === 'data') {
+    section.value = q
+  }
   load()
   window.addEventListener('keydown', onClearDialogKey)
 })
@@ -1053,15 +1223,38 @@ onUnmounted(() => {
 <style scoped>
 .si-settings__tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.65rem;
   margin-bottom: 1rem;
 }
 
-@media (max-width: 900px) {
+@media (min-width: 900px) {
+  .si-settings__tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 899px) {
   .si-settings__tabs {
     grid-template-columns: 1fr;
   }
+}
+
+.si-settings__slo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.si-settings__slo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--si-border, #dee2e6);
+  border-radius: 0.5rem;
+  background: var(--si-surface, #fff);
 }
 
 .si-settings__tab {

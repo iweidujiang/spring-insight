@@ -2,12 +2,13 @@ package io.github.iweidujiang.springinsight.server.settings;
 
 import io.github.iweidujiang.springinsight.server.alert.AlertCondition;
 import io.github.iweidujiang.springinsight.server.dashboard.DashboardLayout;
+import io.github.iweidujiang.springinsight.server.slo.ServiceSlo;
 import lombok.Data;
 
 import java.util.List;
 
 /**
- * 控制台可改的运行时设置（告警 + AI + 仪表盘布局）；持久化到数据目录 JSON。
+ * 控制台可改的运行时设置（告警 + AI + 仪表盘布局 + SLO）；持久化到数据目录 JSON。
  *
  * @since 2026-09-18
  * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
@@ -26,6 +27,10 @@ public class InsightRuntimeSettings {
      * 仪表盘布局。缺省为 null，表示使用内置默认布局。
      */
     private DashboardLayout dashboardLayout;
+    /**
+     * 按服务定义的 SLO 目标。缺省为 null / 空列表。
+     */
+    private List<ServiceSlo> slos;
 
     /**
      * 一条通知渠道。密钥留空表示保存时不覆盖已有值。
