@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.server.settings;
 
 import io.github.iweidujiang.springinsight.server.alert.AlertCondition;
+import io.github.iweidujiang.springinsight.server.alert.SilenceRule;
 import io.github.iweidujiang.springinsight.server.dashboard.DashboardLayout;
 import io.github.iweidujiang.springinsight.server.slo.ServiceSlo;
 import lombok.Data;
@@ -105,6 +106,10 @@ public class InsightRuntimeSettings {
          * 未恢复升级。缺省为 null，避免旧控制台保存时清空。
          */
         private AlertEscalation escalation;
+        /**
+         * 细粒度静默规则。缺省为 null，避免旧控制台保存时清空。
+         */
+        private List<SilenceRule> silences;
     }
 
     /**

@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 定时扫描服务错误 / p95 延迟窗口，超阈值则推送 Webhook 和/或邮件；可选附带 AI 短解读。
  * <p>
  * 是否启用以 {@link InsightRuntimeSettingsService#effectiveAlert()} 为准（控制台可改，无需重启）。
- * 静默时段内跳过推送（仍跟踪活跃告警以便恢复判定）。
+ * 静默时段与细粒度静默规则命中时跳过推送（仍跟踪活跃告警以便恢复判定）。
  * 未恢复超过配置时长时可向指定渠道发送一次升级通知。
  * </p>
  *
@@ -155,12 +155,11 @@ public class InsightAlertScheduler {
         ZonedDateTime nowZdt = ZonedDateTime.now(InsightAlertEvaluator.resolveZone(properties.getQuietHoursZone()));
         boolean quiet = InsightAlertEvaluator.inQuietHours(properties, nowZdt);
         if (quiet) {
-            log.debug("[告警] 静默时段内跳过推送（仍跟踪活跃告警）");
+            log.debug("[告警] 全局静默时段内跳过推送（仍跟踪活跃告警）");
             metrics.record("quiet");
         }
 
-        boolean allowNotify = deliverOk && !quiet;
-        scanServices(properties, rows, now, at, allowNotify);
+        scanServices(properties, rows, now, at, deliverOk, nowZdt);
     }
 
     /**
@@ -206,16 +205,19 @@ public class InsightAlertScheduler {
      * </p>
      *
      * @param rows        本轮已聚合的服务指标（与异常采样共用）
-     * @param allowNotify 是否允许首次推送与升级通知
+     * @param allowNotify 通道是否可投递
+     * @param nowZdt      当前时刻（静默匹配）
      */
     private void scanServices(InsightServerAlertProperties properties,
                               List<Map<String, Object>> rows,
                               long now,
                               String at,
-                              boolean allowNotify) {
+                              boolean allowNotify,
+                              ZonedDateTime nowZdt) {
         if (rows == null) {
             rows = List.of();
         }
+        List<SilenceRule> silenceRules = currentSilenceRules();
         Set<String> stillFiring = new HashSet<>();
         for (Map<String, Object> row : rows) {
             String service = String.valueOf(row.get("service_name"));
@@ -235,10 +237,19 @@ public class InsightAlertScheduler {
                 }
                 return prev;
             });
-            if (allowNotify) {
-                tryDeliver(properties, service, evaluation, now, at);
-                maybeEscalate(properties, service, evaluation, state, now, at);
+            if (!allowNotify) {
+                continue;
             }
+            List<String> matchedMetrics = matchedMetricNames(evaluation);
+            if (AlertSilenceMatcher.isSilenced(silenceRules, properties, service, matchedMetrics, nowZdt)) {
+                if (!InsightAlertEvaluator.inQuietHours(properties, nowZdt)) {
+                    metrics.record("silence");
+                    log.debug("[告警] 静默规则命中，跳过推送: service={}, metrics={}", service, matchedMetrics);
+                }
+                continue;
+            }
+            tryDeliver(properties, service, evaluation, now, at);
+            maybeEscalate(properties, service, evaluation, state, now, at);
         }
         for (String service : new ArrayList<>(activeAlerts.keySet())) {
             if (!stillFiring.contains(service)) {
@@ -246,6 +257,31 @@ public class InsightAlertScheduler {
                 log.debug("[告警] 已恢复，清除活跃状态: service={}", service);
             }
         }
+    }
+
+    /**
+     * @return 当前细粒度静默规则副本
+     */
+    private List<SilenceRule> currentSilenceRules() {
+        InsightRuntimeSettings snap = settingsService.snapshot();
+        if (snap == null || snap.getAlert() == null || snap.getAlert().getSilences() == null) {
+            return List.of();
+        }
+        return List.copyOf(snap.getAlert().getSilences());
+    }
+
+    /**
+     * @param evaluation 判定结果
+     * @return 命中指标名列表
+     */
+    private static List<String> matchedMetricNames(AlertEvaluation evaluation) {
+        List<String> names = new ArrayList<>();
+        for (AlertEvaluation.MatchedCondition matched : evaluation.matched()) {
+            if (matched.condition() != null && matched.condition().getMetric() != null) {
+                names.add(matched.condition().getMetric());
+            }
+        }
+        return names;
     }
 
     /**

@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.server.settings;
 
 import io.github.iweidujiang.springinsight.server.alert.AlertCondition;
+import io.github.iweidujiang.springinsight.server.alert.SilenceRule;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAiProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerAlertProperties;
 import io.github.iweidujiang.springinsight.server.dashboard.DashboardLayout;
@@ -318,6 +319,9 @@ public class InsightRuntimeSettingsService {
             esc.setAfterMinutes(p.getAfterMinutes() > 0 ? p.getAfterMinutes() : 30);
             esc.setChannelId(nullToEmpty(p.getChannelId()));
             out.setEscalation(esc);
+        }
+        if (patch.getSilences() != null) {
+            out.setSilences(copySilences(patch.getSilences()));
         }
         return out;
     }
@@ -855,7 +859,36 @@ public class InsightRuntimeSettingsService {
         c.setFeishu(deepCopyFeishu(a.getFeishu()));
         c.setWecom(deepCopyWecom(a.getWecom()));
         c.setEscalation(deepCopyEscalation(a.getEscalation()));
+        if (a.getSilences() != null) {
+            c.setSilences(copySilences(a.getSilences()));
+        }
         return c;
+    }
+
+    /**
+     * @param rules 静默规则，可空
+     * @return 深拷贝列表；入参为空时返回 null
+     */
+    private static List<SilenceRule> copySilences(List<SilenceRule> rules) {
+        if (rules == null) {
+            return null;
+        }
+        List<SilenceRule> out = new ArrayList<>();
+        for (SilenceRule rule : rules) {
+            if (rule == null) {
+                continue;
+            }
+            SilenceRule copy = new SilenceRule();
+            copy.setId(nullToEmpty(rule.getId()));
+            copy.setServiceName(nullToEmpty(rule.getServiceName()));
+            copy.setMetric(nullToEmpty(rule.getMetric()));
+            copy.setStartTime(nullToEmpty(rule.getStartTime()));
+            copy.setEndTime(nullToEmpty(rule.getEndTime()));
+            copy.setTimezone(nullToEmpty(rule.getTimezone()));
+            copy.setReason(nullToEmpty(rule.getReason()));
+            out.add(copy);
+        }
+        return out;
     }
 
     /**

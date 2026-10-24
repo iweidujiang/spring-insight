@@ -138,6 +138,7 @@ class InsightAlertSchedulerTest {
         lastMetrics = new InsightAlertMetrics(new SimpleMeterRegistry());
         InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
         when(settings.effectiveAlert()).thenReturn(props);
+        when(settings.snapshot()).thenReturn(new InsightRuntimeSettings());
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
                 settings,
                 storeWithOneError(),
@@ -148,6 +149,85 @@ class InsightAlertSchedulerTest {
         scheduler.scan();
         assertEquals(0, hits.get());
         assertEquals(1.0, lastMetrics.count("quiet"));
+    }
+
+    /**
+     * 按服务静默只跳过指定服务；其它服务仍推送。
+     *
+     * @throws IOException 起本地 HTTP 失败
+     */
+    @Test
+    void silenceByServiceOnlyAffectsThatService() throws IOException {
+        AtomicInteger hits = new AtomicInteger();
+        AtomicReference<String> body = new AtomicReference<>();
+        int port = startHook(204, hits, body);
+        InsightServerAlertProperties props = baseProps(port, "error_rate", 10.0, 30);
+
+        SilenceRule silence = new SilenceRule();
+        silence.setId("s1");
+        silence.setServiceName("sca-order");
+        silence.setMetric("");
+        silence.setStartTime("00:00");
+        silence.setEndTime("00:00");
+        InsightRuntimeSettings snap = new InsightRuntimeSettings();
+        snap.getAlert().setSilences(List.of(silence));
+
+        lastMetrics = new InsightAlertMetrics(new SimpleMeterRegistry());
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAlert()).thenReturn(props);
+        when(settings.snapshot()).thenReturn(snap);
+        InsightAlertScheduler scheduler = new InsightAlertScheduler(
+                settings,
+                storeWithErrors("sca-order", "sca-user"),
+                senders(),
+                lastMetrics,
+                mockAi(),
+                new AnomalyDetector());
+        scheduler.scan();
+        assertEquals(1, hits.get());
+        assertTrue(body.get().contains("\"serviceName\":\"sca-user\""));
+        assertEquals(1.0, lastMetrics.count("silence"));
+        assertEquals(1.0, lastMetrics.count("success"));
+    }
+
+    /**
+     * 按指标静默只跳过该指标；其它指标仍推送。
+     *
+     * @throws IOException 起本地 HTTP 失败
+     */
+    @Test
+    void silenceByMetricOnlyAffectsThatMetric() throws IOException {
+        AtomicInteger hits = new AtomicInteger();
+        int port = startHook(204, hits, new AtomicReference<>());
+
+        SilenceRule silence = new SilenceRule();
+        silence.setId("m1");
+        silence.setServiceName("");
+        silence.setMetric("error_rate");
+        silence.setStartTime("00:00");
+        silence.setEndTime("00:00");
+        InsightRuntimeSettings snap = new InsightRuntimeSettings();
+        snap.getAlert().setSilences(List.of(silence));
+
+        InsightServerAlertProperties errorProps = baseProps(port, "error_rate", 10.0, 30);
+        lastMetrics = new InsightAlertMetrics(new SimpleMeterRegistry());
+        InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
+        when(settings.effectiveAlert()).thenReturn(errorProps);
+        when(settings.snapshot()).thenReturn(snap);
+        InsightAlertScheduler blocked = new InsightAlertScheduler(
+                settings, storeWithOneError(), senders(), lastMetrics, mockAi(), new AnomalyDetector());
+        blocked.scan();
+        assertEquals(0, hits.get());
+        assertEquals(1.0, lastMetrics.count("silence"));
+
+        InsightServerAlertProperties latencyProps = baseProps(port, "latency_p95", 100.0, 30);
+        when(settings.effectiveAlert()).thenReturn(latencyProps);
+        lastMetrics = new InsightAlertMetrics(new SimpleMeterRegistry());
+        InsightAlertScheduler allowed = new InsightAlertScheduler(
+                settings, storeWithSlowSpan(250L), senders(), lastMetrics, mockAi(), new AnomalyDetector());
+        allowed.scan();
+        assertEquals(1, hits.get());
+        assertEquals(1.0, lastMetrics.count("success"));
     }
 
     /**
@@ -315,20 +395,36 @@ class InsightAlertSchedulerTest {
     }
 
     private static TraceSpanPersistenceService storeWithOneError() {
+        return storeWithErrors("sca-order");
+    }
+
+    /**
+     * 每个服务各一条 ERROR + 一条 OK，错误率 50%。
+     *
+     * @param services 服务名
+     * @return 持久化服务
+     */
+    private static TraceSpanPersistenceService storeWithErrors(String... services) {
         InsightServerStorageProperties storage = new InsightServerStorageProperties();
         InMemorySpanStore store = new InMemorySpanStore(storage, "memory");
         TraceSpanPersistenceService persistence = new TraceSpanPersistenceService(store);
-        TraceSpan err = new TraceSpan();
-        err.setServiceName("sca-order");
-        err.setSuccess(false);
-        err.setStatusCode("ERROR");
-        err.setStartTime(System.currentTimeMillis());
-        TraceSpan ok = new TraceSpan();
-        ok.setServiceName("sca-order");
-        ok.setSuccess(true);
-        ok.setStatusCode("OK");
-        ok.setStartTime(System.currentTimeMillis());
-        persistence.saveTraceSpans(List.of(err, ok));
+        java.util.ArrayList<TraceSpan> spans = new java.util.ArrayList<>();
+        long now = System.currentTimeMillis();
+        for (String service : services) {
+            TraceSpan err = new TraceSpan();
+            err.setServiceName(service);
+            err.setSuccess(false);
+            err.setStatusCode("ERROR");
+            err.setStartTime(now);
+            TraceSpan ok = new TraceSpan();
+            ok.setServiceName(service);
+            ok.setSuccess(true);
+            ok.setStatusCode("OK");
+            ok.setStartTime(now);
+            spans.add(err);
+            spans.add(ok);
+        }
+        persistence.saveTraceSpans(spans);
         return persistence;
     }
 
