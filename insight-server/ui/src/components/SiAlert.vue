@@ -11,7 +11,24 @@ const alertRole = computed(() => props.role ?? (props.tone === 'danger' ? 'alert
 </script>
 
 <template>
-  <div class="alert py-2" :class="`alert-${tone}`" :role="alertRole">
+  <el-alert
+    class="si-alert"
+    :type="tone"
+    :closable="false"
+    :role="alertRole"
+    show-icon
+  >
     <slot />
-  </div>
+  </el-alert>
 </template>
+
+<style scoped>
+.si-alert {
+  margin: 0;
+}
+.si-alert :deep(.el-alert__description),
+.si-alert :deep(.el-alert__content) {
+  font-size: inherit;
+  line-height: 1.45;
+}
+</style>

@@ -11,20 +11,40 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
 }>()
 
-function onChange(event: Event) {
-  emit('update:modelValue', (event.target as HTMLInputElement).checked)
+function onUpdate(value: string | number | boolean) {
+  emit('update:modelValue', Boolean(value))
 }
 </script>
 
 <template>
-  <div class="form-check form-switch" :class="{ 'mb-0': props.flush }">
-    <input
+  <div class="si-switch-field" :class="{ 'si-switch-field--flush': props.flush }">
+    <el-switch
       :id="id"
-      class="form-check-input"
-      type="checkbox"
-      :checked="modelValue"
-      @change="onChange"
+      :model-value="modelValue"
+      :aria-label="label"
+      @update:model-value="onUpdate"
     />
-    <label class="form-check-label" :for="id">{{ label }}</label>
+    <label class="si-switch-field__label" :for="id">{{ label }}</label>
   </div>
 </template>
+
+<style scoped>
+.si-switch-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.si-switch-field--flush {
+  margin-bottom: 0;
+}
+
+.si-switch-field__label {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--si-ink-soft, #3d524a);
+  cursor: pointer;
+  user-select: none;
+}
+</style>
