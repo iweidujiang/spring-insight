@@ -1,75 +1,78 @@
 <template>
-  <div class="notification-container" ref="containerRef">
-    <button
-      ref="buttonRef"
-      type="button"
-      class="notification-button"
-      :aria-expanded="showNotifications"
-      aria-label="打开状态摘要"
-      @click.stop="toggleNotifications"
-    >
-      <i class="fa fa-bell"></i>
-      <span v-if="unreadCount > 0" class="notification-badge">{{ badgeText }}</span>
-    </button>
-
-    <Teleport to="body">
-      <div
-        v-if="showNotifications"
-        class="notification-panel"
-        :style="panelStyle"
-        role="dialog"
-        aria-label="状态摘要"
-        @click.stop
+  <el-popover
+    v-model:visible="showNotifications"
+    trigger="click"
+    placement="bottom-end"
+    :width="panelWidth"
+    :offset="8"
+    :show-arrow="false"
+    role="dialog"
+    popper-class="si-notification-popper"
+    @show="onPanelShow"
+  >
+    <template #reference>
+      <el-badge
+        class="notification-badge"
+        :value="unreadCount"
+        :max="99"
+        :hidden="unreadCount === 0"
       >
-        <div class="notification-header">
-          <div>
-            <h5>状态摘要</h5>
-          </div>
-          <button
-            v-if="unreadCount > 0"
-            type="button"
-            class="btn btn-sm btn-outline-secondary"
-            @click="markAllAsRead"
-          >
-            全部已读
-          </button>
+        <button
+          type="button"
+          class="notification-button"
+          :aria-expanded="showNotifications"
+          aria-haspopup="dialog"
+          aria-label="打开状态摘要"
+        >
+          <i class="fa fa-bell" aria-hidden="true"></i>
+        </button>
+      </el-badge>
+    </template>
+
+    <div class="notification-panel" aria-label="状态摘要">
+      <div class="notification-header">
+        <h5>状态摘要</h5>
+        <el-button v-if="unreadCount > 0" size="small" plain @click="markAllAsRead">
+          全部已读
+        </el-button>
+      </div>
+      <div
+        class="notification-list"
+        :class="{ 'is-loading': loading && notifications.length === 0 }"
+        v-loading="loading && notifications.length === 0"
+        element-loading-text="加载中…"
+        element-loading-background="transparent"
+      >
+        <div v-if="!loading && notifications.length === 0" class="notification-empty">
+          <i class="fa fa-check-circle" aria-hidden="true"></i>
+          <p>暂无需要关注的事项</p>
         </div>
-        <div class="notification-list">
-          <div v-if="loading && notifications.length === 0" class="notification-empty">
-            <i class="fa fa-spinner fa-spin"></i>
-            <p>加载中…</p>
+        <div
+          v-for="notification in notifications"
+          :key="notification.id"
+          class="notification-item"
+          :class="{ unread: !notification.read }"
+          @click="onItemClick(notification)"
+        >
+          <div class="notification-icon" :class="notification.type">
+            <i class="fa" :class="notification.icon" aria-hidden="true"></i>
           </div>
-          <div v-else-if="notifications.length === 0" class="notification-empty">
-            <i class="fa fa-check-circle"></i>
-            <p>暂无需要关注的事项</p>
+          <div class="notification-content">
+            <h6 class="notification-title">{{ notification.title }}</h6>
+            <p class="notification-message">{{ notification.message }}</p>
+            <span class="notification-time">{{ formatTime(notification.timestamp) }}</span>
           </div>
-          <div
-            v-for="notification in notifications"
-            :key="notification.id"
-            class="notification-item"
-            :class="{ unread: !notification.read }"
-            @click="onItemClick(notification)"
-          >
-            <div class="notification-icon" :class="notification.type">
-              <i class="fa" :class="notification.icon"></i>
-            </div>
-            <div class="notification-content">
-              <h6 class="notification-title">{{ notification.title }}</h6>
-              <p class="notification-message">{{ notification.message }}</p>
-              <span class="notification-time">{{ formatTime(notification.timestamp) }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="notification-footer">
-          完整告警规则（阈值/Webhook）将在后续版本提供；此处只反映已采集到的错误与上报成功率。
         </div>
       </div>
-    </Teleport>
-  </div>
+      <div class="notification-footer">
+        完整告警规则（阈值/Webhook）将在后续版本提供；此处只反映已采集到的错误与上报成功率。
+      </div>
+    </div>
+  </el-popover>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, type CSSProperties } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiService } from '../services/ApiService'
 
@@ -91,14 +94,15 @@ const router = useRouter()
 const showNotifications = ref(false)
 const notifications = ref<Notification[]>([])
 const loading = ref(false)
-const buttonRef = ref<HTMLButtonElement | null>(null)
-const containerRef = ref<HTMLElement | null>(null)
-const panelStyle = ref<CSSProperties>({})
+const panelWidth = ref(350)
 
 let pollTimer: number | null = null
 
 const unreadCount = computed(() => notifications.value.filter((n) => !n.read).length)
-const badgeText = computed(() => (unreadCount.value > 99 ? '99+' : String(unreadCount.value)))
+
+const syncPanelWidth = () => {
+  panelWidth.value = Math.min(350, Math.max(0, window.innerWidth - 16))
+}
 
 const loadReadIds = (): Set<string> => {
   try {
@@ -119,39 +123,13 @@ const saveReadIds = (ids: Set<string>) => {
   }
 }
 
-const updatePanelPosition = () => {
-  const btn = buttonRef.value
-  if (!btn) return
-  const rect = btn.getBoundingClientRect()
-  const panelWidth = Math.min(350, window.innerWidth - 16)
-  const gap = 8
-  let left = rect.right - panelWidth
-  if (left < 8) {
-    left = 8
-  }
-  if (left + panelWidth > window.innerWidth - 8) {
-    left = Math.max(8, window.innerWidth - panelWidth - 8)
-  }
-  panelStyle.value = {
-    position: 'fixed',
-    left: `${left}px`,
-    top: `${rect.bottom + gap}px`,
-    width: `${panelWidth}px`,
-    zIndex: 5000
-  }
-}
-
-const toggleNotifications = async () => {
-  showNotifications.value = !showNotifications.value
-  if (showNotifications.value) {
-    await nextTick()
-    updatePanelPosition()
-    void refreshFromServer()
-  }
-}
-
 const closeNotifications = () => {
   showNotifications.value = false
+}
+
+const onPanelShow = () => {
+  syncPanelWidth()
+  void refreshFromServer()
 }
 
 const markAsRead = (id: string) => {
@@ -258,49 +236,41 @@ const refreshFromServer = async () => {
   }
 }
 
-const onDocPointerDown = (event: MouseEvent | TouchEvent) => {
-  if (!showNotifications.value) return
-  const target = event.target as Node | null
-  if (!target) return
-  if (containerRef.value?.contains(target)) return
-  const panel = document.querySelector('.notification-panel')
-  if (panel?.contains(target)) return
-  closeNotifications()
-}
-
 const onKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') closeNotifications()
 }
 
 onMounted(() => {
+  syncPanelWidth()
   void refreshFromServer()
   pollTimer = window.setInterval(() => {
     void refreshFromServer()
   }, POLL_MS)
-  document.addEventListener('mousedown', onDocPointerDown)
-  document.addEventListener('touchstart', onDocPointerDown)
   window.addEventListener('keydown', onKeydown)
-  window.addEventListener('resize', updatePanelPosition)
-  window.addEventListener('scroll', updatePanelPosition, true)
+  window.addEventListener('resize', syncPanelWidth)
 })
 
 onUnmounted(() => {
   if (pollTimer != null) clearInterval(pollTimer)
-  document.removeEventListener('mousedown', onDocPointerDown)
-  document.removeEventListener('touchstart', onDocPointerDown)
   window.removeEventListener('keydown', onKeydown)
-  window.removeEventListener('resize', updatePanelPosition)
-  window.removeEventListener('scroll', updatePanelPosition, true)
+  window.removeEventListener('resize', syncPanelWidth)
 })
 </script>
 
 <style scoped>
-.notification-container {
-  position: relative;
+.notification-badge {
+  display: inline-flex;
+  line-height: 1;
+}
+
+.notification-badge :deep(.el-badge__content) {
+  border: none;
+  font-weight: 700;
+  background-color: var(--danger-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .notification-button {
-  position: relative;
   background: none;
   border: none;
   font-size: 1.15rem;
@@ -321,39 +291,17 @@ onUnmounted(() => {
   color: var(--si-teal);
 }
 
-.notification-badge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  background-color: var(--danger-color);
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.15rem 0.4rem;
-  border-radius: 9999px;
-  min-width: 1.35rem;
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  line-height: 1.2;
-}
-</style>
-
-<style>
 .notification-panel {
-  max-height: min(420px, calc(100vh - 1.5rem));
-  background: var(--si-notification-bg);
-  border-radius: 0.65rem;
-  border: 1px solid var(--card-border);
-  box-shadow: var(--si-notification-shadow);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  max-height: min(420px, calc(100vh - 1.5rem));
+  overflow: hidden;
 }
 
 .notification-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.75rem;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--si-brand-divider);
@@ -368,17 +316,18 @@ onUnmounted(() => {
   color: var(--si-ink);
 }
 
-.notification-header-desc {
-  margin: 0.2rem 0 0;
-  font-size: 0.7rem;
-  color: var(--si-muted);
-  font-weight: 500;
-}
-
 .notification-list {
   max-height: 280px;
   overflow-y: auto;
   flex: 1;
+}
+
+.notification-list.is-loading {
+  min-height: 140px;
+}
+
+.notification-list :deep(.el-loading-text) {
+  color: var(--si-muted);
 }
 
 .notification-empty {
@@ -394,6 +343,10 @@ onUnmounted(() => {
   font-size: 2rem;
   margin-bottom: 0.75rem;
   color: var(--si-teal);
+}
+
+.notification-empty p {
+  margin: 0;
 }
 
 .notification-item {
@@ -480,5 +433,15 @@ onUnmounted(() => {
   color: var(--si-muted);
   background: var(--si-notification-footer-bg);
   border-top: 1px solid var(--si-brand-divider);
+}
+</style>
+
+<style>
+.si-notification-popper.el-popover.el-popper {
+  padding: 0;
+  background: var(--si-notification-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 0.65rem;
+  box-shadow: var(--si-notification-shadow);
 }
 </style>
