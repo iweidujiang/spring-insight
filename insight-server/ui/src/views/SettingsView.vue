@@ -17,10 +17,7 @@
       {{ message }}
     </div>
 
-    <div v-if="loading" class="loading-spinner text-center py-5">
-      <i class="fa fa-spinner fa-spin fa-2x"></i>
-      <p class="mt-2 text-muted mb-0">加载设置…</p>
-    </div>
+    <SiLoading v-if="loading" text="加载设置…" />
 
     <template v-else>
       <nav class="si-settings__tabs" aria-label="设置分节">
@@ -113,14 +110,14 @@
             </button>
           </div>
 
-          <div class="si-settings__fields">
+          <el-form class="si-settings__fields" label-position="top" @submit.prevent>
             <SiFormField label="窗口（分钟）" field-id="alert-window">
               <input id="alert-window" v-model.number="form.alert.windowMinutes" class="form-control" type="number" min="1" />
             </SiFormField>
             <SiFormField label="冷却（分钟）" field-id="alert-cooldown">
               <input id="alert-cooldown" v-model.number="form.alert.cooldownMinutes" class="form-control" type="number" min="0" />
             </SiFormField>
-          </div>
+          </el-form>
 
           <SiFormBlock title="静默时段" icon="fa-moon-o" description="时段内不推送（可跨午夜，如 22:00→08:00）。">
             <template #switch>
@@ -183,7 +180,12 @@
                 </button>
                 <SiSwitchField :id="'channel-enabled-' + channel.id" v-model="channel.enabled" label="启用" flush />
               </div>
-              <div v-show="openChannels[channel.id]" class="si-channel__body si-settings__fields">
+              <el-form
+                v-show="openChannels[channel.id]"
+                class="si-channel__body si-settings__fields"
+                label-position="top"
+                @submit.prevent
+              >
                 <template v-if="channel.type === 'email'">
                   <SiFormField label="SMTP Host" :field-id="'smtp-host-' + channel.id" span="wide">
                     <input :id="'smtp-host-' + channel.id" v-model="channel.smtpHost" class="form-control" placeholder="smtp.example.com" />
@@ -240,7 +242,7 @@
                   </button>
                 </div>
                 <pre v-if="channelResults[channel.id]" class="si-settings__preview">{{ channelResults[channel.id] }}</pre>
-              </div>
+              </el-form>
             </article>
           </div>
         </section>
@@ -275,7 +277,7 @@
             </div>
           </div>
 
-          <div class="si-settings__fields">
+          <el-form class="si-settings__fields" label-position="top" @submit.prevent>
             <SiFormField label="Provider" field-id="ai-provider">
               <input id="ai-provider" v-model="form.ai.provider" class="form-control" placeholder="openai-compatible" />
             </SiFormField>
@@ -335,7 +337,7 @@
                 <p class="form-text mb-0">仪表盘「时段摘要 → AI 小结」按钮触发；超出后本小时内降级，不调模型。</p>
               </template>
             </SiFormField>
-          </div>
+          </el-form>
           <p class="si-settings__footnote">
             使用 Chat Completions 兼容接口即可对接各类大模型；API Key 仅保存在 Server 本机数据目录。
           </p>
@@ -352,7 +354,7 @@
             </div>
           </header>
 
-          <div class="si-settings__slo-form si-settings__grid">
+          <el-form class="si-settings__slo-form si-settings__grid" label-position="top" @submit.prevent>
             <SiFormField label="服务名" field-id="slo-service">
               <input
                 id="slo-service"
@@ -389,7 +391,7 @@
               />
               <p class="si-settings__hint mb-0">默认 720（约 30 天）</p>
             </SiFormField>
-          </div>
+          </el-form>
           <div class="d-flex gap-2 mb-3">
             <button
               type="button"
@@ -599,6 +601,7 @@ import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import SiFormBlock from '../components/SiFormBlock.vue'
 import SiFormField from '../components/SiFormField.vue'
+import SiLoading from '../components/SiLoading.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
 import SiSwitchField from '../components/SiSwitchField.vue'
 import {

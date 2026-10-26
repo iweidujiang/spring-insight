@@ -8,7 +8,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="si-settings__block">
+  <section class="si-settings__block">
     <header class="si-settings__block-head">
       <div>
         <h4 class="si-settings__block-title">
@@ -18,8 +18,8 @@ defineProps<{
       </div>
       <slot name="switch" />
     </header>
-    <div class="si-settings__fields">
+    <el-form class="si-settings__fields" label-position="top" @submit.prevent>
       <slot />
-    </div>
-  </div>
+    </el-form>
+  </section>
 </template>
