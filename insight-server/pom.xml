@@ -19,8 +19,9 @@
         <!-- 设为 true 可跳过前端构建，沿用 src/main/resources/static 中已提交的资源 -->
         <skip.ui>false</skip.ui>
         <frontend.maven.plugin.version>1.15.1</frontend.maven.plugin.version>
-        <frontend.node.version>v20.18.1</frontend.node.version>
-        <frontend.npm.version>10.8.2</frontend.npm.version>
+        <!-- Node 22：与 CI、Element Plus 依赖的 @vueuse@15（engines>=22）对齐 -->
+        <frontend.node.version>v22.14.0</frontend.node.version>
+        <frontend.npm.version>10.9.2</frontend.npm.version>
         <insight.ui.dir>${project.basedir}/ui</insight.ui.dir>
         <!-- application.yml 用 @…@ 注入 agent.version / server.version，避免与 Spring ${} 冲突 -->
         <resource.delimiter>@</resource.delimiter>
