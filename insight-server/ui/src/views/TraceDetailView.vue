@@ -7,65 +7,76 @@
         </h2>
         <p class="page-description text-truncate" style="max-width: 90vw">
           Trace ID：<code class="text-cyan">{{ traceId }}</code>
-          <button class="btn btn-sm btn-link p-0 ms-2 align-baseline" type="button" @click="copyTraceId" title="复制">
-            <i class="fa fa-copy"></i>
-          </button>
+          <el-button
+            link
+            type="primary"
+            size="small"
+            class="ms-2 align-baseline"
+            title="复制"
+            @click="copyTraceId"
+          >
+            <i class="fa fa-copy" aria-hidden="true"></i>
+          </el-button>
         </p>
       </div>
       <div class="si-page__toolbar">
-        <button
+        <el-button
           v-if="timeline.errorCount > 0"
-          class="btn btn-sm btn-outline-danger"
-          type="button"
-          @click="jumpError(-1)"
+          type="danger"
+          plain
+          size="small"
           title="上一个异常 Span"
+          @click="jumpError(-1)"
         >
-          <i class="fa fa-chevron-up"></i> 异常
-        </button>
-        <button
+          <i class="fa fa-chevron-up me-1" aria-hidden="true"></i> 异常
+        </el-button>
+        <el-button
           v-if="timeline.errorCount > 0"
-          class="btn btn-sm btn-outline-danger"
-          type="button"
-          @click="jumpError(1)"
+          type="danger"
+          plain
+          size="small"
           title="下一个异常 Span"
+          @click="jumpError(1)"
         >
-          异常 <i class="fa fa-chevron-down"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-secondary" type="button" @click="goBack">
-          <i class="fa fa-arrow-left me-1"></i>返回
-        </button>
-        <button
-          class="btn btn-sm btn-outline-secondary"
-          type="button"
-          @click="copyTraceContext"
+          异常 <i class="fa fa-chevron-down ms-1" aria-hidden="true"></i>
+        </el-button>
+        <el-button size="small" @click="goBack">
+          <i class="fa fa-arrow-left me-1" aria-hidden="true"></i>返回
+        </el-button>
+        <el-button
+          size="small"
           :disabled="loading || spans.length === 0"
           title="复制脱敏 Context JSON，可粘贴到任意 LLM"
+          @click="copyTraceContext"
         >
-          <i class="fa fa-magic me-1"></i>复制 Context
-        </button>
-        <button
-          class="btn btn-sm btn-outline-secondary"
-          type="button"
-          @click="downloadTroubleshootPack"
+          <i class="fa fa-magic me-1" aria-hidden="true"></i>复制 Context
+        </el-button>
+        <el-button
+          size="small"
+          :loading="exportingPack"
           :disabled="loading || exportingPack || spans.length === 0"
           title="下载脱敏排障包（Trace Context + 版本 + 时段摘要）"
+          @click="downloadTroubleshootPack"
         >
-          <i class="fa" :class="exportingPack ? 'fa-spinner fa-spin' : 'fa-download'"></i>
+          <i v-if="!exportingPack" class="fa fa-download me-1" aria-hidden="true"></i>
           {{ exportingPack ? '导出中…' : '排障包' }}
-        </button>
-        <button
-          class="btn btn-sm btn-outline-info"
-          type="button"
-          @click="runExplain"
+        </el-button>
+        <el-button
+          type="info"
+          plain
+          size="small"
+          :loading="explaining"
           :disabled="loading || explaining || spans.length === 0 || !aiStatus.invokeReady"
           :title="aiExplainTitle"
+          @click="runExplain"
         >
-          <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-lightbulb-o'"></i>
+          <i v-if="!explaining" class="fa fa-lightbulb-o me-1" aria-hidden="true"></i>
           {{ explaining ? '解释中…' : 'AI 解释' }}
-        </button>
-        <button class="btn btn-sm btn-primary" type="button" @click="load" :disabled="loading">
-          <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
-        </button>
+        </el-button>
+        <el-button type="primary" size="small" :loading="loading" @click="load">
+          <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+          刷新
+        </el-button>
       </div>
     </div>
 
@@ -77,13 +88,13 @@
     <SiLoading v-if="loading" text="加载中..." />
 
     <template v-else>
-      <div v-if="spans.length === 0" class="card stat-card">
-        <div class="card-body text-center text-muted py-5">
-          <i class="fa fa-info-circle fa-2x mb-2 d-block"></i>
+      <el-card v-if="spans.length === 0" class="si-trace-empty-card" shadow="never">
+        <div class="text-center text-muted py-5">
+          <i class="fa fa-info-circle fa-2x mb-2 d-block" aria-hidden="true"></i>
           <p class="mb-1">{{ TRACE_NOT_FOUND }}</p>
           <p class="small mb-0">{{ EMPTY_HINT_RELAX }}</p>
         </div>
-      </div>
+      </el-card>
 
       <template v-else>
         <!-- 摘要细条：高度让给瀑布 -->
@@ -240,9 +251,14 @@
             @row-click="onSpanRowClick"
           >
             <template #cell-status="{ row }">
-              <span class="badge" :class="row.isError ? 'bg-danger' : 'bg-success'">
+              <el-tag
+                :type="row.isError ? 'danger' : 'success'"
+                effect="dark"
+                size="small"
+                round
+              >
                 {{ row.span.statusCode || (row.isError ? 'ERR' : 'OK') }}
-              </span>
+              </el-tag>
             </template>
           </SiDataTable>
         </details>

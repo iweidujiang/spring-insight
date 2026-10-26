@@ -1,21 +1,27 @@
 <template>
   <div class="si-page fade-in si-settings">
     <SiPageHeader class="mb-3" title="设置" icon="fa-cog">
-      <button
+      <el-button
         v-if="section !== 'data' && section !== 'slo'"
-        type="button"
-        class="btn btn-primary"
+        type="primary"
+        :loading="saving"
         :disabled="loading || saving"
         @click="onSave"
       >
-        <i class="fa" :class="saving ? 'fa-spinner fa-spin' : 'fa-save'"></i>
+        <i v-if="!saving" class="fa fa-save me-1" aria-hidden="true"></i>
         {{ saving ? '保存中…' : '保存并生效' }}
-      </button>
+      </el-button>
     </SiPageHeader>
 
-    <div v-if="message" class="alert" :class="messageOk ? 'alert-success' : 'alert-danger'" role="status">
-      {{ message }}
-    </div>
+    <el-alert
+      v-if="message"
+      class="mb-3"
+      :type="messageOk ? 'success' : 'error'"
+      :title="message"
+      :closable="false"
+      show-icon
+      role="status"
+    />
 
     <SiLoading v-if="loading" text="加载设置…" />
 
@@ -67,55 +73,64 @@
             >
               <span v-if="index > 0" class="si-condition__and" aria-hidden="true">且</span>
               <div class="si-condition__row">
-                <select
+                <el-select
                   :id="'alert-metric-' + index"
                   v-model="row.metric"
-                  class="form-select"
                   :aria-label="'条件 ' + (index + 1) + ' 指标'"
                 >
-                  <option v-for="opt in metricOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                </select>
-                <select
+                  <el-option
+                    v-for="opt in metricOptions"
+                    :key="opt.value"
+                    :label="opt.label"
+                    :value="opt.value"
+                  />
+                </el-select>
+                <el-select
                   :id="'alert-op-' + index"
                   v-model="row.operator"
-                  class="form-select"
                   :aria-label="'条件 ' + (index + 1) + ' 运算符'"
                 >
-                  <option v-for="opt in operatorOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                </select>
-                <input
+                  <el-option
+                    v-for="opt in operatorOptions"
+                    :key="opt.value"
+                    :label="opt.label"
+                    :value="opt.value"
+                  />
+                </el-select>
+                <el-input
                   :id="'alert-threshold-' + index"
                   v-model.number="row.threshold"
-                  class="form-control"
                   type="number"
-                  min="0"
-                  step="0.1"
+                  :min="0"
+                  :step="0.1"
                   :aria-label="'条件 ' + (index + 1) + ' 阈值'"
                   :placeholder="thresholdUnit(row.metric)"
                 />
-                <button
-                  type="button"
-                  class="btn btn-outline-danger btn-sm si-condition__remove"
+                <el-button
+                  type="danger"
+                  plain
+                  size="small"
+                  class="si-condition__remove"
                   :disabled="form.alert.conditions.length <= 1"
                   :title="form.alert.conditions.length <= 1 ? '至少保留一条条件' : '删除条件'"
                   @click="removeCondition(index)"
                 >
                   <i class="fa fa-trash" aria-hidden="true"></i>
                   <span class="visually-hidden">删除</span>
-                </button>
+                </el-button>
               </div>
             </div>
-            <button type="button" class="btn btn-outline-secondary btn-sm si-conditions__add" @click="addCondition">
-              <i class="fa fa-plus me-1"></i>添加条件
-            </button>
+            <el-button size="small" class="si-conditions__add" @click="addCondition">
+              <i class="fa fa-plus me-1" aria-hidden="true"></i>添加条件
+            </el-button>
           </div>
 
           <el-form class="si-settings__fields" label-position="top" @submit.prevent>
             <SiFormField label="窗口（分钟）" field-id="alert-window">
-              <input id="alert-window" v-model.number="form.alert.windowMinutes" class="form-control" type="number" min="1" />
+              <el-input id="alert-window" v-model.number="form.alert.windowMinutes" type="number" :min="1" />
             </SiFormField>
             <SiFormField label="冷却（分钟）" field-id="alert-cooldown">
-              <input id="alert-cooldown" v-model.number="form.alert.cooldownMinutes" class="form-control" type="number" min="0" />
+              <el-input id="alert-cooldown" v-model.number="form.alert.cooldownMinutes" type="number" :min="0" />
             </SiFormField>
           </el-form>
 
@@ -124,16 +139,15 @@
               <SiSwitchField id="quiet-enabled" v-model="form.alert.quietHoursEnabled" label="启用静默" flush />
             </template>
             <SiFormField label="开始（HH:mm）" field-id="quiet-start">
-              <input id="quiet-start" v-model="form.alert.quietHoursStart" class="form-control" placeholder="22:00" />
+              <el-input id="quiet-start" v-model="form.alert.quietHoursStart" placeholder="22:00" />
             </SiFormField>
             <SiFormField label="结束（HH:mm）" field-id="quiet-end">
-              <input id="quiet-end" v-model="form.alert.quietHoursEnd" class="form-control" placeholder="08:00" />
+              <el-input id="quiet-end" v-model="form.alert.quietHoursEnd" placeholder="08:00" />
             </SiFormField>
             <SiFormField label="时区（可选）" field-id="quiet-zone" span="wide">
-              <input
+              <el-input
                 id="quiet-zone"
                 v-model="form.alert.quietHoursZone"
-                class="form-control"
                 placeholder="留空=服务器默认，例 Asia/Shanghai"
               />
             </SiFormField>
@@ -148,21 +162,22 @@
               <SiSwitchField id="esc-enabled" v-model="form.alert.escalation!.enabled" label="启用升级" flush />
             </template>
             <SiFormField label="持续未恢复（分钟）" field-id="esc-after">
-              <input
+              <el-input
                 id="esc-after"
                 v-model.number="form.alert.escalation!.afterMinutes"
-                class="form-control"
                 type="number"
-                min="1"
+                :min="1"
               />
             </SiFormField>
             <SiFormField label="升级渠道" field-id="esc-channel" span="wide">
-              <select id="esc-channel" v-model="form.alert.escalation!.channelId" class="form-select">
-                <option value="">请选择渠道</option>
-                <option v-for="ch in channels" :key="'esc-' + ch.id" :value="ch.id">
-                  {{ ch.name || ch.id }}（{{ ch.type }}）
-                </option>
-              </select>
+              <el-select id="esc-channel" v-model="form.alert.escalation!.channelId" clearable placeholder="请选择渠道" class="w-100">
+                <el-option
+                  v-for="ch in channels"
+                  :key="'esc-' + ch.id"
+                  :label="`${ch.name || ch.id}（${ch.type}）`"
+                  :value="ch.id"
+                />
+              </el-select>
             </SiFormField>
           </SiFormBlock>
 
@@ -188,25 +203,32 @@
               >
                 <template v-if="channel.type === 'email'">
                   <SiFormField label="SMTP Host" :field-id="'smtp-host-' + channel.id" span="wide">
-                    <input :id="'smtp-host-' + channel.id" v-model="channel.smtpHost" class="form-control" placeholder="smtp.example.com" />
+                    <el-input :id="'smtp-host-' + channel.id" v-model="channel.smtpHost" placeholder="smtp.example.com" />
                   </SiFormField>
                   <SiFormField label="端口" :field-id="'smtp-port-' + channel.id" span="narrow">
-                    <input :id="'smtp-port-' + channel.id" v-model.number="channel.smtpPort" class="form-control" type="number" min="1" />
+                    <el-input :id="'smtp-port-' + channel.id" v-model.number="channel.smtpPort" type="number" :min="1" />
                   </SiFormField>
                   <SiFormField label="用户名" :field-id="'smtp-user-' + channel.id">
-                    <input :id="'smtp-user-' + channel.id" v-model="channel.smtpUsername" class="form-control" autocomplete="off" />
+                    <el-input :id="'smtp-user-' + channel.id" v-model="channel.smtpUsername" autocomplete="off" />
                   </SiFormField>
                   <SiFormField label="密码" :field-id="'smtp-pass-' + channel.id">
                     <template v-if="channel.passwordConfigured" #hint>
                       <span class="text-muted small">（已配置，留空不改）</span>
                     </template>
-                    <input :id="'smtp-pass-' + channel.id" v-model="channel.smtpPassword" class="form-control" type="password" autocomplete="new-password" :placeholder="channel.passwordConfigured ? '••••••••' : ''" />
+                    <el-input
+                      :id="'smtp-pass-' + channel.id"
+                      v-model="channel.smtpPassword"
+                      type="password"
+                      show-password
+                      autocomplete="new-password"
+                      :placeholder="channel.passwordConfigured ? '••••••••' : ''"
+                    />
                   </SiFormField>
                   <SiFormField label="发件人 From" :field-id="'smtp-from-' + channel.id">
-                    <input :id="'smtp-from-' + channel.id" v-model="channel.smtpFrom" class="form-control" type="email" />
+                    <el-input :id="'smtp-from-' + channel.id" v-model="channel.smtpFrom" type="email" />
                   </SiFormField>
                   <SiFormField label="收件人 To（逗号分隔）" :field-id="'smtp-to-' + channel.id">
-                    <input :id="'smtp-to-' + channel.id" v-model="channel.smtpTo" class="form-control" />
+                    <el-input :id="'smtp-to-' + channel.id" v-model="channel.smtpTo" />
                   </SiFormField>
                   <SiFormField span="toggles">
                     <SiSwitchField :id="'email-starttls-' + channel.id" v-model="channel.startTls" label="STARTTLS" />
@@ -215,31 +237,45 @@
                 </template>
                 <template v-else>
                   <SiFormField label="Webhook URL" :field-id="'hook-' + channel.id" span="full">
-                    <input :id="'hook-' + channel.id" v-model="channel.webhookUrl" class="form-control" type="url" placeholder="https://…" />
+                    <el-input :id="'hook-' + channel.id" v-model="channel.webhookUrl" type="url" placeholder="https://…" />
                   </SiFormField>
                   <SiFormField v-if="channel.type === 'dingtalk' || channel.type === 'feishu'" label="加签密钥" :field-id="'secret-' + channel.id" span="wide">
                     <template v-if="channel.secretConfigured" #hint>
                       <span class="text-muted small">（已配置，留空不改）</span>
                     </template>
-                    <input :id="'secret-' + channel.id" v-model="channel.secret" class="form-control" type="password" autocomplete="new-password" :placeholder="channel.secretConfigured ? '••••••••' : ''" />
+                    <el-input
+                      :id="'secret-' + channel.id"
+                      v-model="channel.secret"
+                      type="password"
+                      show-password
+                      autocomplete="new-password"
+                      :placeholder="channel.secretConfigured ? '••••••••' : ''"
+                    />
                   </SiFormField>
                   <SiFormField v-if="channel.type === 'webhook'" label="令牌（可选）" :field-id="'token-' + channel.id" span="wide">
                     <template v-if="channel.tokenConfigured" #hint>
                       <span class="text-muted small">（已配置，留空不改）</span>
                     </template>
-                    <input :id="'token-' + channel.id" v-model="channel.token" class="form-control" type="password" autocomplete="new-password" :placeholder="channel.tokenConfigured ? '••••••••' : 'Authorization: Bearer'" />
+                    <el-input
+                      :id="'token-' + channel.id"
+                      v-model="channel.token"
+                      type="password"
+                      show-password
+                      autocomplete="new-password"
+                      :placeholder="channel.tokenConfigured ? '••••••••' : 'Authorization: Bearer'"
+                    />
                   </SiFormField>
                   <SiFormField v-if="channel.type !== 'webhook'" label="控制台地址" :field-id="'server-' + channel.id" span="wide">
-                    <input :id="'server-' + channel.id" v-model="channel.serverUrl" class="form-control" placeholder="http://127.0.0.1:9966" />
+                    <el-input :id="'server-' + channel.id" v-model="channel.serverUrl" placeholder="http://127.0.0.1:9966" />
                   </SiFormField>
                 </template>
                 <div class="si-channel__actions">
-                  <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="testingId === channel.id" @click="testChannel(channel, false)">
-                    <i class="fa fa-eye me-1"></i>预览
-                  </button>
-                  <button type="button" class="btn btn-outline-primary btn-sm" :disabled="testingId === channel.id" @click="testChannel(channel, true)">
-                    <i class="fa fa-paper-plane me-1"></i>测试发送
-                  </button>
+                  <el-button size="small" :loading="testingId === channel.id" @click="testChannel(channel, false)">
+                    <i v-if="testingId !== channel.id" class="fa fa-eye me-1" aria-hidden="true"></i>预览
+                  </el-button>
+                  <el-button type="primary" plain size="small" :loading="testingId === channel.id" @click="testChannel(channel, true)">
+                    <i v-if="testingId !== channel.id" class="fa fa-paper-plane me-1" aria-hidden="true"></i>测试发送
+                  </el-button>
                 </div>
                 <pre v-if="channelResults[channel.id]" class="si-settings__preview">{{ channelResults[channel.id] }}</pre>
               </el-form>
@@ -279,35 +315,35 @@
 
           <el-form class="si-settings__fields" label-position="top" @submit.prevent>
             <SiFormField label="Provider" field-id="ai-provider">
-              <input id="ai-provider" v-model="form.ai.provider" class="form-control" placeholder="openai-compatible" />
+              <el-input id="ai-provider" v-model="form.ai.provider" placeholder="openai-compatible" />
             </SiFormField>
             <SiFormField label="Model" field-id="ai-model">
-              <input id="ai-model" v-model="form.ai.model" class="form-control" placeholder="deepseek-chat" />
+              <el-input id="ai-model" v-model="form.ai.model" placeholder="deepseek-chat" />
             </SiFormField>
             <SiFormField label="Base URL" field-id="ai-base" span="full">
-              <input id="ai-base" v-model="form.ai.baseUrl" class="form-control" placeholder="https://api.deepseek.com/v1" />
+              <el-input id="ai-base" v-model="form.ai.baseUrl" placeholder="https://api.deepseek.com/v1" />
             </SiFormField>
             <SiFormField label="API Key" field-id="ai-key" span="full">
               <template v-if="apiKeyConfigured" #hint>
                 <span class="text-muted small">（已配置，留空不改）</span>
               </template>
-              <input
+              <el-input
                 id="ai-key"
                 v-model="form.ai.apiKey"
-                class="form-control"
                 type="password"
+                show-password
                 autocomplete="new-password"
                 :placeholder="apiKeyConfigured ? '••••••••' : ''"
               />
             </SiFormField>
             <SiFormField label="超时（ms）" field-id="ai-timeout">
-              <input id="ai-timeout" v-model.number="form.ai.timeoutMs" class="form-control" type="number" min="1000" />
+              <el-input id="ai-timeout" v-model.number="form.ai.timeoutMs" type="number" :min="1000" />
             </SiFormField>
             <SiFormField label="最大输入 Span" field-id="ai-spans">
-              <input id="ai-spans" v-model.number="form.ai.maxInputSpans" class="form-control" type="number" min="1" />
+              <el-input id="ai-spans" v-model.number="form.ai.maxInputSpans" type="number" :min="1" />
             </SiFormField>
             <SiFormField label="maxTokens" field-id="ai-tokens">
-              <input id="ai-tokens" v-model.number="form.ai.maxTokens" class="form-control" type="number" min="64" />
+              <el-input id="ai-tokens" v-model.number="form.ai.maxTokens" type="number" :min="64" />
             </SiFormField>
             <SiFormField span="full">
               <SiSwitchField id="ai-attach-alerts" v-model="form.ai.attachToAlerts" label="告警附带 AI 解读" />
@@ -316,22 +352,20 @@
               </template>
             </SiFormField>
             <SiFormField label="告警 AI 每小时上限" field-id="ai-alert-max">
-              <input
+              <el-input
                 id="ai-alert-max"
                 v-model.number="form.ai.alertMaxPerHour"
-                class="form-control"
                 type="number"
-                min="1"
+                :min="1"
                 :disabled="!form.ai.attachToAlerts"
               />
             </SiFormField>
             <SiFormField label="时段 AI 每小时上限" field-id="ai-period-max">
-              <input
+              <el-input
                 id="ai-period-max"
                 v-model.number="form.ai.periodMaxPerHour"
-                class="form-control"
                 type="number"
-                min="1"
+                :min="1"
               />
               <template #note>
                 <p class="form-text mb-0">仪表盘「时段摘要 → AI 小结」按钮触发；超出后本小时内降级，不调模型。</p>
@@ -356,10 +390,10 @@
 
           <el-form class="si-settings__slo-form si-settings__grid" label-position="top" @submit.prevent>
             <SiFormField label="服务名" field-id="slo-service">
-              <input
+              <el-input
                 id="slo-service"
                 v-model="sloDraft.serviceName"
-                class="form-control"
+                clearable
                 list="slo-service-list"
                 placeholder="如 sca-user"
               />
@@ -368,49 +402,45 @@
               </datalist>
             </SiFormField>
             <SiFormField label="目标可用性" field-id="slo-target">
-              <input
+              <el-input
                 id="slo-target"
                 v-model.number="sloDraft.targetAvailability"
-                class="form-control"
                 type="number"
-                min="0.9"
-                max="1"
-                step="0.0001"
+                :min="0.9"
+                :max="1"
+                :step="0.0001"
                 placeholder="0.999"
               />
               <p class="si-settings__hint mb-0">例如 0.999 = 99.9%</p>
             </SiFormField>
             <SiFormField label="窗口（小时）" field-id="slo-window">
-              <input
+              <el-input
                 id="slo-window"
                 v-model.number="sloDraft.windowHours"
-                class="form-control"
                 type="number"
-                min="1"
+                :min="1"
                 placeholder="720"
               />
               <p class="si-settings__hint mb-0">默认 720（约 30 天）</p>
             </SiFormField>
           </el-form>
           <div class="d-flex gap-2 mb-3">
-            <button
-              type="button"
-              class="btn btn-primary"
+            <el-button
+              type="primary"
+              :loading="sloSaving"
               :disabled="sloSaving || !sloDraft.serviceName.trim()"
               @click="saveSloDraft"
             >
-              <i class="fa" :class="sloSaving ? 'fa-spinner fa-spin' : 'fa-plus'"></i>
+              <i v-if="!sloSaving" class="fa fa-plus me-1" aria-hidden="true"></i>
               {{ sloEditing ? '更新 SLO' : '添加 SLO' }}
-            </button>
-            <button
+            </el-button>
+            <el-button
               v-if="sloEditing"
-              type="button"
-              class="btn btn-outline-secondary"
               :disabled="sloSaving"
               @click="resetSloDraft"
             >
               取消编辑
-            </button>
+            </el-button>
           </div>
 
           <div v-if="!sloRows.length" class="text-muted small">尚未配置 SLO，添加后可在仪表盘查看错误预算。</div>
@@ -422,9 +452,9 @@
                   目标 {{ (row.targetAvailability * 100).toFixed(2) }}% · 窗口 {{ row.windowHours }}h
                 </span>
               </div>
-              <div class="btn-group btn-group-sm">
-                <button type="button" class="btn btn-outline-secondary" @click="editSlo(row)">编辑</button>
-                <button type="button" class="btn btn-outline-danger" @click="removeSlo(row.serviceName)">删除</button>
+              <div class="si-settings__slo-actions">
+                <el-button size="small" @click="editSlo(row)">编辑</el-button>
+                <el-button type="danger" plain size="small" @click="removeSlo(row.serviceName)">删除</el-button>
               </div>
             </li>
           </ul>
@@ -442,14 +472,15 @@
           </header>
 
           <div class="si-settings__capacity">
-            <div
+            <el-alert
               v-if="capacityWarn"
-              class="alert py-2 mb-2"
-              :class="usagePercent >= 95 ? 'alert-danger' : 'alert-warning'"
+              class="mb-2"
+              :type="usagePercent >= 95 ? 'error' : 'warning'"
+              :title="capacityWarn"
+              :closable="false"
+              show-icon
               role="status"
-            >
-              <i class="fa fa-exclamation-triangle me-1"></i>{{ capacityWarn }}
-            </div>
+            />
             <div class="si-settings__usage">
               <div class="si-settings__usage-head">
                 <span>已存 / 上限</span>
@@ -497,15 +528,15 @@
                 <h4>清空全部</h4>
                 <p>删除当前已存的全部 Span。</p>
               </div>
-              <button
-                type="button"
-                class="btn btn-outline-danger"
+              <el-button
+                type="danger"
+                plain
                 :disabled="clearing || storage.stored === 0"
                 :title="storage.stored === 0 ? '当前没有可清空的 Span' : undefined"
                 @click="openClearDialog('all')"
               >
                 清空全部
-              </button>
+              </el-button>
             </article>
 
             <article class="si-settings__action">
@@ -515,16 +546,17 @@
               </div>
               <div class="si-settings__action-row">
                 <SiFormField class="si-settings__action-field" label="早于（小时）" field-id="clear-hours">
-                  <input id="clear-hours" v-model.number="clearOlderHours" class="form-control" type="number" min="1" />
+                  <el-input id="clear-hours" v-model.number="clearOlderHours" type="number" :min="1" />
                 </SiFormField>
-                <button
-                  type="button"
-                  class="btn btn-outline-warning si-settings__action-btn"
+                <el-button
+                  type="warning"
+                  plain
+                  class="si-settings__action-btn"
                   :disabled="clearing"
                   @click="openClearDialog('older_than')"
                 >
                   按时间清理
-                </button>
+                </el-button>
               </div>
             </article>
 
@@ -535,25 +567,25 @@
               </div>
               <div class="si-settings__action-row">
                 <SiFormField class="si-settings__action-field" label="服务名" field-id="clear-svc">
-                  <input
+                  <el-input
                     id="clear-svc"
                     v-model="clearServiceName"
-                    class="form-control"
-                    list="si-service-names"
+                    clearable
                     placeholder="例如 sca-order"
                   />
                   <datalist id="si-service-names">
                     <option v-for="n in serviceNames" :key="n" :value="n" />
                   </datalist>
                 </SiFormField>
-                <button
-                  type="button"
-                  class="btn btn-outline-warning si-settings__action-btn"
+                <el-button
+                  type="warning"
+                  plain
+                  class="si-settings__action-btn"
                   :disabled="clearing"
                   @click="openClearDialog('service')"
                 >
                   按服务清理
-                </button>
+                </el-button>
               </div>
             </article>
           </div>
@@ -561,38 +593,24 @@
       </div>
     </template>
 
-    <Teleport to="body">
-      <div
-        v-if="clearDialog.open"
-        class="si-confirm"
-        role="presentation"
-        @click.self="closeClearDialog"
-      >
-        <div
-          class="si-confirm__panel"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="si-clear-title"
-          aria-describedby="si-clear-desc"
-        >
-          <div class="si-confirm__icon" aria-hidden="true">
-            <i class="fa fa-exclamation-triangle"></i>
-          </div>
-          <h3 id="si-clear-title" class="si-confirm__title">{{ clearDialog.title }}</h3>
-          <p id="si-clear-desc" class="si-confirm__body">{{ clearDialog.body }}</p>
-          <p class="si-confirm__warn">此操作不可恢复</p>
-          <div class="si-confirm__actions">
-            <button type="button" class="btn btn-outline-secondary" :disabled="clearing" @click="closeClearDialog">
-              取消
-            </button>
-            <button type="button" class="btn btn-danger" :disabled="clearing" @click="runClear">
-              <i class="fa" :class="clearing ? 'fa-spinner fa-spin' : 'fa-trash'"></i>
-              {{ clearing ? '清理中…' : '确认清理' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <el-dialog
+      v-model="clearDialog.open"
+      :title="clearDialog.title"
+      width="420px"
+      align-center
+      :close-on-click-modal="!clearing"
+      @close="closeClearDialog"
+    >
+      <p>{{ clearDialog.body }}</p>
+      <p class="si-confirm__warn mb-0">此操作不可恢复</p>
+      <template #footer>
+        <el-button :disabled="clearing" @click="closeClearDialog">取消</el-button>
+        <el-button type="danger" :loading="clearing" @click="runClear">
+          <i v-if="!clearing" class="fa fa-trash me-1" aria-hidden="true"></i>
+          {{ clearing ? '清理中…' : '确认清理' }}
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 

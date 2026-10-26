@@ -2,9 +2,9 @@
   <div class="si-compare fade-in">
     <header class="si-compare__top">
       <div>
-        <button type="button" class="btn btn-link btn-sm px-0 si-compare__back" @click="goBack">
-          <i class="fa fa-arrow-left me-1"></i>返回列表
-        </button>
+        <el-button link type="primary" size="small" class="si-compare__back" @click="goBack">
+          <i class="fa fa-arrow-left me-1" aria-hidden="true"></i>返回列表
+        </el-button>
         <h2 class="si-compare__title">
           <i class="fa fa-columns me-2"></i>Trace 对比
         </h2>
@@ -25,23 +25,25 @@
       <div class="si-compare__list-bar mb-2">
         <span class="si-compare__list-bar-label">并排瀑布</span>
         <div class="si-compare__actions">
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-info"
+          <el-button
+            type="info"
+            plain
+            size="small"
+            :loading="explaining"
             :disabled="loading || explaining || !canExplain"
             :title="aiExplainTitle"
             @click="runCompareExplain"
           >
-            <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-lightbulb-o'"></i>
+            <i v-if="!explaining" class="fa fa-lightbulb-o me-1" aria-hidden="true"></i>
             {{ explaining ? '解读中…' : 'AI 解读' }}
-          </button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="!canSwap" @click="swapSides">
-            <i class="fa fa-exchange"></i> 交换两侧
-          </button>
-          <button type="button" class="btn btn-primary btn-sm" :disabled="loading" @click="load">
-            <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i>
-            <span>刷新</span>
-          </button>
+          </el-button>
+          <el-button size="small" :disabled="!canSwap" @click="swapSides">
+            <i class="fa fa-exchange me-1" aria-hidden="true"></i> 交换两侧
+          </el-button>
+          <el-button type="primary" size="small" :loading="loading" @click="load">
+            <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+            刷新
+          </el-button>
         </div>
       </div>
 
@@ -61,7 +63,7 @@
                 <span class="si-compare__side">A</span>
                 <code class="si-compare__id" :title="traceA">{{ shortId(traceA) }}</code>
               </div>
-              <button type="button" class="btn btn-link btn-sm py-0" @click="openDetail(traceA)">详情</button>
+              <el-button link type="primary" size="small" @click="openDetail(traceA)">详情</el-button>
             </header>
             <p class="si-compare__meta">
               {{ leftTimeline.serviceCount }} 服务 · {{ leftTimeline.rows.length }} Span ·
@@ -78,7 +80,7 @@
                 <span class="si-compare__side si-compare__side--b">B</span>
                 <code class="si-compare__id" :title="traceB">{{ shortId(traceB) }}</code>
               </div>
-              <button type="button" class="btn btn-link btn-sm py-0" @click="openDetail(traceB)">详情</button>
+              <el-button link type="primary" size="small" @click="openDetail(traceB)">详情</el-button>
             </header>
             <p class="si-compare__meta">
               {{ rightTimeline.serviceCount }} 服务 · {{ rightTimeline.rows.length }} Span ·
@@ -90,21 +92,25 @@
         </div>
       </div>
 
-      <section class="card si-compare__diff mt-3" aria-label="操作耗时差分">
-        <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <button
-            type="button"
-            class="btn btn-link btn-sm px-0 text-decoration-none si-compare__diff-toggle"
-            :aria-expanded="diffExpanded"
-            @click="diffExpanded = !diffExpanded"
-          >
-            <i class="fa" :class="diffExpanded ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-            <span class="fw-semibold">操作耗时差分（max，B − A）</span>
-            <span class="badge bg-secondary ms-1">{{ diffRows.length }}</span>
-          </button>
-          <span v-if="diffExpanded" class="small text-muted">按 |Δ| 排序 · 绿=变快 · 橙=变慢</span>
-        </div>
-        <div v-show="diffExpanded" class="card-body p-0">
+      <el-card class="si-compare__diff mt-3" shadow="never" aria-label="操作耗时差分">
+        <template #header>
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 w-100">
+            <el-button
+              link
+              type="primary"
+              size="small"
+              class="si-compare__diff-toggle"
+              :aria-expanded="diffExpanded"
+              @click="diffExpanded = !diffExpanded"
+            >
+              <i class="fa me-1" :class="diffExpanded ? 'fa-chevron-down' : 'fa-chevron-right'" aria-hidden="true"></i>
+              <span class="fw-semibold">操作耗时差分（max，B − A）</span>
+              <el-tag type="info" effect="plain" size="small" round class="ms-1">{{ diffRows.length }}</el-tag>
+            </el-button>
+            <span v-if="diffExpanded" class="small text-muted">按 |Δ| 排序 · 绿=变快 · 橙=变慢</span>
+          </div>
+        </template>
+        <div v-show="diffExpanded">
           <div v-if="diffRows.length === 0" class="p-3 text-muted small">无可对比操作</div>
           <SiDataTable
             v-else
@@ -116,12 +122,12 @@
           >
             <template #cell-operation="{ row }">
               {{ row.operationName }}
-              <span v-if="row.onlyLeft" class="badge bg-secondary ms-1">仅 A</span>
-              <span v-if="row.onlyRight" class="badge bg-secondary ms-1">仅 B</span>
+              <el-tag v-if="row.onlyLeft" type="info" effect="plain" size="small" round class="ms-1">仅 A</el-tag>
+              <el-tag v-if="row.onlyRight" type="info" effect="plain" size="small" round class="ms-1">仅 B</el-tag>
             </template>
           </SiDataTable>
         </div>
-      </section>
+      </el-card>
     </template>
   </div>
 </template>
@@ -455,7 +461,7 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-.si-compare__actions .btn {
+.si-compare__actions :deep(.el-button) {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;

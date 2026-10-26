@@ -2,38 +2,43 @@
   <div class="si-svc-detail fade-in">
     <header class="si-svc-detail__top">
       <div class="si-svc-detail__title-block">
-        <button type="button" class="btn btn-link btn-sm px-0 si-svc-detail__back" @click="goBack">
-          <i class="fa fa-arrow-left me-1"></i>返回
-        </button>
+        <el-button link type="primary" size="small" class="si-svc-detail__back" @click="goBack">
+          <i class="fa fa-arrow-left me-1" aria-hidden="true"></i>返回
+        </el-button>
         <h2 class="si-svc-detail__title">
           <i class="fa fa-cube me-2"></i>{{ serviceName || '服务详情' }}
         </h2>
       </div>
       <div class="si-svc-detail__actions">
         <label class="visually-hidden" for="svc-detail-hours">时间范围</label>
-        <select
+        <el-select
           id="svc-detail-hours"
-          class="form-select form-select-sm si-svc-detail__hours"
-          v-model.number="hours"
+          v-model="hours"
+          class="si-svc-detail__hours"
+          size="small"
           @change="onHoursChange"
         >
-          <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-        </select>
-        <button
-          type="button"
-          class="btn btn-primary btn-sm si-svc-detail__refresh"
-          :disabled="loading"
+          <el-option
+            v-for="opt in TIME_RANGE_OPTIONS"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
+        </el-select>
+        <el-button
+          type="primary"
+          size="small"
+          class="si-svc-detail__refresh"
+          :loading="loading"
           @click="load"
         >
-          <i class="fa fa-refresh" :class="{ 'fa-spin': loading }" aria-hidden="true"></i>
-          <span>刷新</span>
-        </button>
+          <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+          刷新
+        </el-button>
       </div>
     </header>
 
-    <div v-if="loading" class="si-svc-detail__loading">
-      <i class="fa fa-spinner fa-spin"></i><span class="ms-2">加载中…</span>
-    </div>
+    <SiLoading v-if="loading" text="加载中…" />
     <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
     <SiAlert v-else-if="!loading && deeplinkHint" tone="warning" role="alert" class="mb-3">{{ deeplinkHint }}</SiAlert>
 
@@ -63,89 +68,94 @@
       </section>
 
       <div class="si-svc-detail__ctas">
-        <button type="button" class="btn btn-sm btn-outline-primary" @click="goTraces()">全部链路</button>
-        <button type="button" class="btn btn-sm btn-outline-danger" @click="goTraces({ status: 'error' })">仅错误</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTopology">打开拓扑</button>
+        <el-button type="primary" plain size="small" @click="goTraces()">全部链路</el-button>
+        <el-button type="danger" plain size="small" @click="goTraces({ status: 'error' })">仅错误</el-button>
+        <el-button size="small" @click="goTopology">打开拓扑</el-button>
       </div>
 
       <div class="row g-3 si-svc-detail__grid">
         <div class="col-lg-6">
-          <section class="card h-100">
-            <div class="card-header py-2 fw-semibold">慢操作 Top</div>
-            <div class="card-body p-0">
-              <div v-if="summary.slowOperations.length === 0" class="p-3 text-muted small">
-                {{ emptyRequestsMessage(hours) }}
-              </div>
-              <SiDataTable
-                v-else
-                class="si-svc-detail__table--sm"
-                :rows="summary.slowOperations"
-                :columns="slowColumns"
-                :row-key="slowRowKey"
-                clickable
-                @row-click="onSlowOpClick"
-              />
+          <el-card class="h-100 si-svc-detail__card" shadow="never">
+            <template #header>
+              <span class="fw-semibold">慢操作 Top</span>
+            </template>
+            <div v-if="summary.slowOperations.length === 0" class="p-3 text-muted small">
+              {{ emptyRequestsMessage(hours) }}
             </div>
-          </section>
+            <SiDataTable
+              v-else
+              class="si-svc-detail__table--sm"
+              :rows="summary.slowOperations"
+              :columns="slowColumns"
+              :row-key="slowRowKey"
+              clickable
+              @row-click="onSlowOpClick"
+            />
+          </el-card>
         </div>
 
         <div class="col-lg-6">
-          <section class="card h-100">
-            <div class="card-header py-2 fw-semibold">依赖（出站 / 入站）</div>
-            <div class="card-body">
-              <p class="small text-muted mb-2">出站 →</p>
-              <ul v-if="summary.outbound.length" class="si-svc-detail__deps">
-                <li v-for="(e, i) in summary.outbound" :key="'o' + i">
-                  <button type="button" class="btn btn-link btn-sm px-0" @click="goService(e.targetService)">
-                    {{ e.targetService }}
-                  </button>
-                  <span class="text-muted small ms-1">×{{ e.callCount }}</span>
-                </li>
-              </ul>
-              <p v-else class="small text-muted">暂无出站边</p>
-              <p class="small text-muted mb-2 mt-3">← 入站</p>
-              <ul v-if="summary.inbound.length" class="si-svc-detail__deps">
-                <li v-for="(e, i) in summary.inbound" :key="'i' + i">
-                  <button type="button" class="btn btn-link btn-sm px-0" @click="goService(e.sourceService)">
-                    {{ e.sourceService }}
-                  </button>
-                  <span class="text-muted small ms-1">×{{ e.callCount }}</span>
-                </li>
-              </ul>
-              <p v-else class="small text-muted">暂无入站边</p>
-            </div>
-          </section>
+          <el-card class="h-100 si-svc-detail__card" shadow="never">
+            <template #header>
+              <span class="fw-semibold">依赖（出站 / 入站）</span>
+            </template>
+            <p class="small text-muted mb-2">出站 →</p>
+            <ul v-if="summary.outbound.length" class="si-svc-detail__deps">
+              <li v-for="(e, i) in summary.outbound" :key="'o' + i">
+                <el-button link type="primary" size="small" @click="goService(e.targetService)">
+                  {{ e.targetService }}
+                </el-button>
+                <span class="text-muted small ms-1">×{{ e.callCount }}</span>
+              </li>
+            </ul>
+            <p v-else class="small text-muted">暂无出站边</p>
+            <p class="small text-muted mb-2 mt-3">← 入站</p>
+            <ul v-if="summary.inbound.length" class="si-svc-detail__deps">
+              <li v-for="(e, i) in summary.inbound" :key="'i' + i">
+                <el-button link type="primary" size="small" @click="goService(e.sourceService)">
+                  {{ e.sourceService }}
+                </el-button>
+                <span class="text-muted small ms-1">×{{ e.callCount }}</span>
+              </li>
+            </ul>
+            <p v-else class="small text-muted">暂无入站边</p>
+          </el-card>
         </div>
 
         <div class="col-12">
-          <section class="card">
-            <div class="card-header py-2 d-flex justify-content-between align-items-center">
-              <span class="fw-semibold">最近链路</span>
-              <button type="button" class="btn btn-link btn-sm py-0" @click="goTraces()">查看全部</button>
-            </div>
-            <div class="card-body p-0">
-              <div v-if="summary.recentTraces.length === 0" class="p-3 text-muted small">
-                {{ emptyRequestsMessage(hours) }}
+          <el-card class="si-svc-detail__card" shadow="never">
+            <template #header>
+              <div class="d-flex justify-content-between align-items-center w-100">
+                <span class="fw-semibold">最近链路</span>
+                <el-button link type="primary" size="small" @click="goTraces()">查看全部</el-button>
               </div>
-              <SiDataTable
-                v-else
-                :rows="summary.recentTraces"
-                :columns="recentColumns"
-                :row-key="recentRowKey"
-                clickable
-                @row-click="onRecentClick"
-              >
-                <template #cell-status="{ row }">
-                  <span class="badge" :class="row.hasError ? 'bg-danger' : 'bg-success'">
-                    {{ row.statusCode || (row.hasError ? 'ERR' : 'OK') }}
-                  </span>
-                </template>
-                <template #cell-trace="{ row }">
-                  <code class="small">{{ shortId(row.traceId) }}</code>
-                </template>
-              </SiDataTable>
+            </template>
+            <div v-if="summary.recentTraces.length === 0" class="p-3 text-muted small">
+              {{ emptyRequestsMessage(hours) }}
             </div>
-          </section>
+            <SiDataTable
+              v-else
+              :rows="summary.recentTraces"
+              :columns="recentColumns"
+              :row-key="recentRowKey"
+              clickable
+              @row-click="onRecentClick"
+            >
+              <template #cell-status="{ row }">
+                <el-tag
+                  :type="row.hasError ? 'danger' : 'success'"
+                  effect="dark"
+                  size="small"
+                  round
+                >
+                  {{ row.statusCode || (row.hasError ? 'ERR' : 'OK') }}
+                </el-tag>
+              </template>
+              <template #cell-trace="{ row }">
+                <code class="small">{{ shortId(row.traceId) }}</code>
+              </template>
+            </SiDataTable>
+          </el-card>
         </div>
       </div>
     </template>
@@ -158,6 +168,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
+import SiLoading from '../components/SiLoading.vue'
 import type { SiColumn } from '../components/siTable'
 import { formatDuration } from '../utils/traceTimeline'
 import { TIME_RANGE_OPTIONS, emptyRequestsMessage } from '../utils/timeRange'
@@ -424,6 +435,19 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   flex: 0 0 auto;
+}
+
+.si-svc-detail__card {
+  --el-card-border-color: var(--card-border);
+  --el-card-bg-color: var(--card-bg);
+}
+
+.si-svc-detail__card :deep(.el-card__header) {
+  padding: 0.65rem 1rem;
+}
+
+.si-svc-detail__card :deep(.el-card__body) {
+  padding: 0.85rem 1rem;
 }
 
 .si-svc-detail__hours {
