@@ -70,8 +70,11 @@
   --el-mask-color: var(--si-backdrop-color, rgba(21, 36, 31, 0.28));
   --el-box-shadow: var(--box-shadow);
   --el-box-shadow-light: var(--box-shadow);
-  --el-border-radius-base: 8px;
+  --el-border-radius-base: var(--border-radius, 10px);
   --el-font-family: var(--font-body, 'Source Sans 3', 'Segoe UI', sans-serif);
+
+  --el-card-bg-color: var(--card-bg, #fffcfa);
+  --el-card-border-color: var(--card-border, rgba(20, 83, 45, 0.12));
 }
 
 [data-theme="dark"] {
@@ -138,4 +141,7 @@
   --el-fill-color-blank: var(--si-form-bg, #1a1f26);
 
   --el-mask-color: var(--si-backdrop-color, rgba(0, 0, 0, 0.5));
+
+  --el-card-bg-color: var(--card-bg, #1a1f26);
+  --el-card-border-color: var(--card-border, rgba(45, 212, 191, 0.1));
 }

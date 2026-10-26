@@ -1481,10 +1481,6 @@ onUnmounted(() => {
   min-height: 0;
 }
 
-.si-dashboard__kpis--compact .si-dashboard__kpi :deep(.card-body) {
-  padding: 0.55rem 0.75rem;
-}
-
 .si-dashboard__kpis--compact .si-dashboard__kpi-value {
   font-size: 1.15rem;
 }

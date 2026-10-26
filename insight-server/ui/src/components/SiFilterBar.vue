@@ -191,8 +191,7 @@ const hoursModel = computed({
 }
 
 .si-filter-bar__label,
-.si-filter-bar--fields :deep(.si-filter-bar__label),
-.si-filter-bar--fields :deep(.form-label) {
+.si-filter-bar--fields :deep(.si-filter-bar__label) {
   margin-bottom: 0.2rem;
   font-size: 0.75rem;
   color: var(--si-muted);

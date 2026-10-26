@@ -640,7 +640,7 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.si-trace-status .badge {
+.si-trace-status :deep(.el-tag) {
   min-width: 2.75rem;
   justify-content: center;
 }

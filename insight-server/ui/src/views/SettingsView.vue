@@ -1463,25 +1463,6 @@ onUnmounted(() => {
   grid-column: 1 / -1;
 }
 
-.si-settings__webhook-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  gap: 0.45rem;
-}
-
-.si-settings__webhook-row .form-control {
-  flex: 1 1 16rem;
-  min-width: 12rem;
-}
-
-.si-settings__webhook-row .btn {
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
 .si-conditions {
   margin: 0.35rem 0 1rem;
 }
@@ -1636,12 +1617,6 @@ onUnmounted(() => {
   gap: 0.75rem 1.5rem;
   align-items: center;
   padding-top: 0.25rem;
-}
-
-.si-settings .form-label {
-  font-size: 0.82rem;
-  margin-bottom: 0.3rem;
-  color: var(--si-ink-soft);
 }
 
 .si-settings__ai-status {
@@ -1871,20 +1846,13 @@ onUnmounted(() => {
 .si-settings__action-btn {
   white-space: nowrap;
   height: calc(1.5em + 0.75rem + 2px);
-}
-
-.si-settings__action > .btn {
   justify-self: end;
   min-width: 8.5rem;
 }
 
 @media (max-width: 767px) {
-  .si-settings__action > .btn {
-    justify-self: stretch;
-    width: 100%;
-  }
-
   .si-settings__action-btn {
+    justify-self: stretch;
     width: 100%;
   }
 }
