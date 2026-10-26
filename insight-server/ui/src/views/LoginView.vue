@@ -107,6 +107,10 @@ onUnmounted(() => {
 
 async function onSubmit() {
   error.value = ''
+  if (!username.value.trim() || !password.value) {
+    error.value = '请输入用户名和密码'
+    return
+  }
   loading.value = true
   try {
     await login(username.value, password.value)
@@ -179,24 +183,47 @@ async function onSubmit() {
 
       <section class="si-login__panel">
         <h2>登录</h2>
-        <form @submit.prevent="onSubmit">
-          <label>
-            <span class="visually-hidden">用户名</span>
-            <input v-model="username" autocomplete="username" placeholder="用户名" required />
-          </label>
-          <label>
-            <span class="visually-hidden">密码</span>
-            <input
+        <el-form class="si-login__form" label-position="top" @submit.prevent="onSubmit">
+          <el-form-item>
+            <el-input
+              v-model="username"
+              autocomplete="username"
+              placeholder="用户名"
+              size="large"
+              clearable
+              :disabled="loading"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-input
               v-model="password"
               type="password"
               autocomplete="current-password"
               placeholder="密码"
-              required
+              size="large"
+              show-password
+              :disabled="loading"
+              @keyup.enter="onSubmit"
             />
-          </label>
-          <p v-if="error" class="si-login__error">{{ error }}</p>
-          <button type="submit" :disabled="loading">{{ loading ? '登录中…' : '登录' }}</button>
-        </form>
+          </el-form-item>
+          <el-alert
+            v-if="error"
+            class="si-login__error"
+            type="error"
+            :title="error"
+            :closable="false"
+            show-icon
+          />
+          <el-button
+            class="si-login__submit"
+            type="primary"
+            native-type="submit"
+            size="large"
+            :loading="loading"
+          >
+            {{ loading ? '登录中…' : '登录' }}
+          </el-button>
+        </el-form>
       </section>
     </div>
   </div>
@@ -407,56 +434,52 @@ async function onSubmit() {
   font-weight: 650;
 }
 
-form {
+.si-login__form {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.35rem;
 }
 
-input {
-  width: 100%;
-  border: 1px solid var(--si-login-input-border);
+.si-login__form :deep(.el-form-item) {
+  margin-bottom: 0.5rem;
+}
+
+.si-login__form :deep(.el-input__wrapper) {
   border-radius: 4px;
-  padding: 0.72rem 0.8rem;
   background: var(--si-login-input-bg);
+  box-shadow: 0 0 0 1px var(--si-login-input-border) inset;
+}
+
+.si-login__form :deep(.el-input__wrapper:hover),
+.si-login__form :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px var(--si-login-focus) inset;
+}
+
+.si-login__form :deep(.el-input__inner) {
   color: var(--si-login-input-text);
   font-size: 0.95rem;
 }
 
-input::placeholder {
+.si-login__form :deep(.el-input__inner::placeholder) {
   color: var(--si-login-input-placeholder);
 }
 
-input:focus {
-  outline: none;
-  border-color: var(--si-login-focus);
-}
-
-button {
+.si-login__submit {
   margin-top: 0.35rem;
-  border: 0;
+  width: 100%;
   border-radius: 4px;
-  padding: 0.72rem 1rem;
-  background: var(--si-login-btn);
-  color: #fff;
   font-size: 1rem;
   font-weight: 700;
-  cursor: pointer;
-}
-
-button:hover:not(:disabled) {
-  background: var(--si-login-btn-hover);
-}
-
-button:disabled {
-  opacity: 0.7;
-  cursor: wait;
+  --el-button-bg-color: var(--si-login-btn);
+  --el-button-border-color: var(--si-login-btn);
+  --el-button-hover-bg-color: var(--si-login-btn-hover);
+  --el-button-hover-border-color: var(--si-login-btn-hover);
+  --el-button-active-bg-color: var(--si-login-btn-hover);
+  --el-button-active-border-color: var(--si-login-btn-hover);
 }
 
 .si-login__error {
-  margin: 0;
-  color: var(--si-login-error);
-  font-size: 0.85rem;
+  margin: 0 0 0.35rem;
 }
 
 @keyframes siDash {

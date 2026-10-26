@@ -1,14 +1,16 @@
 <template>
   <div class="si-page fade-in si-about">
     <SiPageHeader class="mb-1" title="关于" icon="fa-info-circle">
-      <span class="badge bg-info">
-        <i class="fa fa-clock me-1"></i>{{ currentTime }}
-      </span>
+      <el-tag type="info" effect="plain" size="small" round>
+        <i class="fa fa-clock me-1" aria-hidden="true"></i>{{ currentTime }}
+      </el-tag>
     </SiPageHeader>
 
     <div class="si-about__info">
-      <section class="si-about__card" aria-label="项目信息">
-        <h3 class="si-about__card-title"><i class="fa fa-cube" aria-hidden="true"></i>项目信息</h3>
+      <el-card class="si-about__card" shadow="never" aria-label="项目信息">
+        <template #header>
+          <h3 class="si-about__card-title"><i class="fa fa-cube" aria-hidden="true"></i>项目信息</h3>
+        </template>
         <dl class="si-about__dl">
           <div>
             <dt>项目名称</dt>
@@ -29,18 +31,18 @@
             <dt>技术栈</dt>
             <dd>
               <ul class="si-about__tags">
-                <li>Spring Boot 3.5</li>
-                <li>Java 17+</li>
-                <li>Vue 3</li>
-                <li>TypeScript</li>
-                <li>ECharts</li>
+                <li v-for="tag in techTags" :key="tag">
+                  <el-tag size="small" effect="plain" type="success" round>{{ tag }}</el-tag>
+                </li>
               </ul>
             </dd>
           </div>
         </dl>
-      </section>
-      <section class="si-about__card" aria-label="系统信息">
-        <h3 class="si-about__card-title"><i class="fa fa-server" aria-hidden="true"></i>系统信息</h3>
+      </el-card>
+      <el-card class="si-about__card" shadow="never" aria-label="系统信息">
+        <template #header>
+          <h3 class="si-about__card-title"><i class="fa fa-server" aria-hidden="true"></i>系统信息</h3>
+        </template>
         <dl class="si-about__dl">
           <div>
             <dt>界面</dt>
@@ -74,14 +76,16 @@
             </dd>
           </div>
         </dl>
-      </section>
+      </el-card>
     </div>
 
-    <section class="si-about__demo" aria-label="演示路径">
-      <div class="si-about__demo-head">
-        <h5 class="mb-0"><i class="fa fa-play-circle me-2"></i>三分钟演示路径</h5>
-        <span class="si-about__demo-sub">配套 Agent 开启 JDBC / Redis 追踪更完整</span>
-      </div>
+    <el-card class="si-about__demo" shadow="never" aria-label="演示路径">
+      <template #header>
+        <div class="si-about__demo-head">
+          <h5 class="mb-0"><i class="fa fa-play-circle me-2" aria-hidden="true"></i>三分钟演示路径</h5>
+          <span class="si-about__demo-sub">配套 Agent 开启 JDBC / Redis 追踪更完整</span>
+        </div>
+      </template>
       <ol class="si-about__demo-list">
         <li v-for="(step, i) in demoSteps" :key="i">
           <RouterLink v-if="step.to" :to="step.to" class="si-about__demo-link">{{ step.label }}</RouterLink>
@@ -89,11 +93,7 @@
           <span>{{ step.hint }}</span>
         </li>
       </ol>
-<!--      <p class="si-about__demo-note">
-        冒烟建议：首页 KPI 有数 → 拓扑有服务边 → 数据库 / 缓存页有 Span（或空态提示开关）→
-        打开一条 Trace 可「排障包」下载 → 设置页 AI 状态条可看就绪 / 原因。
-      </p>-->
-    </section>
+    </el-card>
   </div>
 </template>
 
@@ -109,6 +109,8 @@ const serverVersion = ref('…')
 const agentVersion = ref('…')
 const storageMode = ref('')
 let timeInterval: number | null = null
+
+const techTags = ['Spring Boot 3.5', 'Java 17+', 'Vue 3', 'TypeScript', 'ECharts']
 
 const demoSteps = [
   { to: '/', label: '仪表盘', hint: '看 KPI、时段摘要、库/缓存卡片与最近请求' },
@@ -160,18 +162,29 @@ onUnmounted(() => {
 
 .si-about__card {
   margin: 0;
-  padding: 1.05rem 1.15rem 1.15rem;
   border-radius: 10px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   box-shadow: var(--box-shadow);
+  --el-card-border-color: var(--card-border);
+  --el-card-bg-color: var(--card-bg);
+  --el-card-padding: 1.05rem 1.15rem 1.15rem;
+}
+
+.si-about__card :deep(.el-card__header) {
+  padding: 1.05rem 1.15rem 0;
+  border-bottom: none;
+}
+
+.si-about__card :deep(.el-card__body) {
+  padding: 0.85rem 1.15rem 1.15rem;
 }
 
 .si-about__card-title {
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  margin: 0 0 0.95rem;
+  margin: 0;
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.3;
@@ -256,14 +269,8 @@ onUnmounted(() => {
 }
 
 .si-about__tags li {
-  padding: 0.12rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--si-forest);
-  background: var(--si-teal-soft);
-  border: 1px solid rgba(15, 118, 110, 0.25);
+  display: inline-flex;
+  line-height: 1;
 }
 
 .si-about__links {
@@ -289,11 +296,21 @@ onUnmounted(() => {
 
 .si-about__demo {
   margin-top: 0.75rem;
-  padding: 1rem 1.1rem 1.15rem;
   border-radius: 14px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   box-shadow: var(--box-shadow);
+  --el-card-border-color: var(--card-border);
+  --el-card-bg-color: var(--card-bg);
+}
+
+.si-about__demo :deep(.el-card__header) {
+  padding: 1rem 1.1rem 0;
+  border-bottom: none;
+}
+
+.si-about__demo :deep(.el-card__body) {
+  padding: 0.75rem 1.1rem 1.15rem;
 }
 
 .si-about__demo-list {
@@ -342,7 +359,6 @@ onUnmounted(() => {
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.85rem;
   color: var(--si-ink);
 }
 
