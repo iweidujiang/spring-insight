@@ -9,17 +9,16 @@
         @hours-change="onHoursChange"
         @refresh="loadData"
       >
-        <button
-          class="btn btn-sm btn-outline-secondary"
-          type="button"
-          @click="downloadTopology"
+        <el-button
+          size="small"
           :disabled="loading || dependencies.length === 0"
+          @click="downloadTopology"
         >
-          <i class="fa fa-download"></i> 导出
-        </button>
-        <span class="badge bg-info">
-          <i class="fa fa-clock me-1"></i>{{ currentTime }}
-        </span>
+          <i class="fa fa-download me-1" aria-hidden="true"></i> 导出
+        </el-button>
+        <el-tag type="info" effect="plain" size="small" round>
+          <i class="fa fa-clock me-1" aria-hidden="true"></i>{{ currentTime }}
+        </el-tag>
       </SiFilterBar>
     </SiPageHeader>
 
@@ -36,9 +35,9 @@
         <div class="si-topo-solo__copy">
           <h3>{{ soloName }}</h3>
           <div class="si-topo-solo__actions">
-            <button type="button" class="btn btn-primary btn-sm" @click="goServiceDetail(soloName)">服务详情</button>
-            <button type="button" class="btn btn-outline-primary btn-sm" @click="goServiceTraces(soloName)">查看链路</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm" @click="goDashboard">回仪表盘</button>
+            <el-button type="primary" size="small" @click="goServiceDetail(soloName)">服务详情</el-button>
+            <el-button type="primary" plain size="small" @click="goServiceTraces(soloName)">查看链路</el-button>
+            <el-button size="small" @click="goDashboard">回仪表盘</el-button>
           </div>
         </div>
       </section>
@@ -67,7 +66,7 @@
       <section class="si-topo-solo__panel">
         <div class="si-topo-solo__panel-head">
           <h5 class="mb-0">最近请求</h5>
-          <button type="button" class="btn btn-sm btn-link py-0" @click="goServiceTraces(soloName)">全部</button>
+          <el-button link type="primary" size="small" @click="goServiceTraces(soloName)">全部</el-button>
         </div>
         <div v-if="recentTraces.length === 0" class="si-topo-solo__empty">{{ emptyRequestsMessage(hours) }}</div>
         <ul v-else class="si-topo-solo__list">
@@ -79,9 +78,14 @@
             <span class="si-http-method" :data-method="traceMethod(tr)">{{ traceMethod(tr) || 'REQ' }}</span>
             <span class="si-topo-solo__path" :title="tracePath(tr)">{{ tracePath(tr) }}</span>
             <em class="si-dur__val">{{ formatMs(tr.durationMs || 0) }}</em>
-            <span class="badge" :class="traceFailed(tr) ? 'bg-danger' : 'bg-success'">
+            <el-tag
+              :type="traceFailed(tr) ? 'danger' : 'success'"
+              effect="dark"
+              size="small"
+              round
+            >
               {{ traceFailed(tr) ? '失败' : '成功' }}
-            </span>
+            </el-tag>
           </li>
         </ul>
       </section>
@@ -124,12 +128,12 @@
               </p>
             </div>
             <div class="d-flex gap-2 align-items-center flex-shrink-0">
-              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshTopology" title="重绘">
-                <i class="fa fa-refresh"></i>
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-secondary" @click="fitToScreen" title="适应窗口">
-                <i class="fa fa-expand"></i>
-              </button>
+              <el-button type="primary" plain size="small" title="重绘" @click="refreshTopology">
+                <i class="fa fa-refresh" aria-hidden="true"></i>
+              </el-button>
+              <el-button size="small" title="适应窗口" @click="fitToScreen">
+                <i class="fa fa-expand" aria-hidden="true"></i>
+              </el-button>
             </div>
           </div>
           <div class="si-topo-canvas-wrap">
@@ -159,15 +163,15 @@
                 </div>
               </dl>
               <div class="si-topo-rail__actions">
-                <button type="button" class="btn btn-primary btn-sm w-100" @click="goServiceDetail(selection.service)">
+                <el-button type="primary" size="small" class="w-100" @click="goServiceDetail(selection.service)">
                   服务详情
-                </button>
-                <button type="button" class="btn btn-outline-primary btn-sm w-100" @click="goServiceTraces(selection.service)">
+                </el-button>
+                <el-button type="primary" plain size="small" class="w-100" @click="goServiceTraces(selection.service)">
                   查看该服务链路
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm w-100" @click="clearSelection">
+                </el-button>
+                <el-button size="small" class="w-100" @click="clearSelection">
                   取消选中
-                </button>
+                </el-button>
               </div>
             </template>
 
@@ -183,23 +187,26 @@
                 <div><dt>平均耗时</dt><dd>{{ formatMs(edgeAvgMs(selection.service, selection.peer)) }}</dd></div>
               </dl>
               <div class="si-topo-rail__actions">
-                <button type="button" class="btn btn-primary btn-sm w-100" @click="goServiceTraces(selection.service)">
+                <el-button type="primary" size="small" class="w-100" @click="goServiceTraces(selection.service)">
                   查看调用方链路
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm w-100" @click="goServiceTraces(selection.peer)">
+                </el-button>
+                <el-button size="small" class="w-100" @click="goServiceTraces(selection.peer)">
                   查看被调方链路
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-outline-info btn-sm w-100"
+                </el-button>
+                <el-button
+                  type="info"
+                  plain
+                  size="small"
+                  class="w-100"
+                  :loading="explaining"
                   :disabled="explaining || !aiReady"
                   :title="aiReady ? (aiStatusReason || '解释当前调用边') : (aiStatusReason || '请先在设置中启用 AI')"
                   @click="explainEdge(selection.service, selection.peer)"
                 >
-                  <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
+                  <i v-if="!explaining" class="fa fa-magic me-1" aria-hidden="true"></i>
                   {{ explaining ? '解读中…' : 'AI 解释此链路' }}
-                </button>
-                <button type="button" class="btn btn-link btn-sm" @click="clearSelection">取消选中</button>
+                </el-button>
+                <el-button link type="primary" size="small" @click="clearSelection">取消选中</el-button>
               </div>
               <AiExplainPanel
                 v-if="edgeExplain"
@@ -240,9 +247,9 @@
             <code class="si-svc">{{ row.targetService }}</code>
           </template>
           <template #cell-action="{ row }">
-            <button class="btn btn-sm btn-outline-primary" type="button" @click="goServiceTraces(row.sourceService)">
+            <el-button type="primary" plain size="small" @click="goServiceTraces(row.sourceService)">
               链路
-            </button>
+            </el-button>
           </template>
         </SiDataTable>
       </details>

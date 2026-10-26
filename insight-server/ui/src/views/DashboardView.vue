@@ -16,22 +16,33 @@
       </div>
       <div class="si-dashboard__actions">
         <label class="si-dashboard__hours visually-hidden" for="dashboard-hours">时间范围</label>
-        <select id="dashboard-hours" class="form-select form-select-sm si-dashboard__hours" v-model.number="hours" @change="onHoursChange">
-          <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-        </select>
+        <el-select
+          id="dashboard-hours"
+          v-model="hours"
+          class="si-dashboard__hours"
+          size="small"
+          @change="onHoursChange"
+        >
+          <el-option
+            v-for="opt in TIME_RANGE_OPTIONS"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
+        </el-select>
         <div class="si-layout-menu" ref="layoutMenuRef">
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary si-dashboard__btn"
-            :disabled="layoutSaving"
+          <el-button
+            class="si-dashboard__btn"
+            size="small"
+            :loading="layoutSaving"
             :aria-expanded="layoutMenuOpen"
             title="切换仪表盘布局模板"
             @click.stop="toggleLayoutMenu"
           >
-            <i class="fa" :class="layoutSaving ? 'fa-spinner fa-spin' : 'fa-th-large'"></i>
+            <i v-if="!layoutSaving" class="fa fa-th-large me-1" aria-hidden="true"></i>
             布局
-            <i class="fa fa-caret-down ms-1"></i>
-          </button>
+            <i class="fa fa-caret-down ms-1" aria-hidden="true"></i>
+          </el-button>
           <ul v-show="layoutMenuOpen" class="si-layout-menu__list" role="menu">
             <li v-for="tpl in templates" :key="tpl.id" role="none">
               <button
@@ -53,21 +64,30 @@
             </li>
           </ul>
         </div>
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-secondary si-dashboard__btn"
+        <el-button
+          class="si-dashboard__btn"
+          size="small"
+          :loading="exporting"
           :disabled="loading || exporting"
           title="下载当前时间窗仪表盘快照 JSON"
           @click="exportSnapshot"
         >
-          <i class="fa" :class="exporting ? 'fa-spinner fa-spin' : 'fa-download'"></i> 导出快照
-        </button>
-        <button class="btn btn-primary btn-sm si-dashboard__btn" @click="loadData" :disabled="loading">
-          <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i> 刷新
-        </button>
-        <span class="badge bg-info si-dashboard__clock">
-          <i class="fa fa-clock me-1"></i>{{ currentTime }}
-        </span>
+          <i v-if="!exporting" class="fa fa-download me-1" aria-hidden="true"></i>
+          导出快照
+        </el-button>
+        <el-button
+          class="si-dashboard__btn"
+          type="primary"
+          size="small"
+          :loading="loading"
+          @click="loadData"
+        >
+          <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+          刷新
+        </el-button>
+        <el-tag type="info" effect="plain" size="small" round class="si-dashboard__clock">
+          <i class="fa fa-clock me-1" aria-hidden="true"></i>{{ currentTime }}
+        </el-tag>
       </div>
     </header>
 
@@ -121,25 +141,26 @@
             <span class="si-period__scope">{{ periodScopeText }}</span>
           </div>
           <div class="si-period__actions">
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary si-period__action"
+            <el-button
+              class="si-period__action"
+              size="small"
+              :loading="periodExplaining"
               :disabled="periodExplaining || !aiStatus.invokeReady"
               :title="aiPeriodTitle"
               @click="explainPeriod"
             >
-              <i class="fa" :class="periodExplaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
-              <span>{{ periodExplaining ? '小结中…' : 'AI 小结' }}</span>
-            </button>
-            <button
+              <i v-if="!periodExplaining" class="fa fa-magic me-1" aria-hidden="true"></i>
+              {{ periodExplaining ? '小结中…' : 'AI 小结' }}
+            </el-button>
+            <el-button
               v-for="act in periodActions"
               :key="act.key"
-              type="button"
-              class="btn btn-sm btn-outline-secondary si-period__action"
+              class="si-period__action"
+              size="small"
               @click="act.run"
             >
               {{ act.label }}
-            </button>
+            </el-button>
           </div>
         </header>
         <p class="si-period__headline">{{ periodHeadline }}</p>
@@ -178,9 +199,9 @@
           </span>
           <span><em>运行</em>{{ collectorStats.runningHours ?? 0 }}h</span>
         </div>
-        <button type="button" class="btn btn-sm btn-outline-secondary py-0 ms-auto" @click="goTopology()">
+        <el-button size="small" class="ms-auto" @click="goTopology()">
           打开拓扑
-        </button>
+        </el-button>
       </section>
 
       <section
@@ -255,7 +276,7 @@
           <div>
             <h3 class="si-app__name">{{ soloProfile.name }}</h3>
           </div>
-          <button type="button" class="btn btn-sm btn-outline-secondary" @click="goTraces()">全部链路</button>
+          <el-button size="small" @click="goTraces()">全部链路</el-button>
         </div>
 
         <div class="si-app__metrics">
@@ -300,9 +321,14 @@
                 </span>
                 <em class="si-dur__val">{{ formatMs(tr.durationMs || 0) }}</em>
               </span>
-              <span class="badge" :class="traceFailed(tr) ? 'bg-danger' : 'bg-success'">
+              <el-tag
+                :type="traceFailed(tr) ? 'danger' : 'success'"
+                effect="dark"
+                size="small"
+                round
+              >
                 {{ traceFailed(tr) ? '失败' : '成功' }}
-              </span>
+              </el-tag>
             </li>
           </ul>
         </div>
@@ -313,7 +339,7 @@
           <div v-if="panelVisible('error-services')" class="si-overview__panel">
             <div class="si-overview__head">
               <span><i class="fa fa-exclamation-triangle me-2"></i>异常服务</span>
-              <button type="button" class="btn btn-sm btn-outline-danger py-0" @click="goErrors">错误分析</button>
+              <el-button type="danger" plain size="small" @click="goErrors">错误分析</el-button>
             </div>
             <ul v-if="errorAnalysis.length" class="si-dashboard__rail-list">
               <li
@@ -331,7 +357,7 @@
           <div v-if="panelVisible('service-health')" class="si-overview__panel">
             <div class="si-overview__head">
               <span><i class="fa fa-heartbeat me-2"></i>服务健康</span>
-              <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goSlowTraces()">慢链路</button>
+              <el-button size="small" @click="goSlowTraces()">慢链路</el-button>
             </div>
             <SiDataTable
               v-if="healthSnapshot.length > 0"
@@ -345,14 +371,14 @@
             />
             <div v-else class="si-dashboard__diag-empty si-dashboard__diag-empty--rich">
               <p class="mb-1">{{ emptyLatencySampleMessage(hours) }}</p>
-              <button type="button" class="btn btn-sm btn-outline-primary" @click="expandAllStored">扩大到全部已存</button>
+              <el-button type="primary" plain size="small" @click="expandAllStored">扩大到全部已存</el-button>
             </div>
           </div>
 
           <div v-if="panelVisible('slow-services')" class="si-overview__panel">
             <div class="si-overview__head">
               <span>慢服务 <PercentileHelp /></span>
-              <button type="button" class="btn btn-sm btn-link py-0" @click="goSlowTraces()">更多</button>
+              <el-button link type="primary" size="small" @click="goSlowTraces()">更多</el-button>
             </div>
             <ul v-if="slowServices.length" class="si-dashboard__rail-list">
               <li
@@ -372,7 +398,7 @@
           <div v-if="showSloPanel" class="si-overview__panel si-overview__panel--slo">
             <div class="si-overview__head">
               <span><i class="fa fa-bullseye me-2"></i>错误预算</span>
-              <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goSloSettings">设置</button>
+              <el-button size="small" @click="goSloSettings">设置</el-button>
             </div>
             <ul v-if="sloBudgets.length" class="si-dashboard__rail-list">
               <li
@@ -394,7 +420,7 @@
           <div v-if="panelVisible('hot-dependencies')" class="si-overview__panel">
             <div class="si-overview__head">
               <span>热点依赖</span>
-              <button type="button" class="btn btn-sm btn-link py-0" @click="goTopology()">拓扑图</button>
+              <el-button link type="primary" size="small" @click="goTopology()">拓扑图</el-button>
             </div>
             <ul v-if="hotDependencies.length" class="si-dashboard__rail-list">
               <li
@@ -423,7 +449,7 @@
           <div v-if="panelVisible('recent-traces')" class="si-overview__panel si-overview__panel--traces">
             <div class="si-overview__head">
               <span><i class="fa fa-list me-2"></i>最近请求</span>
-              <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="goTraces()">全部链路</button>
+              <el-button size="small" @click="goTraces()">全部链路</el-button>
             </div>
             <div v-if="recentTraces.length === 0" class="si-dashboard__diag-empty">{{ emptyRequestsMessage(hours) }}</div>
             <ul v-else class="si-app__list">
@@ -442,9 +468,14 @@
                   </span>
                   <em class="si-dur__val">{{ formatMs(tr.durationMs || 0) }}</em>
                 </span>
-                <span class="badge" :class="traceFailed(tr) ? 'bg-danger' : 'bg-success'">
+                <el-tag
+                  :type="traceFailed(tr) ? 'danger' : 'success'"
+                  effect="dark"
+                  size="small"
+                  round
+                >
                   {{ traceFailed(tr) ? '失败' : '成功' }}
-                </span>
+                </el-tag>
               </li>
             </ul>
           </div>
@@ -452,19 +483,21 @@
           <div v-if="panelVisible('service-rank')" class="si-overview__panel si-overview__panel--rank">
             <div class="si-overview__head">
               <span>请求排名</span>
-              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshServiceRankChart">
-                <i class="fa fa-refresh"></i>
-              </button>
+              <el-button type="primary" plain size="small" @click="refreshServiceRankChart">
+                <i class="fa fa-refresh" aria-hidden="true"></i>
+              </el-button>
             </div>
             <div id="service-rank-chart" class="si-overview__rank-canvas"></div>
-            <button
+            <el-button
               v-if="errorAnalysis && errorAnalysis.length > 0"
-              type="button"
-              class="btn btn-sm btn-outline-danger w-100 mt-2"
+              type="danger"
+              plain
+              size="small"
+              class="w-100 mt-2"
               @click="goErrors"
             >
               {{ errorAnalysis.length }} 个异常服务 · 错误分析
-            </button>
+            </el-button>
           </div>
         </div>
       </section>
@@ -1408,10 +1441,10 @@ onUnmounted(() => {
 .si-dashboard__hours {
   width: auto;
   min-width: 7.5rem;
-  font-size: 0.8rem;
-  border-color: var(--card-border);
-  background: var(--card-bg);
-  color: var(--si-ink);
+}
+
+.si-dashboard__hours :deep(.el-select__wrapper) {
+  min-width: 7.5rem;
 }
 
 .si-dashboard__btn {

@@ -2,18 +2,19 @@
   <div class="si-page fade-in">
     <SiPageHeader title="链路追踪" icon="fa-list-ul">
       <div class="si-page__toolbar">
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-secondary"
+        <el-button
+          size="small"
+          :loading="exporting"
           :disabled="loading || exporting"
           title="按当前筛选下载 CSV"
           @click="exportCsv"
         >
-          <i class="fa" :class="exporting ? 'fa-spinner fa-spin' : 'fa-download'"></i> 导出 CSV
-        </button>
-        <span class="badge bg-info">
-          <i class="fa fa-clock me-1"></i>{{ currentTime }}
-        </span>
+          <i v-if="!exporting" class="fa fa-download me-1" aria-hidden="true"></i>
+          导出 CSV
+        </el-button>
+        <el-tag type="info" effect="plain" size="small" round>
+          <i class="fa fa-clock me-1" aria-hidden="true"></i>{{ currentTime }}
+        </el-tag>
       </div>
     </SiPageHeader>
 
@@ -33,61 +34,74 @@
     >
       <template #fields>
         <div class="si-filter-bar__field">
-          <label for="status-select" class="form-label">状态</label>
-          <select id="status-select" class="form-select" v-model="statusFilter" @change="onFilterChange">
-            <option value="all">全部</option>
-            <option value="error">仅异常</option>
-            <option value="ok">仅成功</option>
-          </select>
+          <label for="status-select" class="si-filter-bar__label">状态</label>
+          <el-select
+            id="status-select"
+            v-model="statusFilter"
+            class="si-filter-bar__select"
+            @change="onFilterChange"
+          >
+            <el-option label="全部" value="all" />
+            <el-option label="仅异常" value="error" />
+            <el-option label="仅成功" value="ok" />
+          </el-select>
         </div>
         <div class="si-filter-bar__field">
-          <label for="min-dur-select" class="form-label">最慢起</label>
-          <select id="min-dur-select" class="form-select" v-model.number="minDurationMs" @change="onFilterChange">
-            <option :value="0">不限</option>
-            <option :value="100">≥100ms</option>
-            <option :value="500">≥500ms</option>
-            <option :value="1000">≥1s</option>
-            <option :value="3000">≥3s</option>
-          </select>
+          <label for="min-dur-select" class="si-filter-bar__label">最慢起</label>
+          <el-select
+            id="min-dur-select"
+            v-model="minDurationMs"
+            class="si-filter-bar__select"
+            @change="onFilterChange"
+          >
+            <el-option label="不限" :value="0" />
+            <el-option label="≥100ms" :value="100" />
+            <el-option label="≥500ms" :value="500" />
+            <el-option label="≥1s" :value="1000" />
+            <el-option label="≥3s" :value="3000" />
+          </el-select>
         </div>
         <div class="si-filter-bar__field">
-          <label for="path-prefix-input" class="form-label">路径前缀</label>
-          <input
+          <label for="path-prefix-input" class="si-filter-bar__label">路径前缀</label>
+          <el-input
             id="path-prefix-input"
-            class="form-control"
-            type="search"
             v-model="pathPrefix"
+            clearable
             placeholder="留空不限，例 /order"
             @keyup.enter="onFilterChange"
             @change="onFilterChange"
           />
         </div>
         <div class="si-filter-bar__field si-filter-bar__field--narrow">
-          <label for="limit-select" class="form-label">数量</label>
-          <select id="limit-select" class="form-select" v-model.number="limit" @change="onFilterChange">
-            <option :value="20">20</option>
-            <option :value="50">50</option>
-            <option :value="100">100</option>
-            <option :value="200">200</option>
-          </select>
+          <label for="limit-select" class="si-filter-bar__label">数量</label>
+          <el-select
+            id="limit-select"
+            v-model="limit"
+            class="si-filter-bar__select"
+            @change="onFilterChange"
+          >
+            <el-option :value="20" label="20" />
+            <el-option :value="50" label="50" />
+            <el-option :value="100" label="100" />
+            <el-option :value="200" label="200" />
+          </el-select>
         </div>
         <div class="si-filter-bar__field si-filter-bar__field--search">
-          <label for="q-input" class="form-label">搜索</label>
+          <label for="q-input" class="si-filter-bar__label">搜索</label>
           <div class="d-flex gap-2">
-            <input
+            <el-input
               id="q-input"
-              class="form-control"
-              type="search"
               v-model="query"
+              clearable
               placeholder="Trace ID / 服务 / 操作名"
               @keyup.enter="onFilterChange"
             />
-            <button type="button" class="btn btn-primary" @click="onFilterChange" :disabled="loading" title="搜索">
-              <i class="fa fa-search"></i>
-            </button>
-            <button type="button" class="btn btn-outline-secondary" @click="resetFilters" :disabled="loading" title="重置">
-              <i class="fa fa-refresh"></i>
-            </button>
+            <el-button type="primary" :disabled="loading" title="搜索" @click="onFilterChange">
+              <i class="fa fa-search" aria-hidden="true"></i>
+            </el-button>
+            <el-button :disabled="loading" title="重置" @click="resetFilters">
+              <i class="fa fa-refresh" aria-hidden="true"></i>
+            </el-button>
           </div>
         </div>
       </template>
@@ -100,39 +114,37 @@
 
     <SiLoading v-if="loading" text="正在加载链路数据..." />
 
-    <div v-else class="card stat-card si-table-panel">
-      <div class="card-body">
+    <el-card v-else class="si-table-panel" shadow="never">
         <div class="si-trace-list-bar mb-2">
           <div class="si-trace-list-bar__title">
-            <h5 class="card-title mb-0">最近请求</h5>
-            <span class="badge bg-primary">{{ traces.length }} 条</span>
+            <h5 class="mb-0">最近请求</h5>
+            <el-tag type="primary" effect="dark" size="small" round>{{ traces.length }} 条</el-tag>
           </div>
           <div class="si-trace-list-bar__actions">
-            <button
-              type="button"
-              class="btn btn-outline-primary btn-sm"
+            <el-button
+              type="primary"
+              plain
+              size="small"
               :disabled="selectedIds.length !== 2"
-              @click="goCompare"
               :title="selectedIds.length === 2 ? '对比已选两条 Trace' : '请勾选恰好两条 Trace'"
+              @click="goCompare"
             >
-              <i class="fa fa-columns me-1"></i>对比 ({{ selectedIds.length }}/2)
-            </button>
-            <button
+              <i class="fa fa-columns me-1" aria-hidden="true"></i>对比 ({{ selectedIds.length }}/2)
+            </el-button>
+            <el-button
               v-if="selectedIds.length"
-              type="button"
-              class="btn btn-outline-secondary btn-sm"
+              size="small"
               @click="clearSelection"
             >
               清除选择
-            </button>
-            <label class="si-auto-refresh form-check mb-0">
-              <input class="form-check-input" type="checkbox" v-model="autoRefresh" />
-              <span class="form-check-label">自动刷新</span>
+            </el-button>
+            <label class="si-auto-refresh mb-0">
+              <el-checkbox v-model="autoRefresh">自动刷新</el-checkbox>
             </label>
-            <button type="button" class="btn btn-primary btn-sm" @click="loadData" :disabled="loading">
-              <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i>
-              <span>刷新</span>
-            </button>
+            <el-button type="primary" size="small" :loading="loading" @click="loadData">
+              <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+              刷新
+            </el-button>
           </div>
         </div>
         <SiDataTable
@@ -145,13 +157,12 @@
           @row-click="onTraceRowClick"
         >
           <template #cell-check="{ row }">
-            <input
-              class="form-check-input"
-              type="checkbox"
-              :checked="isSelected(row.traceId)"
+            <el-checkbox
+              :model-value="isSelected(row.traceId)"
               :disabled="!isSelected(row.traceId) && selectedIds.length >= 2"
-              @change="toggleSelect(row.traceId)"
               :aria-label="`选择 ${row.traceId}`"
+              @change="toggleSelect(row.traceId)"
+              @click.stop
             />
           </template>
           <template #cell-operation="{ row }">
@@ -170,14 +181,19 @@
             </span>
           </template>
           <template #cell-status="{ row }">
-            <span class="badge" :class="traceFailed(row) ? 'bg-danger' : 'bg-success'">
+            <el-tag
+              :type="traceFailed(row) ? 'danger' : 'success'"
+              effect="dark"
+              size="small"
+              round
+            >
               {{ traceFailed(row) ? '失败' : '成功' }}
-            </span>
+            </el-tag>
           </template>
           <template #cell-act="{ row }">
-            <button class="btn btn-sm btn-outline-secondary" @click="copyTraceId(row.traceId)" title="复制 Trace ID">
-              <i class="fa fa-copy"></i>
-            </button>
+            <el-button size="small" title="复制 Trace ID" @click="copyTraceId(row.traceId)">
+              <i class="fa fa-copy" aria-hidden="true"></i>
+            </el-button>
           </template>
           <template #empty>
             <div class="py-4">
@@ -187,8 +203,7 @@
             </div>
           </template>
         </SiDataTable>
-      </div>
-    </div>
+    </el-card>
   </div>
 </template>
 
@@ -556,11 +571,13 @@ onUnmounted(() => {
   gap: 0.45rem;
 }
 
-.si-trace-list-bar__actions .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  white-space: nowrap;
+.si-table-panel {
+  --el-card-border-color: var(--card-border);
+  --el-card-bg-color: var(--card-bg);
+  border-radius: 10px;
+}
+
+.si-trace-list-bar__actions :deep(.el-button) {
   flex-shrink: 0;
 }
 
