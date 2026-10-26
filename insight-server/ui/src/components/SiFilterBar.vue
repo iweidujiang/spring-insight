@@ -61,72 +61,93 @@ const hoursModel = computed({
 <template>
   <div v-if="layout === 'compact'" class="si-page__toolbar si-filter-bar">
     <template v-if="showService">
-      <label class="form-label mb-0 visually-hidden" :for="serviceId">{{ serviceLabel }}</label>
-      <select
+      <label class="visually-hidden" :for="serviceId">{{ serviceLabel }}</label>
+      <el-select
         :id="serviceId"
         v-model="serviceModel"
-        class="form-select form-select-sm si-filter-bar__control"
+        class="si-filter-bar__control"
+        size="small"
+        filterable
+        :placeholder="allServicesLabel"
       >
-        <option value="">{{ allServicesLabel }}</option>
-        <option v-for="name in services" :key="name" :value="name">{{ name }}</option>
-      </select>
+        <el-option :label="allServicesLabel" value="" />
+        <el-option v-for="name in services" :key="name" :label="name" :value="name" />
+      </el-select>
     </template>
 
-    <label class="form-label mb-0 visually-hidden" :for="hoursId">{{ hoursLabel }}</label>
-    <select
+    <label class="visually-hidden" :for="hoursId">{{ hoursLabel }}</label>
+    <el-select
       :id="hoursId"
-      v-model.number="hoursModel"
-      class="form-select form-select-sm si-filter-bar__control"
+      v-model="hoursModel"
+      class="si-filter-bar__control"
+      size="small"
     >
-      <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-    </select>
+      <el-option
+        v-for="opt in TIME_RANGE_OPTIONS"
+        :key="opt.value"
+        :label="opt.label"
+        :value="opt.value"
+      />
+    </el-select>
 
     <slot name="leading" />
 
-    <button
+    <el-button
       v-if="showRefresh"
-      type="button"
-      class="btn btn-sm btn-primary"
-      :disabled="loading"
+      type="primary"
+      size="small"
+      :loading="loading"
       @click="emit('refresh')"
     >
-      <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i>
+      <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
       刷新
-    </button>
+    </el-button>
 
     <slot />
   </div>
 
   <div v-else class="si-filter-bar si-filter-bar--fields">
     <div v-if="showService" class="si-filter-bar__field">
-      <label class="form-label" :for="serviceId">{{ serviceLabel }}</label>
-      <select :id="serviceId" v-model="serviceModel" class="form-select">
-        <option value="">{{ allServicesLabel }}</option>
-        <option v-for="name in services" :key="name" :value="name">{{ name }}</option>
-      </select>
+      <label class="si-filter-bar__label" :for="serviceId">{{ serviceLabel }}</label>
+      <el-select
+        :id="serviceId"
+        v-model="serviceModel"
+        size="default"
+        filterable
+        :placeholder="allServicesLabel"
+        class="si-filter-bar__select"
+      >
+        <el-option :label="allServicesLabel" value="" />
+        <el-option v-for="name in services" :key="name" :label="name" :value="name" />
+      </el-select>
     </div>
 
     <div class="si-filter-bar__field">
-      <label class="form-label" :for="hoursId">{{ hoursLabel }}</label>
-      <select :id="hoursId" v-model.number="hoursModel" class="form-select">
-        <option v-for="opt in TIME_RANGE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
+      <label class="si-filter-bar__label" :for="hoursId">{{ hoursLabel }}</label>
+      <el-select :id="hoursId" v-model="hoursModel" size="default" class="si-filter-bar__select">
+        <el-option
+          v-for="opt in TIME_RANGE_OPTIONS"
+          :key="opt.value"
+          :label="opt.label"
+          :value="opt.value"
+        />
+      </el-select>
     </div>
 
     <slot name="fields" />
 
     <slot name="leading" />
 
-    <button
+    <el-button
       v-if="showRefresh"
-      type="button"
-      class="btn btn-sm btn-primary"
-      :disabled="loading"
+      type="primary"
+      size="small"
+      :loading="loading"
       @click="emit('refresh')"
     >
-      <i class="fa fa-refresh" :class="{ 'fa-spin': loading }"></i>
+      <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
       刷新
-    </button>
+    </el-button>
 
     <slot />
   </div>
@@ -135,6 +156,10 @@ const hoursModel = computed({
 <style scoped>
 .si-filter-bar__control {
   width: auto;
+  min-width: 7.5rem;
+}
+
+.si-filter-bar__control :deep(.el-select__wrapper) {
   min-width: 7.5rem;
 }
 
@@ -165,10 +190,15 @@ const hoursModel = computed({
   max-width: 32rem;
 }
 
-.si-filter-bar--fields .form-label,
+.si-filter-bar__label,
+.si-filter-bar--fields :deep(.si-filter-bar__label),
 .si-filter-bar--fields :deep(.form-label) {
   margin-bottom: 0.2rem;
   font-size: 0.75rem;
   color: var(--si-muted);
+}
+
+.si-filter-bar__select {
+  width: 100%;
 }
 </style>

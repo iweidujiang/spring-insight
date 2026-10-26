@@ -10,27 +10,32 @@
         @refresh="loadData"
       >
         <template #leading>
-          <button
-            class="btn btn-sm btn-outline-primary"
-            @click="onExplainErrors"
+          <el-button
+            type="primary"
+            plain
+            size="small"
+            :loading="explaining"
             :disabled="loading || explaining || !hasErrors || !aiReady"
             :title="aiReady ? (aiStatusReason || '用当前聚合摘要调用 AI') : (aiStatusReason || '请先在设置中启用 AI 并配置密钥')"
+            @click="onExplainErrors"
           >
-            <i class="fa" :class="explaining ? 'fa-spinner fa-spin' : 'fa-magic'"></i>
+            <i v-if="!explaining" class="fa fa-magic me-1" aria-hidden="true"></i>
             {{ explaining ? '解读中…' : '一键解读' }}
-          </button>
+          </el-button>
         </template>
-        <button
-          class="btn btn-sm btn-outline-secondary"
-          @click="exportCsv"
+        <el-button
+          size="small"
+          :loading="exporting"
           :disabled="loading || exporting || !hasErrors"
           title="按当前时间窗下载错误分析 CSV"
+          @click="exportCsv"
         >
-          <i class="fa" :class="exporting ? 'fa-spinner fa-spin' : 'fa-download'"></i> 导出 CSV
-        </button>
-        <span class="badge bg-info">
-          <i class="fa fa-clock me-1"></i>{{ currentTime }}
-        </span>
+          <i v-if="!exporting" class="fa fa-download me-1" aria-hidden="true"></i>
+          导出 CSV
+        </el-button>
+        <el-tag type="info" effect="plain" size="small" round>
+          <i class="fa fa-clock me-1" aria-hidden="true"></i>{{ currentTime }}
+        </el-tag>
       </SiFilterBar>
     </SiPageHeader>
 
@@ -49,9 +54,9 @@
         </p>
         <div class="si-err-healthy__tips">
           <span><i class="fa fa-bolt me-1"></i>可在业务侧制造失败请求后再刷新本页</span>
-          <button type="button" class="btn btn-sm btn-outline-secondary" @click="goErrorTraces">
+          <el-button size="small" @click="goErrorTraces">
             到链路追踪按异常筛选
-          </button>
+          </el-button>
         </div>
       </div>
 
@@ -83,7 +88,7 @@
         <section class="si-err-stage" aria-label="错误服务">
           <div class="si-err-stage__head">
             <h3 class="si-err-stage__title"><i class="fa fa-list me-2"></i>错误服务</h3>
-            <span class="badge bg-danger">{{ errorAnalysis.length }} 个</span>
+            <el-tag type="danger" effect="dark" size="small" round>{{ errorAnalysis.length }} 个</el-tag>
           </div>
           <SiDataTable
             :rows="errorAnalysis"
@@ -112,9 +117,9 @@
           <div class="si-err-chart">
             <div class="si-err-chart__head">
               <h4><i class="fa fa-bar-chart me-2"></i>服务错误率</h4>
-              <button type="button" class="btn btn-sm btn-outline-primary" @click="refreshCharts" title="重绘">
-                <i class="fa fa-refresh"></i>
-              </button>
+              <el-button type="primary" plain size="small" title="重绘" @click="refreshCharts">
+                <i class="fa fa-refresh" aria-hidden="true"></i>
+              </el-button>
             </div>
             <div class="si-err-chart__canvas">
               <div id="error-rate-chart" class="w-100 h-100"></div>
@@ -134,7 +139,7 @@
           <section class="si-err-panel">
             <div class="si-err-panel__head">
               <h4><i class="fa fa-code me-2"></i>按 HTTP 状态码</h4>
-              <span class="badge bg-secondary">{{ byStatusCode.length }}</span>
+              <el-tag type="info" effect="plain" size="small" round>{{ byStatusCode.length }}</el-tag>
             </div>
             <div v-if="byStatusCode.length === 0" class="si-err-panel__empty">暂无 HTTP 状态类错误</div>
             <SiDataTable
@@ -160,7 +165,7 @@
           <section class="si-err-panel">
             <div class="si-err-panel__head">
               <h4><i class="fa fa-bug me-2"></i>按异常类</h4>
-              <span class="badge bg-warning text-dark">{{ byException.length }}</span>
+              <el-tag type="warning" effect="plain" size="small" round>{{ byException.length }}</el-tag>
             </div>
             <div v-if="byException.length === 0" class="si-err-panel__empty">暂无异常类错误</div>
             <SiDataTable

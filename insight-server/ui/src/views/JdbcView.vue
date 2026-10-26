@@ -62,14 +62,16 @@
         <p v-else class="small text-muted mb-0">
           请确认业务已启用 <code>jdbc-tracing-enabled</code> 并上报到 insight-server；拓扑图不再显示库节点。
         </p>
-        <button
+        <el-button
           v-if="selectedService"
-          type="button"
-          class="btn btn-sm btn-outline-primary mt-1"
+          type="primary"
+          plain
+          size="small"
+          class="mt-1"
           @click="clearServiceFilter"
         >
           查看全部服务
-        </button>
+        </el-button>
       </SiEmpty>
 
       <template v-else>

@@ -16,7 +16,7 @@ defineProps<{
       <h3 class="si-section__title">
         <i v-if="icon" class="fa me-2" :class="icon" aria-hidden="true"></i>{{ title }}
       </h3>
-      <span v-if="count != null" class="badge bg-secondary">{{ count }}</span>
+      <el-tag v-if="count != null" type="info" effect="plain" size="small" round>{{ count }}</el-tag>
     </div>
     <slot />
   </section>
