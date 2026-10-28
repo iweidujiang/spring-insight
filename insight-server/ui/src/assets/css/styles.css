@@ -5,14 +5,14 @@
   --si-nav-offset: 0px;
   --si-sidebar-width: 13.75rem;
 
-  /* 纸面与墨色 */
+  /* 背景与文字 */
   --si-paper: #F5F7FA;
   --si-paper-deep: #EBEEF2;
   --si-ink: #1E293B;
   --si-ink-soft: #475569;
   --si-muted: #94A3B8;
 
-  /* 品牌：石青 / 墨绿（单一主色，少发光） */
+  /* 品牌：青蓝渐变 */
   --si-brand: #00B8D4;
   --si-brand-bright: #00D2FF;
   --si-brand-soft: rgba(0, 184, 212, 0.10);
@@ -99,7 +99,7 @@
   --si-table-head-border: rgba(0, 184, 212, 0.10);
   --si-table-cell-border: rgba(0, 184, 212, 0.06);
 
-  /* 纸纹 */
+  /* 背景光晕 */
   --si-body-grad-1: #F8FAFC;
   --si-body-grad-2: var(--si-paper);
   --si-body-grad-3: var(--si-paper-deep);
@@ -471,7 +471,7 @@ samp {
   font-size: 0.9em;
 }
 
-/* 细密纸纹，不挡操作 */
+/* 背景网格纹理 */
 body::before {
   content: '';
   position: fixed;

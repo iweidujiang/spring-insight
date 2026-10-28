@@ -4,7 +4,7 @@
  */
 
 :root {
-  /* 主色：石青 --si-brand */
+  /* 主色：青蓝 --si-brand */
   --el-color-primary: var(--primary-color, #00B8D4);
   --el-color-primary-light-3: #33C3E8;
   --el-color-primary-light-5: #66D4EE;
@@ -64,7 +64,7 @@
   --el-fill-color: var(--si-surface-3, #F1F5F9);
   --el-fill-color-light: var(--si-surface-2, #F8FAFC);
   --el-fill-color-lighter: var(--si-paper, #F5F7FA);
-  --el-fill-color-extra-light: #fafbfa;
+  --el-fill-color-extra-light: #F8FAFC;
   --el-fill-color-blank: var(--si-form-bg, #fff);
 
   --el-mask-color: var(--si-backdrop-color, rgba(15, 23, 42, 0.22));
@@ -136,8 +136,8 @@
 
   --el-fill-color: var(--si-surface-3, #243044);
   --el-fill-color-light: var(--si-surface-2, #1A2130);
-  --el-fill-color-lighter: #161b22;
-  --el-fill-color-extra-light: #12171d;
+  --el-fill-color-lighter: #141C2B;
+  --el-fill-color-extra-light: #0F1520;
   --el-fill-color-blank: var(--si-form-bg, #151B26);
 
   --el-mask-color: var(--si-backdrop-color, rgba(0, 0, 0, 0.5));
