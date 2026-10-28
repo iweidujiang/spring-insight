@@ -31,7 +31,7 @@
             :to="navLocation(item.to)"
             @click="closeNav"
           >
-            <i class="fa" :class="item.icon"></i>
+            <el-icon><component :is="item.icon" /></el-icon>
             <span>{{ item.label }}</span>
           </router-link>
         </div>
@@ -125,24 +125,24 @@ const navGroups = [
   {
     label: '观测',
     items: [
-      { to: '/', label: '仪表盘', icon: 'fa-tachometer', match: (p: string) => p === '/' },
-      { to: '/topology', label: '拓扑图', icon: 'fa-sitemap', match: (p: string) => p === '/topology' },
-      { to: '/traces', label: '链路追踪', icon: 'fa-list-ul', match: (p: string) => p === '/traces' || p.startsWith('/traces/') },
-      { to: '/jdbc', label: '数据库', icon: 'fa-database', match: (p: string) => p === '/jdbc' },
-      { to: '/redis', label: '缓存', icon: 'fa-cube', match: (p: string) => p === '/redis' },
-      { to: '/error-analysis', label: '错误分析', icon: 'fa-exclamation-triangle', match: (p: string) => p === '/error-analysis' }
+      { to: '/', label: '仪表盘', icon: 'Odometer', match: (p: string) => p === '/' },
+      { to: '/topology', label: '拓扑图', icon: 'Share', match: (p: string) => p === '/topology' },
+      { to: '/traces', label: '链路追踪', icon: 'List', match: (p: string) => p === '/traces' || p.startsWith('/traces/') },
+      { to: '/jdbc', label: '数据库', icon: 'Coin', match: (p: string) => p === '/jdbc' },
+      { to: '/redis', label: '缓存', icon: 'Box', match: (p: string) => p === '/redis' },
+      { to: '/error-analysis', label: '错误分析', icon: 'WarningFilled', match: (p: string) => p === '/error-analysis' }
     ]
   },
   {
     label: '运维',
     items: [
-      { to: '/settings', label: '设置', icon: 'fa-cog', match: (p: string) => p === '/settings' }
+      { to: '/settings', label: '设置', icon: 'Setting', match: (p: string) => p === '/settings' }
     ]
   },
   {
     label: '关于',
     items: [
-      { to: '/about', label: '关于', icon: 'fa-info-circle', match: (p: string) => p === '/about' }
+      { to: '/about', label: '关于', icon: 'InfoFilled', match: (p: string) => p === '/about' }
     ]
   }
 ]
