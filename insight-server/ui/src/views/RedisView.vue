@@ -346,7 +346,7 @@ onMounted(async () => {
   margin-right: 0.35rem;
   padding: 0.05rem 0.35rem;
   border-radius: 0.25rem;
-  background: var(--si-teal-soft);
+  background: var(--si-brand-soft);
   font-size: 0.7rem;
   font-weight: 600;
 }

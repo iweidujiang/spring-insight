@@ -117,7 +117,7 @@ export function buildTopologyOption(
         show: !compact || dependencies.length <= 12,
         formatter: `${dep.callCount}`,
         fontSize: compact ? 10 : 11,
-        color: edgeHit ? theme.teal : theme.inkSoft,
+        color: edgeHit ? theme.brand : theme.inkSoft,
         fontWeight: edgeHit ? 700 : 500,
         backgroundColor: theme.surface,
         padding: [2, 4],
@@ -131,7 +131,7 @@ export function buildTopologyOption(
           Math.min(compact ? 4 : 5, 1 + Math.log2(dep.callCount + 1))
         ) + (edgeHit ? 1.5 : 0),
         curveness: 0.16,
-        color: edgeHit ? theme.teal : theme.muted,
+        color: edgeHit ? theme.brand : theme.muted,
         opacity: edgeHit ? 1 : highlight.edge || highlight.node ? 0.35 : 0.9
       }
     })
@@ -171,7 +171,7 @@ export function buildTopologyOption(
       ) + (nodeHit ? 6 : 0),
       itemStyle: {
         color,
-        borderColor: nodeHit || onSelectedEdge ? theme.teal : theme.surface,
+        borderColor: nodeHit || onSelectedEdge ? theme.brand : theme.surface,
         borderWidth: nodeHit ? 3 : 2,
         shadowBlur: nodeHit ? 14 : 8,
         shadowColor: nodeHit ? 'rgba(45, 212, 191, 0.4)' : 'rgba(21, 36, 31, 0.18)',
@@ -260,7 +260,7 @@ export function buildTopologyOption(
       edgeSymbolSize: [0, compact ? 10 : 12],
       emphasis: {
         focus: 'adjacency',
-        lineStyle: { width: 5, color: theme.teal },
+        lineStyle: { width: 5, color: theme.brand },
         itemStyle: { shadowBlur: 12, shadowColor: 'rgba(45, 212, 191, 0.35)' }
       }
     }]

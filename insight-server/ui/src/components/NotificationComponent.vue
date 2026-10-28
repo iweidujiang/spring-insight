@@ -287,8 +287,8 @@ onUnmounted(() => {
 }
 
 .notification-button:hover {
-  background-color: var(--si-hover-teal);
-  color: var(--si-teal);
+  background-color: var(--si-hover-brand);
+  color: var(--si-brand);
 }
 
 .notification-panel {
@@ -342,7 +342,7 @@ onUnmounted(() => {
 .notification-empty i {
   font-size: 2rem;
   margin-bottom: 0.75rem;
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .notification-empty p {
@@ -358,12 +358,12 @@ onUnmounted(() => {
 }
 
 .notification-item:hover {
-  background-color: var(--si-hover-teal);
+  background-color: var(--si-hover-brand);
 }
 
 .notification-item.unread {
   background-color: var(--si-notification-unread-bg);
-  border-left: 4px solid var(--si-teal);
+  border-left: 4px solid var(--si-brand);
 }
 
 .notification-icon {

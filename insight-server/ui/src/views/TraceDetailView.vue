@@ -577,7 +577,7 @@ onMounted(async () => {
 }
 
 .text-cyan {
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 /* —— 摘要细条 —— */
@@ -761,7 +761,7 @@ onMounted(async () => {
 
 .trace-waterfall__row:hover,
 .trace-waterfall__row.is-active {
-  background: var(--si-hover-teal);
+  background: var(--si-hover-brand);
 }
 
 .trace-waterfall__row.is-critical {
@@ -952,7 +952,7 @@ onMounted(async () => {
 .trace-tag em {
   font-style: normal;
   font-weight: 700;
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .trace-tag em::after {

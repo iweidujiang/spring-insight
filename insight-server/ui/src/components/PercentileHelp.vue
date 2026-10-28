@@ -62,7 +62,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 
 .si-px-help__btn:hover,
 .si-px-help__btn[aria-expanded='true'] {
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .si-px-help__panel {

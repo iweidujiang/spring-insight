@@ -1351,7 +1351,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: var(--si-teal);
+  color: var(--si-brand);
   font-size: 1.05rem;
   line-height: 1;
 }

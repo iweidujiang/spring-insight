@@ -539,7 +539,7 @@ onUnmounted(() => {
 }
 
 :deep(.si-trace-row--selected) {
-  background: var(--si-hover-teal);
+  background: var(--si-hover-brand);
 }
 
 :deep(.si-trace-col-check) {

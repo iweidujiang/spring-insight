@@ -308,7 +308,7 @@ const openTrace = (id?: string) => {
   padding: 0.45rem 0.6rem;
   border-radius: 8px;
   border: 1px solid transparent;
-  background: var(--si-teal-soft, rgba(15, 118, 110, 0.06));
+  background: var(--si-brand-soft, rgba(15, 118, 110, 0.06));
   color: var(--si-ink);
 }
 .si-ai-panel__ev-btn {
@@ -317,7 +317,7 @@ const openTrace = (id?: string) => {
 }
 .si-ai-panel__ev-btn:hover {
   border-color: var(--si-form-border, rgba(15, 118, 110, 0.35));
-  background: var(--si-hover-teal, rgba(15, 118, 110, 0.1));
+  background: var(--si-hover-brand, rgba(15, 118, 110, 0.1));
 }
 .si-ai-panel__reason {
   flex: 1 1 12rem;
@@ -327,7 +327,7 @@ const openTrace = (id?: string) => {
 .si-ai-panel__go {
   font-size: 0.75rem;
   font-weight: 650;
-  color: var(--si-teal, #0f766e);
+  color: var(--si-brand, #0f766e);
 }
 .si-ai-panel__suggestions {
   margin: 0;

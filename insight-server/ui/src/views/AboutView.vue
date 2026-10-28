@@ -192,7 +192,7 @@ onUnmounted(() => {
 }
 
 .si-about__card-title .fa {
-  color: var(--si-teal);
+  color: var(--si-brand);
   font-size: 0.95rem;
 }
 
@@ -280,7 +280,7 @@ onUnmounted(() => {
 }
 
 .si-about__dl a {
-  color: var(--si-teal);
+  color: var(--si-brand);
   text-decoration: none;
 }
 
@@ -339,7 +339,7 @@ onUnmounted(() => {
 
 .si-about__demo-link {
   font-weight: 650;
-  color: var(--si-teal);
+  color: var(--si-brand);
   text-decoration: none;
 }
 

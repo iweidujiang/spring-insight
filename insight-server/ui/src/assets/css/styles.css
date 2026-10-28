@@ -1,4 +1,4 @@
-/* Spring Insight — 浅色纸感 + 墨青（方案 A） */
+/* Spring Insight — 现代科技感 · 青蓝品牌 */
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
 
 :root {
@@ -6,37 +6,37 @@
   --si-sidebar-width: 13.75rem;
 
   /* 纸面与墨色 */
-  --si-paper: #f2f5f3;
-  --si-paper-deep: #e7ece9;
-  --si-ink: #15241f;
-  --si-ink-soft: #3d524a;
-  --si-muted: #6b7f76;
+  --si-paper: #F5F7FA;
+  --si-paper-deep: #EBEEF2;
+  --si-ink: #1E293B;
+  --si-ink-soft: #475569;
+  --si-muted: #94A3B8;
 
   /* 品牌：石青 / 墨绿（单一主色，少发光） */
-  --si-teal: #0f766e;
-  --si-teal-bright: #0d9488;
-  --si-teal-soft: #ccfbf1;
-  --si-forest: #14532d;
+  --si-brand: #00B8D4;
+  --si-brand-bright: #00D2FF;
+  --si-brand-soft: rgba(0, 184, 212, 0.10);
+  --si-brand-deep: #0077B6;
 
-  --si-cyan: var(--si-teal-bright);
-  --si-violet: #5b7c6e; /* 兼容旧变量名，不再用紫 */
+  --si-cyan: var(--si-brand-bright);
+  --si-violet: #7DD3FC; /* 兼容旧变量名，不再用紫 */
 
-  --primary-color: var(--si-teal);
+  --primary-color: var(--si-brand);
   --secondary-color: var(--si-muted);
-  --success-color: #15803d;
-  --warning-color: #b45309;
-  --danger-color: #b91c1c;
-  --info-color: var(--si-teal-bright);
+  --success-color: #10B981;
+  --warning-color: #F59E0B;
+  --danger-color: #EF4444;
+  --info-color: var(--si-brand-bright);
   --light-color: var(--si-ink);
   --dark-color: var(--si-ink);
 
-  --card-bg: #fffcfa;
-  --card-border: rgba(20, 83, 45, 0.12);
+  --card-bg: #FFFFFF;
+  --card-border: rgba(0, 184, 212, 0.08);
   --bs-card-bg: var(--card-bg);
   --bs-card-border-color: var(--card-border);
   --border-radius: 10px;
-  --box-shadow: 0 1px 2px rgba(21, 36, 31, 0.04), 0 8px 24px rgba(21, 36, 31, 0.06);
-  --box-shadow-hover: 0 2px 4px rgba(21, 36, 31, 0.06), 0 12px 28px rgba(15, 118, 110, 0.1);
+  --box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 8px 24px rgba(0, 184, 212, 0.03);
+  --box-shadow-hover: 0 2px 4px rgba(0, 184, 212, 0.03), 0 12px 28px rgba(0, 184, 212, 0.08);
   --transition: all 0.25s ease;
 
   --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
@@ -45,9 +45,9 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
   /* 0.4 表面 / 字阶 / 间距 */
-  --si-surface-1: #fffcfa;
-  --si-surface-2: #f7f9f7;
-  --si-surface-3: #eef2ef;
+  --si-surface-1: #FFFFFF;
+  --si-surface-2: #F8FAFC;
+  --si-surface-3: #F1F5F9;
   --si-space-1: 0.25rem;
   --si-space-2: 0.5rem;
   --si-space-3: 0.75rem;
@@ -58,64 +58,64 @@
   --si-type-title: clamp(1.15rem, 1.6vw, 1.35rem);
   --si-type-body: 0.95rem;
   --si-type-meta: 0.78rem;
-  --si-nav-group: #6b7f76;
-  --si-danger-zone: rgba(185, 28, 28, 0.06);
+  --si-nav-group: #94A3B8;
+  --si-danger-zone: rgba(239, 68, 68, 0.05);
 
   /* 图表用 */
-  --chart-axis: #6b7f76;
-  --chart-grid: rgba(20, 83, 45, 0.1);
-  --chart-label: #15241f;
+  --chart-axis: #94A3B8;
+  --chart-grid: rgba(0, 184, 212, 0.06);
+  --chart-label: #1E293B;
 
   /* 侧栏 / 顶栏 / 下拉 */
-  --si-sidebar-bg: rgba(255, 252, 250, 0.94);
-  --si-sidebar-shadow: 4px 0 24px rgba(21, 36, 31, 0.04);
-  --si-topbar-bg: rgba(255, 252, 250, 0.88);
-  --si-nav-toggle-bg: rgba(255, 252, 250, 0.96);
-  --si-dropdown-bg: #fffcfa;
-  --si-backdrop-color: rgba(21, 36, 31, 0.28);
+  --si-sidebar-bg: rgba(255, 255, 255, 0.92);
+  --si-sidebar-shadow: 4px 0 24px rgba(15, 23, 42, 0.03);
+  --si-topbar-bg: rgba(255, 255, 255, 0.85);
+  --si-nav-toggle-bg: rgba(255, 255, 255, 0.95);
+  --si-dropdown-bg: #FFFFFF;
+  --si-backdrop-color: rgba(15, 23, 42, 0.22);
 
   /* 表单 */
   --si-form-bg: #fff;
-  --si-form-border: rgba(20, 83, 45, 0.18);
-  --si-form-focus-ring: rgba(15, 118, 110, 0.15);
+  --si-form-border: rgba(0, 184, 212, 0.12);
+  --si-form-focus-ring: rgba(0, 184, 212, 0.12);
 
   /* 头像 */
-  --si-avatar-from: #0f766e;
-  --si-avatar-to: #14532d;
-  --si-avatar-text: #ecfeff;
+  --si-avatar-from: #00B8D4;
+  --si-avatar-to: #0077B6;
+  --si-avatar-text: #E0F7FA;
 
   /* 滚动条 */
   --si-scrollbar-track: var(--si-paper-deep);
-  --si-scrollbar-thumb: #a8b8b0;
-  --si-scrollbar-thumb-hover: #7a9086;
+  --si-scrollbar-thumb: #B0BEC5;
+  --si-scrollbar-thumb-hover: #90A4AE;
 
   /* 交互色 */
-  --si-hover-teal: rgba(15, 118, 110, 0.08);
-  --si-active-teal: rgba(15, 118, 110, 0.12);
-  --si-brand-divider: rgba(20, 83, 45, 0.1);
-  --si-table-stripe: rgba(15, 118, 110, 0.04);
-  --si-table-hover: rgba(15, 118, 110, 0.06);
-  --si-table-border: rgba(20, 83, 45, 0.12);
-  --si-table-head-border: rgba(20, 83, 45, 0.14);
-  --si-table-cell-border: rgba(20, 83, 45, 0.1);
+  --si-hover-brand: rgba(0, 184, 212, 0.06);
+  --si-active-brand: rgba(0, 184, 212, 0.10);
+  --si-brand-divider: rgba(0, 184, 212, 0.06);
+  --si-table-stripe: rgba(0, 184, 212, 0.03);
+  --si-table-hover: rgba(0, 184, 212, 0.04);
+  --si-table-border: rgba(0, 184, 212, 0.08);
+  --si-table-head-border: rgba(0, 184, 212, 0.10);
+  --si-table-cell-border: rgba(0, 184, 212, 0.06);
 
   /* 纸纹 */
-  --si-body-grad-1: #f7f9f7;
+  --si-body-grad-1: #F8FAFC;
   --si-body-grad-2: var(--si-paper);
   --si-body-grad-3: var(--si-paper-deep);
-  --si-body-rad-1: rgba(15, 118, 110, 0.07);
-  --si-body-rad-2: rgba(20, 83, 45, 0.05);
-  --si-texture-color: rgba(21, 36, 31, 0.03);
+  --si-body-rad-1: rgba(0, 184, 212, 0.05);
+  --si-body-rad-2: rgba(0, 184, 212, 0.03);
+  --si-texture-color: rgba(15, 23, 42, 0.02);
   --si-texture-opacity: 0.45;
 
   /* 按钮 */
-  --si-btn-primary-hover: #0d5f58;
-  --si-btn-outline-border: rgba(15, 118, 110, 0.45);
-  --si-btn-outline-sec-border: rgba(21, 36, 31, 0.2);
+  --si-btn-primary-hover: #0098CC;
+  --si-btn-outline-border: rgba(0, 184, 212, 0.35);
+  --si-btn-outline-sec-border: rgba(15, 23, 42, 0.15);
 
   /* 徽标 */
   --si-badge-success-bg: #dcfce7;
-  --si-badge-success-color: #14532d;
+  --si-badge-success-color: #0077B6;
   --si-badge-danger-bg: #fee2e2;
   --si-badge-danger-color: #7f1d1d;
   --si-badge-warning-bg: #ffedd5;
@@ -124,20 +124,20 @@
   /* 表格行 */
   --si-table-danger-bg: rgba(185, 28, 28, 0.08);
   --si-table-danger-color: #7f1d1d;
-  --si-table-warning-bg: rgba(180, 83, 9, 0.08);
+  --si-table-warning-bg: rgba(245, 158, 11, 0.06);
   --si-table-warning-color: #78350f;
 
   /* 主题切换按钮 */
   --si-theme-toggle-bg: transparent;
-  --si-theme-toggle-hover: rgba(15, 118, 110, 0.08);
+  --si-theme-toggle-hover: rgba(0, 184, 212, 0.06);
   --si-theme-toggle-color: var(--si-muted);
 
   /* 通知面板 */
   --si-notification-bg: var(--si-dropdown-bg);
-  --si-notification-shadow: 0 16px 40px rgba(21, 36, 31, 0.18);
-  --si-notification-unread-bg: rgba(15, 118, 110, 0.04);
-  --si-notification-footer-bg: rgba(15, 118, 110, 0.04);
-  --si-notification-header-bg: rgba(15, 118, 110, 0.05);
+  --si-notification-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+  --si-notification-unread-bg: rgba(0, 184, 212, 0.03);
+  --si-notification-footer-bg: rgba(0, 184, 212, 0.03);
+  --si-notification-header-bg: rgba(0, 184, 212, 0.04);
 
   /* 图标徽标 */
   --si-icon-success-bg: #d1fae5;
@@ -150,302 +150,302 @@
   --si-icon-info-color: #3b82f6;
 
   /* 链路瀑布 */
-  --si-waterfall-track-bg: rgba(255, 252, 250, 0.8);
-  --si-waterfall-track-border: rgba(20, 83, 45, 0.08);
-  --si-waterfall-bar-shadow: 0 1px 2px rgba(21, 36, 31, 0.12);
-  --si-kind-bg: rgba(15, 23, 42, 0.04);
-  --si-kind-server-color: var(--si-teal);
-  --si-kind-server-border: rgba(15, 118, 110, 0.28);
-  --si-kind-server-bg: var(--si-hover-teal);
+  --si-waterfall-track-bg: rgba(255, 255, 255, 0.75);
+  --si-waterfall-track-border: rgba(0, 184, 212, 0.05);
+  --si-waterfall-bar-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --si-kind-bg: rgba(0, 184, 212, 0.03);
+  --si-kind-server-color: var(--si-brand);
+  --si-kind-server-border: rgba(0, 184, 212, 0.22);
+  --si-kind-server-bg: var(--si-hover-brand);
   --si-kind-client-color: #1d4ed8;
   --si-kind-client-border: rgba(29, 78, 216, 0.28);
   --si-kind-client-bg: rgba(29, 78, 216, 0.08);
-  --si-tag-bg: rgba(15, 118, 110, 0.06);
-  --si-tag-border: rgba(15, 118, 110, 0.14);
-  --si-critical-color: #c2410c;
-  --si-error-row-bg: rgba(185, 28, 28, 0.06);
-  --si-success-row-bg: rgba(21, 128, 61, 0.06);
+  --si-tag-bg: rgba(0, 184, 212, 0.04);
+  --si-tag-border: rgba(0, 184, 212, 0.10);
+  --si-critical-color: #EA580C;
+  --si-error-row-bg: rgba(239, 68, 68, 0.05);
+  --si-success-row-bg: rgba(16, 185, 129, 0.05);
   --si-warn-pill-bg: #ffedd5;
   --si-warn-pill-color: #9a3412;
   --si-ok-pill-bg: #dcfce7;
-  --si-ok-pill-color: #14532d;
+  --si-ok-pill-color: #0077B6;
   --si-amber-bg: rgba(245, 158, 11, 0.1);
   --si-warn-bullet-bg: rgba(194, 65, 12, 0.08);
   --si-warn-bullet-color: #9a3412;
   --si-warn-bullet-border: rgba(194, 65, 12, 0.22);
   --si-ok-bullet-bg: rgba(21, 128, 61, 0.08);
-  --si-ok-bullet-color: #14532d;
+  --si-ok-bullet-color: #0077B6;
   --si-ok-bullet-border: rgba(21, 128, 61, 0.2);
-  --si-track-bg: rgba(15, 23, 42, 0.04);
-  --si-error-box-bg: rgba(185, 28, 28, 0.06);
+  --si-track-bg: rgba(0, 184, 212, 0.03);
+  --si-error-box-bg: rgba(239, 68, 68, 0.05);
   --si-error-box-border: rgba(185, 28, 28, 0.2);
   --si-error-box-color: #991b1b;
 
   /* 图表调色板 */
-  --si-chart-palette-1: #0f766e;
-  --si-chart-palette-2: #15803d;
-  --si-chart-palette-3: #0d9488;
-  --si-chart-palette-4: #b45309;
-  --si-chart-palette-5: #b91c1c;
+  --si-chart-palette-1: #00B8D4;
+  --si-chart-palette-2: #10B981;
+  --si-chart-palette-3: #00D2FF;
+  --si-chart-palette-4: #F59E0B;
+  --si-chart-palette-5: #EF4444;
   --si-chart-palette-6: #1d4ed8;
-  --si-chart-palette-7: #c2410c;
-  --si-chart-palette-8: #047857;
-  --si-chart-tooltip-bg: rgba(255, 252, 250, 0.96);
-  --si-chart-tooltip-border: rgba(20, 83, 45, 0.15);
-  --si-chart-tooltip-text: #15241f;
+  --si-chart-palette-7: #EA580C;
+  --si-chart-palette-8: #059669;
+  --si-chart-tooltip-bg: rgba(255, 255, 255, 0.95);
+  --si-chart-tooltip-border: rgba(0, 184, 212, 0.10);
+  --si-chart-tooltip-text: #1E293B;
 
-  /* 登录页 — 亮色模式：柔和纸感青绿 */
+  /* 登录页 — 亮色模式：科技青蓝 */
   --si-login-page-bg:
-    radial-gradient(ellipse 70% 55% at 12% 18%, rgba(15, 118, 110, 0.10), transparent 58%),
-    radial-gradient(ellipse 55% 50% at 88% 12%, rgba(13, 148, 136, 0.08), transparent 55%),
-    radial-gradient(ellipse 60% 45% at 78% 88%, rgba(20, 83, 45, 0.06), transparent 60%),
+    radial-gradient(ellipse 70% 55% at 12% 18%, rgba(0, 184, 212, 0.08), transparent 58%),
+    radial-gradient(ellipse 55% 50% at 88% 12%, rgba(0, 210, 255, 0.06), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 78% 88%, rgba(0, 119, 182, 0.04), transparent 60%),
     linear-gradient(155deg, #eef3f0 0%, #e2ece7 38%, #dce6e1 68%, #e8eeeb 100%);
   --si-login-wash:
-    linear-gradient(180deg, rgba(15, 118, 110, 0.04), transparent 42%),
-    linear-gradient(90deg, rgba(15, 118, 110, 0.06), transparent 35%, rgba(13, 148, 136, 0.04) 100%);
-  --si-login-grid-line: rgba(15, 118, 110, 0.06);
-  --si-login-orb-a: radial-gradient(circle, rgba(15, 118, 110, 0.14), transparent 68%);
-  --si-login-orb-b: radial-gradient(circle, rgba(13, 148, 136, 0.12), transparent 70%);
-  --si-login-orb-c: radial-gradient(circle, rgba(15, 118, 110, 0.08), transparent 70%);
-  --si-login-halo: rgba(15, 118, 110, 0.08);
-  --si-login-halo-core: rgba(13, 148, 136, 0.12);
-  --si-login-node-fill: var(--si-teal);
+    linear-gradient(180deg, rgba(0, 184, 212, 0.03), transparent 42%),
+    linear-gradient(90deg, rgba(0, 184, 212, 0.04), transparent 35%, rgba(0, 210, 255, 0.03) 100%);
+  --si-login-grid-line: rgba(0, 184, 212, 0.04);
+  --si-login-orb-a: radial-gradient(circle, rgba(0, 184, 212, 0.10), transparent 68%);
+  --si-login-orb-b: radial-gradient(circle, rgba(0, 210, 255, 0.08), transparent 70%);
+  --si-login-orb-c: radial-gradient(circle, rgba(0, 184, 212, 0.06), transparent 70%);
+  --si-login-halo: rgba(0, 184, 212, 0.06);
+  --si-login-halo-core: rgba(0, 210, 255, 0.08);
+  --si-login-node-fill: var(--si-brand);
   --si-login-node-stroke: #fff;
-  --si-login-node-glow: rgba(15, 118, 110, 0.35);
-  --si-login-node-core-fill: #0d9488;
+  --si-login-node-glow: rgba(0, 184, 212, 0.28);
+  --si-login-node-core-fill: #00D2FF;
   --si-login-node-core-stroke: #fff;
-  --si-login-edge-start: rgba(15, 118, 110, 0.08);
-  --si-login-edge-mid: rgba(15, 118, 110, 0.45);
-  --si-login-edge-end: rgba(13, 148, 136, 0.08);
+  --si-login-edge-start: rgba(0, 184, 212, 0.06);
+  --si-login-edge-mid: rgba(0, 184, 212, 0.35);
+  --si-login-edge-end: rgba(0, 210, 255, 0.06);
   --si-login-sheet-bg: var(--card-bg);
   --si-login-sheet-border: var(--card-border);
-  --si-login-sheet-shadow: 0 22px 60px rgba(21, 36, 31, 0.12), 0 0 0 1px rgba(15, 118, 110, 0.06);
+  --si-login-sheet-shadow: 0 22px 60px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(0, 184, 212, 0.04);
   --si-login-brand-bg:
-    radial-gradient(480px 260px at 0% 0%, rgba(15, 118, 110, 0.08), transparent 58%),
-    linear-gradient(165deg, #f0f5f3, #e7ece9);
+    radial-gradient(480px 260px at 0% 0%, rgba(0, 184, 212, 0.06), transparent 58%),
+    linear-gradient(165deg, #f0f5f3, #EBEEF2);
   --si-login-brand-text: var(--si-ink);
   --si-login-brand-heading: var(--si-ink-soft);
   --si-login-brand-lead: var(--si-muted);
-  --si-login-kicker: var(--si-teal);
-  --si-login-mark-bg: var(--si-hover-teal);
-  --si-login-mark-ring: rgba(15, 118, 110, 0.22);
-  --si-login-mark-shadow: 0 10px 28px rgba(15, 118, 110, 0.12);
+  --si-login-kicker: var(--si-brand);
+  --si-login-mark-bg: var(--si-hover-brand);
+  --si-login-mark-ring: rgba(0, 184, 212, 0.15);
+  --si-login-mark-shadow: 0 10px 28px rgba(0, 184, 212, 0.10);
   --si-login-panel-bg: var(--si-surface-1);
   --si-login-panel-text: var(--si-ink);
   --si-login-input-bg: var(--si-surface-2);
   --si-login-input-border: var(--si-form-border);
   --si-login-input-text: var(--si-ink);
   --si-login-input-placeholder: var(--si-muted);
-  --si-login-btn: var(--si-teal);
+  --si-login-btn: var(--si-brand);
   --si-login-btn-hover: var(--si-btn-primary-hover);
   --si-login-error: var(--danger-color);
-  --si-login-focus: var(--si-teal-bright);
+  --si-login-focus: var(--si-brand-bright);
 }
 
 /* ── 暗色主题 ── */
 [data-theme="dark"] {
-  --si-paper:        #0f1419;
-  --si-paper-deep:   #0a0e13;
-  --si-ink:          #e6edf3;
-  --si-ink-soft:     #b0bac5;
-  --si-muted:        #7d8a96;
+  --si-paper:        #0B1120;
+  --si-paper-deep:   #070B14;
+  --si-ink:          #E2E8F0;
+  --si-ink-soft:     #94A3B8;
+  --si-muted:        #64748B;
 
-  --si-teal:         #2dd4bf;
-  --si-teal-bright:  #5eead4;
-  --si-teal-soft:    rgba(45, 212, 191, 0.12);
-  --si-forest:       #a7f3d0;
+  --si-brand:         #38BDF8;
+  --si-brand-bright:  #7DD3FC;
+  --si-brand-soft:    rgba(56, 189, 248, 0.10);
+  --si-brand-deep:       #BAE6FD;
 
-  --si-cyan:         var(--si-teal-bright);
-  --si-violet:       #94a3b8;
+  --si-cyan:         var(--si-brand-bright);
+  --si-violet:       #7DD3FC;
 
-  --primary-color:   var(--si-teal);
+  --primary-color:   var(--si-brand);
   --secondary-color: var(--si-muted);
-  --success-color:   #4ade80;
-  --warning-color:   #fbbf24;
-  --danger-color:    #f87171;
-  --info-color:      var(--si-teal-bright);
+  --success-color:   #34D399;
+  --warning-color:   #FBBF24;
+  --danger-color:    #F87171;
+  --info-color:      var(--si-brand-bright);
   --light-color:     var(--si-ink);
   --dark-color:      var(--si-ink);
 
-  --card-bg:         #1a1f26;
-  --card-border:     rgba(45, 212, 191, 0.1);
+  --card-bg:         #151B26;
+  --card-border:     rgba(56, 189, 248, 0.08);
   --bs-card-bg:      var(--card-bg);
   --bs-card-border-color: var(--card-border);
   --box-shadow:      0 1px 3px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.25);
-  --box-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.4), 0 12px 28px rgba(45, 212, 191, 0.08);
+  --box-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.4), 0 12px 28px rgba(56, 189, 248, 0.06);
 
-  --si-surface-1:    #1a1f26;
-  --si-surface-2:    #1e242c;
-  --si-surface-3:    #252c35;
-  --si-nav-group:    #7d8a96;
+  --si-surface-1:    #151B26;
+  --si-surface-2:    #1A2130;
+  --si-surface-3:    #243044;
+  --si-nav-group:    #64748B;
   --si-danger-zone:  rgba(248, 113, 113, 0.08);
 
-  --chart-axis:      #7d8a96;
-  --chart-grid:      rgba(45, 212, 191, 0.06);
-  --chart-label:     #b0bac5;
+  --chart-axis:      #64748B;
+  --chart-grid:      rgba(56, 189, 248, 0.04);
+  --chart-label:     #94A3B8;
 
   --si-sidebar-bg:   rgba(22, 27, 34, 0.94);
   --si-sidebar-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
   --si-topbar-bg:    rgba(22, 27, 34, 0.88);
   --si-nav-toggle-bg: rgba(22, 27, 34, 0.96);
-  --si-dropdown-bg:  #1a1f26;
+  --si-dropdown-bg:  #151B26;
   --si-backdrop-color: rgba(0, 0, 0, 0.5);
 
-  --si-form-bg:      #1a1f26;
-  --si-form-border:  rgba(45, 212, 191, 0.12);
-  --si-form-focus-ring: rgba(45, 212, 191, 0.2);
+  --si-form-bg:      #151B26;
+  --si-form-border:  rgba(56, 189, 248, 0.10);
+  --si-form-focus-ring: rgba(56, 189, 248, 0.15);
 
-  --si-avatar-from:  #2dd4bf;
-  --si-avatar-to:    #a7f3d0;
-  --si-avatar-text:  #0f1419;
+  --si-avatar-from:  #38BDF8;
+  --si-avatar-to:    #BAE6FD;
+  --si-avatar-text:  #0B1120;
 
-  --si-scrollbar-track: #0a0e13;
+  --si-scrollbar-track: #070B14;
   --si-scrollbar-thumb: #3a4450;
   --si-scrollbar-thumb-hover: #4a5568;
 
-  --si-hover-teal:   rgba(45, 212, 191, 0.08);
-  --si-active-teal:  rgba(45, 212, 191, 0.12);
-  --si-brand-divider: rgba(45, 212, 191, 0.08);
-  --si-table-stripe:  rgba(45, 212, 191, 0.03);
-  --si-table-hover:   rgba(45, 212, 191, 0.06);
-  --si-table-border:  rgba(45, 212, 191, 0.08);
-  --si-table-head-border: rgba(45, 212, 191, 0.1);
-  --si-table-cell-border: rgba(45, 212, 191, 0.06);
+  --si-hover-brand:   rgba(56, 189, 248, 0.06);
+  --si-active-brand:  rgba(56, 189, 248, 0.10);
+  --si-brand-divider: rgba(56, 189, 248, 0.06);
+  --si-table-stripe:  rgba(56, 189, 248, 0.02);
+  --si-table-hover:   rgba(56, 189, 248, 0.04);
+  --si-table-border:  rgba(56, 189, 248, 0.06);
+  --si-table-head-border: rgba(56, 189, 248, 0.08);
+  --si-table-cell-border: rgba(56, 189, 248, 0.04);
 
-  --si-body-grad-1:  #141a22;
+  --si-body-grad-1:  #0F1729;
   --si-body-grad-2:  var(--si-paper);
   --si-body-grad-3:  var(--si-paper-deep);
-  --si-body-rad-1:   rgba(45, 212, 191, 0.03);
-  --si-body-rad-2:   rgba(45, 212, 191, 0.02);
-  --si-texture-color: rgba(230, 237, 243, 0.015);
+  --si-body-rad-1:   rgba(56, 189, 248, 0.02);
+  --si-body-rad-2:   rgba(56, 189, 248, 0.01);
+  --si-texture-color: rgba(226, 232, 240, 0.012);
   --si-texture-opacity: 0.3;
 
-  --si-btn-primary-hover: #1aafa0;
-  --si-btn-outline-border: rgba(45, 212, 191, 0.35);
-  --si-btn-outline-sec-border: rgba(230, 237, 243, 0.15);
+  --si-btn-primary-hover: #2CA8D8;
+  --si-btn-outline-border: rgba(56, 189, 248, 0.28);
+  --si-btn-outline-sec-border: rgba(226, 232, 240, 0.12);
 
   --si-badge-success-bg: rgba(74, 222, 128, 0.12);
-  --si-badge-success-color: #4ade80;
+  --si-badge-success-color: #34D399;
   --si-badge-danger-bg: rgba(248, 113, 113, 0.12);
-  --si-badge-danger-color: #f87171;
+  --si-badge-danger-color: #F87171;
   --si-badge-warning-bg: rgba(251, 191, 36, 0.12);
-  --si-badge-warning-color: #fbbf24;
+  --si-badge-warning-color: #FBBF24;
 
   --si-table-danger-bg: rgba(248, 113, 113, 0.08);
-  --si-table-danger-color: #fca5a5;
+  --si-table-danger-color: #FCA5A5;
   --si-table-warning-bg: rgba(251, 191, 36, 0.08);
-  --si-table-warning-color: #fcd34d;
+  --si-table-warning-color: #FCD34D;
 
   --si-theme-toggle-bg: transparent;
-  --si-theme-toggle-hover: rgba(45, 212, 191, 0.1);
-  --si-theme-toggle-color: #b0bac5;
+  --si-theme-toggle-hover: rgba(56, 189, 248, 0.08);
+  --si-theme-toggle-color: #94A3B8;
 
   --si-notification-bg: var(--si-dropdown-bg);
   --si-notification-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
-  --si-notification-unread-bg: rgba(45, 212, 191, 0.06);
-  --si-notification-footer-bg: rgba(45, 212, 191, 0.04);
-  --si-notification-header-bg: rgba(45, 212, 191, 0.05);
+  --si-notification-unread-bg: rgba(56, 189, 248, 0.04);
+  --si-notification-footer-bg: rgba(56, 189, 248, 0.03);
+  --si-notification-header-bg: rgba(56, 189, 248, 0.03);
 
   --si-icon-success-bg: rgba(74, 222, 128, 0.12);
-  --si-icon-success-color: #4ade80;
+  --si-icon-success-color: #34D399;
   --si-icon-warning-bg: rgba(251, 191, 36, 0.12);
-  --si-icon-warning-color: #fbbf24;
+  --si-icon-warning-color: #FBBF24;
   --si-icon-error-bg: rgba(248, 113, 113, 0.12);
-  --si-icon-error-color: #f87171;
+  --si-icon-error-color: #F87171;
   --si-icon-info-bg: rgba(96, 165, 250, 0.12);
-  --si-icon-info-color: #60a5fa;
+  --si-icon-info-color: #60A5FA;
 
   --si-waterfall-track-bg: rgba(26, 31, 38, 0.8);
-  --si-waterfall-track-border: rgba(45, 212, 191, 0.06);
+  --si-waterfall-track-border: rgba(56, 189, 248, 0.04);
   --si-waterfall-bar-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --si-kind-bg: rgba(45, 212, 191, 0.04);
-  --si-kind-server-color: var(--si-teal);
-  --si-kind-server-border: rgba(45, 212, 191, 0.25);
-  --si-kind-server-bg: var(--si-hover-teal);
-  --si-kind-client-color: #60a5fa;
+  --si-kind-bg: rgba(56, 189, 248, 0.03);
+  --si-kind-server-color: var(--si-brand);
+  --si-kind-server-border: rgba(56, 189, 248, 0.20);
+  --si-kind-server-bg: var(--si-hover-brand);
+  --si-kind-client-color: #60A5FA;
   --si-kind-client-border: rgba(96, 165, 250, 0.25);
   --si-kind-client-bg: rgba(96, 165, 250, 0.08);
-  --si-tag-bg: rgba(45, 212, 191, 0.06);
-  --si-tag-border: rgba(45, 212, 191, 0.12);
-  --si-critical-color: #fb923c;
+  --si-tag-bg: rgba(56, 189, 248, 0.04);
+  --si-tag-border: rgba(56, 189, 248, 0.10);
+  --si-critical-color: #FB923C;
   --si-error-row-bg: rgba(248, 113, 113, 0.06);
   --si-success-row-bg: rgba(52, 211, 153, 0.06);
   --si-warn-pill-bg: rgba(251, 146, 60, 0.15);
-  --si-warn-pill-color: #fb923c;
+  --si-warn-pill-color: #FB923C;
   --si-ok-pill-bg: rgba(52, 211, 153, 0.12);
-  --si-ok-pill-color: #6ee7b7;
+  --si-ok-pill-color: #6EE7B7;
   --si-amber-bg: rgba(251, 191, 36, 0.1);
   --si-warn-bullet-bg: rgba(251, 146, 60, 0.1);
-  --si-warn-bullet-color: #fb923c;
+  --si-warn-bullet-color: #FB923C;
   --si-warn-bullet-border: rgba(251, 146, 60, 0.25);
   --si-ok-bullet-bg: rgba(52, 211, 153, 0.1);
-  --si-ok-bullet-color: #6ee7b7;
+  --si-ok-bullet-color: #6EE7B7;
   --si-ok-bullet-border: rgba(52, 211, 153, 0.25);
   --si-track-bg: rgba(255, 255, 255, 0.04);
   --si-error-box-bg: rgba(248, 113, 113, 0.08);
   --si-error-box-border: rgba(248, 113, 113, 0.2);
-  --si-error-box-color: #fca5a5;
+  --si-error-box-color: #FCA5A5;
 
   /* 图表调色板（暗色下提高亮度） */
-  --si-chart-palette-1: #2dd4bf;
-  --si-chart-palette-2: #4ade80;
-  --si-chart-palette-3: #22d3ee;
-  --si-chart-palette-4: #fbbf24;
-  --si-chart-palette-5: #f87171;
-  --si-chart-palette-6: #60a5fa;
-  --si-chart-palette-7: #fb923c;
-  --si-chart-palette-8: #34d399;
+  --si-chart-palette-1: #38BDF8;
+  --si-chart-palette-2: #34D399;
+  --si-chart-palette-3: #22D3EE;
+  --si-chart-palette-4: #FBBF24;
+  --si-chart-palette-5: #F87171;
+  --si-chart-palette-6: #60A5FA;
+  --si-chart-palette-7: #FB923C;
+  --si-chart-palette-8: #34D399;
   --si-chart-tooltip-bg: rgba(26, 31, 38, 0.96);
-  --si-chart-tooltip-border: rgba(45, 212, 191, 0.15);
-  --si-chart-tooltip-text: #e6edf3;
+  --si-chart-tooltip-border: rgba(56, 189, 248, 0.12);
+  --si-chart-tooltip-text: #E2E8F0;
 
-  /* 登录页 — 暗色模式：深青品牌美学 */
+  /* 登录页 — 暗色模式：深蓝科技美学 */
   --si-login-page-bg:
-    radial-gradient(ellipse 70% 55% at 12% 18%, rgba(45, 212, 191, 0.28), transparent 58%),
-    radial-gradient(ellipse 55% 50% at 88% 12%, rgba(13, 148, 136, 0.26), transparent 55%),
-    radial-gradient(ellipse 60% 45% at 78% 88%, rgba(20, 83, 45, 0.35), transparent 60%),
-    radial-gradient(ellipse 50% 40% at 8% 82%, rgba(15, 118, 110, 0.22), transparent 55%),
-    linear-gradient(155deg, #031016 0%, #06241f 38%, #0a1a22 68%, #041014 100%);
+    radial-gradient(ellipse 70% 55% at 12% 18%, rgba(56, 189, 248, 0.22), transparent 58%),
+    radial-gradient(ellipse 55% 50% at 88% 12%, rgba(0, 210, 255, 0.20), transparent 55%),
+    radial-gradient(ellipse 60% 45% at 78% 88%, rgba(0, 119, 182, 0.28), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 8% 82%, rgba(0, 184, 212, 0.15), transparent 55%),
+    linear-gradient(155deg, #060E1A 0%, #0A1628 38%, #0D1B2A 68%, #081420 100%);
   --si-login-wash:
-    linear-gradient(180deg, rgba(204, 251, 241, 0.05), transparent 42%),
-    linear-gradient(90deg, rgba(15, 118, 110, 0.12), transparent 35%, rgba(45, 212, 191, 0.08) 100%);
-  --si-login-grid-line: rgba(94, 234, 212, 0.07);
-  --si-login-orb-a: radial-gradient(circle, rgba(45, 212, 191, 0.34), transparent 68%);
-  --si-login-orb-b: radial-gradient(circle, rgba(20, 184, 166, 0.28), transparent 70%);
-  --si-login-orb-c: radial-gradient(circle, rgba(94, 234, 212, 0.14), transparent 70%);
-  --si-login-halo: rgba(45, 212, 191, 0.12);
-  --si-login-halo-core: rgba(94, 234, 212, 0.18);
-  --si-login-node-fill: #042f2e;
-  --si-login-node-stroke: #5eead4;
-  --si-login-node-glow: rgba(45, 212, 191, 0.85);
-  --si-login-node-core-fill: #0f766e;
-  --si-login-node-core-stroke: #ccfbf1;
-  --si-login-edge-start: rgba(45, 212, 191, 0.05);
-  --si-login-edge-mid: rgba(94, 234, 212, 0.75);
-  --si-login-edge-end: rgba(153, 246, 228, 0.08);
-  --si-login-sheet-bg: #1a1f26;
-  --si-login-sheet-border: rgba(94, 234, 212, 0.18);
-  --si-login-sheet-shadow: 0 22px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(15, 118, 110, 0.12);
+    linear-gradient(180deg, rgba(186, 230, 253, 0.04), transparent 42%),
+    linear-gradient(90deg, rgba(0, 184, 212, 0.10), transparent 35%, rgba(56, 189, 248, 0.06) 100%);
+  --si-login-grid-line: rgba(56, 189, 248, 0.05);
+  --si-login-orb-a: radial-gradient(circle, rgba(56, 189, 248, 0.28), transparent 68%);
+  --si-login-orb-b: radial-gradient(circle, rgba(14, 165, 233, 0.22), transparent 70%);
+  --si-login-orb-c: radial-gradient(circle, rgba(56, 189, 248, 0.10), transparent 70%);
+  --si-login-halo: rgba(56, 189, 248, 0.10);
+  --si-login-halo-core: rgba(56, 189, 248, 0.12);
+  --si-login-node-fill: #041C2E;
+  --si-login-node-stroke: #7DD3FC;
+  --si-login-node-glow: rgba(56, 189, 248, 0.70);
+  --si-login-node-core-fill: #00B8D4;
+  --si-login-node-core-stroke: rgba(0, 184, 212, 0.10);
+  --si-login-edge-start: rgba(56, 189, 248, 0.03);
+  --si-login-edge-mid: rgba(56, 189, 248, 0.60);
+  --si-login-edge-end: rgba(125, 211, 252, 0.06);
+  --si-login-sheet-bg: #151B26;
+  --si-login-sheet-border: rgba(56, 189, 248, 0.12);
+  --si-login-sheet-shadow: 0 22px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 184, 212, 0.10);
   --si-login-brand-bg:
-    radial-gradient(480px 260px at 0% 0%, rgba(45, 212, 191, 0.18), transparent 58%),
-    linear-gradient(165deg, rgba(20, 48, 46, 0.96), rgba(12, 28, 32, 0.96));
-  --si-login-brand-text: #e7eef0;
-  --si-login-brand-heading: #d5e4e2;
-  --si-login-brand-lead: rgba(214, 226, 224, 0.78);
-  --si-login-kicker: #5eead4;
-  --si-login-mark-bg: rgba(94, 234, 212, 0.12);
-  --si-login-mark-ring: rgba(94, 234, 212, 0.28);
-  --si-login-mark-shadow: 0 10px 28px rgba(15, 118, 110, 0.35);
+    radial-gradient(480px 260px at 0% 0%, rgba(56, 189, 248, 0.12), transparent 58%),
+    linear-gradient(165deg, rgba(10, 22, 40, 0.96), rgba(8, 16, 32, 0.96));
+  --si-login-brand-text: #E2EEF0;
+  --si-login-brand-heading: #D5E8F0;
+  --si-login-brand-lead: rgba(214, 230, 240, 0.78);
+  --si-login-kicker: #7DD3FC;
+  --si-login-mark-bg: rgba(56, 189, 248, 0.08);
+  --si-login-mark-ring: rgba(56, 189, 248, 0.22);
+  --si-login-mark-shadow: 0 10px 28px rgba(0, 184, 212, 0.28);
   --si-login-panel-bg: rgba(12, 15, 17, 0.94);
-  --si-login-panel-text: #f4f7f6;
-  --si-login-input-bg: #1a1f22;
-  --si-login-input-border: #2a3336;
-  --si-login-input-text: #f4f7f6;
-  --si-login-input-placeholder: #8b9896;
-  --si-login-btn: #0f766e;
-  --si-login-btn-hover: #0d9488;
-  --si-login-error: #fca5a5;
-  --si-login-focus: #2dd4bf;
+  --si-login-panel-text: #F0F6FA;
+  --si-login-input-bg: #151B26;
+  --si-login-input-border: #1E2A36;
+  --si-login-input-text: #F0F6FA;
+  --si-login-input-placeholder: #7A8B96;
+  --si-login-btn: #00B8D4;
+  --si-login-btn-hover: #00D2FF;
+  --si-login-error: #FCA5A5;
+  --si-login-focus: #38BDF8;
 }
 
 body {
@@ -591,19 +591,19 @@ body::before {
 }
 
 .si-sidebar__link:hover {
-  background: var(--si-hover-teal);
+  background: var(--si-hover-brand);
   color: var(--si-ink);
 }
 
 .si-sidebar__link:hover i,
 .si-sidebar__link.active i {
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .si-sidebar__link.active {
-  background: var(--si-active-teal);
-  color: var(--si-teal);
-  box-shadow: inset 3px 0 0 var(--si-teal);
+  background: var(--si-active-brand);
+  color: var(--si-brand);
+  box-shadow: inset 3px 0 0 var(--si-brand);
 }
 
 .si-workspace {
@@ -653,7 +653,7 @@ body::before {
 }
 
 .si-user__trigger:hover {
-  background: var(--si-hover-teal);
+  background: var(--si-hover-brand);
 }
 
 .si-user__avatar {
@@ -710,8 +710,8 @@ body::before {
 }
 
 .si-user__menu button:hover {
-  background: var(--si-active-teal);
-  color: var(--si-teal);
+  background: var(--si-active-brand);
+  color: var(--si-brand);
 }
 
 .si-user__login {
@@ -719,16 +719,16 @@ body::before {
   align-items: center;
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
-  border: 1px solid rgba(15, 118, 110, 0.28);
-  color: var(--si-teal);
+  border: 1px solid rgba(0, 184, 212, 0.22);
+  color: var(--si-brand);
   font-size: 0.85rem;
   font-weight: 600;
   text-decoration: none;
 }
 
 .si-user__login:hover {
-  background: var(--si-hover-teal);
-  color: var(--si-forest);
+  background: var(--si-hover-brand);
+  color: var(--si-brand-deep);
 }
 
 .si-main {
@@ -806,7 +806,7 @@ body::before {
     transform: translateX(-105%);
     transition: transform 0.2s ease;
     z-index: 50;
-    box-shadow: 8px 0 32px rgba(21, 36, 31, 0.12);
+    box-shadow: 8px 0 32px rgba(15, 23, 42, 0.08);
   }
 
   .si-shell--nav-open .si-sidebar {
@@ -856,7 +856,7 @@ body::before {
 }
 
 .page-title i {
-  color: var(--si-teal);
+  color: var(--si-brand);
   font-size: 0.92em;
 }
 
@@ -902,28 +902,28 @@ body::before {
 }
 
 .btn-primary {
-  background: var(--si-teal) !important;
+  background: var(--si-brand) !important;
   color: #fff !important;
-  border: 1px solid var(--si-forest) !important;
+  border: 1px solid var(--si-brand-deep) !important;
 }
 
 .btn-primary:hover,
 .btn-primary:focus {
   background: var(--si-btn-primary-hover) !important;
   color: #fff !important;
-  border-color: var(--si-forest) !important;
+  border-color: var(--si-brand-deep) !important;
 }
 
 .btn-outline-primary {
-  color: var(--si-teal) !important;
+  color: var(--si-brand) !important;
   border-color: var(--si-btn-outline-border) !important;
   background: transparent !important;
 }
 
 .btn-outline-primary:hover {
-  background: var(--si-teal-soft) !important;
-  border-color: var(--si-teal) !important;
-  color: var(--si-forest) !important;
+  background: var(--si-brand-soft) !important;
+  border-color: var(--si-brand) !important;
+  color: var(--si-brand-deep) !important;
 }
 
 .btn-outline-secondary {
@@ -979,7 +979,7 @@ body::before {
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1.2;
-  color: var(--si-teal);
+  color: var(--si-brand);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: clip;
@@ -1010,7 +1010,7 @@ body::before {
   width: 4.5rem;
   height: 4px;
   border-radius: 999px;
-  background: var(--si-active-teal);
+  background: var(--si-active-brand);
   overflow: hidden;
 }
 
@@ -1018,7 +1018,7 @@ body::before {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--si-teal);
+  background: var(--si-brand);
 }
 
 .si-dur__val {
@@ -1077,7 +1077,7 @@ body::before {
 
 .si-theme-toggle:hover {
   background: var(--si-theme-toggle-hover);
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .si-theme-toggle__icon {

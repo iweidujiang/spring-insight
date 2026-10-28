@@ -1344,7 +1344,7 @@ onUnmounted(() => {
   line-height: 1.2;
 }
 
-.si-dashboard__title i { color: var(--si-teal); }
+.si-dashboard__title i { color: var(--si-brand); }
 
 .si-dashboard__status { justify-self: center; }
 
@@ -1419,7 +1419,7 @@ onUnmounted(() => {
 
 .si-layout-menu__item.is-active {
   font-weight: 650;
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .si-layout-menu__name {
@@ -1469,7 +1469,7 @@ onUnmounted(() => {
 }
 
 .si-dashboard__loading i {
-  color: var(--si-teal);
+  color: var(--si-brand);
   font-size: 1.75rem;
 }
 
@@ -1511,7 +1511,7 @@ onUnmounted(() => {
 
 .si-dashboard__edge-tips code {
   font-size: 0.72rem;
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .si-dashboard__rail-card {
@@ -1626,11 +1626,11 @@ onUnmounted(() => {
 }
 
 .si-dashboard__kpi:hover .si-dashboard__kpi-name {
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .si-dashboard__kpi:focus-visible {
-  outline: 2px solid var(--si-teal);
+  outline: 2px solid var(--si-brand);
   outline-offset: 2px;
 }
 
@@ -1776,7 +1776,7 @@ onUnmounted(() => {
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: var(--si-teal);
+  color: var(--si-brand);
   background: rgba(15, 118, 110, 0.08);
   border: 1px solid rgba(15, 118, 110, 0.18);
 }
@@ -1825,7 +1825,7 @@ onUnmounted(() => {
 
 .si-period__action:hover {
   border-color: rgba(15, 118, 110, 0.4);
-  color: var(--si-teal);
+  color: var(--si-brand);
   background: rgba(15, 118, 110, 0.04);
 }
 
@@ -1879,7 +1879,7 @@ onUnmounted(() => {
 }
 
 .si-period__bullet-btn:hover {
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .si-period__empty {
@@ -1979,7 +1979,7 @@ onUnmounted(() => {
 .si-infra__link {
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--si-teal, #0f766e);
+  color: var(--si-brand, #0f766e);
   white-space: nowrap;
 }
 
@@ -2286,7 +2286,7 @@ onUnmounted(() => {
 
 .si-dashboard__dep-arrow {
   flex: 0 0 auto;
-  color: var(--si-teal);
+  color: var(--si-brand);
   font-size: 0.85rem;
 }
 
@@ -2356,7 +2356,7 @@ onUnmounted(() => {
 
 .si-dashboard__solo-tips code {
   font-size: 0.7rem;
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .si-dashboard__solo-actions {

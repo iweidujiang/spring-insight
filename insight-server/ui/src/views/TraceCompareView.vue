@@ -507,7 +507,7 @@ onMounted(async () => {
   font-size: 0.7rem;
   font-weight: 800;
   color: #fff;
-  background: var(--si-teal);
+  background: var(--si-brand);
   margin-right: 0.4rem;
 }
 

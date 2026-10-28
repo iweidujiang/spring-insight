@@ -909,7 +909,7 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .si-topo-rail__name {
@@ -933,7 +933,7 @@ onUnmounted(() => {
 }
 
 .si-topo-rail__edge i {
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 .si-topo-rail__stats {
@@ -1031,7 +1031,7 @@ onUnmounted(() => {
 }
 
 .si-svc {
-  color: var(--si-teal);
+  color: var(--si-brand);
   font-size: 0.85rem;
   background: transparent;
 }
@@ -1060,12 +1060,12 @@ onUnmounted(() => {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--si-teal);
+  background: var(--si-brand);
   color: var(--si-avatar-text);
   font-family: var(--font-display);
   font-size: 1.6rem;
   font-weight: 700;
-  box-shadow: 0 0 0 8px var(--si-hover-teal);
+  box-shadow: 0 0 0 8px var(--si-hover-brand);
 }
 
 .si-topo-solo__copy h3 {
@@ -1209,7 +1209,7 @@ onUnmounted(() => {
 
 .si-topo-solo__hint code {
   font-size: 0.78rem;
-  color: var(--si-teal);
+  color: var(--si-brand);
 }
 
 @media (max-width: 900px) {

@@ -208,7 +208,7 @@ function columnWidth(column: SiColumn<T>): string | undefined {
 }
 
 .si-data-table :deep(.el-table__row.table-active > td.el-table__cell) {
-  background-color: var(--si-active-teal) !important;
+  background-color: var(--si-active-brand) !important;
 }
 
 .si-data-table :deep(.el-table__row.table-warning > td.el-table__cell) {

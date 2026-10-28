@@ -4,18 +4,18 @@
  */
 
 const LIGHT_PALETTE = [
-  '#0f766e', '#15803d', '#0d9488', '#b45309',
-  '#b91c1c', '#1d4ed8', '#c2410c', '#047857'
+  '#00B8D4', '#10B981', '#00D2FF', '#F59E0B',
+  '#EF4444', '#1d4ed8', '#EA580C', '#059669'
 ]
 
 const DARK_PALETTE = [
-  '#2dd4bf', '#4ade80', '#22d3ee', '#fbbf24',
-  '#f87171', '#60a5fa', '#fb923c', '#34d399'
+  '#38BDF8', '#34D399', '#22D3EE', '#FBBF24',
+  '#F87171', '#60A5FA', '#FB923C', '#34D399'
 ]
 
 export interface ChartThemeColors {
   palette: string[]
-  teal: string
+  brand: string
   muted: string
   ink: string
   inkSoft: string
@@ -34,38 +34,38 @@ export interface ChartThemeColors {
 
 const LIGHT: ChartThemeColors = {
   palette: LIGHT_PALETTE,
-  teal: '#0f766e',
-  muted: '#6b7f76',
-  ink: '#15241f',
-  inkSoft: '#3d524a',
-  surface: 'rgba(255, 252, 250, 0.96)',
-  axisLine: 'rgba(20, 83, 45, 0.25)',
-  splitLine: 'rgba(20, 83, 45, 0.1)',
-  tooltipBg: 'rgba(255, 252, 250, 0.96)',
-  tooltipBorder: 'rgba(20, 83, 45, 0.15)',
-  tooltipText: '#15241f',
-  danger: '#b91c1c',
-  warning: '#b45309',
-  degraded: '#c2410c',
-  success: '#15803d'
+  brand: '#00B8D4',
+  muted: '#94A3B8',
+  ink: '#1E293B',
+  inkSoft: '#475569',
+  surface: 'rgba(255, 255, 255, 0.95)',
+  axisLine: 'rgba(0, 184, 212, 0.20)',
+  splitLine: 'rgba(0, 184, 212, 0.06)',
+  tooltipBg: 'rgba(255, 255, 255, 0.95)',
+  tooltipBorder: 'rgba(0, 184, 212, 0.10)',
+  tooltipText: '#1E293B',
+  danger: '#EF4444',
+  warning: '#F59E0B',
+  degraded: '#EA580C',
+  success: '#10B981'
 }
 
 const DARK: ChartThemeColors = {
   palette: DARK_PALETTE,
-  teal: '#2dd4bf',
-  muted: '#7d8a96',
-  ink: '#e6edf3',
-  inkSoft: '#b0bac5',
-  surface: 'rgba(26, 31, 38, 0.96)',
-  axisLine: 'rgba(45, 212, 191, 0.2)',
-  splitLine: 'rgba(45, 212, 191, 0.06)',
-  tooltipBg: 'rgba(26, 31, 38, 0.96)',
-  tooltipBorder: 'rgba(45, 212, 191, 0.15)',
-  tooltipText: '#e6edf3',
-  danger: '#f87171',
-  warning: '#fbbf24',
-  degraded: '#fb923c',
-  success: '#4ade80'
+  brand: '#38BDF8',
+  muted: '#64748B',
+  ink: '#E2E8F0',
+  inkSoft: '#94A3B8',
+  surface: 'rgba(21, 27, 38, 0.95)',
+  axisLine: 'rgba(56, 189, 248, 0.15)',
+  splitLine: 'rgba(56, 189, 248, 0.04)',
+  tooltipBg: 'rgba(21, 27, 38, 0.95)',
+  tooltipBorder: 'rgba(56, 189, 248, 0.12)',
+  tooltipText: '#E2E8F0',
+  danger: '#F87171',
+  warning: '#FBBF24',
+  degraded: '#FB923C',
+  success: '#34D399'
 }
 
 export function getChartThemeColors(isDark: boolean): ChartThemeColors {
