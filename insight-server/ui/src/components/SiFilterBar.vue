@@ -99,7 +99,7 @@ const hoursModel = computed({
       :loading="loading"
       @click="emit('refresh')"
     >
-      <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+      <el-icon v-if="!loading" class="me-1"><Refresh /></el-icon>
       刷新
     </el-button>
 
@@ -145,7 +145,7 @@ const hoursModel = computed({
       :loading="loading"
       @click="emit('refresh')"
     >
-      <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+      <el-icon v-if="!loading" class="me-1"><Refresh /></el-icon>
       刷新
     </el-button>
 
@@ -168,6 +168,10 @@ const hoursModel = computed({
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 0.75rem 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--card-bg);
+  border-radius: 10px;
+  box-shadow: var(--box-shadow);
 }
 
 .si-filter-bar__field,

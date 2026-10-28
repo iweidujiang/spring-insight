@@ -134,7 +134,7 @@
             </SiFormField>
           </el-form>
 
-          <SiFormBlock title="静默时段" icon="fa-moon-o" description="时段内不推送（可跨午夜，如 22:00→08:00）。">
+          <SiFormBlock title="静默时段" icon="Moon" description="时段内不推送（可跨午夜，如 22:00→08:00）。">
             <template #switch>
               <SiSwitchField id="quiet-enabled" v-model="form.alert.quietHoursEnabled" label="启用静默" flush />
             </template>
@@ -1418,6 +1418,8 @@ onUnmounted(() => {
 .si-settings__block-title,
 :deep(.si-settings__block-title) {
   font-size: 0.95rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--si-brand);
 }
 
 .si-settings__card-desc,
@@ -1434,7 +1436,7 @@ onUnmounted(() => {
 :deep(.si-settings__block) {
   margin-top: 1.15rem;
   padding-top: 1.1rem;
-  border-top: 1px dashed rgba(15, 118, 110, 0.18);
+  border-top: 1px solid var(--si-brand-divider);
 }
 
 .si-settings__fields,

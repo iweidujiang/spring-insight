@@ -2,7 +2,7 @@
 defineProps<{
   title: string
   description?: string
-  /** Font Awesome 图标类，如 fa-envelope。只作行内图标 */
+  /** Element Plus 图标组件名，如 'BellFilled' */
   icon?: string
 }>()
 </script>
@@ -12,7 +12,7 @@ defineProps<{
     <header class="si-settings__block-head">
       <div>
         <h4 class="si-settings__block-title">
-          <i v-if="icon" class="fa me-1" :class="icon" aria-hidden="true"></i>{{ title }}
+          <el-icon v-if="icon" class="me-1"><component :is="icon" /></el-icon>{{ title }}
         </h4>
         <p v-if="description" class="si-settings__block-desc">{{ description }}</p>
       </div>

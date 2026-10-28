@@ -69,6 +69,12 @@ const hasHint = computed(() => !!slots.hint)
   line-height: normal;
 }
 
+.si-form-field :deep(.el-input__wrapper.is-focus),
+.si-form-field :deep(.el-select .el-input__wrapper.is-focus),
+.si-form-field :deep(.el-textarea__inner:focus) {
+  box-shadow: 0 0 0 2px var(--si-brand-soft) !important;
+}
+
 .si-form-field__label {
   font-size: inherit;
   font-weight: inherit;
