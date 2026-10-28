@@ -1897,7 +1897,7 @@ onUnmounted(() => {
 
 .si-confirm__title {
   margin: 0 0 0.5rem;
-  font-family: var(--font-display, Fraunces, Georgia, serif);
+  font-family: var(--font-display);
   font-size: 1.2rem;
   font-weight: 700;
   color: var(--si-ink, #15241f);

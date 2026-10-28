@@ -71,7 +71,7 @@
   --el-box-shadow: var(--box-shadow);
   --el-box-shadow-light: var(--box-shadow);
   --el-border-radius-base: var(--border-radius, 10px);
-  --el-font-family: var(--font-body, 'Source Sans 3', 'Segoe UI', sans-serif);
+  --el-font-family: var(--font-body, 'Inter', 'Segoe UI', system-ui, sans-serif);
 
   --el-card-bg-color: var(--card-bg, #FFFFFF);
   --el-card-border-color: var(--card-border, rgba(0, 184, 212, 0.08));

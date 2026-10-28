@@ -1,5 +1,5 @@
 /* Spring Insight — 现代科技感 · 青蓝品牌 */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
   --si-nav-offset: 0px;
@@ -37,9 +37,9 @@
   --box-shadow-hover: 0 2px 4px rgba(0, 184, 212, 0.03), 0 12px 28px rgba(0, 184, 212, 0.08);
   --transition: all 0.25s ease;
 
-  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
-  --font-body: 'Source Sans 3', 'Segoe UI', sans-serif;
-  --font-numeric: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --font-display: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-numeric: 'Inter', 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
   /* 0.4 表面 / 字阶 / 间距 */
