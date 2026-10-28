@@ -714,7 +714,8 @@ samp {
 
 .si-main--page {
   padding-top: 1.15rem;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   max-width: 1400px;
   margin-left: auto;
   margin-right: auto;
