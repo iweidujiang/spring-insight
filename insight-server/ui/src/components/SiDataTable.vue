@@ -10,12 +10,14 @@ const props = withDefaults(
     columns: readonly SiColumn<T>[]
     rowKey?: string | ((row: T, index: number) => string | number)
     clickable?: boolean
+    stripe?: boolean
     emptyText?: string
     rowClass?: (row: T, index: number) => string | undefined
     rowStyle?: (row: T, index: number) => Record<string, string> | undefined
   }>(),
   {
     clickable: false,
+    stripe: false,
     emptyText: '没有记录'
   }
 )
@@ -115,6 +117,7 @@ function columnWidth(column: SiColumn<T>): string | undefined {
       :data="keyedRows"
       row-key="__siKey"
       size="small"
+      :stripe="stripe"
       :show-header="true"
       :empty-text="emptyText"
       :row-class-name="tableRowClassName"
@@ -162,22 +165,45 @@ function columnWidth(column: SiColumn<T>): string | undefined {
 .si-data-table-wrap {
   width: 100%;
   overflow-x: auto;
+  border-radius: 10px;
 }
 
 .si-data-table {
   --el-table-bg-color: transparent;
   --el-table-tr-bg-color: transparent;
-  --el-table-header-bg-color: var(--si-surface-2, #f7f9f7);
+  --el-table-header-bg-color: var(--si-surface-2, #F8FAFC);
   --el-table-row-hover-bg-color: var(--si-table-hover);
   --el-table-border-color: var(--si-table-cell-border);
   --el-table-text-color: var(--si-ink);
   --el-table-header-text-color: var(--si-ink-soft);
+  border-radius: 10px;
+}
+
+.si-data-table :deep(.el-table__header th) {
+  font-weight: 600;
+  border-bottom: 1px solid var(--si-table-head-border) !important;
 }
 
 .si-data-table :deep(.el-table__header th),
 .si-data-table :deep(.el-table__body td) {
   vertical-align: middle;
   box-sizing: border-box;
+}
+
+.si-data-table :deep(.el-table__body td) {
+  border-bottom: 1px solid var(--si-table-cell-border) !important;
+}
+
+.si-data-table :deep(.el-table__body tr:hover > td:first-child) {
+  box-shadow: inset 3px 0 0 var(--si-brand);
+}
+
+.si-data-table :deep(.el-table__body tr:hover > td.el-table__cell) {
+  position: relative;
+}
+
+.si-data-table :deep(.el-table.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: var(--si-table-stripe);
 }
 
 .si-data-table :deep(th.si-data-table__num),
@@ -201,7 +227,6 @@ function columnWidth(column: SiColumn<T>): string | undefined {
   cursor: pointer;
 }
 
-/* 行态类在 el-table 上的兜底 */
 .si-data-table :deep(.el-table__row.table-danger > td.el-table__cell) {
   background-color: var(--si-table-danger-bg) !important;
   color: var(--si-table-danger-color);
