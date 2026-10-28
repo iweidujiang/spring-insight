@@ -99,13 +99,7 @@
   --si-table-cell-border: rgba(0, 184, 212, 0.06);
 
   /* 背景光晕 */
-  --si-body-grad-1: #F8FAFC;
-  --si-body-grad-2: var(--si-paper);
-  --si-body-grad-3: var(--si-paper-deep);
   --si-body-rad-1: rgba(0, 184, 212, 0.05);
-  --si-body-rad-2: rgba(0, 184, 212, 0.03);
-  --si-texture-color: rgba(15, 23, 42, 0.02);
-  --si-texture-opacity: 0.45;
 
   /* 按钮 */
   --si-btn-primary-hover: #0098CC;
@@ -310,13 +304,7 @@
   --si-table-head-border: rgba(56, 189, 248, 0.08);
   --si-table-cell-border: rgba(56, 189, 248, 0.04);
 
-  --si-body-grad-1:  #0F1729;
-  --si-body-grad-2:  var(--si-paper);
-  --si-body-grad-3:  var(--si-paper-deep);
   --si-body-rad-1:   rgba(56, 189, 248, 0.02);
-  --si-body-rad-2:   rgba(56, 189, 248, 0.01);
-  --si-texture-color: rgba(226, 232, 240, 0.012);
-  --si-texture-opacity: 0.3;
 
   --si-btn-primary-hover: #2CA8D8;
   --si-btn-outline-border: rgba(56, 189, 248, 0.28);
@@ -449,9 +437,7 @@
 body {
   background-color: var(--si-paper);
   background-image:
-    radial-gradient(ellipse 90% 60% at 0% 0%, var(--si-body-rad-1), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 100% 10%, var(--si-body-rad-2), transparent 50%),
-    linear-gradient(180deg, var(--si-body-grad-1) 0%, var(--si-body-grad-2) 45%, var(--si-body-grad-3) 100%);
+    radial-gradient(ellipse 80% 60% at 15% 10%, var(--si-body-rad-1), transparent 55%);
   background-attachment: fixed;
   font-family: var(--font-body);
   padding-top: 0;
@@ -467,21 +453,6 @@ pre,
 samp {
   font-family: var(--font-mono);
   font-size: 0.9em;
-}
-
-/* 背景网格纹理 */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: var(--si-texture-opacity);
-  background-image:
-    linear-gradient(var(--si-texture-color) 1px, transparent 1px),
-    linear-gradient(90deg, var(--si-texture-color) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, transparent 70%);
 }
 
 #app {
@@ -744,6 +715,9 @@ body::before {
 .si-main--page {
   padding-top: 1.15rem;
   overflow: auto;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .si-nav-toggle,
