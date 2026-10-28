@@ -144,38 +144,40 @@ const openTrace = (id?: string) => {
   <section class="si-ai-panel" aria-label="AI 解读">
     <div class="si-ai-panel__head">
       <h3 class="si-ai-panel__title">
-        <i class="fa fa-lightbulb-o me-2"></i>{{ title }}
-        <small v-if="displayMeta" class="text-muted ms-2">{{ displayMeta }}</small>
-        <span v-if="result.degraded" class="badge text-bg-warning ms-2">已降级</span>
+        <el-icon class="me-2 si-ai-panel__icon"><Lightbulb /></el-icon>{{ title }}
+        <small v-if="displayMeta" class="si-ai-panel__meta">{{ displayMeta }}</small>
+        <el-tag v-if="result.degraded" type="warning" size="small" effect="plain" class="ms-2">已降级</el-tag>
       </h3>
-      <button type="button" class="btn btn-sm btn-outline-secondary" @click="emit('close')">关闭</button>
+      <el-button size="small" @click="emit('close')">关闭</el-button>
     </div>
 
     <div
       v-if="compareResult && (compareResult.traceIdA || compareResult.traceIdB)"
       class="si-ai-panel__trace-links"
     >
-      <button
+      <el-button
         v-if="compareResult.traceIdA"
-        type="button"
-        class="btn btn-link btn-sm px-0"
+        type="primary"
+        link
+        size="small"
         @click="openTrace(compareResult.traceIdA)"
       >
         打开 Trace A
-      </button>
-      <span v-if="compareResult.traceIdA && compareResult.traceIdB" class="text-muted px-1">·</span>
-      <button
+      </el-button>
+      <span v-if="compareResult.traceIdA && compareResult.traceIdB" class="si-ai-panel__sep">·</span>
+      <el-button
         v-if="compareResult.traceIdB"
-        type="button"
-        class="btn btn-link btn-sm px-0"
+        type="primary"
+        link
+        size="small"
         @click="openTrace(compareResult.traceIdB)"
       >
         打开 Trace B
-      </button>
+      </el-button>
     </div>
 
     <div v-if="result.degraded" class="si-ai-panel__fail" role="status">
-      <i class="fa fa-exclamation-triangle me-1"></i>
+      <el-icon class="me-1"><WarningFilled /></el-icon>
       <span>{{ result.message || result.reason || summary || 'AI 调用失败或未就绪，已降级为提示信息。' }}</span>
     </div>
 
@@ -227,10 +229,10 @@ const openTrace = (id?: string) => {
 .si-ai-panel {
   margin-top: 1rem;
   padding: 1rem 1.1rem;
-  border: 1px solid var(--card-border, var(--si-border, #d6d3d1));
+  border: 1px solid var(--card-border);
   border-radius: 10px;
-  background: var(--card-bg, var(--si-paper, #fafaf9));
-  color: var(--si-ink, #1c1917);
+  background: var(--card-bg);
+  color: var(--si-ink);
 }
 .si-ai-panel__head {
   display: flex;
@@ -244,6 +246,19 @@ const openTrace = (id?: string) => {
   font-size: 1rem;
   font-weight: 650;
   color: var(--si-ink);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.si-ai-panel__icon {
+  color: var(--si-brand);
+}
+.si-ai-panel__meta {
+  font-size: 0.82rem;
+  color: var(--si-muted);
+  font-weight: 400;
+  margin-left: 0.5rem;
 }
 .si-ai-panel__trace-links {
   display: flex;
@@ -253,11 +268,15 @@ const openTrace = (id?: string) => {
   margin: -0.25rem 0 0.65rem;
   font-size: 0.85rem;
 }
+.si-ai-panel__sep {
+  color: var(--si-muted);
+  padding: 0 0.25rem;
+}
 .si-ai-panel__summary {
   margin: 0 0 0.75rem;
   font-size: 0.95rem;
   line-height: 1.5;
-  color: var(--si-ink, #1c1917);
+  color: var(--si-ink);
 }
 .si-ai-panel__fail {
   display: flex;
@@ -266,7 +285,7 @@ const openTrace = (id?: string) => {
   margin: 0 0 0.75rem;
   padding: 0.55rem 0.7rem;
   border-radius: 8px;
-  border: 1px solid var(--si-warn-bullet-border, rgba(180, 83, 9, 0.35));
+  border: 1px solid var(--si-warn-bullet-border);
   background: var(--si-amber-bg);
   font-size: 0.85rem;
   line-height: 1.45;
@@ -276,7 +295,7 @@ const openTrace = (id?: string) => {
   margin: 0.65rem 0 0;
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--si-muted, #78716c);
+  color: var(--si-muted);
 }
 .si-ai-panel__block {
   margin-bottom: 0.75rem;
@@ -286,7 +305,7 @@ const openTrace = (id?: string) => {
   font-size: 0.8rem;
   font-weight: 650;
   letter-spacing: 0.02em;
-  color: var(--si-muted, #78716c);
+  color: var(--si-muted);
   text-transform: uppercase;
 }
 .si-ai-panel__list {
@@ -308,7 +327,7 @@ const openTrace = (id?: string) => {
   padding: 0.45rem 0.6rem;
   border-radius: 8px;
   border: 1px solid transparent;
-  background: var(--si-brand-soft, rgba(15, 118, 110, 0.06));
+  background: var(--si-brand-soft);
   color: var(--si-ink);
 }
 .si-ai-panel__ev-btn {
@@ -316,18 +335,18 @@ const openTrace = (id?: string) => {
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .si-ai-panel__ev-btn:hover {
-  border-color: var(--si-form-border, rgba(15, 118, 110, 0.35));
-  background: var(--si-hover-brand, rgba(15, 118, 110, 0.1));
+  border-color: var(--si-form-border);
+  background: var(--si-hover-brand);
 }
 .si-ai-panel__reason {
   flex: 1 1 12rem;
   font-size: 0.85rem;
-  color: var(--si-muted, #57534e);
+  color: var(--si-muted);
 }
 .si-ai-panel__go {
   font-size: 0.75rem;
   font-weight: 650;
-  color: var(--si-brand, #0f766e);
+  color: var(--si-brand);
 }
 .si-ai-panel__suggestions {
   margin: 0;
@@ -344,17 +363,17 @@ const openTrace = (id?: string) => {
 .si-ai-panel__md {
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
   font-size: 0.8rem;
   margin: 0.4rem 0 0;
   padding: 0.5rem 0.65rem;
-  background: var(--si-surface-2, rgba(0, 0, 0, 0.03));
+  background: var(--si-surface-2);
   border-radius: 6px;
   color: var(--si-ink-soft);
 }
 .si-ai-panel__note {
   margin: 0.5rem 0 0;
   font-size: 0.75rem;
-  color: var(--si-muted, #a8a29e);
+  color: var(--si-muted);
 }
 </style>
