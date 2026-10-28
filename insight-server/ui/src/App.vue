@@ -9,7 +9,7 @@
       aria-label="打开或关闭导航"
       @click="navOpen = !navOpen"
     >
-      <i class="fa" :class="navOpen ? 'fa-times' : 'fa-bars'"></i>
+      <el-icon :size="18"><component :is="navOpen ? 'Close' : 'Expand'" /></el-icon>
     </button>
 
     <div v-if="navOpen" class="si-nav-backdrop" @click="navOpen = false"></div>
@@ -43,21 +43,22 @@
         <div class="si-topbar__end">
           <ThemeToggle />
           <NotificationComponent />
-          <div v-if="showUserMenu" class="si-user" ref="userMenuRef">
-            <button
-              type="button"
-              class="si-user__trigger"
-              :aria-expanded="userMenuOpen"
-              aria-haspopup="menu"
-              @click.stop="userMenuOpen = !userMenuOpen"
-            >
-              <span class="si-user__avatar" aria-hidden="true">{{ userInitial }}</span>
-              <span class="si-user__name">{{ displayName }}</span>
-              <i class="fa fa-chevron-down si-user__caret"></i>
-            </button>
-            <div v-if="userMenuOpen" class="si-user__menu" role="menu">
-              <button type="button" role="menuitem" @click="onLogout">退出登录</button>
-            </div>
+          <div v-if="showUserMenu" class="si-user">
+            <el-dropdown trigger="click" @command="onUserCommand">
+              <span class="si-user__avatar-wrap">
+                <el-avatar :size="30" :style="avatarStyle">{{ userInitial }}</el-avatar>
+                <span class="si-user__name">{{ displayName }}</span>
+                <el-icon><ArrowDown /></el-icon>
+              </span>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="logout">
+                    <el-icon><SwitchButton /></el-icon>
+                    退出登录
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
           <router-link
             v-else-if="authEnabled"
@@ -95,8 +96,6 @@ import { buildNavLocation } from './utils/insightQuery'
 const route = useRoute()
 const router = useRouter()
 const navOpen = ref(false)
-const userMenuOpen = ref(false)
-const userMenuRef = ref<HTMLElement | null>(null)
 
 const isLoginRoute = computed(() => route.path === '/login')
 /** Server 是否开启控制台登录 */
@@ -108,6 +107,13 @@ const userInitial = computed(() => {
   const name = displayName.value.trim()
   return name ? name.slice(0, 1).toUpperCase() : 'A'
 })
+
+const avatarStyle = computed(() => ({
+  background: 'linear-gradient(145deg, var(--si-avatar-from), var(--si-avatar-to))',
+  color: 'var(--si-avatar-text)',
+  fontWeight: '700',
+  fontSize: '0.85rem'
+}))
 
 async function refreshAuthAndUser() {
   try {
@@ -153,18 +159,12 @@ const closeNav = () => {
   navOpen.value = false
 }
 
-async function onLogout() {
-  userMenuOpen.value = false
-  await logout()
-  signedIn.value = false
-  await router.push('/login')
-}
-
-const onDocPointerDown = (event: MouseEvent) => {
-  if (!userMenuOpen.value) return
-  const target = event.target as Node | null
-  if (target && userMenuRef.value?.contains(target)) return
-  userMenuOpen.value = false
+async function onUserCommand(command: string) {
+  if (command === 'logout') {
+    await logout()
+    signedIn.value = false
+    await router.push('/login')
+  }
 }
 
 const onStorage = (event: StorageEvent) => {
@@ -174,13 +174,11 @@ const onStorage = (event: StorageEvent) => {
 }
 
 onMounted(() => {
-  document.addEventListener('mousedown', onDocPointerDown)
   window.addEventListener('storage', onStorage)
   refreshAuthAndUser()
 })
 
 onUnmounted(() => {
-  document.removeEventListener('mousedown', onDocPointerDown)
   window.removeEventListener('storage', onStorage)
 })
 
@@ -188,7 +186,6 @@ watch(
   () => route.fullPath,
   () => {
     navOpen.value = false
-    userMenuOpen.value = false
     refreshAuthAndUser()
   },
   { immediate: true }

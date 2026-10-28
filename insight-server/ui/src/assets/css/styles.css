@@ -68,6 +68,7 @@
   --si-sidebar-bg: rgba(255, 255, 255, 0.82);
   --si-sidebar-shadow: none;
   --si-topbar-bg: rgba(255, 255, 255, 0.85);
+  --si-topbar-border: rgba(0, 0, 0, 0.04);
   --si-nav-toggle-bg: rgba(255, 255, 255, 0.95);
   --si-dropdown-bg: #FFFFFF;
   --si-backdrop-color: rgba(15, 23, 42, 0.22);
@@ -283,6 +284,7 @@
   --si-sidebar-bg:   rgba(22, 27, 34, 0.82);
   --si-sidebar-shadow: none;
   --si-topbar-bg:    rgba(22, 27, 34, 0.88);
+  --si-topbar-border: rgba(255, 255, 255, 0.04);
   --si-nav-toggle-bg: rgba(22, 27, 34, 0.96);
   --si-dropdown-bg:  #151B26;
   --si-backdrop-color: rgba(0, 0, 0, 0.5);
@@ -637,112 +639,80 @@ body::before {
   align-items: center;
   min-height: 3.15rem;
   padding: 0.35rem 1.15rem;
-  border-bottom: 1px solid var(--card-border);
+  border-bottom: 1px solid var(--si-topbar-border);
   background: var(--si-topbar-bg);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   z-index: 45;
 }
 
 .si-topbar__end {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
 .si-user {
-  position: relative;
-}
-
-.si-user__trigger {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0.2rem 0.45rem 0.2rem 0.2rem;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--si-ink);
-  cursor: pointer;
-}
-
-.si-user__trigger:hover {
-  background: var(--si-hover-brand);
-}
-
-.si-user__avatar {
-  width: 2rem;
-  height: 2rem;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: linear-gradient(145deg, var(--si-avatar-from), var(--si-avatar-to));
-  color: var(--si-avatar-text);
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-.si-user__name {
-  font-size: 0.88rem;
-  font-weight: 600;
-  max-width: 7.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.si-user__caret {
-  font-size: 0.65rem;
-  color: var(--si-muted);
-}
-
-.si-user__menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.4rem);
-  min-width: 8.5rem;
-  padding: 0.3rem;
-  border: 1px solid var(--card-border);
-  border-radius: 10px;
-  background: var(--si-dropdown-bg);
-  box-shadow: var(--box-shadow);
-  z-index: 50;
-}
-
-.si-user__menu button {
-  width: 100%;
-  margin: 0;
-  padding: 0.5rem 0.7rem;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--si-ink);
-  text-align: left;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.si-user__menu button:hover {
-  background: var(--si-active-brand);
-  color: var(--si-brand);
 }
 
 .si-user__login {
   display: inline-flex;
   align-items: center;
-  padding: 0.35rem 0.75rem;
+  padding: 0.35rem 0.85rem;
   border-radius: 999px;
   border: 1px solid rgba(0, 184, 212, 0.22);
   color: var(--si-brand);
   font-size: 0.85rem;
   font-weight: 600;
   text-decoration: none;
+  transition: var(--transition);
 }
 
 .si-user__login:hover {
   background: var(--si-hover-brand);
   color: var(--si-brand-deep);
+}
+
+.si-user .el-dropdown {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  outline: none;
+}
+
+.si-user .el-dropdown:focus-visible {
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px var(--si-brand-soft);
+}
+
+.si-user__avatar-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.15rem 0.35rem 0.15rem 0.15rem;
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+.si-user__avatar-wrap:hover {
+  background: var(--si-hover-brand);
+}
+
+.si-user__avatar-wrap .si-user__name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  max-width: 7.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--si-ink);
+}
+
+.si-user__avatar-wrap .el-icon {
+  font-size: 0.72rem;
+  color: var(--si-muted);
 }
 
 .si-main {
@@ -834,10 +804,6 @@ body::before {
 
   .si-topbar {
     padding-left: 3.6rem;
-  }
-
-  .si-user__name {
-    display: none;
   }
 
   .si-main--dashboard {
@@ -1117,11 +1083,6 @@ body::before {
     min-width: 44px;
     min-height: 44px;
     padding: 0.625rem;
-  }
-
-  .si-user__trigger {
-    min-height: 44px;
-    padding: 0.35rem 0.5rem;
   }
 
   .btn-sm {

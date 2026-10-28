@@ -7,8 +7,8 @@
     @click="cycleTheme"
   >
     <span class="si-theme-toggle__icon">
-      <i v-if="effectiveTheme === 'light'" class="fa fa-sun-o"></i>
-      <i v-else class="fa fa-moon-o"></i>
+      <el-icon v-if="effectiveTheme === 'light'" :size="16"><Sunny /></el-icon>
+      <el-icon v-else :size="16"><Moon /></el-icon>
     </span>
   </button>
 </template>
