@@ -1,0 +1,114 @@
+/**
+ * 轻量工具类 —— 替代 Bootstrap 常用 utility
+ * 仅覆盖项目中实际使用的类名，不引入完整框架
+ */
+
+/* ── 间距 ── */
+.me-1 { margin-right: 0.25rem !important; }
+.me-2 { margin-right: 0.5rem !important; }
+.ms-1 { margin-left: 0.25rem !important; }
+.ms-2 { margin-left: 0.5rem !important; }
+.mb-0 { margin-bottom: 0 !important; }
+.mb-1 { margin-bottom: 0.25rem !important; }
+.mb-2 { margin-bottom: 0.5rem !important; }
+.mb-3 { margin-bottom: 1rem !important; }
+.mt-1 { margin-top: 0.25rem !important; }
+.mt-2 { margin-top: 0.5rem !important; }
+.mt-3 { margin-top: 1rem !important; }
+.mx-3 { margin-left: 1rem !important; margin-right: 1rem !important; }
+.p-3 { padding: 1rem !important; }
+.px-0 { padding-left: 0 !important; padding-right: 0 !important; }
+.px-1 { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
+.py-4 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+.py-5 { padding-top: 3rem !important; padding-bottom: 3rem !important; }
+
+/* ── Flexbox ── */
+.d-flex { display: flex !important; }
+.d-block { display: block !important; }
+.justify-content-between { justify-content: space-between !important; }
+.align-items-center { align-items: center !important; }
+.flex-wrap { flex-wrap: wrap !important; }
+.flex-shrink-0 { flex-shrink: 0 !important; }
+.gap-2 { gap: 0.5rem !important; }
+
+/* ── 尺寸 ── */
+.w-100 { width: 100% !important; }
+.h-100 { height: 100% !important; }
+
+/* ── 文本 ── */
+.text-danger { color: var(--danger-color) !important; }
+.text-warning { color: var(--warning-color) !important; }
+.text-center { text-align: center !important; }
+.text-truncate {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.small { font-size: 0.875rem !important; }
+.fw-semibold { font-weight: 600 !important; }
+
+/* ── 列表 ── */
+.list-unstyled {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* ── 无障碍 ── */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* ── 表单提示 ── */
+.form-text {
+  font-size: 0.875rem !important;
+  color: var(--si-muted) !important;
+}
+
+/* ── 栅格（替代 Bootstrap row / col） ── */
+.row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  margin-right: -0.75rem !important;
+  margin-left: -0.75rem !important;
+}
+.row > [class*="col"] {
+  padding-right: 0.75rem !important;
+  padding-left: 0.75rem !important;
+}
+.g-3 { gap: 1rem !important; }
+.col-lg-6 { flex: 0 0 auto; width: 100%; }
+.col-12 { flex: 0 0 auto; width: 100%; }
+@media (min-width: 992px) {
+  .col-lg-6 { width: 50%; }
+}
+
+/* ── 按钮补充（styles.css 已有 .btn / .badge 基础规则） ── */
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  border-radius: 6px;
+}
+.btn-link {
+  color: var(--si-brand) !important;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0;
+  text-decoration: underline;
+}
+.btn-link:hover {
+  color: var(--si-brand-bright) !important;
+  transform: none;
+}
+.text-bg-warning {
+  background-color: var(--warning-color) !important;
+  color: #fff !important;
+}

@@ -19,12 +19,12 @@ import LoginView from './views/LoginView.vue'
 import { fetchAuthStatus, getUiToken } from './services/AuthService'
 import { initTheme } from './composables/useTheme'
 
-// 导入样式（Bootstrap 栅格保留；Element Plus 主题变量在品牌色之后覆盖）
-import 'bootstrap/dist/css/bootstrap.min.css'
+// 导入样式（Element Plus 主题变量在品牌色之后覆盖）
 import 'font-awesome/css/font-awesome.min.css'
 import 'element-plus/dist/index.css'
 import './assets/css/styles.css'
 import './assets/css/element-plus-theme.css'
+import './assets/css/utilities.css'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

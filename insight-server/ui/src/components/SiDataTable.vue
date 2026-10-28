@@ -201,7 +201,7 @@ function columnWidth(column: SiColumn<T>): string | undefined {
   cursor: pointer;
 }
 
-/* Bootstrap 行态类在 el-table 上的兜底 */
+/* 行态类在 el-table 上的兜底 */
 .si-data-table :deep(.el-table__row.table-danger > td.el-table__cell) {
   background-color: var(--si-table-danger-bg) !important;
   color: var(--si-table-danger-color);
