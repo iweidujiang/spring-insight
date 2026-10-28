@@ -1,6 +1,6 @@
 <template>
   <div class="si-page fade-in si-redis-page">
-    <SiPageHeader title="缓存" icon="fa-cube">
+    <SiPageHeader title="缓存" icon="Box">
       <SiFilterBar
         v-model:service="selectedService"
         v-model:hours="hours"
@@ -74,7 +74,7 @@
       </SiEmpty>
 
       <template v-else>
-        <SiSection title="按 Redis 实例" icon="fa-server" :count="summary.byRemote.length" label="按实例聚合">
+        <SiSection title="按 Redis 实例" icon="Monitor" :count="summary.byRemote.length" label="按实例聚合">
           <SiDataTable
             :rows="summary.byRemote"
             :columns="remoteColumns"
@@ -82,7 +82,7 @@
           />
         </SiSection>
 
-        <SiSection title="最近 Redis Span" icon="fa-list" :count="summary.recent.length" label="最近 Redis">
+        <SiSection title="最近 Redis Span" icon="List" :count="summary.recent.length" label="最近 Redis">
           <SiDataTable
             :rows="summary.recent"
             :columns="recentColumns"

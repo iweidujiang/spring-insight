@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   title: string
-  /** Font Awesome 类，如 fa-database。只作标题行内图标 */
+  /** Element Plus 图标组件名，如 'Database' */
   icon?: string
 }>()
 </script>
@@ -10,7 +10,7 @@ defineProps<{
   <div class="si-page__header">
     <div>
       <h2 class="page-title mb-1">
-        <i v-if="icon" class="fa me-2" :class="icon" aria-hidden="true"></i>{{ title }}
+        <el-icon v-if="icon" class="me-2 si-page__header-icon"><component :is="icon" /></el-icon>{{ title }}
       </h2>
       <p v-if="$slots.description" class="page-description mb-0">
         <slot name="description" />
@@ -19,3 +19,9 @@ defineProps<{
     <slot />
   </div>
 </template>
+
+<style scoped>
+.si-page__header-icon {
+  color: var(--si-brand);
+}
+</style>

@@ -1,6 +1,6 @@
 <template>
   <div class="si-page fade-in si-settings">
-    <SiPageHeader class="mb-3" title="设置" icon="fa-cog">
+    <SiPageHeader class="mb-3" title="设置" icon="Setting">
       <el-button
         v-if="section !== 'data' && section !== 'slo'"
         type="primary"

@@ -1,6 +1,6 @@
 <template>
   <div class="si-page fade-in si-jdbc-page">
-    <SiPageHeader title="数据库" icon="fa-database">
+    <SiPageHeader title="数据库" icon="Coin">
       <SiFilterBar
         v-model:service="selectedService"
         v-model:hours="hours"
@@ -75,7 +75,7 @@
       </SiEmpty>
 
       <template v-else>
-        <SiSection title="按数据库" icon="fa-server" :count="summary.byRemote.length" label="按库聚合">
+        <SiSection title="按数据库" icon="Monitor" :count="summary.byRemote.length" label="按库聚合">
           <SiDataTable
             :rows="summary.byRemote"
             :columns="remoteColumns"
@@ -83,7 +83,7 @@
           />
         </SiSection>
 
-        <SiSection title="最近 JDBC Span" icon="fa-list" :count="summary.recent.length" label="最近 JDBC">
+        <SiSection title="最近 JDBC Span" icon="List" :count="summary.recent.length" label="最近 JDBC">
           <SiDataTable
             :rows="summary.recent"
             :columns="recentColumns"

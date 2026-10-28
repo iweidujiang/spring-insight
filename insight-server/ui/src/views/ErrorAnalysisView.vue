@@ -1,6 +1,6 @@
 <template>
   <div class="si-page fade-in si-err-page">
-    <SiPageHeader title="错误分析" icon="fa-exclamation-triangle">
+    <SiPageHeader title="错误分析" icon="WarningFilled">
       <SiFilterBar
         v-model:hours="hours"
         :show-service="false"

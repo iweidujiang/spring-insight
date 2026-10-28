@@ -3,7 +3,7 @@ defineProps<{
   title: string
   /** 不传则不显示计数 */
   count?: number
-  /** Font Awesome 图标类，如 fa-server。只作行内图标，不包方块 */
+  /** Element Plus 图标组件名，如 'Server' */
   icon?: string
   /** 无障碍名称；缺省用标题 */
   label?: string
@@ -14,7 +14,7 @@ defineProps<{
   <section class="si-section" :aria-label="label || title">
     <div class="si-section__head">
       <h3 class="si-section__title">
-        <i v-if="icon" class="fa me-2" :class="icon" aria-hidden="true"></i>{{ title }}
+        <el-icon v-if="icon" class="me-2"><component :is="icon" /></el-icon>{{ title }}
       </h3>
       <el-tag v-if="count != null" type="info" effect="plain" size="small" round>{{ count }}</el-tag>
     </div>
@@ -43,8 +43,10 @@ defineProps<{
 .si-section__title {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 0.95rem;
-  font-weight: 650;
+  font-size: 1.05rem;
+  font-weight: 700;
   color: var(--si-ink);
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--si-brand);
 }
 </style>

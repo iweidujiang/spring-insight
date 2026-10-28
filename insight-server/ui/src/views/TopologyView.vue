@@ -1,6 +1,6 @@
 <template>
   <div class="si-page fade-in si-topo-page">
-    <SiPageHeader title="服务拓扑图" icon="fa-sitemap">
+    <SiPageHeader title="服务拓扑图" icon="Share">
       <SiFilterBar
         v-model:hours="hours"
         :show-service="false"

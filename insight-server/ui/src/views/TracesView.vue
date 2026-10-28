@@ -1,6 +1,6 @@
 <template>
   <div class="si-page fade-in">
-    <SiPageHeader title="链路追踪" icon="fa-list-ul">
+    <SiPageHeader title="链路追踪" icon="List">
       <div class="si-page__toolbar">
         <el-button
           size="small"

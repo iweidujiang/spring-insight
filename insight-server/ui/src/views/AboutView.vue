@@ -1,6 +1,6 @@
 <template>
   <div class="si-page fade-in si-about">
-    <SiPageHeader class="mb-1" title="关于" icon="fa-info-circle">
+    <SiPageHeader class="mb-1" title="关于" icon="InfoFilled">
       <el-tag type="info" effect="plain" size="small" round>
         <i class="fa fa-clock me-1" aria-hidden="true"></i>{{ currentTime }}
       </el-tag>
