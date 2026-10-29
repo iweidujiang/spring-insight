@@ -24,7 +24,7 @@
           aria-haspopup="dialog"
           aria-label="打开状态摘要"
         >
-          <i class="fa fa-bell" aria-hidden="true"></i>
+          <el-icon :size="20"><Bell /></el-icon>
         </button>
       </el-badge>
     </template>
@@ -44,8 +44,7 @@
         element-loading-background="transparent"
       >
         <div v-if="!loading && notifications.length === 0" class="notification-empty">
-          <i class="fa fa-check-circle" aria-hidden="true"></i>
-          <p>暂无需要关注的事项</p>
+          <el-empty description="暂无需要关注的事项" :image-size="60" />
         </div>
         <div
           v-for="notification in notifications"
@@ -55,7 +54,7 @@
           @click="onItemClick(notification)"
         >
           <div class="notification-icon" :class="notification.type">
-            <i class="fa" :class="notification.icon" aria-hidden="true"></i>
+            <el-icon :size="20"><component :is="notification.icon" /></el-icon>
           </div>
           <div class="notification-content">
             <h6 class="notification-title">{{ notification.title }}</h6>
@@ -182,7 +181,7 @@ const buildFromStats = (stats: any, errorRows: any[]): Notification[] => {
       title: '存在异常服务',
       message: `${errorCount} 个服务在近 24h 有错误调用：${names.join('、')}${more}。点击查看错误分析。`,
       type: 'error',
-      icon: 'fa-exclamation-circle',
+      icon: 'CircleCloseFilled',
       timestamp: now,
       read: false,
       route: '/error-analysis'
@@ -195,7 +194,7 @@ const buildFromStats = (stats: any, errorRows: any[]): Notification[] => {
       title: '上报成功率偏低',
       message: `Collector 成功率约 ${successRate.toFixed(1)}%（接收 ${receivedSpans} 条 Span）。请检查 Agent 上报与 Server 日志。`,
       type: 'warning',
-      icon: 'fa-exclamation-triangle',
+      icon: 'WarningFilled',
       timestamp: now,
       read: false,
       route: '/'
@@ -206,7 +205,7 @@ const buildFromStats = (stats: any, errorRows: any[]): Notification[] => {
       title: '存在失败 Span',
       message: `Collector 累计失败 Span：${failedSpans}。可在仪表盘查看 Collector 条与链路筛选。`,
       type: 'warning',
-      icon: 'fa-exclamation-triangle',
+      icon: 'WarningFilled',
       timestamp: now,
       read: false,
       route: '/traces'
@@ -266,7 +265,7 @@ onUnmounted(() => {
 .notification-badge :deep(.el-badge__content) {
   border: none;
   font-weight: 700;
-  background-color: var(--danger-color);
+  background-color: var(--si-brand);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
@@ -335,18 +334,7 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1rem;
-  color: var(--si-muted);
-}
-
-.notification-empty i {
-  font-size: 2rem;
-  margin-bottom: 0.75rem;
-  color: var(--si-brand);
-}
-
-.notification-empty p {
-  margin: 0;
+  padding: 1rem;
 }
 
 .notification-item {
@@ -395,10 +383,6 @@ onUnmounted(() => {
 .notification-icon.info {
   background-color: var(--si-icon-info-bg);
   color: var(--si-icon-info-color);
-}
-
-.notification-icon i {
-  font-size: 1.15rem;
 }
 
 .notification-content {
