@@ -93,10 +93,10 @@
 
     <div v-if="loading" class="si-dashboard__loading">
       <el-icon class="is-loading" :size="20"><Loading /></el-icon>
-      <span class="ms-2">加载中…</span>
+      <span class="si-dashboard__loading-text">加载中…</span>
     </div>
 
-    <SiAlert v-if="loadError" tone="danger" class="mx-3 mb-0">{{ loadError }}</SiAlert>
+    <SiAlert v-if="loadError" tone="danger" class="si-dashboard__alert">{{ loadError }}</SiAlert>
 
     <div v-show="!loading" class="si-dashboard__content">
       <section
@@ -194,12 +194,12 @@
         <div class="si-dashboard__collector-strip-items">
           <span><em>接收</em>{{ collectorStats.totalReceivedRequests ?? 0 }}</span>
           <span><em>Span</em>{{ collectorStats.totalReceivedSpans ?? 0 }}</span>
-          <span :class="(collectorStats.successRate ?? 100) < 90 ? 'text-danger' : ''">
+          <span :class="(collectorStats.successRate ?? 100) < 90 ? 'si-dashboard__text--danger' : ''">
             <em>成功</em>{{ collectorStats.successRate ?? 100 }}%
           </span>
           <span><em>运行</em>{{ collectorStats.runningHours ?? 0 }}h</span>
         </div>
-        <el-button size="small" class="ms-auto" @click="goTopology()">
+        <el-button size="small" class="si-dashboard__collector-push-end" @click="goTopology()">
           打开拓扑
         </el-button>
       </section>
@@ -290,19 +290,19 @@
           </div>
           <div class="si-app__metric">
             <span>p95 <PercentileHelp /></span>
-            <strong :class="soloProfile.p95Ms >= 1000 ? 'text-danger' : soloProfile.p95Ms >= 500 ? 'text-warning' : ''">
+            <strong :class="soloProfile.p95Ms >= 1000 ? 'si-dashboard__text--danger' : soloProfile.p95Ms >= 500 ? 'si-dashboard__text--warning' : ''">
               {{ formatMs(soloProfile.p95Ms) }}
             </strong>
           </div>
           <div class="si-app__metric">
             <span>错误</span>
-            <strong :class="soloProfile.errorCount > 0 ? 'text-danger' : ''">{{ soloProfile.errorCount }}</strong>
+            <strong :class="soloProfile.errorCount > 0 ? 'si-dashboard__text--danger' : ''">{{ soloProfile.errorCount }}</strong>
           </div>
         </div>
 
         <div class="si-app__traces">
           <div class="si-app__traces-head">
-            <h6 class="mb-0">最近请求</h6>
+            <h6 class="si-app__traces-title">最近请求</h6>
             <span class="si-app__traces-hint">{{ hoursLabel }}</span>
           </div>
           <div v-if="recentTraces.length === 0" class="si-dashboard__diag-empty">{{ emptyRequestsMessage(hours) }}</div>
@@ -348,7 +348,7 @@
                 @click="goServiceSlow(row)"
               >
                 <span class="si-dashboard__rail-name" :title="row.serviceName">{{ row.serviceName }}</span>
-                <em class="text-danger">{{ Number(row.errorRate || 0).toFixed(1) }}%</em>
+                <em class="si-dashboard__text--danger">{{ Number(row.errorRate || 0).toFixed(1) }}%</em>
               </li>
             </ul>
             <div v-else class="si-dashboard__rail-empty">当前时间窗无异常服务</div>
@@ -370,7 +370,7 @@
               @row-click="goServiceSlow"
             />
             <div v-else class="si-dashboard__diag-empty si-dashboard__diag-empty--rich">
-              <p class="mb-1">{{ emptyLatencySampleMessage(hours) }}</p>
+              <p class="si-dashboard__diag-empty-text">{{ emptyLatencySampleMessage(hours) }}</p>
               <el-button type="primary" plain size="small" @click="expandAllStored">扩大到全部已存</el-button>
             </div>
           </div>
@@ -387,7 +387,7 @@
                 @click="goServiceSlow(row)"
               >
                 <span class="si-dashboard__rail-name" :title="row.serviceName">{{ row.serviceName }}</span>
-                <em :class="row.p95Ms >= 1000 ? 'text-danger' : row.p95Ms >= 500 ? 'text-warning' : ''">
+                <em :class="row.p95Ms >= 1000 ? 'si-dashboard__text--danger' : row.p95Ms >= 500 ? 'si-dashboard__text--warning' : ''">
                   {{ formatMs(row.p95Ms) }}
                 </em>
               </li>
@@ -435,8 +435,8 @@
               </li>
             </ul>
             <div v-else class="si-dashboard__rail-empty">
-              <p class="mb-1">{{ emptyInRangeShort(hours, '依赖') }}</p>
-              <p class="small text-muted mb-0">跨服务调用出现后可在此与拓扑图查看</p>
+              <p class="si-dashboard__rail-empty-text">{{ emptyInRangeShort(hours, '依赖') }}</p>
+              <p class="si-dashboard__rail-empty-hint">跨服务调用出现后可在此与拓扑图查看</p>
             </div>
           </div>
         </div>
@@ -461,7 +461,7 @@
               >
                 <span class="si-http-method" :data-method="traceMethod(tr)">{{ traceMethod(tr) || 'REQ' }}</span>
                 <span class="si-app__path" :title="tracePath(tr)">{{ tracePath(tr) }}</span>
-                <span class="text-muted small text-truncate" style="max-width: 7rem">{{ tr.serviceName || '—' }}</span>
+                <span class="si-app__service">{{ tr.serviceName || '—' }}</span>
                 <span class="si-dur si-app__dur">
                   <span class="si-dur__track">
                     <i class="si-dur__bar" :style="{ width: durationShare(tr) + '%' }"></i>
@@ -493,7 +493,7 @@
               type="danger"
               plain
               size="small"
-              class="w-100 mt-2"
+              class="si-overview__rank-action"
               @click="goErrors"
             >
               {{ errorAnalysis.length }} 个异常服务 · 错误分析
@@ -850,13 +850,13 @@ const healthColumns: SiColumn<HealthRow>[] = [
     label: 'p95',
     value: (row) => formatMs(row.p95Ms || 0),
     cellClass: (row) =>
-      (row.p95Ms || 0) >= 1000 ? 'text-danger fw-bold' : (row.p95Ms || 0) >= 500 ? 'text-warning' : undefined
+      (row.p95Ms || 0) >= 1000 ? 'si-dashboard__text--danger si-dashboard__text--bold' : (row.p95Ms || 0) >= 500 ? 'si-dashboard__text--warning' : undefined
   },
   {
     key: 'errors',
     label: '错误',
     value: (row) => row.errorCount || 0,
-    cellClass: (row) => ((row.errorCount || 0) > 0 ? 'text-danger' : 'text-muted')
+    cellClass: (row) => ((row.errorCount || 0) > 0 ? 'si-dashboard__text--danger' : 'si-dashboard__text--muted')
   }
 ]
 
@@ -940,10 +940,10 @@ const sloStatusLabel = (status: string) => {
 }
 
 const sloStatusClass = (status: string) => {
-  if (status === 'exhausted') return 'text-danger'
-  if (status === 'warning') return 'text-warning'
-  if (status === 'healthy') return 'text-success'
-  return 'text-muted'
+  if (status === 'exhausted') return 'si-dashboard__text--danger'
+  if (status === 'warning') return 'si-dashboard__text--warning'
+  if (status === 'healthy') return 'si-dashboard__text--success'
+  return 'si-dashboard__text--muted'
 }
 
 const sloBudgetTitle = (row: SloBudget) =>
@@ -1395,7 +1395,7 @@ onUnmounted(() => {
 
 .si-layout-menu__item:hover,
 .si-layout-menu__item.is-active {
-  background: rgba(15, 118, 110, 0.1);
+  background: rgba(0, 184, 212, 0.1);
 }
 
 .si-layout-menu__item.is-active {
@@ -1453,6 +1453,22 @@ onUnmounted(() => {
   color: var(--si-brand);
   font-size: 1.75rem;
 }
+
+.si-dashboard__loading-text {
+  margin-left: 0.5rem;
+}
+
+.si-dashboard__alert {
+  margin-left: 1rem;
+  margin-right: 1rem;
+  margin-bottom: 0;
+}
+
+.si-dashboard__text--danger { color: var(--danger-color) !important; }
+.si-dashboard__text--warning { color: var(--warning-color) !important; }
+.si-dashboard__text--success { color: var(--success-color) !important; }
+.si-dashboard__text--muted { color: var(--si-muted) !important; }
+.si-dashboard__text--bold { font-weight: 700 !important; }
 
 .si-dashboard__content--mesh .si-dashboard__kpis--compact {
   gap: 0.45rem;
@@ -1514,7 +1530,7 @@ onUnmounted(() => {
   font-weight: 700;
   color: var(--si-ink);
   border-bottom: 1px solid var(--card-border);
-  background: rgba(15, 118, 110, 0.04);
+  background: rgba(0, 184, 212, 0.04);
 }
 
 .si-dashboard__rail-list {
@@ -1536,7 +1552,7 @@ onUnmounted(() => {
 }
 
 .si-dashboard__rail-list li:hover {
-  background: rgba(15, 118, 110, 0.06);
+  background: rgba(0, 184, 212, 0.06);
 }
 
 .si-dashboard__rail-name,
@@ -1561,6 +1577,18 @@ onUnmounted(() => {
   font-size: 0.78rem;
   color: var(--si-muted);
   text-align: center;
+}
+
+.si-dashboard__rail-empty-text {
+  margin: 0 0 0.25rem;
+  font-size: 0.82rem;
+  color: var(--si-muted);
+}
+
+.si-dashboard__rail-empty-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--si-muted);
 }
 
 .si-dashboard__rail-rank {
@@ -1604,6 +1632,11 @@ onUnmounted(() => {
   text-align: left;
   cursor: pointer;
   appearance: none;
+  transition: background 0.15s ease;
+}
+
+.si-dashboard__kpi:hover {
+  background: rgba(0, 184, 212, 0.06);
 }
 
 .si-dashboard__kpi:hover .si-dashboard__kpi-name {
@@ -1626,6 +1659,10 @@ onUnmounted(() => {
 
 .si-dashboard__kpi--lead.is-alert .si-dashboard__kpi-value {
   color: var(--danger-color);
+}
+
+.si-dashboard__kpi--lead:not(.is-alert) .si-dashboard__kpi-value {
+  color: var(--si-brand);
 }
 
 .si-dashboard__kpi-side {
@@ -1758,8 +1795,8 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--si-brand);
-  background: rgba(15, 118, 110, 0.08);
-  border: 1px solid rgba(15, 118, 110, 0.18);
+  background: rgba(0, 184, 212, 0.08);
+  border: 1px solid rgba(0, 184, 212, 0.18);
 }
 
 .si-period__scope {
@@ -1805,9 +1842,9 @@ onUnmounted(() => {
 }
 
 .si-period__action:hover {
-  border-color: rgba(15, 118, 110, 0.4);
+  border-color: rgba(0, 184, 212, 0.4);
   color: var(--si-brand);
-  background: rgba(15, 118, 110, 0.04);
+  background: rgba(0, 184, 212, 0.04);
 }
 
 .si-period__bullets {
@@ -1913,6 +1950,10 @@ onUnmounted(() => {
   margin-right: 0.35rem;
 }
 
+.si-dashboard__collector-push-end {
+  margin-left: auto;
+}
+
 .si-infra {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1940,7 +1981,7 @@ onUnmounted(() => {
 }
 
 .si-infra__card:hover {
-  border-color: rgba(15, 118, 110, 0.35);
+  border-color: rgba(0, 184, 212, 0.35);
   box-shadow: 0 4px 14px rgba(21, 36, 31, 0.08);
 }
 
@@ -2046,6 +2087,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.si-overview__panel:hover {
+  box-shadow: var(--box-shadow-hover, 0 4px 14px rgba(0, 0, 0, 0.08));
+  border-color: rgba(0, 184, 212, 0.25);
 }
 
 .si-overview__head {
@@ -2056,6 +2103,8 @@ onUnmounted(() => {
   font-size: 0.85rem;
   font-weight: 650;
   color: var(--si-ink);
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--card-border);
 }
 
 .si-overview__scroll {
@@ -2072,6 +2121,11 @@ onUnmounted(() => {
   flex: 1;
   min-height: 12rem;
   width: 100%;
+}
+
+.si-overview__rank-action {
+  width: 100%;
+  margin-top: 0.5rem;
 }
 
 @media (max-width: 1100px) {
@@ -2117,7 +2171,7 @@ onUnmounted(() => {
 }
 
 .si-dashboard__hero {
-  border-color: rgba(15, 118, 110, 0.22);
+  border-color: rgba(0, 184, 212, 0.22);
   box-shadow: var(--box-shadow-hover);
 }
 
@@ -2196,7 +2250,7 @@ onUnmounted(() => {
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--si-ink);
-  background: rgba(15, 118, 110, 0.05);
+  background: rgba(0, 184, 212, 0.05);
   border-bottom: 1px solid var(--card-border);
 }
 
@@ -2205,6 +2259,12 @@ onUnmounted(() => {
   font-size: 0.95rem;
   color: var(--si-muted);
   text-align: center;
+}
+
+.si-dashboard__diag-empty-text {
+  margin: 0 0 0.25rem;
+  font-size: 0.88rem;
+  color: var(--si-muted);
 }
 
 .si-dashboard__diag-empty--rich {
@@ -2307,7 +2367,7 @@ onUnmounted(() => {
 .si-dashboard__solo-card {
   border: 1px solid var(--card-border);
   border-radius: 10px;
-  background: rgba(15, 118, 110, 0.04);
+  background: rgba(0, 184, 212, 0.04);
   padding: 0.7rem 0.8rem;
 }
 
@@ -2371,7 +2431,7 @@ onUnmounted(() => {
 }
 
 .si-dashboard__solo-trace:hover {
-  background: rgba(15, 118, 110, 0.06);
+  background: rgba(0, 184, 212, 0.06);
 }
 
 .si-dashboard__solo-trace-main {
@@ -2505,10 +2565,12 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--card-border);
 }
 
-.si-app__traces-head h6 {
+.si-app__traces-head h6,
+.si-app__traces-title {
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--si-ink);
+  margin: 0;
 }
 
 .si-app__traces-hint {
@@ -2539,7 +2601,7 @@ onUnmounted(() => {
 }
 
 .si-app__row:hover {
-  background: rgba(15, 118, 110, 0.06);
+  background: rgba(0, 184, 212, 0.06);
 }
 
 .si-app__path {
@@ -2550,6 +2612,15 @@ onUnmounted(() => {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--si-ink);
+}
+
+.si-app__service {
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--si-muted);
 }
 
 .si-app__dur {
