@@ -3,26 +3,26 @@
     <header class="si-compare__top">
       <div>
         <el-button link type="primary" size="small" class="si-compare__back" @click="goBack">
-          <i class="fa fa-arrow-left me-1" aria-hidden="true"></i>返回列表
+          <el-icon class="me-1"><ArrowLeft /></el-icon>返回列表
         </el-button>
         <h2 class="si-compare__title">
-          <i class="fa fa-columns me-2"></i>Trace 对比
+          <el-icon class="me-2"><Grid /></el-icon>Trace 对比
         </h2>
       </div>
     </header>
 
-    <SiAlert v-if="hint" tone="warning" role="alert" class="mb-3">{{ hint }}</SiAlert>
-    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
-    <SiAlert v-if="explainHint" :tone="explainResult?.degraded ? 'warning' : 'success'" class="mb-3">
+    <SiAlert v-if="hint" tone="warning" role="alert" class="si-compare__alert">{{ hint }}</SiAlert>
+    <SiAlert v-if="loadError" tone="danger" class="si-compare__alert">{{ loadError }}</SiAlert>
+    <SiAlert v-if="explainHint" :tone="explainResult?.degraded ? 'warning' : 'success'" class="si-compare__alert">
       {{ explainHint }}
     </SiAlert>
 
     <div v-if="loading" class="si-compare__loading">
-      <i class="fa fa-spinner fa-spin"></i><span class="ms-2">加载对比数据…</span>
+      <el-icon is-loading><Loading /></el-icon><span class="si-compare__loading-text">加载对比数据…</span>
     </div>
 
     <template v-else-if="leftSpans && rightSpans">
-      <div class="si-compare__list-bar mb-2">
+      <div class="si-compare__list-bar">
         <span class="si-compare__list-bar-label">并排瀑布</span>
         <div class="si-compare__actions">
           <el-button
@@ -34,14 +34,14 @@
             :title="aiExplainTitle"
             @click="runCompareExplain"
           >
-            <i v-if="!explaining" class="fa fa-lightbulb-o me-1" aria-hidden="true"></i>
+            <el-icon v-if="!explaining" class="me-1"><Lightning /></el-icon>
             {{ explaining ? '解读中…' : 'AI 解读' }}
           </el-button>
           <el-button size="small" :disabled="!canSwap" @click="swapSides">
-            <i class="fa fa-exchange me-1" aria-hidden="true"></i> 交换两侧
+            <el-icon class="me-1"><Sort /></el-icon> 交换两侧
           </el-button>
           <el-button type="primary" size="small" :loading="loading" @click="load">
-            <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+            <el-icon v-if="!loading" class="me-1"><Refresh /></el-icon>
             刷新
           </el-button>
         </div>
@@ -55,46 +55,42 @@
         @close="explainResult = null"
       />
 
-      <div class="row g-3 si-compare__panels">
-        <div class="col-lg-6">
-          <section class="si-compare__panel" aria-label="Trace A">
-            <header class="si-compare__panel-head">
-              <div>
-                <span class="si-compare__side">A</span>
-                <code class="si-compare__id" :title="traceA">{{ shortId(traceA) }}</code>
-              </div>
-              <el-button link type="primary" size="small" @click="openDetail(traceA)">详情</el-button>
-            </header>
-            <p class="si-compare__meta">
-              {{ leftTimeline.serviceCount }} 服务 · {{ leftTimeline.rows.length }} Span ·
-              总耗时 {{ formatDuration(leftTimeline.totalDurationMs) }}
-              <span v-if="leftTimeline.errorCount" class="text-danger"> · {{ leftTimeline.errorCount }} 错</span>
-            </p>
-            <CompactWaterfall :timeline="leftTimeline" />
-          </section>
-        </div>
-        <div class="col-lg-6">
-          <section class="si-compare__panel" aria-label="Trace B">
-            <header class="si-compare__panel-head">
-              <div>
-                <span class="si-compare__side si-compare__side--b">B</span>
-                <code class="si-compare__id" :title="traceB">{{ shortId(traceB) }}</code>
-              </div>
-              <el-button link type="primary" size="small" @click="openDetail(traceB)">详情</el-button>
-            </header>
-            <p class="si-compare__meta">
-              {{ rightTimeline.serviceCount }} 服务 · {{ rightTimeline.rows.length }} Span ·
-              总耗时 {{ formatDuration(rightTimeline.totalDurationMs) }}
-              <span v-if="rightTimeline.errorCount" class="text-danger"> · {{ rightTimeline.errorCount }} 错</span>
-            </p>
-            <CompactWaterfall :timeline="rightTimeline" />
-          </section>
-        </div>
+      <div class="si-compare__panels">
+        <section class="si-compare__panel" aria-label="Trace A">
+          <header class="si-compare__panel-head">
+            <div>
+              <span class="si-compare__side">A</span>
+              <code class="si-compare__id" :title="traceA">{{ shortId(traceA) }}</code>
+            </div>
+            <el-button link type="primary" size="small" @click="openDetail(traceA)">详情</el-button>
+          </header>
+          <p class="si-compare__meta">
+            {{ leftTimeline.serviceCount }} 服务 · {{ leftTimeline.rows.length }} Span ·
+            总耗时 {{ formatDuration(leftTimeline.totalDurationMs) }}
+            <span v-if="leftTimeline.errorCount" class="si-compare__text--danger"> · {{ leftTimeline.errorCount }} 错</span>
+          </p>
+          <CompactWaterfall :timeline="leftTimeline" />
+        </section>
+        <section class="si-compare__panel" aria-label="Trace B">
+          <header class="si-compare__panel-head">
+            <div>
+              <span class="si-compare__side si-compare__side--b">B</span>
+              <code class="si-compare__id" :title="traceB">{{ shortId(traceB) }}</code>
+            </div>
+            <el-button link type="primary" size="small" @click="openDetail(traceB)">详情</el-button>
+          </header>
+          <p class="si-compare__meta">
+            {{ rightTimeline.serviceCount }} 服务 · {{ rightTimeline.rows.length }} Span ·
+            总耗时 {{ formatDuration(rightTimeline.totalDurationMs) }}
+            <span v-if="rightTimeline.errorCount" class="si-compare__text--danger"> · {{ rightTimeline.errorCount }} 错</span>
+          </p>
+          <CompactWaterfall :timeline="rightTimeline" />
+        </section>
       </div>
 
-      <el-card class="si-compare__diff mt-3" shadow="never" aria-label="操作耗时差分">
+      <el-card class="si-compare__diff" shadow="never" aria-label="操作耗时差分">
         <template #header>
-          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 w-100">
+          <div class="si-compare__diff-head">
             <el-button
               link
               type="primary"
@@ -103,15 +99,15 @@
               :aria-expanded="diffExpanded"
               @click="diffExpanded = !diffExpanded"
             >
-              <i class="fa me-1" :class="diffExpanded ? 'fa-chevron-down' : 'fa-chevron-right'" aria-hidden="true"></i>
-              <span class="fw-semibold">操作耗时差分（max，B − A）</span>
+              <el-icon class="me-1"><ArrowDown v-if="diffExpanded" /><ArrowRight v-else /></el-icon>
+              <span class="si-compare__diff-title">操作耗时差分（max，B − A）</span>
               <el-tag type="info" effect="plain" size="small" round class="ms-1">{{ diffRows.length }}</el-tag>
             </el-button>
-            <span v-if="diffExpanded" class="small text-muted">按 |Δ| 排序 · 绿=变快 · 橙=变慢</span>
+            <span v-if="diffExpanded" class="si-compare__diff-hint">按 |Δ| 排序 · 绿=变快 · 橙=变慢</span>
           </div>
         </template>
         <div v-show="diffExpanded">
-          <div v-if="diffRows.length === 0" class="p-3 text-muted small">无可对比操作</div>
+          <div v-if="diffRows.length === 0" class="si-compare__diff-empty">无可对比操作</div>
           <SiDataTable
             v-else
             class="si-compare__diff-table"
@@ -135,6 +131,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ArrowLeft, Grid, Loading, Lightning, Sort, Refresh, ArrowDown, ArrowRight } from '@element-plus/icons-vue'
 import { ApiService, type AiCompareResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
@@ -349,7 +346,7 @@ const diffColumns: SiColumn<OpDiffRow>[] = [
   {
     key: 'delta',
     label: 'Δ',
-    cellClass: 'fw-semibold',
+    cellClass: 'si-compare__delta',
     value: (row) => formatDelta(row.deltaMs, row)
   },
   { key: 'counts', label: '次数 A/B', value: (row) => `${row.leftCount} / ${row.rightCount}` }
@@ -418,6 +415,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.si-compare__alert {
+  margin-bottom: 0.75rem;
+}
+
 .si-compare__top {
   display: flex;
   flex-wrap: wrap;
@@ -446,6 +447,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   gap: 0.45rem 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .si-compare__list-bar-label {
@@ -479,6 +481,30 @@ onMounted(async () => {
   padding: 2rem;
   text-align: center;
   color: var(--si-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.si-compare__loading-text {
+  margin-left: 0.5rem;
+}
+
+.si-compare__text--danger {
+  color: var(--danger-color);
+}
+
+.si-compare__panels {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 992px) {
+  .si-compare__panels {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .si-compare__panel {
@@ -539,6 +565,39 @@ onMounted(async () => {
 :deep(.si-compare__diff-slow) { background: var(--si-error-row-bg); }
 :deep(.si-compare__diff-fast) { background: var(--si-success-row-bg); }
 :deep(.si-compare__diff-muted) { opacity: 0.85; }
+:deep(.si-compare__delta) { font-weight: 600; }
+
+.si-compare__diff {
+  margin-top: 1rem;
+  border-radius: 10px;
+  box-shadow: var(--box-shadow);
+  --el-card-border-color: var(--card-border);
+  --el-card-bg-color: var(--card-bg);
+}
+
+.si-compare__diff-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.si-compare__diff-title {
+  font-weight: 600;
+}
+
+.si-compare__diff-hint {
+  font-size: 0.85rem;
+  color: var(--si-muted);
+}
+
+.si-compare__diff-empty {
+  padding: 0.75rem;
+  color: var(--si-muted);
+  font-size: 0.85rem;
+}
 
 /* compact waterfall */
 :deep(.si-cwf) {
