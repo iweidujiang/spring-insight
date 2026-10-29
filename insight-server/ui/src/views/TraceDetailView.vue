@@ -3,19 +3,19 @@
     <div class="si-page__header">
       <div>
         <h2 class="page-title">
-          <i class="fa fa-sitemap me-2"></i>链路详情
+          <el-icon class="me-2"><Share /></el-icon>链路详情
         </h2>
-        <p class="page-description text-truncate" style="max-width: 90vw">
+        <p class="page-description si-trace-detail__desc">
           Trace ID：<code class="text-cyan">{{ traceId }}</code>
           <el-button
             link
             type="primary"
             size="small"
-            class="ms-2 align-baseline"
+            class="si-trace-detail__copy-btn"
             title="复制"
             @click="copyTraceId"
           >
-            <i class="fa fa-copy" aria-hidden="true"></i>
+            <el-icon><CopyDocument /></el-icon>
           </el-button>
         </p>
       </div>
@@ -28,7 +28,7 @@
           title="上一个异常 Span"
           @click="jumpError(-1)"
         >
-          <i class="fa fa-chevron-up me-1" aria-hidden="true"></i> 异常
+          <el-icon class="me-1"><ArrowUp /></el-icon> 异常
         </el-button>
         <el-button
           v-if="timeline.errorCount > 0"
@@ -38,10 +38,10 @@
           title="下一个异常 Span"
           @click="jumpError(1)"
         >
-          异常 <i class="fa fa-chevron-down ms-1" aria-hidden="true"></i>
+          异常 <el-icon class="ms-1"><ArrowDown /></el-icon>
         </el-button>
         <el-button size="small" @click="goBack">
-          <i class="fa fa-arrow-left me-1" aria-hidden="true"></i>返回
+          <el-icon class="me-1"><ArrowLeft /></el-icon>返回
         </el-button>
         <el-button
           size="small"
@@ -49,7 +49,7 @@
           title="复制脱敏 Context JSON，可粘贴到任意 LLM"
           @click="copyTraceContext"
         >
-          <i class="fa fa-magic me-1" aria-hidden="true"></i>复制 Context
+          <el-icon class="me-1"><MagicStick /></el-icon>复制 Context
         </el-button>
         <el-button
           size="small"
@@ -58,7 +58,7 @@
           title="下载脱敏排障包（Trace Context + 版本 + 时段摘要）"
           @click="downloadTroubleshootPack"
         >
-          <i v-if="!exportingPack" class="fa fa-download me-1" aria-hidden="true"></i>
+          <el-icon v-if="!exportingPack" class="me-1"><Download /></el-icon>
           {{ exportingPack ? '导出中…' : '排障包' }}
         </el-button>
         <el-button
@@ -70,29 +70,29 @@
           :title="aiExplainTitle"
           @click="runExplain"
         >
-          <i v-if="!explaining" class="fa fa-lightbulb-o me-1" aria-hidden="true"></i>
+          <el-icon v-if="!explaining" class="me-1"><Lightning /></el-icon>
           {{ explaining ? '解释中…' : 'AI 解释' }}
         </el-button>
         <el-button type="primary" size="small" :loading="loading" @click="load">
-          <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+          <el-icon v-if="!loading" class="me-1"><Refresh /></el-icon>
           刷新
         </el-button>
       </div>
     </div>
 
-    <SiAlert v-if="copyHint" tone="success" class="mb-3">{{ copyHint }}</SiAlert>
-    <SiAlert v-if="explainHint" tone="warning" class="mb-3">{{ explainHint }}</SiAlert>
-    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
-    <SiAlert v-if="deeplinkHint" tone="warning" class="mb-3">{{ deeplinkHint }}</SiAlert>
+    <SiAlert v-if="copyHint" tone="success" class="si-trace-detail-alert">{{ copyHint }}</SiAlert>
+    <SiAlert v-if="explainHint" tone="warning" class="si-trace-detail-alert">{{ explainHint }}</SiAlert>
+    <SiAlert v-if="loadError" tone="danger" class="si-trace-detail-alert">{{ loadError }}</SiAlert>
+    <SiAlert v-if="deeplinkHint" tone="warning" class="si-trace-detail-alert">{{ deeplinkHint }}</SiAlert>
 
     <SiLoading v-if="loading" text="加载中..." />
 
     <template v-else>
       <el-card v-if="spans.length === 0" class="si-trace-empty-card" shadow="never">
-        <div class="text-center text-muted py-5">
-          <i class="fa fa-info-circle fa-2x mb-2 d-block" aria-hidden="true"></i>
-          <p class="mb-1">{{ TRACE_NOT_FOUND }}</p>
-          <p class="small mb-0">{{ EMPTY_HINT_RELAX }}</p>
+        <div class="si-trace-empty-state">
+          <el-icon class="si-trace-empty-state__icon"><InfoFilled /></el-icon>
+          <p class="si-trace-empty-state__text">{{ TRACE_NOT_FOUND }}</p>
+          <p class="si-trace-empty-state__hint">{{ EMPTY_HINT_RELAX }}</p>
         </div>
       </el-card>
 
@@ -124,7 +124,7 @@
           <section class="trace-stage__main" aria-label="调用时间线">
             <div class="trace-stage__head">
               <h3 class="trace-stage__title">
-                <i class="fa fa-align-left me-2"></i>调用时间线
+                <el-icon class="me-2"><Operation /></el-icon>调用时间线
               </h3>
               <span class="trace-waterfall-hint">
                 缩进=父子 · 角标=SERVER/CLIENT · CLIENT 可带 →下游 · 橙边=关键路径 · 红条=异常
@@ -189,7 +189,7 @@
 
           <aside class="trace-stage__aside" aria-label="选中 Span">
             <div class="trace-aside">
-              <h3 class="trace-aside__title"><i class="fa fa-info-circle me-2"></i>选中 Span</h3>
+              <h3 class="trace-aside__title"><el-icon class="me-2"><InfoFilled /></el-icon>选中 Span</h3>
 
               <template v-if="selected">
                 <dl class="trace-selected">
@@ -206,9 +206,9 @@
                 </dl>
 
                 <div v-if="selected.errorCode || selected.errorMessage" class="trace-error-box">
-                  <div class="trace-error-box__title"><i class="fa fa-exclamation-triangle me-1"></i>错误信息</div>
+                  <div class="trace-error-box__title"><el-icon class="me-1"><WarningFilled /></el-icon>错误信息</div>
                   <div v-if="selected.errorCode"><strong>errorCode</strong>：{{ selected.errorCode }}</div>
-                  <div v-if="selected.errorMessage" class="mt-1">{{ selected.errorMessage }}</div>
+                  <div v-if="selected.errorMessage" class="si-trace-error-msg">{{ selected.errorMessage }}</div>
                 </div>
 
                 <div v-if="tagEntries.length" class="trace-aside__tags">
@@ -239,7 +239,7 @@
         <!-- Span 表：默认折叠 -->
         <details class="trace-span-fold">
           <summary class="trace-span-fold__summary">
-            <i class="fa fa-list me-2"></i>Span 列表（{{ spans.length }}）
+            <el-icon class="me-2"><List /></el-icon>Span 列表（{{ spans.length }}）
           </summary>
           <SiDataTable
             :rows="timeline.rows"
@@ -270,6 +270,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  Share, CopyDocument, ArrowUp, ArrowDown, ArrowLeft, MagicStick,
+  Download, Lightning, Refresh, InfoFilled, Operation, WarningFilled, List
+} from '@element-plus/icons-vue'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
@@ -347,8 +351,8 @@ const spanRowKey = (row: WaterfallRow, index: number) => row.span.spanId || inde
 
 const spanRowClass = (row: WaterfallRow) => {
   const classes: string[] = []
-  if (selectedSpanId.value === row.span.spanId) classes.push('table-active')
-  if (row.isError) classes.push('table-danger')
+  if (selectedSpanId.value === row.span.spanId) classes.push('si-trace-row--active')
+  if (row.isError) classes.push('si-trace-row--danger')
   return classes.join(' ')
 }
 
@@ -561,6 +565,56 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.si-trace-detail-alert {
+  margin-bottom: 0.75rem;
+}
+
+.si-trace-detail__desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 90vw;
+}
+
+.si-trace-detail__copy-btn {
+  margin-left: 0.5rem;
+  vertical-align: baseline;
+}
+
+.si-trace-empty-state {
+  text-align: center;
+  color: var(--si-muted);
+  padding: 2rem 0;
+}
+
+.si-trace-empty-state__icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.si-trace-empty-state__text {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+}
+
+.si-trace-empty-state__hint {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.si-trace-error-msg {
+  margin-top: 0.25rem;
+}
+
+:deep(.si-trace-row--active) {
+  background: var(--si-hover-brand) !important;
+}
+
+:deep(.si-trace-row--danger) {
+  background: rgba(220, 53, 69, 0.08) !important;
+}
+
 .trace-ai-markdown {
   white-space: pre-wrap;
   word-break: break-word;
@@ -641,6 +695,7 @@ onMounted(async () => {
   border-radius: 10px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
+  box-shadow: var(--box-shadow);
 }
 
 .trace-stage__head {
@@ -682,6 +737,7 @@ onMounted(async () => {
   border-radius: 10px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
+  box-shadow: var(--box-shadow);
 }
 
 .trace-aside__title {
@@ -988,6 +1044,7 @@ onMounted(async () => {
   border-radius: 10px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
+  box-shadow: var(--box-shadow);
   padding: 0 0.95rem 0.85rem;
 }
 
@@ -1013,13 +1070,16 @@ onMounted(async () => {
 }
 
 .trace-span-fold__summary::before {
-  content: '\f0da';
-  font-family: FontAwesome, 'Font Awesome 5 Free', sans-serif;
+  content: '';
   display: inline-block;
-  width: 0.9rem;
-  margin-right: 0.15rem;
-  color: var(--si-muted);
+  width: 0;
+  height: 0;
+  border-left: 0.4rem solid var(--si-muted);
+  border-top: 0.3rem solid transparent;
+  border-bottom: 0.3rem solid transparent;
+  margin-right: 0.45rem;
   transition: transform 0.15s ease;
+  vertical-align: middle;
 }
 
 .trace-span-fold[open] > .trace-span-fold__summary::before {
