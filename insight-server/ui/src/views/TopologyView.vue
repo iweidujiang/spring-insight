@@ -14,16 +14,16 @@
           :disabled="loading || dependencies.length === 0"
           @click="downloadTopology"
         >
-          <i class="fa fa-download me-1" aria-hidden="true"></i> 导出
+          <el-icon class="me-1"><Download /></el-icon> 导出
         </el-button>
         <el-tag type="info" effect="plain" size="small" round>
-          <i class="fa fa-clock me-1" aria-hidden="true"></i>{{ currentTime }}
+          <el-icon class="me-1"><Clock /></el-icon>{{ currentTime }}
         </el-tag>
       </SiFilterBar>
     </SiPageHeader>
 
-    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
-    <SiAlert v-if="deeplinkHint" tone="warning" class="mb-3">{{ deeplinkHint }}</SiAlert>
+    <SiAlert v-if="loadError" tone="danger" class="si-topo-alert">{{ loadError }}</SiAlert>
+    <SiAlert v-if="deeplinkHint" tone="warning" class="si-topo-alert">{{ deeplinkHint }}</SiAlert>
 
     <SiLoading v-if="loading" text="正在加载拓扑数据..." />
 
@@ -53,19 +53,19 @@
         </div>
         <div class="si-topo-solo__metric">
           <span>p95 <PercentileHelp /></span>
-          <strong :class="soloLatency.p95Ms >= 1000 ? 'text-danger' : soloLatency.p95Ms >= 500 ? 'text-warning' : ''">
+          <strong :class="soloLatency.p95Ms >= 1000 ? 'si-topo-text--danger' : soloLatency.p95Ms >= 500 ? 'si-topo-text--warning' : ''">
             {{ formatMs(soloLatency.p95Ms) }}
           </strong>
         </div>
         <div class="si-topo-solo__metric">
           <span>错误</span>
-          <strong :class="soloLatency.errorCount > 0 ? 'text-danger' : ''">{{ soloLatency.errorCount }}</strong>
+          <strong :class="soloLatency.errorCount > 0 ? 'si-topo-text--danger' : ''">{{ soloLatency.errorCount }}</strong>
         </div>
       </section>
 
       <section class="si-topo-solo__panel">
         <div class="si-topo-solo__panel-head">
-          <h5 class="mb-0">最近请求</h5>
+          <h5 class="si-topo-solo__panel-title">最近请求</h5>
           <el-button link type="primary" size="small" @click="goServiceTraces(soloName)">全部</el-button>
         </div>
         <div v-if="recentTraces.length === 0" class="si-topo-solo__empty">{{ emptyRequestsMessage(hours) }}</div>
@@ -106,7 +106,7 @@
           <div class="si-topo-stage__head">
             <div>
               <h3 class="si-topo-stage__title">
-                <i class="fa fa-sitemap me-2"></i>服务依赖拓扑
+                <el-icon class="me-2"><Share /></el-icon>服务依赖拓扑
               </h3>
               <p class="si-topo-legend">
                 <span>{{ serviceNames.length }} 个服务</span>
@@ -127,12 +127,12 @@
                 </template>
               </p>
             </div>
-            <div class="d-flex gap-2 align-items-center flex-shrink-0">
+            <div class="si-topo-stage__toolbar">
               <el-button type="primary" plain size="small" title="重绘" @click="refreshTopology">
-                <i class="fa fa-refresh" aria-hidden="true"></i>
+                <el-icon><Refresh /></el-icon>
               </el-button>
               <el-button size="small" title="适应窗口" @click="fitToScreen">
-                <i class="fa fa-expand" aria-hidden="true"></i>
+                <el-icon><FullScreen /></el-icon>
               </el-button>
             </div>
           </div>
@@ -144,7 +144,7 @@
         <aside class="si-topo-stage__aside" aria-label="选中项">
           <div class="si-topo-rail">
             <h3 class="si-topo-rail__title">
-              <i class="fa fa-hand-pointer-o me-2"></i>选中
+              <el-icon class="me-2"><Pointer /></el-icon>选中
             </h3>
 
             <template v-if="selection.kind === 'node' && selection.service">
@@ -153,7 +153,7 @@
               <dl class="si-topo-rail__stats">
                 <div><dt>关联调用</dt><dd>{{ nodeCallCount(selection.service) }}</dd></div>
                 <div><dt>平均耗时</dt><dd>{{ formatMs(nodeAvgMs(selection.service)) }}</dd></div>
-                <div><dt>错误</dt><dd :class="{ 'text-danger': nodeErrorCount(selection.service) > 0 }">{{ nodeErrorCount(selection.service) }}</dd></div>
+                <div><dt>错误</dt><dd :class="{ 'si-topo-text--danger': nodeErrorCount(selection.service) > 0 }">{{ nodeErrorCount(selection.service) }}</dd></div>
                 <div v-if="nodeHealth(selection.service)">
                   <dt>健康分</dt>
                   <dd :class="healthLevelClass(nodeHealth(selection.service)!.level)">
@@ -163,13 +163,13 @@
                 </div>
               </dl>
               <div class="si-topo-rail__actions">
-                <el-button type="primary" size="small" class="w-100" @click="goServiceDetail(selection.service)">
+                <el-button type="primary" size="small" class="si-topo-btn--block" @click="goServiceDetail(selection.service)">
                   服务详情
                 </el-button>
-                <el-button type="primary" plain size="small" class="w-100" @click="goServiceTraces(selection.service)">
+                <el-button type="primary" plain size="small" class="si-topo-btn--block" @click="goServiceTraces(selection.service)">
                   查看该服务链路
                 </el-button>
-                <el-button size="small" class="w-100" @click="clearSelection">
+                <el-button size="small" class="si-topo-btn--block" @click="clearSelection">
                   取消选中
                 </el-button>
               </div>
@@ -179,7 +179,7 @@
               <p class="si-topo-rail__kicker">调用链路</p>
               <p class="si-topo-rail__edge">
                 <span>{{ selection.service }}</span>
-                <i class="fa fa-long-arrow-right" aria-hidden="true"></i>
+                <el-icon class="si-topo-rail__arrow"><ArrowRight /></el-icon>
                 <span>{{ selection.peer }}</span>
               </p>
               <dl class="si-topo-rail__stats">
@@ -187,23 +187,23 @@
                 <div><dt>平均耗时</dt><dd>{{ formatMs(edgeAvgMs(selection.service, selection.peer)) }}</dd></div>
               </dl>
               <div class="si-topo-rail__actions">
-                <el-button type="primary" size="small" class="w-100" @click="goServiceTraces(selection.service)">
+                <el-button type="primary" size="small" class="si-topo-btn--block" @click="goServiceTraces(selection.service)">
                   查看调用方链路
                 </el-button>
-                <el-button size="small" class="w-100" @click="goServiceTraces(selection.peer)">
+                <el-button size="small" class="si-topo-btn--block" @click="goServiceTraces(selection.peer)">
                   查看被调方链路
                 </el-button>
                 <el-button
                   type="info"
                   plain
                   size="small"
-                  class="w-100"
+                  class="si-topo-btn--block"
                   :loading="explaining"
                   :disabled="explaining || !aiReady"
                   :title="aiReady ? (aiStatusReason || '解释当前调用边') : (aiStatusReason || '请先在设置中启用 AI')"
                   @click="explainEdge(selection.service, selection.peer)"
                 >
-                  <i v-if="!explaining" class="fa fa-magic me-1" aria-hidden="true"></i>
+                  <el-icon v-if="!explaining" class="me-1"><MagicStick /></el-icon>
                   {{ explaining ? '解读中…' : 'AI 解释此链路' }}
                 </el-button>
                 <el-button link type="primary" size="small" @click="clearSelection">取消选中</el-button>
@@ -226,7 +226,7 @@
 
       <details class="si-topo-fold">
         <summary class="si-topo-fold__summary">
-          <i class="fa fa-list me-2"></i>依赖关系列表（{{ dependencies.length }}）
+          <el-icon class="me-2"><List /></el-icon>依赖关系列表（{{ dependencies.length }}）
         </summary>
         <SiDataTable
           :rows="sortedDependencies"
@@ -241,7 +241,7 @@
             <code class="si-svc">{{ row.sourceService }}</code>
           </template>
           <template #cell-arrow>
-            <i class="fa fa-long-arrow-right"></i>
+            <el-icon class="si-topo-table-arrow"><ArrowRight /></el-icon>
           </template>
           <template #cell-target="{ row }">
             <code class="si-svc">{{ row.targetService }}</code>
@@ -261,6 +261,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
+import { Download, Clock, Share, Refresh, FullScreen, Pointer, ArrowRight, MagicStick, List } from '@element-plus/icons-vue'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
@@ -347,7 +348,7 @@ type DepRow = {
 
 const depColumns: SiColumn<DepRow>[] = [
   { key: 'source', label: '源服务' },
-  { key: 'arrow', label: '', cellClass: 'text-center text-info' },
+  { key: 'arrow', label: '', cellClass: 'si-topo-cell--center' },
   { key: 'target', label: '目标服务' },
   { key: 'count', label: '调用次数', value: (row) => row.callCount ?? 0 },
   {
@@ -356,9 +357,9 @@ const depColumns: SiColumn<DepRow>[] = [
     value: (row) => formatMs(row.avgDuration || 0),
     cellClass: (row) => {
       const ms = Number(row.avgDuration) || 0
-      if (ms > 1000) return 'text-danger'
-      if (ms > 500) return 'text-warning'
-      return 'text-success'
+      if (ms > 1000) return 'si-topo-text--danger'
+      if (ms > 500) return 'si-topo-text--warning'
+      return 'si-topo-text--success'
     }
   },
   { key: 'action', label: '', stopRowClick: true }
@@ -373,7 +374,7 @@ const depRowClass = (row: DepRow) => {
     current.service === row.sourceService &&
     current.peer === row.targetService
   ) {
-    return 'table-active'
+    return 'si-topo-row--active'
   }
   return ''
 }
@@ -444,15 +445,15 @@ const healthLevelText = (level: string) => {
 const healthLevelClass = (level: string) => {
   switch (level) {
     case 'healthy':
-      return 'text-success'
+      return 'si-topo-text--success'
     case 'warning':
-      return 'text-warning'
+      return 'si-topo-text--warning'
     case 'degraded':
       return 'si-topo-text--degraded'
     case 'critical':
-      return 'text-danger'
+      return 'si-topo-text--danger'
     default:
-      return 'text-muted'
+      return 'si-topo-text--muted'
   }
 }
 
@@ -756,6 +757,33 @@ onUnmounted(() => {
   min-height: calc(100dvh - 2rem);
 }
 
+.si-topo-alert {
+  margin-bottom: 0.75rem;
+}
+
+.si-topo-text--danger { color: var(--danger-color) !important; }
+.si-topo-text--warning { color: var(--warning-color) !important; }
+.si-topo-text--success { color: var(--success-color) !important; }
+.si-topo-text--muted { color: var(--si-muted) !important; }
+.si-topo-cell--center { text-align: center; color: var(--si-muted); }
+.si-topo-btn--block { width: 100%; }
+
+.si-topo-stage__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.si-topo-table-arrow {
+  color: var(--si-brand);
+  font-size: 0.9rem;
+}
+
+.si-topo-rail__arrow {
+  color: var(--si-brand);
+}
+
 .si-topo-mesh {
   display: flex;
   flex-direction: column;
@@ -783,6 +811,7 @@ onUnmounted(() => {
   border-radius: 10px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
+  box-shadow: var(--box-shadow);
   min-height: clamp(420px, 58vh, 680px);
 }
 
@@ -864,7 +893,7 @@ onUnmounted(() => {
   overflow: hidden;
   border-radius: 8px;
   background:
-    radial-gradient(ellipse at center, rgba(15, 118, 110, 0.06) 0%, transparent 65%),
+    radial-gradient(ellipse at center, rgba(0, 184, 212, 0.06) 0%, transparent 65%),
     var(--si-paper);
   border: 1px solid var(--card-border);
 }
@@ -894,6 +923,7 @@ onUnmounted(() => {
   border-radius: 10px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
+  box-shadow: var(--box-shadow);
   height: 100%;
 }
 
@@ -999,6 +1029,7 @@ onUnmounted(() => {
   border-radius: 10px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
+  box-shadow: var(--box-shadow);
   padding: 0 0.95rem 0.85rem;
 }
 
@@ -1017,17 +1048,24 @@ onUnmounted(() => {
 }
 
 .si-topo-fold__summary::before {
-  content: '\f0da';
-  font-family: FontAwesome, 'Font Awesome 5 Free', sans-serif;
+  content: '';
   display: inline-block;
-  width: 0.9rem;
-  margin-right: 0.15rem;
-  color: var(--si-muted);
+  width: 0;
+  height: 0;
+  border-left: 0.4rem solid var(--si-muted);
+  border-top: 0.3rem solid transparent;
+  border-bottom: 0.3rem solid transparent;
+  margin-right: 0.45rem;
   transition: transform 0.15s ease;
+  vertical-align: middle;
 }
 
 .si-topo-fold[open] > .si-topo-fold__summary::before {
   transform: rotate(90deg);
+}
+
+:deep(.si-topo-row--active) {
+  background: rgba(0, 184, 212, 0.08) !important;
 }
 
 .si-svc {
@@ -1134,9 +1172,11 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--card-border);
 }
 
-.si-topo-solo__panel-head h5 {
+.si-topo-solo__panel-head h5,
+.si-topo-solo__panel-title {
   font-size: 0.92rem;
   font-weight: 700;
+  margin: 0;
 }
 
 .si-topo-solo__empty {
@@ -1168,7 +1208,7 @@ onUnmounted(() => {
 }
 
 .si-topo-solo__list li:hover {
-  background: rgba(15, 118, 110, 0.06);
+  background: rgba(0, 184, 212, 0.06);
 }
 
 .si-topo-solo__path {
@@ -1188,8 +1228,8 @@ onUnmounted(() => {
 .si-topo-solo__hint {
   padding: 0.9rem 1rem;
   border-radius: 12px;
-  border: 1px dashed rgba(15, 118, 110, 0.28);
-  background: rgba(15, 118, 110, 0.04);
+  border: 1px dashed rgba(0, 184, 212, 0.28);
+  background: rgba(0, 184, 212, 0.04);
 }
 
 .si-topo-solo__hint h6 {
