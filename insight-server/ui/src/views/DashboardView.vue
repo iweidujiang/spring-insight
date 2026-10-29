@@ -3,16 +3,16 @@
     <header class="si-dashboard__top">
       <div class="si-dashboard__title-block">
         <h2 class="si-dashboard__title">
-          <i class="fa fa-tachometer me-2"></i>监控仪表盘
+          <el-icon class="me-2"><Odometer /></el-icon>监控仪表盘
         </h2>
       </div>
       <div class="si-dashboard__status" v-show="!loading">
-        <span v-if="!errorAnalysis || errorAnalysis.length === 0" class="si-dashboard__pill si-dashboard__pill--ok">
-          <i class="fa fa-check-circle me-1"></i>无异常服务
-        </span>
-        <span v-else class="si-dashboard__pill si-dashboard__pill--warn">
-          <i class="fa fa-exclamation-triangle me-1"></i>{{ errorAnalysis.length }} 个服务需关注
-        </span>
+        <el-tag v-if="!errorAnalysis || errorAnalysis.length === 0" type="success" effect="plain" size="small" round>
+          <el-icon class="me-1"><CircleCheck /></el-icon>无异常服务
+        </el-tag>
+        <el-tag v-else type="warning" effect="plain" size="small" round>
+          <el-icon class="me-1"><WarningFilled /></el-icon>{{ errorAnalysis.length }} 个服务需关注
+        </el-tag>
       </div>
       <div class="si-dashboard__actions">
         <label class="si-dashboard__hours visually-hidden" for="dashboard-hours">时间范围</label>
@@ -39,9 +39,9 @@
             title="切换仪表盘布局模板"
             @click.stop="toggleLayoutMenu"
           >
-            <i v-if="!layoutSaving" class="fa fa-th-large me-1" aria-hidden="true"></i>
+            <el-icon v-if="!layoutSaving" class="me-1"><Grid /></el-icon>
             布局
-            <i class="fa fa-caret-down ms-1" aria-hidden="true"></i>
+            <el-icon class="ms-1"><ArrowDown /></el-icon>
           </el-button>
           <ul v-show="layoutMenuOpen" class="si-layout-menu__list" role="menu">
             <li v-for="tpl in templates" :key="tpl.id" role="none">
@@ -72,7 +72,7 @@
           title="下载当前时间窗仪表盘快照 JSON"
           @click="exportSnapshot"
         >
-          <i v-if="!exporting" class="fa fa-download me-1" aria-hidden="true"></i>
+          <el-icon v-if="!exporting" class="me-1"><Download /></el-icon>
           导出快照
         </el-button>
         <el-button
@@ -82,17 +82,17 @@
           :loading="loading"
           @click="loadData"
         >
-          <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+          <el-icon v-if="!loading" class="me-1"><Refresh /></el-icon>
           刷新
         </el-button>
         <el-tag type="info" effect="plain" size="small" round class="si-dashboard__clock">
-          <i class="fa fa-clock me-1" aria-hidden="true"></i>{{ currentTime }}
+          <el-icon class="me-1"><Clock /></el-icon>{{ currentTime }}
         </el-tag>
       </div>
     </header>
 
     <div v-if="loading" class="si-dashboard__loading">
-      <i class="fa fa-spinner fa-spin"></i>
+      <el-icon class="is-loading" :size="20"><Loading /></el-icon>
       <span class="ms-2">加载中…</span>
     </div>
 
@@ -149,7 +149,7 @@
               :title="aiPeriodTitle"
               @click="explainPeriod"
             >
-              <i v-if="!periodExplaining" class="fa fa-magic me-1" aria-hidden="true"></i>
+              <el-icon v-if="!periodExplaining" class="me-1"><MagicStick /></el-icon>
               {{ periodExplaining ? '小结中…' : 'AI 小结' }}
             </el-button>
             <el-button
@@ -190,7 +190,7 @@
         class="si-dashboard__collector-strip"
         aria-label="采集器状态"
       >
-        <span class="si-dashboard__collector-strip-title"><i class="fa fa-database me-1"></i>Collector</span>
+        <span class="si-dashboard__collector-strip-title"><el-icon class="me-1"><Coin /></el-icon>Collector</span>
         <div class="si-dashboard__collector-strip-items">
           <span><em>接收</em>{{ collectorStats.totalReceivedRequests ?? 0 }}</span>
           <span><em>Span</em>{{ collectorStats.totalReceivedSpans ?? 0 }}</span>
@@ -212,8 +212,8 @@
       >
         <button v-if="panelVisible('jdbc')" type="button" class="si-infra__card" @click="goJdbc()">
           <div class="si-infra__head">
-            <span class="si-infra__title"><i class="fa fa-database me-2"></i>数据库</span>
-            <span class="si-infra__link">打开 <i class="fa fa-angle-right"></i></span>
+            <span class="si-infra__title"><el-icon class="me-2"><Coin /></el-icon>数据库</span>
+            <span class="si-infra__link">打开 <el-icon><ArrowRight /></el-icon></span>
           </div>
           <template v-if="jdbcKpis && jdbcKpis.spanCount > 0">
             <div class="si-infra__metrics">
@@ -242,8 +242,8 @@
 
         <button v-if="panelVisible('redis')" type="button" class="si-infra__card" @click="goRedis()">
           <div class="si-infra__head">
-            <span class="si-infra__title"><i class="fa fa-cube me-2"></i>缓存</span>
-            <span class="si-infra__link">打开 <i class="fa fa-angle-right"></i></span>
+            <span class="si-infra__title"><el-icon class="me-2"><Box /></el-icon>缓存</span>
+            <span class="si-infra__link">打开 <el-icon><ArrowRight /></el-icon></span>
           </div>
           <template v-if="redisKpis && redisKpis.spanCount > 0">
             <div class="si-infra__metrics">
@@ -338,7 +338,7 @@
         <div class="si-overview__grid">
           <div v-if="panelVisible('error-services')" class="si-overview__panel">
             <div class="si-overview__head">
-              <span><i class="fa fa-exclamation-triangle me-2"></i>异常服务</span>
+              <span><el-icon class="me-2"><WarningFilled /></el-icon>异常服务</span>
               <el-button type="danger" plain size="small" @click="goErrors">错误分析</el-button>
             </div>
             <ul v-if="errorAnalysis.length" class="si-dashboard__rail-list">
@@ -356,7 +356,7 @@
 
           <div v-if="panelVisible('service-health')" class="si-overview__panel">
             <div class="si-overview__head">
-              <span><i class="fa fa-heartbeat me-2"></i>服务健康</span>
+              <span><el-icon class="me-2"><FirstAidKit /></el-icon>服务健康</span>
               <el-button size="small" @click="goSlowTraces()">慢链路</el-button>
             </div>
             <SiDataTable
@@ -397,7 +397,7 @@
 
           <div v-if="showSloPanel" class="si-overview__panel si-overview__panel--slo">
             <div class="si-overview__head">
-              <span><i class="fa fa-bullseye me-2"></i>错误预算</span>
+              <span><el-icon class="me-2"><Target /></el-icon>错误预算</span>
               <el-button size="small" @click="goSloSettings">设置</el-button>
             </div>
             <ul v-if="sloBudgets.length" class="si-dashboard__rail-list">
@@ -448,7 +448,7 @@
         >
           <div v-if="panelVisible('recent-traces')" class="si-overview__panel si-overview__panel--traces">
             <div class="si-overview__head">
-              <span><i class="fa fa-list me-2"></i>最近请求</span>
+              <span><el-icon class="me-2"><List /></el-icon>最近请求</span>
               <el-button size="small" @click="goTraces()">全部链路</el-button>
             </div>
             <div v-if="recentTraces.length === 0" class="si-dashboard__diag-empty">{{ emptyRequestsMessage(hours) }}</div>
@@ -484,7 +484,7 @@
             <div class="si-overview__head">
               <span>请求排名</span>
               <el-button type="primary" plain size="small" @click="refreshServiceRankChart">
-                <i class="fa fa-refresh" aria-hidden="true"></i>
+                <el-icon><Refresh /></el-icon>
               </el-button>
             </div>
             <div id="service-rank-chart" class="si-overview__rank-canvas"></div>
@@ -1342,32 +1342,13 @@ onUnmounted(() => {
   margin: 0;
   letter-spacing: -0.02em;
   line-height: 1.2;
+  display: flex;
+  align-items: center;
 }
 
-.si-dashboard__title i { color: var(--si-brand); }
+.si-dashboard__title .el-icon { color: var(--si-brand); }
 
 .si-dashboard__status { justify-self: center; }
-
-.si-dashboard__pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.4rem 0.85rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.si-dashboard__pill--ok {
-  background: var(--si-ok-pill-bg);
-  color: var(--si-ok-pill-color);
-  border: 1px solid var(--si-ok-bullet-border);
-}
-
-.si-dashboard__pill--warn {
-  background: var(--si-warn-pill-bg);
-  color: var(--si-warn-pill-color);
-  border: 1px solid rgba(180, 83, 9, 0.3);
-}
 
 .si-dashboard__actions {
   display: flex;
