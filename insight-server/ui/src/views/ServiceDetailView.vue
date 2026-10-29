@@ -3,10 +3,10 @@
     <header class="si-svc-detail__top">
       <div class="si-svc-detail__title-block">
         <el-button link type="primary" size="small" class="si-svc-detail__back" @click="goBack">
-          <i class="fa fa-arrow-left me-1" aria-hidden="true"></i>返回
+          <el-icon class="me-1"><ArrowLeft /></el-icon>返回
         </el-button>
         <h2 class="si-svc-detail__title">
-          <i class="fa fa-cube me-2"></i>{{ serviceName || '服务详情' }}
+          <el-icon class="me-2"><Box /></el-icon>{{ serviceName || '服务详情' }}
         </h2>
       </div>
       <div class="si-svc-detail__actions">
@@ -32,15 +32,15 @@
           :loading="loading"
           @click="load"
         >
-          <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+          <el-icon v-if="!loading" class="me-1"><Refresh /></el-icon>
           刷新
         </el-button>
       </div>
     </header>
 
     <SiLoading v-if="loading" text="加载中…" />
-    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
-    <SiAlert v-else-if="!loading && deeplinkHint" tone="warning" role="alert" class="mb-3">{{ deeplinkHint }}</SiAlert>
+    <SiAlert v-if="loadError" tone="danger" class="si-svc-detail__alert">{{ loadError }}</SiAlert>
+    <SiAlert v-else-if="!loading && deeplinkHint" tone="warning" role="alert" class="si-svc-detail__alert">{{ deeplinkHint }}</SiAlert>
 
     <template v-if="!loading && summary">
       <section class="si-svc-detail__kpis" :class="{ 'is-alert': leadKpi.alert }" aria-label="关键指标">
@@ -73,13 +73,13 @@
         <el-button size="small" @click="goTopology">打开拓扑</el-button>
       </div>
 
-      <div class="row g-3 si-svc-detail__grid">
-        <div class="col-lg-6">
-          <el-card class="h-100 si-svc-detail__card" shadow="never">
+      <div class="si-svc-detail__grid">
+        <div class="si-svc-detail__grid-col">
+          <el-card class="si-svc-detail__card si-svc-detail__card--full" shadow="never">
             <template #header>
-              <span class="fw-semibold">慢操作 Top</span>
+              <span class="si-svc-detail__card-title">慢操作 Top</span>
             </template>
-            <div v-if="summary.slowOperations.length === 0" class="p-3 text-muted small">
+            <div v-if="summary.slowOperations.length === 0" class="si-svc-detail__card-empty">
               {{ emptyRequestsMessage(hours) }}
             </div>
             <SiDataTable
@@ -94,43 +94,43 @@
           </el-card>
         </div>
 
-        <div class="col-lg-6">
-          <el-card class="h-100 si-svc-detail__card" shadow="never">
+        <div class="si-svc-detail__grid-col">
+          <el-card class="si-svc-detail__card si-svc-detail__card--full" shadow="never">
             <template #header>
-              <span class="fw-semibold">依赖（出站 / 入站）</span>
+              <span class="si-svc-detail__card-title">依赖（出站 / 入站）</span>
             </template>
-            <p class="small text-muted mb-2">出站 →</p>
+            <p class="si-svc-detail__deps-label">出站 →</p>
             <ul v-if="summary.outbound.length" class="si-svc-detail__deps">
               <li v-for="(e, i) in summary.outbound" :key="'o' + i">
                 <el-button link type="primary" size="small" @click="goService(e.targetService)">
                   {{ e.targetService }}
                 </el-button>
-                <span class="text-muted small ms-1">×{{ e.callCount }}</span>
+                <span class="si-svc-detail__deps-count">×{{ e.callCount }}</span>
               </li>
             </ul>
-            <p v-else class="small text-muted">暂无出站边</p>
-            <p class="small text-muted mb-2 mt-3">← 入站</p>
+            <p v-else class="si-svc-detail__deps-empty">暂无出站边</p>
+            <p class="si-svc-detail__deps-label si-svc-detail__deps-label--mt">← 入站</p>
             <ul v-if="summary.inbound.length" class="si-svc-detail__deps">
               <li v-for="(e, i) in summary.inbound" :key="'i' + i">
                 <el-button link type="primary" size="small" @click="goService(e.sourceService)">
                   {{ e.sourceService }}
                 </el-button>
-                <span class="text-muted small ms-1">×{{ e.callCount }}</span>
+                <span class="si-svc-detail__deps-count">×{{ e.callCount }}</span>
               </li>
             </ul>
-            <p v-else class="small text-muted">暂无入站边</p>
+            <p v-else class="si-svc-detail__deps-empty">暂无入站边</p>
           </el-card>
         </div>
 
-        <div class="col-12">
+        <div class="si-svc-detail__grid-col--full">
           <el-card class="si-svc-detail__card" shadow="never">
             <template #header>
-              <div class="d-flex justify-content-between align-items-center w-100">
-                <span class="fw-semibold">最近链路</span>
+              <div class="si-svc-detail__card-head">
+                <span class="si-svc-detail__card-title">最近链路</span>
                 <el-button link type="primary" size="small" @click="goTraces()">查看全部</el-button>
               </div>
             </template>
-            <div v-if="summary.recentTraces.length === 0" class="p-3 text-muted small">
+            <div v-if="summary.recentTraces.length === 0" class="si-svc-detail__card-empty">
               {{ emptyRequestsMessage(hours) }}
             </div>
             <SiDataTable
@@ -152,7 +152,7 @@
                 </el-tag>
               </template>
               <template #cell-trace="{ row }">
-                <code class="small">{{ shortId(row.traceId) }}</code>
+                <code class="si-svc-detail__cell--small">{{ shortId(row.traceId) }}</code>
               </template>
             </SiDataTable>
           </el-card>
@@ -165,6 +165,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ArrowLeft, Box, Refresh } from '@element-plus/icons-vue'
 import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
@@ -274,7 +275,7 @@ const slowColumns: SiColumn<SlowOpRow>[] = [
     key: 'errors',
     label: '错误',
     value: (row) => row.errorCount,
-    cellClass: (row) => (row.errorCount > 0 ? 'text-danger' : undefined)
+    cellClass: (row) => (row.errorCount > 0 ? 'si-svc-detail__cell--danger' : undefined)
   },
   { key: 'p95', label: 'p95', value: (row) => formatDuration(row.p95Ms) }
 ]
@@ -404,6 +405,10 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.si-svc-detail__alert {
+  margin-bottom: 0.75rem;
+}
+
 .si-svc-detail__top {
   display: flex;
   flex-wrap: wrap;
@@ -465,10 +470,6 @@ onMounted(() => {
   white-space: nowrap;
   min-height: 31px;
   padding: 0.25rem 0.75rem;
-}
-
-.si-svc-detail__refresh .fa {
-  line-height: 1;
 }
 
 .si-svc-detail__loading {
@@ -605,6 +606,76 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 0.45rem;
   margin-bottom: 1rem;
+}
+
+.si-svc-detail__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 992px) {
+  .si-svc-detail__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.si-svc-detail__grid-col {
+  min-width: 0;
+}
+
+.si-svc-detail__grid-col--full {
+  grid-column: 1 / -1;
+}
+
+.si-svc-detail__card--full {
+  height: 100%;
+}
+
+.si-svc-detail__card-title {
+  font-weight: 600;
+}
+
+.si-svc-detail__card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.si-svc-detail__card-empty {
+  padding: 0.75rem;
+  color: var(--si-muted);
+  font-size: 0.85rem;
+}
+
+.si-svc-detail__deps-label {
+  font-size: 0.85rem;
+  color: var(--si-muted);
+  margin-bottom: 0.5rem;
+}
+
+.si-svc-detail__deps-label--mt {
+  margin-top: 0.75rem;
+}
+
+.si-svc-detail__deps-count {
+  font-size: 0.85rem;
+  color: var(--si-muted);
+  margin-left: 0.25rem;
+}
+
+.si-svc-detail__deps-empty {
+  font-size: 0.85rem;
+  color: var(--si-muted);
+}
+
+:deep(.si-svc-detail__cell--small) {
+  font-size: 0.84rem;
+}
+
+:deep(.si-svc-detail__cell--danger) {
+  color: var(--danger-color);
 }
 
 .si-svc-detail__deps {
