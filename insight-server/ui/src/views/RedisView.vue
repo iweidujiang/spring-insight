@@ -15,12 +15,12 @@
     </SiPageHeader>
 
     <p class="si-redis-hint">
-      <i class="fa fa-info-circle me-1"></i>
+      <el-icon class="me-1"><InfoFilled /></el-icon>
       仅统计 <code>component=REDIS</code> · {{ formatHoursLabel(hours) }}
       <template v-if="selectedService"> · 服务 {{ selectedService }}</template>
     </p>
 
-    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
+    <SiAlert v-if="loadError" tone="danger" class="si-redis__alert">{{ loadError }}</SiAlert>
 
     <SiLoading v-if="loading" text="正在加载 Redis 汇总…" />
 
@@ -53,12 +53,12 @@
       </section>
 
       <SiEmpty v-if="summary.kpis.spanCount === 0" icon="fa-cube">
-        <p class="mb-1">{{ emptyInRangeShort(hours, 'Redis 调用') }}</p>
-        <p v-if="selectedService" class="small text-muted mb-2">
+        <p class="si-redis-empty__text">{{ emptyInRangeShort(hours, 'Redis 调用') }}</p>
+        <p v-if="selectedService" class="si-redis-empty__hint">
           当前按业务服务「{{ selectedService }}」筛选。Redis Span 记在<strong>执行命令的服务</strong>上。
           可改选实际访问 Redis 的服务，或选「全部服务」。
         </p>
-        <p v-else class="small text-muted mb-0">
+        <p v-else class="si-redis-empty__hint">
           请确认业务已启用 <code>redis-tracing-enabled</code> 并上报到 insight-server；拓扑图不再显示缓存节点。
         </p>
         <el-button
@@ -66,7 +66,7 @@
           type="primary"
           plain
           size="small"
-          class="mt-1"
+          class="si-redis-empty__btn"
           @click="clearServiceFilter"
         >
           查看全部服务
@@ -104,7 +104,7 @@
               </SiStatusBadge>
             </template>
             <template #cell-traceId="{ row }">
-              <code class="small">{{ shortId(row.traceId) }}</code>
+              <code class="si-redis-cell--small">{{ shortId(row.traceId) }}</code>
             </template>
           </SiDataTable>
         </SiSection>
@@ -116,6 +116,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { InfoFilled } from '@element-plus/icons-vue'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import SiEmpty from '../components/SiEmpty.vue'
@@ -164,13 +165,13 @@ const remoteColumns: SiColumn<RemoteRow>[] = [
     key: 'errorCount',
     label: '错误',
     numeric: true,
-    cellClass: (row) => (row.errorCount > 0 ? 'text-danger fw-semibold' : undefined)
+    cellClass: (row) => (row.errorCount > 0 ? 'si-redis-cell--danger' : undefined)
   },
   {
     key: 'slowCount',
     label: '慢',
     numeric: true,
-    cellClass: (row) => (row.slowCount > 0 ? 'text-warning fw-semibold' : undefined)
+    cellClass: (row) => (row.slowCount > 0 ? 'si-redis-cell--warning' : undefined)
   },
   { key: 'avgMs', label: '平均', numeric: true, value: (row) => formatDuration(row.avgMs) },
   { key: 'maxMs', label: '最大', numeric: true, value: (row) => formatDuration(row.maxMs) }
@@ -286,6 +287,38 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.si-redis__alert {
+  margin-bottom: 0.75rem;
+}
+
+.si-redis-empty__text {
+  margin-bottom: 0.25rem;
+}
+
+.si-redis-empty__hint {
+  font-size: 0.85rem;
+  color: var(--si-muted);
+  margin-bottom: 0.5rem;
+}
+
+.si-redis-empty__btn {
+  margin-top: 0.25rem;
+}
+
+:deep(.si-redis-cell--small) {
+  font-size: 0.84rem;
+}
+
+:deep(.si-redis-cell--danger) {
+  color: var(--danger-color);
+  font-weight: 600;
+}
+
+:deep(.si-redis-cell--warning) {
+  color: var(--warning-color);
+  font-weight: 600;
+}
+
 .si-redis-hint {
   margin: 0 0 1rem;
   font-size: 0.85rem;
@@ -304,6 +337,7 @@ onMounted(async () => {
   border: 1px solid var(--card-border);
   border-radius: 0.5rem;
   background: var(--si-surface-1);
+  box-shadow: var(--box-shadow);
 }
 
 .si-redis-kpi__label {
