@@ -9,11 +9,11 @@
           title="按当前筛选下载 CSV"
           @click="exportCsv"
         >
-          <i v-if="!exporting" class="fa fa-download me-1" aria-hidden="true"></i>
+          <el-icon v-if="!exporting" class="me-1"><Download /></el-icon>
           导出 CSV
         </el-button>
         <el-tag type="info" effect="plain" size="small" round>
-          <i class="fa fa-clock me-1" aria-hidden="true"></i>{{ currentTime }}
+          <el-icon class="me-1"><Clock /></el-icon>{{ currentTime }}
         </el-tag>
       </div>
     </SiPageHeader>
@@ -88,7 +88,7 @@
         </div>
         <div class="si-filter-bar__field si-filter-bar__field--search">
           <label for="q-input" class="si-filter-bar__label">搜索</label>
-          <div class="d-flex gap-2">
+          <div class="si-filter-bar__search-group">
             <el-input
               id="q-input"
               v-model="query"
@@ -97,10 +97,10 @@
               @keyup.enter="onFilterChange"
             />
             <el-button type="primary" :disabled="loading" title="搜索" @click="onFilterChange">
-              <i class="fa fa-search" aria-hidden="true"></i>
+              <el-icon><Search /></el-icon>
             </el-button>
             <el-button :disabled="loading" title="重置" @click="resetFilters">
-              <i class="fa fa-refresh" aria-hidden="true"></i>
+              <el-icon><Refresh /></el-icon>
             </el-button>
           </div>
         </div>
@@ -110,14 +110,14 @@
     <SiAlert v-if="copyHint" tone="success" class="si-copy-hint">
       {{ copyHint }}
     </SiAlert>
-    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
+    <SiAlert v-if="loadError" tone="danger" class="si-trace-alert">{{ loadError }}</SiAlert>
 
     <SiLoading v-if="loading" text="正在加载链路数据..." />
 
     <el-card v-else class="si-table-panel" shadow="never">
-        <div class="si-trace-list-bar mb-2">
+        <div class="si-trace-list-bar">
           <div class="si-trace-list-bar__title">
-            <h5 class="mb-0">最近请求</h5>
+            <h5 class="si-trace-list-bar__heading">最近请求</h5>
             <el-tag type="primary" effect="dark" size="small" round>{{ traces.length }} 条</el-tag>
           </div>
           <div class="si-trace-list-bar__actions">
@@ -129,7 +129,7 @@
               :title="selectedIds.length === 2 ? '对比已选两条 Trace' : '请勾选恰好两条 Trace'"
               @click="goCompare"
             >
-              <i class="fa fa-columns me-1" aria-hidden="true"></i>对比 ({{ selectedIds.length }}/2)
+              <el-icon class="me-1"><Grid /></el-icon>对比 ({{ selectedIds.length }}/2)
             </el-button>
             <el-button
               v-if="selectedIds.length"
@@ -138,11 +138,11 @@
             >
               清除选择
             </el-button>
-            <label class="si-auto-refresh mb-0">
+            <label class="si-auto-refresh">
               <el-checkbox v-model="autoRefresh">自动刷新</el-checkbox>
             </label>
             <el-button type="primary" size="small" :loading="loading" @click="loadData">
-              <i v-if="!loading" class="fa fa-refresh me-1" aria-hidden="true"></i>
+              <el-icon v-if="!loading" class="me-1"><Refresh /></el-icon>
               刷新
             </el-button>
           </div>
@@ -192,14 +192,14 @@
           </template>
           <template #cell-act="{ row }">
             <el-button size="small" title="复制 Trace ID" @click="copyTraceId(row.traceId)">
-              <i class="fa fa-copy" aria-hidden="true"></i>
+              <el-icon><CopyDocument /></el-icon>
             </el-button>
           </template>
           <template #empty>
-            <div class="py-4">
-              <i class="fa fa-info-circle fa-2x mb-2"></i>
-              <p class="mb-0">{{ emptyNoMatchMessage(hours) }}</p>
-              <p class="small mb-0 mt-1">{{ EMPTY_HINT_RELAX }}</p>
+            <div class="si-trace-empty">
+              <el-icon class="si-trace-empty__icon"><InfoFilled /></el-icon>
+              <p class="si-trace-empty__text">{{ emptyNoMatchMessage(hours) }}</p>
+              <p class="si-trace-empty__hint">{{ EMPTY_HINT_RELAX }}</p>
             </div>
           </template>
         </SiDataTable>
@@ -210,6 +210,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { Download, Clock, Search, Refresh, Grid, CopyDocument, InfoFilled } from '@element-plus/icons-vue'
 import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
@@ -258,8 +259,8 @@ const formatTime = (timestamp: number) => {
 
 const durationClass = (ms: number) => {
   const n = Number(ms) || 0
-  if (n > 1000) return 'text-danger fw-bold'
-  if (n > 500) return 'text-warning'
+  if (n > 1000) return 'si-trace-dur--danger si-trace-dur--bold'
+  if (n > 500) return 'si-trace-dur--warning'
   return ''
 }
 
@@ -439,7 +440,7 @@ const traceColumns: SiColumn<TraceRow>[] = [
     key: 'service',
     label: '服务',
     headerClass: 'si-trace-col-svc',
-    cellClass: 'text-truncate si-trace-service',
+    cellClass: 'si-trace-cell--truncate si-trace-service',
     value: (row) => row.serviceName || '—',
     title: (row) => (row.serviceName ? String(row.serviceName) : undefined)
   },
@@ -522,6 +523,54 @@ onUnmounted(() => {
 .si-copy-hint {
   margin-bottom: 0.75rem;
   font-size: 0.9rem;
+}
+
+.si-trace-alert {
+  margin-bottom: 0.75rem;
+}
+
+.si-filter-bar__search-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.si-trace-empty {
+  padding: 1.5rem 0;
+  text-align: center;
+}
+
+.si-trace-empty__icon {
+  font-size: 2rem;
+  color: var(--si-muted);
+  margin-bottom: 0.5rem;
+}
+
+.si-trace-empty__text {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--si-ink-soft);
+}
+
+.si-trace-empty__hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--si-muted);
+}
+
+.si-trace-list-bar__heading {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.si-trace-dur--danger { color: var(--danger-color); }
+.si-trace-dur--warning { color: var(--warning-color); }
+.si-trace-dur--bold { font-weight: 700; }
+
+:deep(.si-trace-cell--truncate) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .si-auto-refresh {
