@@ -19,7 +19,7 @@
             :title="aiReady ? (aiStatusReason || '用当前聚合摘要调用 AI') : (aiStatusReason || '请先在设置中启用 AI 并配置密钥')"
             @click="onExplainErrors"
           >
-            <i v-if="!explaining" class="fa fa-magic me-1" aria-hidden="true"></i>
+            <el-icon v-if="!explaining" class="me-1"><MagicStick /></el-icon>
             {{ explaining ? '解读中…' : '一键解读' }}
           </el-button>
         </template>
@@ -30,30 +30,30 @@
           title="按当前时间窗下载错误分析 CSV"
           @click="exportCsv"
         >
-          <i v-if="!exporting" class="fa fa-download me-1" aria-hidden="true"></i>
+          <el-icon v-if="!exporting" class="me-1"><Download /></el-icon>
           导出 CSV
         </el-button>
         <el-tag type="info" effect="plain" size="small" round>
-          <i class="fa fa-clock me-1" aria-hidden="true"></i>{{ currentTime }}
+          <el-icon class="me-1"><Clock /></el-icon>{{ currentTime }}
         </el-tag>
       </SiFilterBar>
     </SiPageHeader>
 
-    <SiAlert v-if="loadError" tone="danger" class="mb-3">{{ loadError }}</SiAlert>
+    <SiAlert v-if="loadError" tone="danger" class="si-err__alert">{{ loadError }}</SiAlert>
 
     <SiLoading v-if="loading" text="正在加载错误分析数据…" />
 
     <div v-show="!loading" class="si-err-body">
       <div v-if="!hasErrors" class="si-err-healthy">
         <div class="si-err-healthy__icon">
-          <i class="fa fa-check-circle"></i>
+          <el-icon :size="44"><CircleCheckFilled /></el-icon>
         </div>
         <h3 class="si-err-healthy__title">运行正常</h3>
         <p class="si-err-healthy__desc">
           {{ hours === 0 ? '全部已存范围内' : formatHoursLabel(hours) + '内' }}未发现错误调用，所有已上报服务状态良好。
         </p>
         <div class="si-err-healthy__tips">
-          <span><i class="fa fa-bolt me-1"></i>可在业务侧制造失败请求后再刷新本页</span>
+          <span><el-icon class="me-1"><Lightning /></el-icon>可在业务侧制造失败请求后再刷新本页</span>
           <el-button size="small" @click="goErrorTraces">
             到链路追踪按异常筛选
           </el-button>
@@ -87,7 +87,7 @@
         <!-- 主舞台：错误服务列表（对齐链路「请求主舞台」） -->
         <section class="si-err-stage" aria-label="错误服务">
           <div class="si-err-stage__head">
-            <h3 class="si-err-stage__title"><i class="fa fa-list me-2"></i>错误服务</h3>
+            <h3 class="si-err-stage__title"><el-icon class="me-2"><List /></el-icon>错误服务</h3>
             <el-tag type="danger" effect="dark" size="small" round>{{ errorAnalysis.length }} 个</el-tag>
           </div>
           <SiDataTable
@@ -116,21 +116,21 @@
         <div class="si-err-charts">
           <div class="si-err-chart">
             <div class="si-err-chart__head">
-              <h4><i class="fa fa-bar-chart me-2"></i>服务错误率</h4>
+              <h4><el-icon class="me-2"><DataLine /></el-icon>服务错误率</h4>
               <el-button type="primary" plain size="small" title="重绘" @click="refreshCharts">
-                <i class="fa fa-refresh" aria-hidden="true"></i>
+                <el-icon><Refresh /></el-icon>
               </el-button>
             </div>
             <div class="si-err-chart__canvas">
-              <div id="error-rate-chart" class="w-100 h-100"></div>
+              <div id="error-rate-chart" class="si-err-chart__fill"></div>
             </div>
           </div>
           <div class="si-err-chart">
             <div class="si-err-chart__head">
-              <h4><i class="fa fa-pie-chart me-2"></i>错误调用占比</h4>
+              <h4><el-icon class="me-2"><Aim /></el-icon>错误调用占比</h4>
             </div>
             <div class="si-err-chart__canvas">
-              <div id="error-pie-chart" class="w-100 h-100"></div>
+              <div id="error-pie-chart" class="si-err-chart__fill"></div>
             </div>
           </div>
         </div>
@@ -138,7 +138,7 @@
         <div class="si-err-split">
           <section class="si-err-panel">
             <div class="si-err-panel__head">
-              <h4><i class="fa fa-code me-2"></i>按 HTTP 状态码</h4>
+              <h4><el-icon class="me-2"><Connection /></el-icon>按 HTTP 状态码</h4>
               <el-tag type="info" effect="plain" size="small" round>{{ byStatusCode.length }}</el-tag>
             </div>
             <div v-if="byStatusCode.length === 0" class="si-err-panel__empty">暂无 HTTP 状态类错误</div>
@@ -157,14 +157,14 @@
               </template>
               <template #cell-services="{ row }">
                 {{ bucketServiceNames(row) }}
-                <span v-if="row.serviceCount > 2" class="text-muted"> 等{{ row.serviceCount }}</span>
+                <span v-if="row.serviceCount > 2" class="si-err-text--muted"> 等{{ row.serviceCount }}</span>
               </template>
             </SiDataTable>
           </section>
 
           <section class="si-err-panel">
             <div class="si-err-panel__head">
-              <h4><i class="fa fa-bug me-2"></i>按异常类</h4>
+              <h4><el-icon class="me-2"><Aim /></el-icon>按异常类</h4>
               <el-tag type="warning" effect="plain" size="small" round>{{ byException.length }}</el-tag>
             </div>
             <div v-if="byException.length === 0" class="si-err-panel__empty">暂无异常类错误</div>
@@ -183,7 +183,7 @@
               </template>
               <template #cell-services="{ row }">
                 {{ bucketServiceNames(row) }}
-                <span v-if="row.serviceCount > 2" class="text-muted"> 等{{ row.serviceCount }}</span>
+                <span v-if="row.serviceCount > 2" class="si-err-text--muted"> 等{{ row.serviceCount }}</span>
               </template>
             </SiDataTable>
           </section>
@@ -191,7 +191,7 @@
 
         <details v-if="byOther.length > 0" class="si-err-fold">
           <summary class="si-err-fold__summary">
-            <i class="fa fa-question-circle me-2"></i>其它错误（{{ byOther.length }}）
+            <el-icon class="me-2"><QuestionFilled /></el-icon>其它错误（{{ byOther.length }}）
           </summary>
           <SiDataTable
             class="si-err-compact"
@@ -220,6 +220,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
+import { MagicStick, Download, Clock, CircleCheckFilled, Lightning, List, Refresh, QuestionFilled, DataLine, Connection, Aim } from '@element-plus/icons-vue'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
@@ -279,7 +280,7 @@ type ErrorServiceRow = Record<string, any>
 const errorServiceColumns: SiColumn<ErrorServiceRow>[] = [
   { key: 'service', label: '服务', cellClass: 'si-err-svc', value: (row) => row.serviceName },
   { key: 'total', label: '总调用', value: (row) => row.totalCalls },
-  { key: 'errors', label: '错误', cellClass: 'text-danger fw-semibold', value: (row) => row.errorCalls },
+  { key: 'errors', label: '错误', cellClass: 'si-err-cell--danger', value: (row) => row.errorCalls },
   { key: 'rate', label: '错误率' },
   { key: 'level', label: '级别' }
 ]
@@ -316,15 +317,15 @@ const categorySampleColumn = (label: string): SiColumn<ErrorBucketRow> => ({
 
 const statusColumns: SiColumn<ErrorBucketRow>[] = [
   { key: 'label', label: '状态码' },
-  { key: 'count', label: '次数', cellClass: 'text-danger fw-semibold', value: (row) => row.count },
-  { key: 'services', label: '服务', cellClass: 'small' },
+  { key: 'count', label: '次数', cellClass: 'si-err-cell--danger', value: (row) => row.count },
+  { key: 'services', label: '服务', cellClass: 'si-err-cell--small' },
   categorySampleColumn('样例')
 ]
 
 const exceptionColumns: SiColumn<ErrorBucketRow>[] = [
   { key: 'label', label: '异常' },
-  { key: 'count', label: '次数', cellClass: 'text-danger fw-semibold', value: (row) => row.count },
-  { key: 'services', label: '服务', cellClass: 'small' },
+  { key: 'count', label: '次数', cellClass: 'si-err-cell--danger', value: (row) => row.count },
+  { key: 'services', label: '服务', cellClass: 'si-err-cell--small' },
   categorySampleColumn('样例')
 ]
 
@@ -334,7 +335,7 @@ const otherColumns: SiColumn<ErrorBucketRow>[] = [
   {
     key: 'services',
     label: '服务',
-    cellClass: 'small',
+    cellClass: 'si-err-cell--small',
     value: (row) => {
       const names = Array.isArray(row.services) ? row.services.map((name: unknown) => String(name)) : []
       return names.join('、') || '—'
@@ -593,6 +594,28 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.si-err__alert {
+  margin-bottom: 0.75rem;
+}
+
+.si-err-text--muted {
+  color: var(--si-muted);
+}
+
+:deep(.si-err-cell--danger) {
+  color: var(--danger-color);
+  font-weight: 600;
+}
+
+:deep(.si-err-cell--small) {
+  font-size: 0.84rem;
+}
+
+.si-err-chart__fill {
+  width: 100%;
+  height: 100%;
+}
+
 .si-err-body {
   display: flex;
   flex-direction: column;
@@ -695,6 +718,7 @@ onUnmounted(() => {
   border-radius: 10px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
+  box-shadow: var(--box-shadow);
 }
 
 .si-err-stage {
@@ -728,7 +752,7 @@ onUnmounted(() => {
 }
 
 :deep(.si-err-row:hover) {
-  background: rgba(15, 118, 110, 0.05);
+  background: rgba(0, 184, 212, 0.05);
 }
 
 :deep(.si-err-row.is-severe:hover) {
@@ -764,8 +788,8 @@ onUnmounted(() => {
 
 .si-err-rate[data-level='note'],
 .si-err-level[data-level='note'] {
-  color: #0f766e;
-  background: rgba(15, 118, 110, 0.1);
+  color: var(--si-brand);
+  background: rgba(0, 184, 212, 0.1);
 }
 
 .si-err-charts {
@@ -870,13 +894,16 @@ onUnmounted(() => {
 }
 
 .si-err-fold__summary::before {
-  content: '\f0da';
-  font-family: FontAwesome, 'Font Awesome 5 Free', sans-serif;
+  content: '';
   display: inline-block;
-  width: 0.9rem;
-  margin-right: 0.15rem;
-  color: var(--si-muted);
+  width: 0;
+  height: 0;
+  border-left: 0.4rem solid var(--si-muted);
+  border-top: 0.3rem solid transparent;
+  border-bottom: 0.3rem solid transparent;
+  margin-right: 0.45rem;
   transition: transform 0.15s ease;
+  vertical-align: middle;
 }
 
 .si-err-fold[open] > .si-err-fold__summary::before {
