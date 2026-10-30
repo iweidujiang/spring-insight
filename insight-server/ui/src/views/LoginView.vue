@@ -350,7 +350,7 @@ async function onSubmit() {
   grid-template-columns: minmax(240px, 0.92fr) minmax(280px, 1.08fr);
   width: min(860px, 100%);
   min-height: 460px;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--si-login-sheet-border);
   box-shadow: var(--si-login-sheet-shadow);
@@ -445,7 +445,7 @@ async function onSubmit() {
 }
 
 .si-login__form :deep(.el-input__wrapper) {
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--si-login-input-bg);
   box-shadow: 0 0 0 1px var(--si-login-input-border) inset;
 }
@@ -467,7 +467,7 @@ async function onSubmit() {
 .si-login__submit {
   margin-top: 0.35rem;
   width: 100%;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 1rem;
   font-weight: 700;
   --el-button-bg-color: var(--si-login-btn);
