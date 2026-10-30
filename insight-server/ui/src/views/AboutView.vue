@@ -1,15 +1,15 @@
 <template>
   <div class="si-page fade-in si-about">
-    <SiPageHeader class="mb-1" title="关于" icon="InfoFilled">
+    <SiPageHeader class="si-about__header" title="关于" icon="InfoFilled">
       <el-tag type="info" effect="plain" size="small" round>
-        <i class="fa fa-clock me-1" aria-hidden="true"></i>{{ currentTime }}
+        <el-icon class="si-about__icon--me-1"><Clock /></el-icon>{{ currentTime }}
       </el-tag>
     </SiPageHeader>
 
     <div class="si-about__info">
       <el-card class="si-about__card" shadow="never" aria-label="项目信息">
         <template #header>
-          <h3 class="si-about__card-title"><i class="fa fa-cube" aria-hidden="true"></i>项目信息</h3>
+          <h3 class="si-about__card-title"><el-icon><Box /></el-icon>项目信息</h3>
         </template>
         <dl class="si-about__dl">
           <div>
@@ -41,7 +41,7 @@
       </el-card>
       <el-card class="si-about__card" shadow="never" aria-label="系统信息">
         <template #header>
-          <h3 class="si-about__card-title"><i class="fa fa-server" aria-hidden="true"></i>系统信息</h3>
+          <h3 class="si-about__card-title"><el-icon><Monitor /></el-icon>系统信息</h3>
         </template>
         <dl class="si-about__dl">
           <div>
@@ -64,7 +64,7 @@
             <dt>GitHub</dt>
             <dd>
               <a href="https://github.com/iweidujiang/spring-insight" target="_blank" rel="noopener noreferrer">
-                <i class="fa fa-github me-1" aria-hidden="true"></i>iweidujiang/spring-insight
+                <el-icon class="si-about__icon--me-1"><Link /></el-icon>iweidujiang/spring-insight
               </a>
             </dd>
           </div>
@@ -82,7 +82,7 @@
     <el-card class="si-about__demo" shadow="never" aria-label="演示路径">
       <template #header>
         <div class="si-about__demo-head">
-          <h5 class="mb-0"><i class="fa fa-play-circle me-2" aria-hidden="true"></i>三分钟演示路径</h5>
+          <h5 class="si-about__demo-title"><el-icon class="si-about__icon--me-2"><VideoPlay /></el-icon>三分钟演示路径</h5>
           <span class="si-about__demo-sub">配套 Agent 开启 JDBC / Redis 追踪更完整</span>
         </div>
       </template>
@@ -100,6 +100,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { Clock, Box, Monitor, Link, VideoPlay } from '@element-plus/icons-vue'
 import axios from 'axios'
 import SiPageHeader from '../components/SiPageHeader.vue'
 
@@ -153,6 +154,18 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.si-about__header {
+  margin-bottom: 0.5rem;
+}
+
+.si-about__icon--me-1 {
+  margin-right: 0.25rem;
+}
+
+.si-about__icon--me-2 {
+  margin-right: 0.5rem;
+}
+
 .si-about__info {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -191,7 +204,7 @@ onUnmounted(() => {
   color: var(--si-ink);
 }
 
-.si-about__card-title .fa {
+.si-about__card-title .el-icon {
   color: var(--si-brand);
   font-size: 0.95rem;
 }
@@ -360,6 +373,14 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 0.75rem;
   color: var(--si-ink);
+}
+
+.si-about__demo-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
 }
 
 .si-about__demo-sub {
