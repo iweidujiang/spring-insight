@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { QuestionFilled } from '@element-plus/icons-vue'
 
 const open = ref(false)
 const rootEl = ref<HTMLElement | null>(null)
@@ -28,7 +29,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
       aria-label="什么是 p50 / p95"
       @click.stop="toggle"
     >
-      <i class="fa fa-question-circle"></i>
+      <el-icon><QuestionFilled /></el-icon>
     </button>
     <div v-if="open" class="si-px-help__panel" role="dialog" aria-label="延迟百分位说明">
       <p class="si-px-help__title">p50 / p95 是什么？</p>

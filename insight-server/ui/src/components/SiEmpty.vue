@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineProps<{
-  /** Font Awesome 类，如 fa-database。行内图标，不放进方块 */
-  icon?: string
+  /** Element Plus 图标组件 */
+  icon?: any
 }>()
 </script>
 
@@ -9,7 +9,7 @@ defineProps<{
   <!-- description 置空：正文与操作按钮走默认插槽，避免按钮落在 description 区 -->
   <el-empty class="si-empty" description=" " :image-size="56">
     <template v-if="icon" #image>
-      <i class="fa si-empty__icon" :class="icon" aria-hidden="true"></i>
+      <el-icon class="si-empty__icon"><component :is="icon" /></el-icon>
     </template>
     <div class="si-empty__body">
       <slot />

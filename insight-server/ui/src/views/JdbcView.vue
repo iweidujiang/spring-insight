@@ -52,7 +52,7 @@
         </div>
       </section>
 
-      <SiEmpty v-if="summary.kpis.spanCount === 0" icon="fa-database">
+      <SiEmpty v-if="summary.kpis.spanCount === 0" :icon="Coin">
         <p class="si-jdbc-empty__text">{{ emptyInRangeShort(hours, 'JDBC 调用') }}</p>
         <p v-if="selectedService" class="si-jdbc-empty__hint">
           当前按业务服务「{{ selectedService }}」筛选。JDBC Span 记在<strong>执行 SQL 的服务</strong>上
@@ -117,7 +117,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { InfoFilled } from '@element-plus/icons-vue'
+import { InfoFilled, Coin } from '@element-plus/icons-vue'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import SiEmpty from '../components/SiEmpty.vue'
