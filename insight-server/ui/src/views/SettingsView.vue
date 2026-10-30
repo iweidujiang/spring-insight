@@ -1,6 +1,6 @@
 <template>
   <div class="si-page fade-in si-settings">
-    <SiPageHeader class="mb-3" title="设置" icon="Setting">
+    <SiPageHeader class="si-settings__header" title="设置" icon="Setting">
       <el-button
         v-if="section !== 'data' && section !== 'slo'"
         type="primary"
@@ -8,14 +8,14 @@
         :disabled="loading || saving"
         @click="onSave"
       >
-        <i v-if="!saving" class="fa fa-save me-1" aria-hidden="true"></i>
+        <el-icon v-if="!saving" class="si-icon--me-1"><DocumentChecked /></el-icon>
         {{ saving ? '保存中…' : '保存并生效' }}
       </el-button>
     </SiPageHeader>
 
     <el-alert
       v-if="message"
-      class="mb-3"
+      class="si-settings__alert"
       :type="messageOk ? 'success' : 'error'"
       :title="message"
       :closable="false"
@@ -39,7 +39,7 @@
           @click="section = item.id"
         >
           <span class="si-settings__tab-icon" aria-hidden="true">
-            <i class="fa" :class="item.icon"></i>
+            <el-icon><component :is="item.icon" /></el-icon>
           </span>
           <span class="si-settings__tab-text">
             <strong>{{ item.label }}</strong>
@@ -53,7 +53,7 @@
         <section v-show="section === 'alert'" class="si-settings__card">
           <header class="si-settings__card-head">
             <div>
-              <h3 class="si-settings__card-title"><i class="fa fa-bell me-2"></i>告警推送</h3>
+              <h3 class="si-settings__card-title"><el-icon class="si-icon--me-2"><Bell /></el-icon>告警推送</h3>
               <p class="si-settings__card-desc">
                 按下面条件扫描，全部满足时按启用的渠道发送；可同时配置多个渠道。
               </p>
@@ -63,7 +63,7 @@
 
           <div class="si-conditions">
             <div class="si-conditions__head">
-              <h4 class="si-settings__block-title"><i class="fa fa-filter me-2"></i>触发条件</h4>
+              <h4 class="si-settings__block-title"><el-icon class="si-icon--me-2"><Filter /></el-icon>触发条件</h4>
               <p class="si-settings__block-desc">多条条件之间为「且」：全部成立才推送。</p>
             </div>
             <div
@@ -115,13 +115,13 @@
                   :title="form.alert.conditions.length <= 1 ? '至少保留一条条件' : '删除条件'"
                   @click="removeCondition(index)"
                 >
-                  <i class="fa fa-trash" aria-hidden="true"></i>
+                  <el-icon><Delete /></el-icon>
                   <span class="visually-hidden">删除</span>
                 </el-button>
               </div>
             </div>
             <el-button size="small" class="si-conditions__add" @click="addCondition">
-              <i class="fa fa-plus me-1" aria-hidden="true"></i>添加条件
+              <el-icon class="si-icon--me-1"><Plus /></el-icon>添加条件
             </el-button>
           </div>
 
@@ -155,7 +155,7 @@
 
           <SiFormBlock
             title="告警升级"
-            icon="fa-level-up"
+            :icon="TopRight"
             description="持续未恢复超过设定时长后，向指定渠道再发一次升级通知（同一告警只升一次）。"
           >
             <template #switch>
@@ -170,7 +170,7 @@
               />
             </SiFormField>
             <SiFormField label="升级渠道" field-id="esc-channel" span="wide">
-              <el-select id="esc-channel" v-model="form.alert.escalation!.channelId" clearable placeholder="请选择渠道" class="w-100">
+              <el-select id="esc-channel" v-model="form.alert.escalation!.channelId" clearable placeholder="请选择渠道" class="si-settings__select--full">
                 <el-option
                   v-for="ch in channels"
                   :key="'esc-' + ch.id"
@@ -183,14 +183,14 @@
 
           <div class="si-channels">
             <div class="si-channels__head">
-              <h4 class="si-settings__block-title"><i class="fa fa-share-alt me-2"></i>通知渠道</h4>
+              <h4 class="si-settings__block-title"><el-icon class="si-icon--me-2"><Share /></el-icon>通知渠道</h4>
               <p class="si-settings__block-desc">钉钉、飞书需 Webhook 和加签密钥；企业微信只需 Webhook；通用 Webhook 可另填令牌。</p>
             </div>
             <article v-for="channel in channels" :key="channel.id" class="si-channel">
               <div class="si-channel__head">
                 <button type="button" class="si-channel__toggle" @click="toggleChannel(channel.id)">
-                  <i class="fa" :class="openChannels[channel.id] ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-                  <i class="fa" :class="channelIcon(channel.type)"></i>
+                  <el-icon><ArrowDown v-if="openChannels[channel.id]" /><ArrowRight v-else /></el-icon>
+                  <el-icon><component :is="channelIcon(channel.type)" /></el-icon>
                   <strong>{{ channel.name }}</strong>
                 </button>
                 <SiSwitchField :id="'channel-enabled-' + channel.id" v-model="channel.enabled" label="启用" flush />
@@ -213,7 +213,7 @@
                   </SiFormField>
                   <SiFormField label="密码" :field-id="'smtp-pass-' + channel.id">
                     <template v-if="channel.passwordConfigured" #hint>
-                      <span class="text-muted small">（已配置，留空不改）</span>
+                      <span class="si-settings__hint">（已配置，留空不改）</span>
                     </template>
                     <el-input
                       :id="'smtp-pass-' + channel.id"
@@ -241,7 +241,7 @@
                   </SiFormField>
                   <SiFormField v-if="channel.type === 'dingtalk' || channel.type === 'feishu'" label="加签密钥" :field-id="'secret-' + channel.id" span="wide">
                     <template v-if="channel.secretConfigured" #hint>
-                      <span class="text-muted small">（已配置，留空不改）</span>
+                      <span class="si-settings__hint">（已配置，留空不改）</span>
                     </template>
                     <el-input
                       :id="'secret-' + channel.id"
@@ -254,7 +254,7 @@
                   </SiFormField>
                   <SiFormField v-if="channel.type === 'webhook'" label="令牌（可选）" :field-id="'token-' + channel.id" span="wide">
                     <template v-if="channel.tokenConfigured" #hint>
-                      <span class="text-muted small">（已配置，留空不改）</span>
+                      <span class="si-settings__hint">（已配置，留空不改）</span>
                     </template>
                     <el-input
                       :id="'token-' + channel.id"
@@ -271,10 +271,10 @@
                 </template>
                 <div class="si-channel__actions">
                   <el-button size="small" :loading="testingId === channel.id" @click="testChannel(channel, false)">
-                    <i v-if="testingId !== channel.id" class="fa fa-eye me-1" aria-hidden="true"></i>预览
+                    <el-icon v-if="testingId !== channel.id" class="si-icon--me-1"><View /></el-icon>预览
                   </el-button>
                   <el-button type="primary" plain size="small" :loading="testingId === channel.id" @click="testChannel(channel, true)">
-                    <i v-if="testingId !== channel.id" class="fa fa-paper-plane me-1" aria-hidden="true"></i>测试发送
+                    <el-icon v-if="testingId !== channel.id" class="si-icon--me-1"><Promotion /></el-icon>测试发送
                   </el-button>
                 </div>
                 <pre v-if="channelResults[channel.id]" class="si-settings__preview">{{ channelResults[channel.id] }}</pre>
@@ -287,7 +287,7 @@
         <section v-show="section === 'ai'" class="si-settings__card">
           <header class="si-settings__card-head">
             <div>
-              <h3 class="si-settings__card-title"><i class="fa fa-magic me-2"></i>AI 解读</h3>
+              <h3 class="si-settings__card-title"><el-icon class="si-icon--me-2"><MagicStick /></el-icon>AI 解读</h3>
               <p class="si-settings__card-desc">
                 对接 OpenAI 兼容接口。解读含摘要、可点证据与建议；可选在告警推送时附带短解读。
               </p>
@@ -302,12 +302,12 @@
           >
             <span class="si-settings__ai-badge">{{ aiDraftLabel }}</span>
             <div class="si-settings__ai-status-body">
-              <p class="mb-0">{{ aiDraftReason }}</p>
-              <p v-if="form.ai.model" class="mb-0 si-settings__ai-model">
+              <p class="si-settings__text--no-mb">{{ aiDraftReason }}</p>
+              <p v-if="form.ai.model" class="si-settings__text--no-mb si-settings__ai-model">
                 当前模型：<code>{{ form.ai.model }}</code>
                 <template v-if="form.ai.provider"> · {{ form.ai.provider }}</template>
               </p>
-              <p v-if="aiServerReason && aiServerReason !== aiDraftReason" class="mb-0 text-muted small">
+              <p v-if="aiServerReason && aiServerReason !== aiDraftReason" class="si-settings__text--no-mb si-settings__hint">
                 已保存状态{{ aiServerLabel ? `（${aiServerLabel}）` : '' }}：{{ aiServerReason }}
               </p>
             </div>
@@ -325,7 +325,7 @@
             </SiFormField>
             <SiFormField label="API Key" field-id="ai-key" span="full">
               <template v-if="apiKeyConfigured" #hint>
-                <span class="text-muted small">（已配置，留空不改）</span>
+                <span class="si-settings__hint">（已配置，留空不改）</span>
               </template>
               <el-input
                 id="ai-key"
@@ -348,7 +348,7 @@
             <SiFormField span="full">
               <SiSwitchField id="ai-attach-alerts" v-model="form.ai.attachToAlerts" label="告警附带 AI 解读" />
               <template #note>
-                <p class="form-text mb-0">开启后，Webhook / 邮件会附带短摘要与建议（须同时启用 AI；失败不阻断推送）。</p>
+                <p class="si-settings__form-text">开启后，Webhook / 邮件会附带短摘要与建议（须同时启用 AI；失败不阻断推送）。</p>
               </template>
             </SiFormField>
             <SiFormField label="告警 AI 每小时上限" field-id="ai-alert-max">
@@ -368,7 +368,7 @@
                 :min="1"
               />
               <template #note>
-                <p class="form-text mb-0">仪表盘「时段摘要 → AI 小结」按钮触发；超出后本小时内降级，不调模型。</p>
+                <p class="si-settings__form-text">仪表盘「时段摘要 → AI 小结」按钮触发；超出后本小时内降级，不调模型。</p>
               </template>
             </SiFormField>
           </el-form>
@@ -381,7 +381,7 @@
         <section v-show="section === 'slo'" class="si-settings__card">
           <header class="si-settings__card-head">
             <div>
-              <h3 class="si-settings__card-title"><i class="fa fa-bullseye me-2"></i>服务 SLO</h3>
+              <h3 class="si-settings__card-title"><el-icon class="si-icon--me-2"><Aim /></el-icon>服务 SLO</h3>
               <p class="si-settings__card-desc">
                 按服务设定可用性目标与观察窗口，控制台据此计算错误预算；配置写入本机 runtime-settings.json。
               </p>
@@ -411,7 +411,7 @@
                 :step="0.0001"
                 placeholder="0.999"
               />
-              <p class="si-settings__hint mb-0">例如 0.999 = 99.9%</p>
+              <p class="si-settings__hint">例如 0.999 = 99.9%</p>
             </SiFormField>
             <SiFormField label="窗口（小时）" field-id="slo-window">
               <el-input
@@ -421,17 +421,17 @@
                 :min="1"
                 placeholder="720"
               />
-              <p class="si-settings__hint mb-0">默认 720（约 30 天）</p>
+              <p class="si-settings__hint">默认 720（约 30 天）</p>
             </SiFormField>
           </el-form>
-          <div class="d-flex gap-2 mb-3">
+          <div class="si-settings__btn-row">
             <el-button
               type="primary"
               :loading="sloSaving"
               :disabled="sloSaving || !sloDraft.serviceName.trim()"
               @click="saveSloDraft"
             >
-              <i v-if="!sloSaving" class="fa fa-plus me-1" aria-hidden="true"></i>
+              <el-icon v-if="!sloSaving" class="si-icon--me-1"><Plus /></el-icon>
               {{ sloEditing ? '更新 SLO' : '添加 SLO' }}
             </el-button>
             <el-button
@@ -443,12 +443,12 @@
             </el-button>
           </div>
 
-          <div v-if="!sloRows.length" class="text-muted small">尚未配置 SLO，添加后可在仪表盘查看错误预算。</div>
-          <ul v-else class="si-settings__slo-list list-unstyled mb-0">
+          <div v-if="!sloRows.length" class="si-settings__hint">尚未配置 SLO，添加后可在仪表盘查看错误预算。</div>
+          <ul v-else class="si-settings__slo-list">
             <li v-for="row in sloRows" :key="row.serviceName" class="si-settings__slo-item">
               <div>
                 <strong>{{ row.serviceName }}</strong>
-                <span class="text-muted ms-2">
+                <span class="si-settings__text--muted">
                   目标 {{ (row.targetAvailability * 100).toFixed(2) }}% · 窗口 {{ row.windowHours }}h
                 </span>
               </div>
@@ -464,7 +464,7 @@
         <section v-show="section === 'data'" class="si-settings__card si-settings__card--danger">
           <header class="si-settings__card-head">
             <div>
-              <h3 class="si-settings__card-title"><i class="fa fa-database me-2"></i>容量与保留</h3>
+              <h3 class="si-settings__card-title"><el-icon class="si-icon--me-2"><Coin /></el-icon>容量与保留</h3>
               <p class="si-settings__card-desc">
                 查看占用与自动保留策略，并按范围删除 Span。清除不可恢复；按服务精确匹配时，相关 Trace 可能不完整。
               </p>
@@ -474,7 +474,7 @@
           <div class="si-settings__capacity">
             <el-alert
               v-if="capacityWarn"
-              class="mb-2"
+              class="si-settings__alert--sm"
               :type="usagePercent >= 95 ? 'error' : 'warning'"
               :title="capacityWarn"
               :closable="false"
@@ -602,11 +602,11 @@
       @close="closeClearDialog"
     >
       <p>{{ clearDialog.body }}</p>
-      <p class="si-confirm__warn mb-0">此操作不可恢复</p>
+      <p class="si-confirm__warn">此操作不可恢复</p>
       <template #footer>
         <el-button :disabled="clearing" @click="closeClearDialog">取消</el-button>
         <el-button type="danger" :loading="clearing" @click="runClear">
-          <i v-if="!clearing" class="fa fa-trash me-1" aria-hidden="true"></i>
+          <el-icon v-if="!clearing" class="si-icon--me-1"><Delete /></el-icon>
           {{ clearing ? '清理中…' : '确认清理' }}
         </el-button>
       </template>
@@ -617,6 +617,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  Check, Bell, Filter, Delete, Plus, TopRight, Share, ArrowDown, ArrowRight,
+  View, Promotion, MagicStick, Aim, Coin, DocumentChecked,
+  Message, ChatDotRound, ChatDotSquare, Link
+} from '@element-plus/icons-vue'
 import SiFormBlock from '../components/SiFormBlock.vue'
 import SiFormField from '../components/SiFormField.vue'
 import SiLoading from '../components/SiLoading.vue'
@@ -634,11 +639,11 @@ import { capacityWarnMessage } from '../utils/timeRange'
 type SettingsSection = 'alert' | 'ai' | 'slo' | 'data'
 type ClearScope = 'all' | 'older_than' | 'service'
 
-const sections: { id: SettingsSection; label: string; icon: string; desc: string }[] = [
-  { id: 'alert', label: '告警推送', icon: 'fa-bell', desc: '扫描规则与通知渠道' },
-  { id: 'ai', label: 'AI 解读', icon: 'fa-magic', desc: '配置模型，解读链路与错误' },
-  { id: 'slo', label: '服务 SLO', icon: 'fa-bullseye', desc: '可用性目标与错误预算' },
-  { id: 'data', label: '容量与保留', icon: 'fa-database', desc: '占用、保留策略与清理' }
+const sections: { id: SettingsSection; label: string; icon: any; desc: string }[] = [
+  { id: 'alert', label: '告警推送', icon: Bell, desc: '扫描规则与通知渠道' },
+  { id: 'ai', label: 'AI 解读', icon: MagicStick, desc: '配置模型，解读链路与错误' },
+  { id: 'slo', label: '服务 SLO', icon: Aim, desc: '可用性目标与错误预算' },
+  { id: 'data', label: '容量与保留', icon: Coin, desc: '占用、保留策略与清理' }
 ]
 
 const route = useRoute()
@@ -813,11 +818,11 @@ function blankChannel(type: ChannelType): ChannelDraft {
 channels.value = CHANNEL_TYPES.map((type) => blankChannel(type))
 
 function channelIcon(type: ChannelType) {
-  if (type === 'email') return 'fa-envelope'
-  if (type === 'dingtalk') return 'fa-commenting'
-  if (type === 'feishu') return 'fa-paper-plane'
-  if (type === 'wecom') return 'fa-weixin'
-  return 'fa-link'
+  if (type === 'email') return Message
+  if (type === 'dingtalk') return ChatDotRound
+  if (type === 'feishu') return Promotion
+  if (type === 'wecom') return ChatDotSquare
+  return Link
 }
 
 function toggleChannel(id: string) {
@@ -1279,6 +1284,56 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.si-settings__header {
+  margin-bottom: 0.75rem;
+}
+
+.si-settings__alert {
+  margin-bottom: 0.75rem;
+}
+
+.si-settings__alert--sm {
+  margin-bottom: 0.5rem;
+}
+
+.si-settings__hint {
+  font-size: 0.85rem;
+  color: var(--si-muted);
+}
+
+.si-settings__text--no-mb {
+  margin-bottom: 0;
+}
+
+.si-settings__text--muted {
+  color: var(--si-muted);
+  margin-left: 0.5rem;
+}
+
+.si-settings__form-text {
+  font-size: 0.85rem;
+  color: var(--si-muted);
+  margin-bottom: 0;
+}
+
+.si-settings__btn-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.si-settings__select--full {
+  width: 100%;
+}
+
+.si-icon--me-1 {
+  margin-right: 0.25rem;
+}
+
+.si-icon--me-2 {
+  margin-right: 0.5rem;
+}
+
 .si-settings__tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1330,14 +1385,14 @@ onUnmounted(() => {
 }
 
 .si-settings__tab:hover {
-  border-color: rgba(15, 118, 110, 0.28);
-  background: rgba(15, 118, 110, 0.04);
+  border-color: rgba(0, 184, 212, 0.28);
+  background: rgba(0, 184, 212, 0.04);
 }
 
 .si-settings__tab.is-active {
-  border-color: rgba(15, 118, 110, 0.45);
-  background: rgba(15, 118, 110, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.12);
+  border-color: rgba(0, 184, 212, 0.45);
+  background: rgba(0, 184, 212, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(0, 184, 212, 0.12);
 }
 
 .si-settings__tab.is-danger.is-active {
@@ -1389,6 +1444,7 @@ onUnmounted(() => {
   border-radius: 12px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
+  box-shadow: var(--box-shadow);
 }
 
 .si-settings__card--danger {
@@ -1633,8 +1689,8 @@ onUnmounted(() => {
 }
 
 .si-settings__ai-status.is-ready {
-  border-color: rgba(15, 118, 110, 0.35);
-  background: rgba(15, 118, 110, 0.08);
+  border-color: rgba(0, 184, 212, 0.35);
+  background: rgba(0, 184, 212, 0.08);
 }
 
 .si-settings__ai-status.is-blocked {
@@ -1655,7 +1711,7 @@ onUnmounted(() => {
 }
 
 .si-settings__ai-status.is-ready .si-settings__ai-badge {
-  background: rgba(15, 118, 110, 0.18);
+  background: rgba(0, 184, 212, 0.18);
   color: #0f766e;
 }
 
@@ -1914,7 +1970,7 @@ onUnmounted(() => {
 }
 
 .si-confirm__warn {
-  margin: 0 0 1.15rem;
+  margin: 0 0 0;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.04em;
