@@ -421,6 +421,7 @@ const topologyOpts = () => ({
   theme: chartColors.value,
   healthByService: healthByService.value,
   errorCountByService: errorCountByService(),
+  darkTechStyle: true,
   ...highlightOpts()
 })
 
@@ -892,10 +893,8 @@ onUnmounted(() => {
   position: relative;
   overflow: hidden;
   border-radius: 8px;
-  background:
-    radial-gradient(ellipse at center, rgba(0, 184, 212, 0.06) 0%, transparent 65%),
-    var(--si-paper);
-  border: 1px solid var(--card-border);
+  background: #0a0e27;
+  border: 1px solid rgba(56, 189, 248, 0.2);
 }
 
 .si-topo-canvas {

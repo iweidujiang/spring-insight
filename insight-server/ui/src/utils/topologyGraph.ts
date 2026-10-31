@@ -90,6 +90,8 @@ export function buildTopologyOption(
     errorCountByService?: Record<string, number>
     highlight?: TopologyHighlight
     theme?: ChartThemeColors
+    /** 是否启用深色科技风 */
+    darkTechStyle?: boolean
   } = {}
 ): EChartsOption {
   const compact = opts.compact === true
@@ -98,6 +100,7 @@ export function buildTopologyOption(
   const healthBy = opts.healthByService
   const healthEnabled = healthBy != null
   const errorBy = opts.errorCountByService || {}
+  const darkTech = opts.darkTechStyle !== false // 默认启用
   const callCounts = new Map<string, number>()
   const links: Array<Record<string, unknown>> = []
 
@@ -108,6 +111,17 @@ export function buildTopologyOption(
       !!highlight.edge &&
       highlight.edge.source === dep.sourceService &&
       highlight.edge.target === dep.targetService
+    
+    // 连线颜色：按状态区分
+    let edgeColor = darkTech ? 'rgba(56, 189, 248, 0.6)' : theme.muted
+    if (edgeHit) {
+      edgeColor = theme.brand
+    } else if (dep.avgDuration && dep.avgDuration > 1000) {
+      edgeColor = darkTech ? 'rgba(239, 68, 68, 0.8)' : theme.danger // 慢调用 - 红色
+    } else if (dep.avgDuration && dep.avgDuration > 500) {
+      edgeColor = darkTech ? 'rgba(245, 158, 11, 0.7)' : theme.warning // 较慢 - 橙色
+    }
+    
     links.push({
       source: dep.sourceService,
       target: dep.targetService,
@@ -117,12 +131,12 @@ export function buildTopologyOption(
         show: !compact || dependencies.length <= 12,
         formatter: `${dep.callCount}`,
         fontSize: compact ? 10 : 11,
-        color: edgeHit ? theme.brand : theme.inkSoft,
+        color: edgeHit ? theme.brand : (darkTech ? 'rgba(255,255,255,0.7)' : theme.inkSoft),
         fontWeight: edgeHit ? 700 : 500,
-        backgroundColor: theme.surface,
-        padding: [2, 4],
-        borderRadius: 3,
-        borderColor: theme.axisLine,
+        backgroundColor: darkTech ? 'rgba(15, 23, 42, 0.8)' : theme.surface,
+        padding: [2, 6],
+        borderRadius: 4,
+        borderColor: darkTech ? 'rgba(56, 189, 248, 0.3)' : theme.axisLine,
         borderWidth: 1
       },
       lineStyle: {
@@ -131,8 +145,13 @@ export function buildTopologyOption(
           Math.min(compact ? 4 : 5, 1 + Math.log2(dep.callCount + 1))
         ) + (edgeHit ? 1.5 : 0),
         curveness: 0.16,
-        color: edgeHit ? theme.brand : theme.muted,
-        opacity: edgeHit ? 1 : highlight.edge || highlight.node ? 0.35 : 0.9
+        color: edgeColor,
+        opacity: edgeHit ? 1 : highlight.edge || highlight.node ? 0.35 : 0.9,
+        // 流动动画效果
+        ...(darkTech ? {
+          type: 'dashed' as const,
+          dashOffset: 0
+        } : {})
       }
     })
   })
@@ -159,32 +178,57 @@ export function buildTopologyOption(
       index,
       healthEnabled
     )
+    
+    // 3D 立体节点效果
+    const baseSize = Math.max(
+      compact ? 34 : 42,
+      Math.min(compact ? 54 : 68, 16 + Math.sqrt(value) * (compact ? 4.5 : 6.5))
+    ) + (nodeHit ? 6 : 0)
+    
     return {
       name,
       value,
       healthScore: health?.score,
       healthLevel: health?.level,
       errorCount,
-      symbolSize: Math.max(
-        compact ? 34 : 42,
-        Math.min(compact ? 54 : 68, 16 + Math.sqrt(value) * (compact ? 4.5 : 6.5))
-      ) + (nodeHit ? 6 : 0),
+      symbolSize: baseSize,
+      symbol: 'roundRect', // 使用圆角矩形模拟 3D 方块
       itemStyle: {
-        color,
-        borderColor: nodeHit || onSelectedEdge ? theme.brand : theme.surface,
+        color: {
+          type: 'linear' as const,
+          x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: darkTech ? lightenColor(color, 30) : color },
+            { offset: 1, color: darkTech ? darkenColor(color, 20) : color }
+          ]
+        },
+        borderColor: nodeHit || onSelectedEdge ? theme.brand : (darkTech ? 'rgba(255,255,255,0.2)' : theme.surface),
         borderWidth: nodeHit ? 3 : 2,
-        shadowBlur: nodeHit ? 14 : 8,
-        shadowColor: nodeHit ? 'rgba(45, 212, 191, 0.4)' : 'rgba(21, 36, 31, 0.18)',
-        opacity: dimmed ? 0.35 : 1
+        // 发光效果
+        shadowBlur: nodeHit ? 20 : (darkTech ? 15 : 8),
+        shadowColor: nodeHit 
+          ? 'rgba(45, 212, 191, 0.6)' 
+          : (darkTech ? color + '80' : 'rgba(21, 36, 31, 0.18)'),
+        opacity: dimmed ? 0.35 : 1,
+        // 3D 效果：顶部高光
+        ...(darkTech ? {
+          shadowOffsetX: 0,
+          shadowOffsetY: 4
+        } : {})
       },
       label: {
         show: true,
         position: 'bottom' as const,
-        distance: 6,
+        distance: 8,
         formatter: '{b}',
         fontSize: compact ? 10 : nodeHit ? 13 : 12,
         fontWeight: nodeHit ? 700 : 600,
-        color: dimmed ? theme.muted : theme.ink
+        color: dimmed ? theme.muted : (darkTech ? 'rgba(255,255,255,0.9)' : theme.ink),
+        // 文字阴影增强可读性
+        ...(darkTech ? {
+          textShadowColor: 'rgba(0,0,0,0.8)',
+          textShadowBlur: 4
+        } : {})
       }
     }
   })
@@ -194,13 +238,13 @@ export function buildTopologyOption(
   const zoom = solo ? (compact ? 0.72 : 0.78) : zoomForNodes(nodes.length, compact)
 
   return {
-    backgroundColor: 'transparent',
-    textStyle: { color: theme.muted },
+    backgroundColor: darkTech ? '#0a0e27' : 'transparent',
+    textStyle: { color: darkTech ? 'rgba(255,255,255,0.7)' : theme.muted },
     tooltip: {
       trigger: 'item',
-      backgroundColor: theme.tooltipBg,
-      borderColor: theme.tooltipBorder,
-      textStyle: { color: theme.tooltipText },
+      backgroundColor: darkTech ? 'rgba(15, 23, 42, 0.95)' : theme.tooltipBg,
+      borderColor: darkTech ? 'rgba(56, 189, 248, 0.3)' : theme.tooltipBorder,
+      textStyle: { color: darkTech ? '#fff' : theme.tooltipText },
       formatter: (params: any) => {
         if (params.dataType === 'edge' || params.data?.source != null) {
           const d = params.data
@@ -225,7 +269,7 @@ export function buildTopologyOption(
           top: 'center',
           style: {
             text: '暂无服务数据\n请确认 Agent 已上报，或扩大时间范围',
-            fill: theme.muted,
+            fill: darkTech ? 'rgba(255,255,255,0.5)' : theme.muted,
             fontSize: 13,
             textAlign: 'center',
             lineHeight: 22
@@ -238,7 +282,7 @@ export function buildTopologyOption(
             top: compact ? 8 : 12,
             style: {
               text: '当前为单应用监控（暂无跨服务调用边）· 点击节点可选中',
-              fill: theme.muted,
+              fill: darkTech ? 'rgba(255,255,255,0.5)' : theme.muted,
               fontSize: 12,
               textAlign: 'center'
             }
@@ -282,6 +326,26 @@ function levelLabel(level: string): string {
     default:
       return level
   }
+}
+
+/** 颜色变亮 */
+function lightenColor(color: string, percent: number): string {
+  const num = parseInt(color.replace('#', ''), 16)
+  const amt = Math.round(2.55 * percent)
+  const R = Math.min(255, (num >> 16) + amt)
+  const G = Math.min(255, ((num >> 8) & 0x00FF) + amt)
+  const B = Math.min(255, (num & 0x0000FF) + amt)
+  return `#${((1 << 24) + (R << 16) + (G << 8) + B).toString(16).slice(1)}`
+}
+
+/** 颜色变暗 */
+function darkenColor(color: string, percent: number): string {
+  const num = parseInt(color.replace('#', ''), 16)
+  const amt = Math.round(2.55 * percent)
+  const R = Math.max(0, (num >> 16) - amt)
+  const G = Math.max(0, ((num >> 8) & 0x00FF) - amt)
+  const B = Math.max(0, (num & 0x0000FF) - amt)
+  return `#${((1 << 24) + (R << 16) + (G << 8) + B).toString(16).slice(1)}`
 }
 
 /** 解析拓扑图点击：节点 → 该服务；边 → 调用方（source）与被调方 */

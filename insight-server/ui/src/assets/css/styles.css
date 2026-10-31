@@ -715,9 +715,6 @@ samp {
 .si-main--page {
   padding-top: 1.15rem;
   overflow-y: auto;
-  max-width: 1400px;
-  margin-left: auto;
-  margin-right: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
