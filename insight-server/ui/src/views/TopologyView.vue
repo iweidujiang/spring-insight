@@ -765,8 +765,8 @@ onUnmounted(() => {
 .si-topo-text--danger { color: var(--danger-color) !important; }
 .si-topo-text--warning { color: var(--warning-color) !important; }
 .si-topo-text--success { color: var(--success-color) !important; }
-.si-topo-text--muted { color: var(--si-muted) !important; }
-.si-topo-cell--center { text-align: center; color: var(--si-muted); }
+.si-topo-text--muted { color: rgba(255,255,255,0.5) !important; }
+.si-topo-cell--center { text-align: center; color: rgba(255,255,255,0.5); }
 .si-topo-btn--block { width: 100%; }
 
 .si-topo-stage__toolbar {
@@ -835,7 +835,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 0.25rem 0.4rem;
   font-size: 0.72rem;
-  color: var(--si-muted);
+  color: rgba(255,255,255,0.6);
 }
 
 .si-topo-legend__swatches {
@@ -1021,9 +1021,8 @@ onUnmounted(() => {
 
 .si-topo-fold {
   border-radius: 10px;
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  box-shadow: var(--box-shadow);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: rgba(15, 23, 42, 0.6);
   padding: 0 0.95rem 0.85rem;
 }
 
@@ -1033,7 +1032,7 @@ onUnmounted(() => {
   padding: 0.75rem 0;
   font-size: 0.9rem;
   font-weight: 700;
-  color: var(--si-ink);
+  color: rgba(255,255,255,0.9);
   user-select: none;
 }
 
@@ -1046,7 +1045,7 @@ onUnmounted(() => {
   display: inline-block;
   width: 0;
   height: 0;
-  border-left: 0.4rem solid var(--si-muted);
+  border-left: 0.4rem solid rgba(255,255,255,0.5);
   border-top: 0.3rem solid transparent;
   border-bottom: 0.3rem solid transparent;
   margin-right: 0.45rem;
