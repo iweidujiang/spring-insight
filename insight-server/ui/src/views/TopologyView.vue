@@ -808,11 +808,7 @@ onUnmounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 0.85rem 0.95rem 0.95rem;
-  border-radius: 10px;
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  box-shadow: var(--box-shadow);
+  padding: 0;
   min-height: clamp(420px, 58vh, 680px);
 }
 
@@ -821,6 +817,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.75rem;
+  padding: 0.85rem 0.95rem 0;
   margin-bottom: 0.55rem;
   flex-shrink: 0;
 }
@@ -829,7 +826,7 @@ onUnmounted(() => {
   margin: 0 0 0.2rem;
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--si-ink);
+  color: rgba(255,255,255,0.9);
 }
 
 .si-topo-legend {
@@ -892,9 +889,7 @@ onUnmounted(() => {
   width: 100%;
   position: relative;
   overflow: hidden;
-  border-radius: 8px;
   background: #0a0e27;
-  border: 1px solid rgba(56, 189, 248, 0.2);
 }
 
 .si-topo-canvas {
@@ -920,9 +915,8 @@ onUnmounted(() => {
 .si-topo-rail {
   padding: 0.85rem 0.95rem 1rem;
   border-radius: 10px;
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  box-shadow: var(--box-shadow);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: rgba(15, 23, 42, 0.6);
   height: 100%;
 }
 
@@ -930,6 +924,7 @@ onUnmounted(() => {
   margin: 0 0 0.75rem;
   font-size: 0.9rem;
   font-weight: 700;
+  color: rgba(255,255,255,0.9);
 }
 
 .si-topo-rail__kicker {
@@ -946,7 +941,7 @@ onUnmounted(() => {
   font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--si-ink);
+  color: rgba(255,255,255,0.9);
   word-break: break-all;
 }
 
@@ -957,7 +952,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.4rem;
   font-weight: 700;
-  color: var(--si-ink);
+  color: rgba(255,255,255,0.9);
   word-break: break-all;
 }
 
@@ -1003,14 +998,14 @@ onUnmounted(() => {
   margin: 1.5rem 0 0;
   text-align: center;
   font-size: 0.88rem;
-  color: var(--si-muted);
+  color: rgba(255,255,255,0.5);
   line-height: 1.5;
 }
 
 .si-topo-rail__explain {
   margin-top: 0.85rem;
   padding-top: 0.75rem;
-  border-top: 1px dashed var(--card-border);
+  border-top: 1px dashed rgba(56, 189, 248, 0.2);
   text-align: left;
 }
 
