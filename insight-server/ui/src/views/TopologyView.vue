@@ -271,6 +271,7 @@ import SiPageHeader from '../components/SiPageHeader.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import type { SiColumn } from '../components/siTable'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
+import { useTheme } from '../composables/useTheme'
 import {
   buildTopologyOption,
   resolveTopologyClick,
@@ -292,6 +293,7 @@ import {
 
 const router = useRouter()
 const route = useRoute()
+const { effectiveTheme } = useTheme()
 const loading = ref(true)
 const loadError = ref('')
 const deeplinkHint = ref('')
@@ -421,7 +423,7 @@ const topologyOpts = () => ({
   theme: chartColors.value,
   healthByService: healthByService.value,
   errorCountByService: errorCountByService(),
-  darkTechStyle: true,
+  darkTechStyle: effectiveTheme.value === 'dark',
   ...highlightOpts()
 })
 
@@ -617,6 +619,10 @@ watch(() => chartColors.value, () => {
   updateChart()
 })
 
+watch(() => effectiveTheme.value, () => {
+  updateChart()
+})
+
 const fitToScreen = () => {
   if (!topologyChart) return
   topologyChart.setOption(buildTopologyOption(dependencies.value, topologyOpts()), { notMerge: true })
@@ -765,9 +771,12 @@ onUnmounted(() => {
 .si-topo-text--danger { color: var(--danger-color) !important; }
 .si-topo-text--warning { color: var(--warning-color) !important; }
 .si-topo-text--success { color: var(--success-color) !important; }
-.si-topo-text--muted { color: rgba(255,255,255,0.5) !important; }
-.si-topo-cell--center { text-align: center; color: rgba(255,255,255,0.5); }
+.si-topo-text--muted { color: var(--si-muted) !important; }
+.si-topo-cell--center { text-align: center; color: var(--si-muted); }
 .si-topo-btn--block { width: 100%; }
+
+:global([data-theme='dark']) .si-topo-text--muted { color: rgba(255,255,255,0.5) !important; }
+:global([data-theme='dark']) .si-topo-cell--center { color: rgba(255,255,255,0.5); }
 
 .si-topo-stage__toolbar {
   display: flex;
@@ -826,6 +835,10 @@ onUnmounted(() => {
   margin: 0 0 0.2rem;
   font-size: 0.95rem;
   font-weight: 700;
+  color: var(--si-ink);
+}
+
+:global([data-theme='dark']) .si-topo-stage__title {
   color: rgba(255,255,255,0.9);
 }
 
@@ -835,6 +848,10 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 0.25rem 0.4rem;
   font-size: 0.72rem;
+  color: var(--si-muted);
+}
+
+:global([data-theme='dark']) .si-topo-legend {
   color: rgba(255,255,255,0.6);
 }
 
@@ -889,7 +906,11 @@ onUnmounted(() => {
   width: 100%;
   position: relative;
   overflow: hidden;
-  background: #0a0e27;
+  background: var(--si-topo-canvas-bg, #0a0e27);
+}
+
+:global([data-theme='light']) .si-topo-canvas-wrap {
+  background: #f0f4f8;
 }
 
 .si-topo-canvas {
@@ -915,15 +936,24 @@ onUnmounted(() => {
 .si-topo-rail {
   padding: 0.85rem 0.95rem 1rem;
   border-radius: 10px;
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   height: 100%;
+}
+
+:global([data-theme='dark']) .si-topo-rail {
+  border-color: rgba(56, 189, 248, 0.2);
+  background: rgba(15, 23, 42, 0.6);
 }
 
 .si-topo-rail__title {
   margin: 0 0 0.75rem;
   font-size: 0.9rem;
   font-weight: 700;
+  color: var(--si-ink);
+}
+
+:global([data-theme='dark']) .si-topo-rail__title {
   color: rgba(255,255,255,0.9);
 }
 
@@ -941,8 +971,12 @@ onUnmounted(() => {
   font-family: var(--font-display);
   font-size: 1.15rem;
   font-weight: 700;
-  color: rgba(255,255,255,0.9);
+  color: var(--si-ink);
   word-break: break-all;
+}
+
+:global([data-theme='dark']) .si-topo-rail__name {
+  color: rgba(255,255,255,0.9);
 }
 
 .si-topo-rail__edge {
@@ -952,8 +986,12 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.4rem;
   font-weight: 700;
-  color: rgba(255,255,255,0.9);
+  color: var(--si-ink);
   word-break: break-all;
+}
+
+:global([data-theme='dark']) .si-topo-rail__edge {
+  color: rgba(255,255,255,0.9);
 }
 
 .si-topo-rail__edge i {
@@ -998,15 +1036,23 @@ onUnmounted(() => {
   margin: 1.5rem 0 0;
   text-align: center;
   font-size: 0.88rem;
-  color: rgba(255,255,255,0.5);
+  color: var(--si-muted);
   line-height: 1.5;
+}
+
+:global([data-theme='dark']) .si-topo-rail__empty {
+  color: rgba(255,255,255,0.5);
 }
 
 .si-topo-rail__explain {
   margin-top: 0.85rem;
   padding-top: 0.75rem;
-  border-top: 1px dashed rgba(56, 189, 248, 0.2);
+  border-top: 1px dashed var(--card-border);
   text-align: left;
+}
+
+:global([data-theme='dark']) .si-topo-rail__explain {
+  border-top-color: rgba(56, 189, 248, 0.2);
 }
 
 .si-topo-rail__explain pre {
@@ -1021,9 +1067,14 @@ onUnmounted(() => {
 
 .si-topo-fold {
   border-radius: 10px;
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
   padding: 0 0.95rem 0.85rem;
+}
+
+:global([data-theme='dark']) .si-topo-fold {
+  border-color: rgba(56, 189, 248, 0.2);
+  background: rgba(15, 23, 42, 0.6);
 }
 
 .si-topo-fold__summary {
@@ -1032,8 +1083,12 @@ onUnmounted(() => {
   padding: 0.75rem 0;
   font-size: 0.9rem;
   font-weight: 700;
-  color: rgba(255,255,255,0.9);
+  color: var(--si-ink);
   user-select: none;
+}
+
+:global([data-theme='dark']) .si-topo-fold__summary {
+  color: rgba(255,255,255,0.9);
 }
 
 .si-topo-fold__summary::-webkit-details-marker {
@@ -1045,12 +1100,16 @@ onUnmounted(() => {
   display: inline-block;
   width: 0;
   height: 0;
-  border-left: 0.4rem solid rgba(255,255,255,0.5);
+  border-left: 0.4rem solid var(--si-muted);
   border-top: 0.3rem solid transparent;
   border-bottom: 0.3rem solid transparent;
   margin-right: 0.45rem;
   transition: transform 0.15s ease;
   vertical-align: middle;
+}
+
+:global([data-theme='dark']) .si-topo-fold__summary::before {
+  border-left-color: rgba(255,255,255,0.5);
 }
 
 .si-topo-fold[open] > .si-topo-fold__summary::before {
