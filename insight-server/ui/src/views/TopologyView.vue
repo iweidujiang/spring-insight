@@ -138,6 +138,42 @@
           </div>
           <div class="si-topo-canvas-wrap">
             <div ref="chartEl" class="si-topo-canvas"></div>
+
+            <!-- 左侧服务列表 -->
+            <aside class="si-topo-service-list" :class="{ 'si-topo-service-list--collapsed': serviceListCollapsed }">
+              <div class="si-topo-service-list__header">
+                <h4 class="si-topo-service-list__title">
+                  <el-icon class="me-1"><List /></el-icon>服务列表
+                </h4>
+                <el-button
+                  link
+                  size="small"
+                  @click="serviceListCollapsed = !serviceListCollapsed"
+                  :title="serviceListCollapsed ? '展开' : '收起'"
+                >
+                  <el-icon><component :is="serviceListCollapsed ? 'Expand' : 'Fold'" /></el-icon>
+                </el-button>
+              </div>
+              <ul v-show="!serviceListCollapsed" class="si-topo-service-list__items">
+                <li
+                  v-for="svc in sortedServiceNames"
+                  :key="svc"
+                  class="si-topo-service-list__item"
+                  :class="{
+                    'si-topo-service-list__item--active': selection.service === svc,
+                    'si-topo-service-list__item--healthy': getServiceHealthLevel(svc) === 'healthy',
+                    'si-topo-service-list__item--warning': getServiceHealthLevel(svc) === 'warning',
+                    'si-topo-service-list__item--degraded': getServiceHealthLevel(svc) === 'degraded',
+                    'si-topo-service-list__item--critical': getServiceHealthLevel(svc) === 'critical'
+                  }"
+                  @click="highlightService(svc)"
+                >
+                  <span class="si-topo-service-list__dot"></span>
+                  <span class="si-topo-service-list__name">{{ svc }}</span>
+                  <span v-if="nodeCallCount(svc)" class="si-topo-service-list__count">{{ nodeCallCount(svc) }}</span>
+                </li>
+              </ul>
+            </aside>
           </div>
         </section>
 
@@ -261,7 +297,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
-import { Download, Clock, Share, Refresh, FullScreen, Pointer, ArrowRight, MagicStick, List } from '@element-plus/icons-vue'
+import { Download, Clock, Share, Refresh, FullScreen, Pointer, ArrowRight, MagicStick, List, Expand, Fold } from '@element-plus/icons-vue'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
@@ -315,6 +351,7 @@ const selection = ref<{ kind: 'node' | 'edge' | null; service: string; peer?: st
   kind: null,
   service: ''
 })
+const serviceListCollapsed = ref(false)
 
 let topologyChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
@@ -338,6 +375,20 @@ const soloLatency = computed(() => {
 const sortedDependencies = computed(() =>
   [...dependencies.value].sort((a, b) => (b.callCount || 0) - (a.callCount || 0))
 )
+
+// 排序后的服务名列表（按调用次数降序）
+const sortedServiceNames = computed(() => {
+  const callCounts = new Map<string, number>()
+  dependencies.value.forEach((d: any) => {
+    callCounts.set(d.sourceService, (callCounts.get(d.sourceService) || 0) + (d.callCount || 0))
+    callCounts.set(d.targetService, (callCounts.get(d.targetService) || 0) + (d.callCount || 0))
+  })
+  return [...serviceNames.value].sort((a, b) => (callCounts.get(b) || 0) - (callCounts.get(a) || 0))
+})
+
+const getServiceHealthLevel = (serviceName: string): string | undefined => {
+  return healthByService.value?.[serviceName]?.level
+}
 
 const formatMs = (ms: number) => formatDuration(Number(ms) || 0)
 
@@ -540,6 +591,14 @@ const syncContextToRoute = async () => {
 
 const clearSelection = () => {
   selection.value = { kind: null, service: '' }
+  edgeExplain.value = null
+  updateChart()
+  void syncContextToRoute()
+}
+
+// 从服务列表点击高亮节点
+const highlightService = (service: string) => {
+  selection.value = { kind: 'node', service }
   edgeExplain.value = null
   updateChart()
   void syncContextToRoute()
@@ -927,6 +986,124 @@ onUnmounted(() => {
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+/* 左侧服务列表 */
+.si-topo-service-list {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  width: 200px;
+  max-height: calc(100% - 1.5rem);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+:global([data-theme='light']) .si-topo-service-list {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.si-topo-service-list--collapsed {
+  width: auto;
+}
+
+.si-topo-service-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+}
+
+:global([data-theme='light']) .si-topo-service-list__header {
+  border-bottom-color: rgba(148, 163, 184, 0.2);
+}
+
+.si-topo-service-list__title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+}
+
+:global([data-theme='light']) .si-topo-service-list__title {
+  color: var(--si-ink);
+}
+
+.si-topo-service-list__items {
+  margin: 0;
+  padding: 0.25rem 0;
+  list-style: none;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.si-topo-service-list__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.75);
+  transition: background 0.15s ease;
+}
+
+:global([data-theme='light']) .si-topo-service-list__item {
+  color: var(--si-ink-soft);
+}
+
+.si-topo-service-list__item:hover {
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.si-topo-service-list__item--active {
+  background: rgba(56, 189, 248, 0.15);
+  color: #fff;
+}
+
+:global([data-theme='light']) .si-topo-service-list__item--active {
+  background: rgba(0, 184, 212, 0.1);
+  color: var(--si-brand);
+}
+
+.si-topo-service-list__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.si-topo-service-list__item--healthy .si-topo-service-list__dot { background: var(--success-color); }
+.si-topo-service-list__item--warning .si-topo-service-list__dot { background: var(--warning-color); }
+.si-topo-service-list__item--degraded .si-topo-service-list__dot { background: #c2410c; }
+.si-topo-service-list__item--critical .si-topo-service-list__dot { background: var(--danger-color); }
+
+.si-topo-service-list__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.si-topo-service-list__count {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+:global([data-theme='light']) .si-topo-service-list__count {
+  color: var(--si-muted);
 }
 
 .si-topo-stage__aside {
