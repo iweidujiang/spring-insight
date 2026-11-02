@@ -449,6 +449,14 @@
               <p class="si-dashboard__rail-empty-hint">跨服务调用出现后可在此与拓扑图查看</p>
             </div>
           </div>
+
+          <!-- 服务健康状态分布 -->
+          <div v-if="panelVisible('health-donut')" class="si-overview__panel si-overview__panel--donut">
+            <div class="si-overview__head">
+              <span><el-icon class="me-2"><PieChart /></el-icon>健康状态分布</span>
+            </div>
+            <div ref="healthDonutChartEl" class="si-overview__donut-canvas"></div>
+          </div>
         </div>
 
         <div
@@ -554,6 +562,7 @@ const exporting = ref(false)
 const layoutSaving = ref(false)
 const layoutMenuOpen = ref(false)
 const layoutMenuRef = ref<HTMLElement | null>(null)
+const healthDonutChartEl = ref<HTMLElement | null>(null)
 const layout = ref<DashboardLayout | null>(null)
 const templates = ref<DashboardTemplate[]>([])
 /** 布局 API 不可用时不限制面板显隐 */
@@ -601,6 +610,7 @@ const jdbcKpis = ref<InfraKpis | null>(null)
 const redisKpis = ref<InfraKpis | null>(null)
 
 let serviceRankChart: echarts.ECharts | null = null
+let healthDonutChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
 
 const { colors: chartColors } = useChartTheme()
@@ -831,6 +841,32 @@ const hotDependencies = computed(() =>
     .slice(0, 8)
 )
 
+// 健康状态分布数据
+const healthDistribution = computed(() => {
+  const services = serviceLatency.value
+  let healthy = 0
+  let warning = 0
+  let error = 0
+  
+  services.forEach((s: any) => {
+    const errorCount = s.errorCount || 0
+    const p95 = s.p95Ms || 0
+    if (errorCount > 0) {
+      error++
+    } else if (p95 > 500) {
+      warning++
+    } else {
+      healthy++
+    }
+  })
+  
+  return [
+    { value: healthy, name: '健康', itemStyle: { color: '#10B981' } },
+    { value: warning, name: '警告', itemStyle: { color: '#F59E0B' } },
+    { value: error, name: '错误', itemStyle: { color: '#EF4444' } }
+  ].filter(item => item.value > 0)
+})
+
 // 进度条宽度（相对于最大值的百分比）
 const depProgressWidth = (dep: any): number => {
   if (!hotDependencies.value.length) return 0
@@ -1027,6 +1063,55 @@ const mountRankChart = () => {
   })
 }
 
+const mountHealthDonutChart = () => {
+  if (!healthDonutChartEl.value || healthDonutChart) return
+  healthDonutChart = echarts.init(healthDonutChartEl.value)
+  updateHealthDonutChart()
+}
+
+const updateHealthDonutChart = () => {
+  if (!healthDonutChart) return
+  const data = healthDistribution.value
+  if (data.length === 0) return
+  
+  healthDonutChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c} 个服务 ({d}%)'
+    },
+    legend: {
+      orient: 'horizontal',
+      bottom: 0,
+      textStyle: { fontSize: 11 },
+      itemWidth: 12,
+      itemHeight: 12
+    },
+    series: [{
+      type: 'pie',
+      radius: ['40%', '70%'],
+      center: ['50%', '45%'],
+      avoidLabelOverlap: false,
+      itemStyle: {
+        borderRadius: 6,
+        borderColor: 'transparent',
+        borderWidth: 2
+      },
+      label: {
+        show: false
+      },
+      emphasis: {
+        label: {
+          show: true,
+          fontSize: 12,
+          fontWeight: 'bold'
+        }
+      },
+      data
+    }]
+  })
+}
+
 const applyRankChartTheme = () => {
   if (!serviceRankChart) return
   const c = chartColors.value
@@ -1181,15 +1266,23 @@ const loadData = async () => {
 const syncCharts = async () => {
   serviceRankChart?.dispose()
   serviceRankChart = null
-  if (isSolo.value || !panelVisible('service-rank')) return
+  healthDonutChart?.dispose()
+  healthDonutChart = null
+  if (isSolo.value) return
   await nextTick()
-  mountRankChart()
-  updateCharts()
-  serviceRankChart?.resize()
+  if (panelVisible('service-rank')) {
+    mountRankChart()
+    updateCharts()
+    serviceRankChart?.resize()
+  }
+  if (panelVisible('health-donut')) {
+    mountHealthDonutChart()
+  }
 }
 
 const handleResize = () => {
   serviceRankChart?.resize()
+  healthDonutChart?.resize()
 }
 
 const toggleLayoutMenu = () => {
@@ -1778,7 +1871,7 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.2rem 1.65rem;
+  gap: 0.2rem 1.2rem;
   min-width: 0;
   padding-left: 0.45rem;
 }
@@ -2171,13 +2264,13 @@ onUnmounted(() => {
 .si-overview__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .si-overview__bottom {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
-  gap: 0.75rem;
+  gap: 0.5rem;
   min-height: 14rem;
 }
 
@@ -2190,11 +2283,11 @@ onUnmounted(() => {
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   box-shadow: var(--box-shadow);
-  padding: 0.65rem 0.85rem;
+  padding: 0.5rem 0.7rem;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.35rem;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
@@ -2228,6 +2321,12 @@ onUnmounted(() => {
 .si-overview__rank-canvas {
   flex: 1;
   min-height: 12rem;
+  width: 100%;
+}
+
+.si-overview__donut-canvas {
+  flex: 1;
+  min-height: 10rem;
   width: 100%;
 }
 
