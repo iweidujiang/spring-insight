@@ -1701,9 +1701,9 @@ onUnmounted(() => {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.7rem 0.45rem 0.7rem 1.05rem;
-  border-radius: 10px;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   box-shadow: var(--box-shadow);
@@ -1716,9 +1716,9 @@ onUnmounted(() => {
 .si-dashboard__kpi {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.45rem;
+  gap: 0.5rem;
   margin: 0;
-  padding: 0.2rem 0.7rem;
+  padding: 0.5rem 1rem;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -1745,9 +1745,9 @@ onUnmounted(() => {
 
 .si-dashboard__kpi--lead {
   flex: 0 0 auto;
-  gap: 0.7rem;
-  padding: 0.15rem 1.15rem 0.15rem 0.15rem;
-  margin-right: 0.35rem;
+  gap: 0.85rem;
+  padding: 0.35rem 1.5rem 0.35rem 0.35rem;
+  margin-right: 0.5rem;
   border-right: 1px solid var(--card-border);
   border-radius: 0;
 }
@@ -1787,34 +1787,34 @@ onUnmounted(() => {
 }
 
 .si-dashboard__kpi--lead .si-dashboard__kpi-value {
-  font-size: clamp(1.85rem, 2.6vw, 2.35rem);
+  font-size: clamp(2.2rem, 3vw, 2.8rem);
 }
 
 .si-dashboard__kpi-side .si-dashboard__kpi-value {
-  font-size: 1.15rem;
+  font-size: 1.35rem;
 }
 
 .si-dashboard__kpi-unit {
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--si-ink-soft);
 }
 
 .si-dashboard__kpi--lead .si-dashboard__kpi-unit {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
 }
 
 .si-dashboard__kpi-name {
   font-family: var(--font-body);
-  font-size: 0.84rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--si-ink-soft);
   white-space: nowrap;
 }
 
 .si-dashboard__kpi--lead .si-dashboard__kpi-name {
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: var(--si-ink);
 }
 
