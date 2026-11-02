@@ -419,21 +419,31 @@
 
           <div v-if="panelVisible('hot-dependencies')" class="si-overview__panel">
             <div class="si-overview__head">
-              <span>热点依赖</span>
+              <span>热点依赖 TOP {{ Math.min(6, hotDependencies.length) }}</span>
               <el-button link type="primary" size="small" @click="goTopology()">拓扑图</el-button>
             </div>
-            <ul v-if="hotDependencies.length" class="si-dashboard__rail-list">
-              <li
+            <div v-if="hotDependencies.length" class="si-top-progress">
+              <div
                 v-for="(dep, idx) in hotDependencies.slice(0, 6)"
                 :key="'hot-' + idx"
+                class="si-top-progress__item"
                 @click="goHotDependency(dep)"
               >
-                <span class="si-dashboard__rail-dep" :title="`${dep.sourceService} → ${dep.targetService}`">
-                  {{ dep.sourceService }} → {{ dep.targetService }}
-                </span>
-                <em>{{ dep.callCount }}</em>
-              </li>
-            </ul>
+                <div class="si-top-progress__label">
+                  <span class="si-top-progress__rank">{{ idx + 1 }}</span>
+                  <span class="si-top-progress__name" :title="`${dep.sourceService} → ${dep.targetService}`">
+                    {{ dep.sourceService }} → {{ dep.targetService }}
+                  </span>
+                </div>
+                <div class="si-top-progress__bar-wrap">
+                  <div
+                    class="si-top-progress__bar"
+                    :style="{ width: depProgressWidth(dep) + '%' }"
+                  ></div>
+                </div>
+                <span class="si-top-progress__value">{{ dep.callCount }}</span>
+              </div>
+            </div>
             <div v-else class="si-dashboard__rail-empty">
               <p class="si-dashboard__rail-empty-text">{{ emptyInRangeShort(hours, '依赖') }}</p>
               <p class="si-dashboard__rail-empty-hint">跨服务调用出现后可在此与拓扑图查看</p>
@@ -820,6 +830,13 @@ const hotDependencies = computed(() =>
     .sort((a, b) => (b.callCount || 0) - (a.callCount || 0))
     .slice(0, 8)
 )
+
+// 进度条宽度（相对于最大值的百分比）
+const depProgressWidth = (dep: any): number => {
+  if (!hotDependencies.value.length) return 0
+  const maxCount = hotDependencies.value[0]?.callCount || 1
+  return Math.round((dep.callCount / maxCount) * 100)
+}
 
 const formatMs = (ms: number) => formatDuration(Number(ms) || 0)
 
@@ -1539,6 +1556,84 @@ onUnmounted(() => {
   padding: 0.2rem 0;
   max-height: 9.5rem;
   overflow-y: auto;
+}
+
+/* TOP 进度条 */
+.si-top-progress {
+  padding: 0.25rem 0;
+}
+
+.si-top-progress__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.si-top-progress__item:hover {
+  background: rgba(0, 184, 212, 0.06);
+}
+
+.si-top-progress__label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.si-top-progress__rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--si-brand);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.si-top-progress__item:nth-child(1) .si-top-progress__rank { background: #f59e0b; }
+.si-top-progress__item:nth-child(2) .si-top-progress__rank { background: #94a3b8; }
+.si-top-progress__item:nth-child(3) .si-top-progress__rank { background: #b45309; }
+
+.si-top-progress__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--si-ink);
+}
+
+.si-top-progress__bar-wrap {
+  flex: 2;
+  height: 6px;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.si-top-progress__bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--si-brand), #06b6d4);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.si-top-progress__value {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--si-ink-soft);
+  min-width: 2.5rem;
+  text-align: right;
+  flex-shrink: 0;
 }
 
 .si-dashboard__rail-list li {
