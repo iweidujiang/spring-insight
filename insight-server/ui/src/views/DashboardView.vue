@@ -457,6 +457,18 @@
             </div>
             <div ref="healthDonutChartEl" class="si-overview__donut-canvas"></div>
           </div>
+
+          <!-- 调用链路流向 Sankey 图 -->
+          <div v-if="panelVisible('sankey')" class="si-overview__panel si-overview__panel--sankey">
+            <div class="si-overview__head">
+              <span><el-icon class="me-2"><Share /></el-icon>调用链路流向</span>
+              <el-button link type="primary" size="small" @click="goTopology()">拓扑图</el-button>
+            </div>
+            <div v-if="dependencies.length === 0" class="si-dashboard__rail-empty">
+              <p class="si-dashboard__rail-empty-text">{{ emptyInRangeShort(hours, '依赖') }}</p>
+            </div>
+            <div v-else ref="sankeyChartEl" class="si-overview__sankey-canvas"></div>
+          </div>
         </div>
 
         <div
@@ -563,6 +575,7 @@ const layoutSaving = ref(false)
 const layoutMenuOpen = ref(false)
 const layoutMenuRef = ref<HTMLElement | null>(null)
 const healthDonutChartEl = ref<HTMLElement | null>(null)
+const sankeyChartEl = ref<HTMLElement | null>(null)
 const layout = ref<DashboardLayout | null>(null)
 const templates = ref<DashboardTemplate[]>([])
 /** 布局 API 不可用时不限制面板显隐 */
@@ -611,6 +624,7 @@ const redisKpis = ref<InfraKpis | null>(null)
 
 let serviceRankChart: echarts.ECharts | null = null
 let healthDonutChart: echarts.ECharts | null = null
+let sankeyChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
 
 const { colors: chartColors } = useChartTheme()
@@ -1112,6 +1126,73 @@ const updateHealthDonutChart = () => {
   })
 }
 
+const mountSankeyChart = () => {
+  if (!sankeyChartEl.value || sankeyChart) return
+  sankeyChart = echarts.init(sankeyChartEl.value)
+  updateSankeyChart()
+}
+
+const updateSankeyChart = () => {
+  if (!sankeyChart || dependencies.value.length === 0) return
+  
+  // 构建 Sankey 数据
+  const nodes: Array<{ name: string }> = []
+  const links: Array<{ source: string; target: string; value: number }> = []
+  const nodeSet = new Set<string>()
+  
+  dependencies.value.forEach((dep: any) => {
+    if (!nodeSet.has(dep.sourceService)) {
+      nodeSet.add(dep.sourceService)
+      nodes.push({ name: dep.sourceService })
+    }
+    if (!nodeSet.has(dep.targetService)) {
+      nodeSet.add(dep.targetService)
+      nodes.push({ name: dep.targetService })
+    }
+    links.push({
+      source: dep.sourceService,
+      target: dep.targetService,
+      value: dep.callCount || 1
+    })
+  })
+  
+  sankeyChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      triggerOn: 'mousemove',
+      formatter: (params: any) => {
+        if (params.dataType === 'edge') {
+          return `${params.data.source} → ${params.data.target}<br/>调用次数: ${params.data.value}`
+        }
+        return `${params.name}<br/>总流量: ${params.value}`
+      }
+    },
+    series: [{
+      type: 'sankey',
+      layout: 'none',
+      emphasis: {
+        focus: 'adjacency'
+      },
+      data: nodes,
+      links: links,
+      lineStyle: {
+        color: 'gradient',
+        curveness: 0.5,
+        opacity: 0.4
+      },
+      itemStyle: {
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)'
+      },
+      label: {
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.8)'
+      }
+    }]
+  })
+}
+
 const applyRankChartTheme = () => {
   if (!serviceRankChart) return
   const c = chartColors.value
@@ -1268,6 +1349,8 @@ const syncCharts = async () => {
   serviceRankChart = null
   healthDonutChart?.dispose()
   healthDonutChart = null
+  sankeyChart?.dispose()
+  sankeyChart = null
   if (isSolo.value) return
   await nextTick()
   if (panelVisible('service-rank')) {
@@ -1278,11 +1361,15 @@ const syncCharts = async () => {
   if (panelVisible('health-donut')) {
     mountHealthDonutChart()
   }
+  if (panelVisible('sankey')) {
+    mountSankeyChart()
+  }
 }
 
 const handleResize = () => {
   serviceRankChart?.resize()
   healthDonutChart?.resize()
+  sankeyChart?.resize()
 }
 
 const toggleLayoutMenu = () => {
@@ -2327,6 +2414,12 @@ onUnmounted(() => {
 .si-overview__donut-canvas {
   flex: 1;
   min-height: 10rem;
+  width: 100%;
+}
+
+.si-overview__sankey-canvas {
+  flex: 1;
+  min-height: 14rem;
   width: 100%;
 }
 
