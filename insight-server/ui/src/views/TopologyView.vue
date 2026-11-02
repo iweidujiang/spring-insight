@@ -907,10 +907,19 @@ onUnmounted(() => {
   position: relative;
   overflow: hidden;
   background: var(--si-topo-canvas-bg, #0a0e27);
+  /* 网格背景 */
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 :global([data-theme='light']) .si-topo-canvas-wrap {
   background: #f0f4f8;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 .si-topo-canvas {

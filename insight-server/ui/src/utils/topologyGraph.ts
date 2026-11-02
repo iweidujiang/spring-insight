@@ -238,7 +238,7 @@ export function buildTopologyOption(
   const zoom = solo ? (compact ? 0.72 : 0.78) : zoomForNodes(nodes.length, compact)
 
   return {
-    backgroundColor: darkTech ? '#0a0e27' : 'transparent',
+    backgroundColor: 'transparent',
     textStyle: { color: darkTech ? 'rgba(255,255,255,0.7)' : theme.muted },
     tooltip: {
       trigger: 'item',
