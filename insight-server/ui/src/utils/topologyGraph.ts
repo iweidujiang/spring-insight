@@ -131,13 +131,29 @@ export function buildTopologyOption(
       highlight.edge.target === dep.targetService
     
     // 连线颜色：按状态区分
-    let edgeColor = darkTech ? 'rgba(56, 189, 248, 0.6)' : theme.muted
+    let edgeColor: any = darkTech ? 'rgba(56, 189, 248, 0.6)' : theme.muted
     if (edgeHit) {
       edgeColor = theme.brand
     } else if (dep.avgDuration && dep.avgDuration > 1000) {
       edgeColor = darkTech ? 'rgba(239, 68, 68, 0.8)' : theme.danger // 慢调用 - 红色
     } else if (dep.avgDuration && dep.avgDuration > 500) {
       edgeColor = darkTech ? 'rgba(245, 158, 11, 0.7)' : theme.warning // 较慢 - 橙色
+    }
+    
+    // 渐变色连线（暗色科技风）
+    const edgeLineStyle: any = {
+      width: Math.max(
+        compact ? 1.5 : 2,
+        Math.min(compact ? 4 : 5, 1 + Math.log2(dep.callCount + 1))
+      ) + (edgeHit ? 1.5 : 0),
+      curveness: 0.16,
+      color: edgeColor,
+      opacity: edgeHit ? 1 : highlight.edge || highlight.node ? 0.35 : 0.9,
+    }
+    
+    if (darkTech && !edgeHit) {
+      edgeLineStyle.type = 'dashed' as const
+      edgeLineStyle.dashOffset = 0
     }
     
     links.push({
@@ -157,20 +173,7 @@ export function buildTopologyOption(
         borderColor: darkTech ? 'rgba(56, 189, 248, 0.3)' : theme.axisLine,
         borderWidth: 1
       },
-      lineStyle: {
-        width: Math.max(
-          compact ? 1.5 : 2,
-          Math.min(compact ? 4 : 5, 1 + Math.log2(dep.callCount + 1))
-        ) + (edgeHit ? 1.5 : 0),
-        curveness: 0.16,
-        color: edgeColor,
-        opacity: edgeHit ? 1 : highlight.edge || highlight.node ? 0.35 : 0.9,
-        // 流动动画效果
-        ...(darkTech ? {
-          type: 'dashed' as const,
-          dashOffset: 0
-        } : {})
-      }
+      lineStyle: edgeLineStyle
     })
   })
 
@@ -337,8 +340,22 @@ export function buildTopologyOption(
       emphasis: {
         focus: 'adjacency',
         lineStyle: { width: 5, color: theme.brand },
-        itemStyle: { shadowBlur: 12, shadowColor: 'rgba(45, 212, 191, 0.35)' }
-      }
+        itemStyle: {
+          shadowBlur: 25,
+          shadowColor: 'rgba(45, 212, 191, 0.6)',
+          borderColor: theme.brand,
+          borderWidth: 3
+        },
+        label: {
+          fontSize: 14,
+          fontWeight: 700
+        }
+      },
+      // 选中节点脉冲动画
+      ...(darkTech && highlight.node ? {
+        animationDuration: 1000,
+        animationEasing: 'cubicOut'
+      } : {})
     }]
   }
 }
