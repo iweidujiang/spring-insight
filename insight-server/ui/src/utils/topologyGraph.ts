@@ -25,6 +25,24 @@ export interface ServiceHealthInfo {
   hasData?: boolean
 }
 
+/** 根据服务名推断服务类型图标 */
+function inferServiceIcon(serviceName: string): string {
+  const name = serviceName.toLowerCase()
+  if (/gateway|gw|api/.test(name)) return '🌐'
+  if (/web|frontend|ui|bff/.test(name)) return '💻'
+  if (/order|trade|pay|cart/.test(name)) return '🛒'
+  if (/user|auth|login|account/.test(name)) return '👤'
+  if (/product|item|goods/.test(name)) return '📦'
+  if (/db|mysql|postgres|mongo/.test(name)) return '🗄️'
+  if (/redis|cache/.test(name)) return '⚡'
+  if (/mq|kafka|rabbit|queue/.test(name)) return '📨'
+  if (/search|es|elastic/.test(name)) return '🔍'
+  if (/log|logging/.test(name)) return '📝'
+  if (/monitor|metric|prometheus/.test(name)) return '📊'
+  if (/config|nacos|consul/.test(name)) return '⚙️'
+  return '🔷'
+}
+
 /**
  * 按健康等级取节点色；无健康信息时回退错误数着色。
  *
@@ -178,6 +196,7 @@ export function buildTopologyOption(
       index,
       healthEnabled
     )
+    const icon = inferServiceIcon(name)
     
     // 3D 立体节点效果
     const baseSize = Math.max(
@@ -229,7 +248,20 @@ export function buildTopologyOption(
           textShadowColor: 'rgba(0,0,0,0.8)',
           textShadowBlur: 4
         } : {})
-      }
+      },
+      // 节点上方显示图标
+      ...(darkTech ? {
+        labelLine: { show: false },
+        emphasis: {
+          label: {
+            show: true,
+            position: 'top' as const,
+            distance: 6,
+            formatter: icon,
+            fontSize: 16
+          }
+        }
+      } : {})
     }
   })
 
