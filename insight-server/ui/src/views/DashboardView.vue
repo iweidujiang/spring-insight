@@ -1348,7 +1348,7 @@ onUnmounted(() => {
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 0.85rem 1.25rem;
-  padding: 0.55rem 0.35rem 0.2rem;
+  padding: 0.85rem 0.5rem 0.6rem;
 }
 
 .si-dashboard__title {
@@ -1366,6 +1366,14 @@ onUnmounted(() => {
 .si-dashboard__title .el-icon { color: var(--si-brand); }
 
 .si-dashboard__status { justify-self: center; }
+
+.si-dashboard__status :deep(.el-tag) {
+  height: 36px;
+  padding: 0 0.85rem;
+  font-size: 0.88rem;
+  display: inline-flex;
+  align-items: center;
+}
 
 .si-dashboard__actions {
   display: flex;
@@ -1438,22 +1446,28 @@ onUnmounted(() => {
 
 .si-dashboard__hours {
   width: auto;
-  min-width: 7.5rem;
+  min-width: 8.5rem;
 }
 
 .si-dashboard__hours :deep(.el-select__wrapper) {
-  min-width: 7.5rem;
+  min-width: 8.5rem;
+  height: 36px;
+  font-size: 0.88rem;
 }
 
 .si-dashboard__btn {
-  padding: 0.45rem 0.95rem;
-  font-size: 0.85rem;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.88rem;
+  height: 36px;
 }
 
 .si-dashboard__clock {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 700;
-  padding: 0.45rem 0.75rem;
+  padding: 0.5rem 0.85rem;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .si-dashboard__loading {
