@@ -26,7 +26,8 @@
   --success-color: #10B981;
   --warning-color: #F59E0B;
   --danger-color: #EF4444;
-  --info-color: var(--si-brand-bright);
+  --info-color: #3B82F6;
+  --neutral-color: #8B5CF6;
   --light-color: var(--si-ink);
   --dark-color: var(--si-ink);
 
@@ -248,10 +249,11 @@
 
   --primary-color:   var(--si-brand);
   --secondary-color: var(--si-muted);
-  --success-color:   #34D399;
-  --warning-color:   #FBBF24;
-  --danger-color:    #F87171;
-  --info-color:      var(--si-brand-bright);
+  --success-color:   #10B981;
+  --warning-color:   #F59E0B;
+  --danger-color:    #EF4444;
+  --info-color:      #3B82F6;
+  --neutral-color:   #8B5CF6;
   --light-color:     var(--si-ink);
   --dark-color:      var(--si-ink);
 

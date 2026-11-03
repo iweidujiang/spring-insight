@@ -5,12 +5,12 @@
 
 const LIGHT_PALETTE = [
   '#00B8D4', '#10B981', '#00D2FF', '#F59E0B',
-  '#EF4444', '#1d4ed8', '#EA580C', '#059669'
+  '#EF4444', '#3B82F6', '#8B5CF6', '#059669'
 ]
 
 const DARK_PALETTE = [
-  '#38BDF8', '#34D399', '#22D3EE', '#FBBF24',
-  '#F87171', '#60A5FA', '#FB923C', '#34D399'
+  '#38BDF8', '#10B981', '#22D3EE', '#F59E0B',
+  '#EF4444', '#3B82F6', '#8B5CF6', '#34D399'
 ]
 
 export interface ChartThemeColors {
@@ -62,10 +62,10 @@ const DARK: ChartThemeColors = {
   tooltipBg: 'rgba(21, 27, 38, 0.95)',
   tooltipBorder: 'rgba(56, 189, 248, 0.12)',
   tooltipText: '#E2E8F0',
-  danger: '#F87171',
-  warning: '#FBBF24',
-  degraded: '#FB923C',
-  success: '#34D399'
+  danger: '#EF4444',
+  warning: '#F59E0B',
+  degraded: '#EA580C',
+  success: '#10B981'
 }
 
 export function getChartThemeColors(isDark: boolean): ChartThemeColors {
