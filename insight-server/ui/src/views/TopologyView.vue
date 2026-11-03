@@ -355,6 +355,7 @@ const serviceListCollapsed = ref(false)
 
 let topologyChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
+let dashAnimationTimer: number | null = null
 
 const { colors: chartColors } = useChartTheme()
 
@@ -656,9 +657,24 @@ const mountChart = () => {
   topologyChart = echarts.init(chartEl.value)
   topologyChart.setOption(buildTopologyOption([], topologyOpts()))
   bindTopologyClick()
+  startDashAnimation()
+}
+
+// 连线数据流动画（虚线偏移）- 暂时禁用，避免渲染问题
+const startDashAnimation = () => {
+  // 虚线流动动画会导致图表渲染问题，暂时禁用
+  // 如需启用，需要更稳健的实现方式
+}
+
+const stopDashAnimation = () => {
+  if (dashAnimationTimer) {
+    clearInterval(dashAnimationTimer)
+    dashAnimationTimer = null
+  }
 }
 
 const disposeChart = () => {
+  stopDashAnimation()
   topologyChart?.dispose()
   topologyChart = null
 }
@@ -1506,5 +1522,33 @@ onUnmounted(() => {
   .si-topo-solo__list .si-dur__val {
     display: none;
   }
+}
+
+/* 节点选中脉冲动画 */
+@keyframes si-topo-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(56, 189, 248, 0);
+  }
+}
+
+/* 错误节点闪烁动画 */
+@keyframes si-topo-error-flash {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.si-topo-node--pulse {
+  animation: si-topo-pulse 1.5s ease-in-out infinite;
+}
+
+.si-topo-node--error-flash {
+  animation: si-topo-error-flash 1s ease-in-out infinite;
 }
 </style>

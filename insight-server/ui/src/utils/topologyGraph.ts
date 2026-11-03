@@ -341,15 +341,17 @@ export function buildTopologyOption(
         focus: 'adjacency',
         lineStyle: { width: 5, color: theme.brand },
         itemStyle: {
-          shadowBlur: 25,
-          shadowColor: 'rgba(45, 212, 191, 0.6)',
+          shadowBlur: 30,
+          shadowColor: 'rgba(45, 212, 191, 0.8)',
           borderColor: theme.brand,
           borderWidth: 3
         },
         label: {
           fontSize: 14,
           fontWeight: 700
-        }
+        },
+        // 节点悬浮放大效果
+        scale: 1.15
       },
       // 选中节点脉冲动画
       ...(darkTech && highlight.node ? {
