@@ -1844,7 +1844,7 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 0.35rem;
   padding: 0.45rem 0.7rem;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--si-ink);
   border-bottom: 1px solid var(--card-border);
@@ -1929,7 +1929,7 @@ onUnmounted(() => {
 }
 
 .si-top-progress__value {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--si-ink-soft);
   min-width: 2.5rem;
@@ -1944,7 +1944,7 @@ onUnmounted(() => {
   gap: 0.5rem;
   padding: 0.4rem 0.7rem;
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
 }
 
 .si-dashboard__rail-list li:hover {
@@ -1970,7 +1970,7 @@ onUnmounted(() => {
 
 .si-dashboard__rail-empty {
   padding: 0.75rem;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--si-muted);
   text-align: center;
 }
@@ -2496,7 +2496,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 650;
   color: var(--si-ink);
   padding-bottom: 0.45rem;
