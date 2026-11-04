@@ -132,10 +132,12 @@ export function buildTopologyOption(
     
     // 连线颜色：按状态区分
     let edgeColor: any = darkTech ? 'rgba(56, 189, 248, 0.6)' : theme.muted
+    let isEdgeError = false
     if (edgeHit) {
       edgeColor = theme.brand
     } else if (dep.avgDuration && dep.avgDuration > 1000) {
-      edgeColor = darkTech ? 'rgba(239, 68, 68, 0.8)' : theme.danger // 慢调用 - 红色
+      edgeColor = darkTech ? 'rgba(239, 68, 68, 0.9)' : theme.danger // 慢调用 - 红色
+      isEdgeError = true
     } else if (dep.avgDuration && dep.avgDuration > 500) {
       edgeColor = darkTech ? 'rgba(245, 158, 11, 0.7)' : theme.warning // 较慢 - 橙色
     }
@@ -145,15 +147,19 @@ export function buildTopologyOption(
       width: Math.max(
         compact ? 1.5 : 2,
         Math.min(compact ? 4 : 5, 1 + Math.log2(dep.callCount + 1))
-      ) + (edgeHit ? 1.5 : 0),
+      ) + (edgeHit ? 1.5 : 0) + (isEdgeError ? 1 : 0), // 错误连线更粗
       curveness: 0.16,
       color: edgeColor,
-      opacity: edgeHit ? 1 : highlight.edge || highlight.node ? 0.35 : 0.9,
+      opacity: edgeHit ? 1 : highlight.edge || highlight.node ? 0.35 : (isEdgeError ? 1 : 0.9), // 错误连线更醒目
     }
     
     if (darkTech && !edgeHit) {
       edgeLineStyle.type = 'dashed' as const
       edgeLineStyle.dashOffset = 0
+      // 错误连线使用更密集的虚线
+      if (isEdgeError) {
+        edgeLineStyle.dashArray = [4, 4]
+      }
     }
     
     links.push({
