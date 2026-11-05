@@ -335,7 +335,8 @@
       </section>
 
       <section v-else-if="showOverviewSection" class="si-overview" aria-label="服务概览">
-        <div class="si-overview__grid">
+        <!-- 第一行：数据面板 -->
+        <div class="si-overview__row si-overview__row--data">
           <div v-if="panelVisible('error-services')" class="si-overview__panel">
             <div class="si-overview__head">
               <span><el-icon class="me-2"><WarningFilled /></el-icon>异常服务</span>
@@ -416,7 +417,10 @@
               暂无 SLO。可到设置页按服务配置可用性目标。
             </div>
           </div>
+        </div>
 
+        <!-- 第二行：图表面板 -->
+        <div class="si-overview__row si-overview__row--charts">
           <div v-if="panelVisible('hot-dependencies')" class="si-overview__panel">
             <div class="si-overview__head">
               <span>热点依赖 TOP {{ Math.min(6, hotDependencies.length) }}</span>
@@ -482,10 +486,11 @@
           </div>
         </div>
 
+        <!-- 第三行：底部面板 -->
         <div
           v-if="panelVisible('recent-traces') || panelVisible('service-rank')"
-          class="si-overview__bottom"
-          :class="{ 'si-overview__bottom--single': !(panelVisible('recent-traces') && panelVisible('service-rank')) }"
+          class="si-overview__row si-overview__row--bottom"
+          :class="{ 'si-overview__row--single': !(panelVisible('recent-traces') && panelVisible('service-rank')) }"
         >
           <div v-if="panelVisible('recent-traces')" class="si-overview__panel si-overview__panel--traces">
             <div class="si-overview__head">
@@ -2456,21 +2461,43 @@ onUnmounted(() => {
   min-height: 0;
 }
 
-.si-overview__grid {
+/* 行布局 */
+.si-overview__row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
-.si-overview__bottom {
-  display: grid;
+.si-overview__row--data {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.si-overview__row--charts {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.si-overview__row--bottom {
   grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
-  gap: 0.5rem;
   min-height: 14rem;
 }
 
-.si-overview__bottom--single {
+.si-overview__row--single {
   grid-template-columns: 1fr;
+}
+
+@media (max-width: 1400px) {
+  .si-overview__row--data,
+  .si-overview__row--charts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .si-overview__row--data,
+  .si-overview__row--charts,
+  .si-overview__row--bottom {
+    grid-template-columns: 1fr;
+  }
 }
 
 .si-overview__panel {
@@ -2547,7 +2574,7 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .si-overview__bottom {
+  .si-overview__row--bottom {
     grid-template-columns: 1fr;
   }
 }
