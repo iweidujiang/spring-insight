@@ -90,14 +90,14 @@
         </ul>
       </section>
 
-      <section class="si-topo-solo__hint">
+<!--      <section class="si-topo-solo__hint">
         <h6>什么情况下展示调用拓扑图？</h6>
         <ol>
           <li>业务侧依赖 <code>spring-insight-agent-starter</code>，并配置 <code>server-url</code></li>
           <li>出站走 OpenFeign、<code>WebClient.Builder</code>、Gateway 或 <code>RestTemplateBuilder</code></li>
           <li>Agent 写入 <code>remoteService</code> 后，刷新本页即可看到「调用方 → 被调用方」</li>
         </ol>
-      </section>
+      </section>-->
     </div>
 
     <div v-else class="si-topo-mesh">
@@ -989,12 +989,42 @@ onUnmounted(() => {
   background-size: 40px 40px;
 }
 
+/* 背景粒子/星点效果 */
+.si-topo-canvas-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 30% 60%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 50% 10%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 70% 80%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 90% 40%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1.5px 1.5px at 15% 85%, rgba(56, 189, 248, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 45% 45%, rgba(56, 189, 248, 0.4), transparent),
+    radial-gradient(1.5px 1.5px at 75% 25%, rgba(56, 189, 248, 0.5), transparent),
+    radial-gradient(1px 1px at 25% 35%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 55% 75%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 85% 55%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 5% 50%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 35% 15%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 65% 95%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 95% 5%, rgba(255, 255, 255, 0.3), transparent);
+  background-size: 200px 200px;
+  pointer-events: none;
+  z-index: 0;
+}
+
 :global([data-theme='light']) .si-topo-canvas-wrap {
   background: #f0f4f8;
   background-image:
     linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px),
     linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
   background-size: 40px 40px;
+}
+
+:global([data-theme='light']) .si-topo-canvas-wrap::before {
+  display: none; /* 亮色主题不显示粒子 */
 }
 
 .si-topo-canvas {

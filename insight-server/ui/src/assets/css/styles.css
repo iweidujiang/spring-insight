@@ -1005,6 +1005,25 @@ samp {
   font-size: var(--si-type-meta);
 }
 
+/* ── 统一表单控件高度 ── */
+.el-button--small {
+  height: 36px;
+}
+
+.el-select--small .el-select__wrapper {
+  height: 36px;
+  min-height: 36px;
+}
+
+.el-input--small .el-input__wrapper {
+  height: 36px;
+}
+
+.el-tag {
+  height: 36px;
+  line-height: 36px;
+}
+
 /* ── 移动端触摸目标 ≥ 44px ── */
 @media (max-width: 768px) {
   .notification-button {
