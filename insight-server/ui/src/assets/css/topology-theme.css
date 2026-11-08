@@ -1,0 +1,107 @@
+/**
+ * 拓扑页亮/暗色覆盖。
+ * 必须放在全局 CSS：Vue scoped 里写 :global([data-theme]) .xxx 会被错误编译成
+ * [data-theme=light]{…} 作用到 html 自身（例如 opacity:0），导致整站登录页空白。
+ */
+
+html[data-theme='dark'] .si-topo-text--muted {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+html[data-theme='dark'] .si-topo-cell--center {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+html[data-theme='dark'] .si-topo-stage__title {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme='dark'] .si-topo-legend {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+html[data-theme='dark'] .si-topo-swatch--degraded::before {
+  background: #fb923c;
+}
+
+html[data-theme='dark'] .si-topo-text--degraded {
+  color: #fb923c;
+}
+
+html[data-theme='light'] .si-topo-canvas-wrap {
+  background: #f0f4f8;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+html[data-theme='light'] .si-topo-canvas-wrap::before {
+  content: none;
+  opacity: 0;
+  background-image: none;
+}
+
+html[data-theme='light'] .si-topo-service-list {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+html[data-theme='light'] .si-topo-service-list__header {
+  border-bottom-color: rgba(148, 163, 184, 0.2);
+}
+
+html[data-theme='light'] .si-topo-service-list__title {
+  color: var(--si-ink);
+}
+
+html[data-theme='light'] .si-topo-service-list__item {
+  color: var(--si-ink-soft);
+}
+
+html[data-theme='light'] .si-topo-service-list__item--active {
+  background: rgba(0, 184, 212, 0.1);
+  color: var(--si-brand);
+}
+
+html[data-theme='light'] .si-topo-service-list__count {
+  color: var(--si-muted);
+}
+
+html[data-theme='dark'] .si-topo-rail {
+  border-color: rgba(56, 189, 248, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+html[data-theme='dark'] .si-topo-rail__title {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme='dark'] .si-topo-rail__name {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme='dark'] .si-topo-rail__edge {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme='dark'] .si-topo-rail__empty {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+html[data-theme='dark'] .si-topo-rail__explain {
+  border-top-color: rgba(56, 189, 248, 0.2);
+}
+
+html[data-theme='dark'] .si-topo-fold {
+  border-color: rgba(56, 189, 248, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+html[data-theme='dark'] .si-topo-fold__summary {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme='dark'] .si-topo-fold__summary::before {
+  border-left-color: rgba(255, 255, 255, 0.5);
+}

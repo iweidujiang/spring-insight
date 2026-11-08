@@ -74,6 +74,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiService } from '../services/ApiService'
+import { getUiToken } from '../services/AuthService'
 
 interface Notification {
   id: string
@@ -216,6 +217,11 @@ const buildFromStats = (stats: any, errorRows: any[]): Notification[] => {
 }
 
 const refreshFromServer = async () => {
+  // 无会话时不打受保护接口，避免登录页或失效 token 场景刷出 401
+  if (!getUiToken()) {
+    notifications.value = []
+    return
+  }
   loading.value = true
   try {
     const [stats, errorRows] = await Promise.all([

@@ -16,7 +16,7 @@ import ServiceDetailView from './views/ServiceDetailView.vue'
 import SettingsView from './views/SettingsView.vue'
 import AboutView from './views/AboutView.vue'
 import LoginView from './views/LoginView.vue'
-import { fetchAuthStatus, getUiToken } from './services/AuthService'
+import { fetchAuthStatus, getUiToken, setUiToken, setUiUsername } from './services/AuthService'
 import { initTheme } from './composables/useTheme'
 
 // 导入样式（Element Plus 主题变量在品牌色之后覆盖）
@@ -24,6 +24,7 @@ import 'font-awesome/css/font-awesome.min.css'
 import 'element-plus/dist/index.css'
 import './assets/css/styles.css'
 import './assets/css/element-plus-theme.css'
+import './assets/css/topology-theme.css'
 import './assets/css/utilities.css'
 
 const router = createRouter({
@@ -104,19 +105,26 @@ const router = createRouter({
   ]
 })
 
-let uiAuthEnabled: boolean | null = null
-
-async function ensureAuthStatus() {
-  if (uiAuthEnabled !== null) {
-    return uiAuthEnabled
-  }
+/**
+ * 进入受保护页面前向服务端确认会话。
+ * 本地残留失效 token（例如 Server 重启后）时直接去登录页，避免主界面先挂载再被 401 打回。
+ */
+async function ensureAuthenticatedForProtectedRoute(): Promise<boolean> {
   try {
     const status = await fetchAuthStatus()
-    uiAuthEnabled = status.uiAuthEnabled
+    if (!status.uiAuthEnabled) {
+      return true
+    }
+    if (!getUiToken() || !status.authenticated) {
+      setUiToken('')
+      setUiUsername('')
+      return false
+    }
+    return true
   } catch {
-    uiAuthEnabled = false
+    // 状态接口失败时：有本地 token 则先放行，由业务接口 401 再处理
+    return !!getUiToken()
   }
-  return uiAuthEnabled
 }
 
 router.beforeEach(async (to, _from, next) => {
@@ -125,8 +133,8 @@ router.beforeEach(async (to, _from, next) => {
     next()
     return
   }
-  const enabled = await ensureAuthStatus()
-  if (enabled && !getUiToken()) {
+  const ok = await ensureAuthenticatedForProtectedRoute()
+  if (!ok) {
     next({ path: '/login', query: { redirect: to.fullPath } })
     return
   }

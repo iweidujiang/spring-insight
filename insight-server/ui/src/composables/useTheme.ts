@@ -14,7 +14,8 @@ function loadStoredTheme(): ThemeMode {
   if (stored === 'light' || stored === 'dark' || stored === 'system') {
     return stored
   }
-  return 'system'
+  // 默认暗色：登录页与控制台主视觉按暗色设计；避免系统亮色触发历史 CSS 编译坑
+  return 'dark'
 }
 
 function detectSystemDark(): boolean {

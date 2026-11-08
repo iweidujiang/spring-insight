@@ -18,14 +18,22 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+let redirectingToLogin = false
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
       setUiToken('')
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      if (
+        typeof window !== 'undefined' &&
+        !window.location.pathname.startsWith('/login') &&
+        !redirectingToLogin
+      ) {
+        redirectingToLogin = true
         const redirect = encodeURIComponent(window.location.pathname + window.location.search)
-        window.location.assign(`/login?redirect=${redirect}`)
+        // replace 避免历史栈堆叠；整页跳转前先清 token，防止守卫再次放行
+        window.location.replace(`/login?redirect=${redirect}`)
       }
     }
     return Promise.reject(error)

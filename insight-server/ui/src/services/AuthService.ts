@@ -48,13 +48,25 @@ export function setUiUsername(username: string) {
 }
 
 /**
- * 查询 Server 是否启用 UI 登录。
+ * 查询 Server 是否启用 UI 登录，以及当前本地 token 是否仍有效。
  */
-export async function fetchAuthStatus(): Promise<{ uiAuthEnabled: boolean; ingestAuthEnabled: boolean }> {
-  const { data } = await authClient.get('/status')
+export async function fetchAuthStatus(): Promise<{
+  uiAuthEnabled: boolean
+  ingestAuthEnabled: boolean
+  authenticated: boolean
+}> {
+  const token = getUiToken()
+  const { data } = await authClient.get('/status', {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined
+  })
+  const uiAuthEnabled = !!data.uiAuthEnabled
   return {
-    uiAuthEnabled: !!data.uiAuthEnabled,
-    ingestAuthEnabled: !!data.ingestAuthEnabled
+    uiAuthEnabled,
+    ingestAuthEnabled: !!data.ingestAuthEnabled,
+    // 未开登录视为已通过；开了登录则以服务端校验为准（缺字段时回退为「有本地 token」）
+    authenticated: uiAuthEnabled
+      ? data.authenticated === true
+      : true
   }
 }
 

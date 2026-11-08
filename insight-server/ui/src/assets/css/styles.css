@@ -1,5 +1,6 @@
-/* Spring Insight — 现代科技感 · 青蓝品牌 */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+/* Spring Insight — 现代科技感 · 青蓝品牌
+ * 字体使用系统栈，避免 Google Fonts @import 在部分网络下阻塞整份样式表。
+ */
 
 :root {
   --si-nav-offset: 0px;
@@ -434,6 +435,12 @@
   --si-login-btn-hover: #00D2FF;
   --si-login-error: #FCA5A5;
   --si-login-focus: #38BDF8;
+}
+
+html {
+  /* 防御：避免错误 CSS 把主题属性写到 html 自身导致整页透明/隐藏 */
+  display: block;
+  opacity: 1;
 }
 
 body {

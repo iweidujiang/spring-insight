@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.server.security;
 
 import io.github.iweidujiang.springinsight.server.config.InsightServerSecurityProperties;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,14 +40,26 @@ public class AuthController {
 
     /**
      * 返回当前鉴权开关状态，供前端决定是否跳转登录页。
+     * <p>
+     * 若已开启控制台登录，同时根据请求中的 UI 会话 token 返回 {@code authenticated}，
+     * 避免本地残留失效 token 时先进入主界面再被接口 401 打回。
+     * </p>
      *
+     * @param request HTTP 请求（可带 Bearer / UI token）
      * @return status JSON
      */
     @GetMapping("/status")
-    public ResponseEntity<Map<String, Object>> status() {
+    public ResponseEntity<Map<String, Object>> status(HttpServletRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("uiAuthEnabled", securityProperties.isUiAuthEnabled());
+        boolean uiAuthEnabled = securityProperties.isUiAuthEnabled();
+        body.put("uiAuthEnabled", uiAuthEnabled);
         body.put("ingestAuthEnabled", securityProperties.isIngestAuthActive());
+        if (!uiAuthEnabled) {
+            body.put("authenticated", true);
+        } else {
+            String token = InsightTokenSupport.extractUiToken(request);
+            body.put("authenticated", sessionStore.isValid(token));
+        }
         return ResponseEntity.ok(body);
     }
 
