@@ -99,6 +99,7 @@
     <SiAlert v-if="loadError" tone="danger" class="si-dashboard__alert">{{ loadError }}</SiAlert>
 
     <div v-show="!loading" class="si-dashboard__content">
+      <!-- KPI 卡片 -->
       <section
         v-if="panelVisible('kpi')"
         class="si-dashboard__kpis"
@@ -134,227 +135,98 @@
         </div>
       </section>
 
-      <section v-if="panelVisible('summary')" class="si-period" aria-label="时段摘要">
-        <header class="si-period__head">
-          <div class="si-period__meta">
-            <span class="si-period__kicker">时段摘要</span>
-            <span class="si-period__scope">{{ periodScopeText }}</span>
-          </div>
-          <div class="si-period__actions">
-            <el-button
-              class="si-period__action"
-              size="small"
-              :loading="periodExplaining"
-              :disabled="periodExplaining || !aiStatus.invokeReady"
-              :title="aiPeriodTitle"
-              @click="explainPeriod"
-            >
-              <el-icon v-if="!periodExplaining" class="me-1"><MagicStick /></el-icon>
-              {{ periodExplaining ? '小结中…' : 'AI 小结' }}
-            </el-button>
-            <el-button
-              v-for="act in periodActions"
-              :key="act.key"
-              class="si-period__action"
-              size="small"
-              @click="act.run"
-            >
-              {{ act.label }}
-            </el-button>
-          </div>
-        </header>
-        <p class="si-period__headline">{{ periodHeadline }}</p>
-        <ul v-if="periodBullets.length" class="si-period__bullets">
-          <li v-for="(b, i) in periodBullets" :key="i" :class="b.tone ? `si-period__bullet--${b.tone}` : undefined">
-            <button
-              v-if="b.run"
-              type="button"
-              class="si-period__bullet-btn"
-              @click="b.run"
-            >{{ b.text }}</button>
-            <span v-else>{{ b.text }}</span>
-          </li>
-        </ul>
-        <p v-else class="si-period__empty">{{ periodEmptyHint }}</p>
-        <AiExplainPanel
-          v-if="periodExplain"
-          :result="periodExplain"
-          title="时段 AI 小结"
-          :meta="periodExplainMeta"
-          @close="periodExplain = null"
-        />
-      </section>
-
-      <section
-        v-if="panelVisible('collector') && collectorStats"
-        class="si-dashboard__collector-strip"
-        aria-label="采集器状态"
-      >
-        <span class="si-dashboard__collector-strip-title"><el-icon class="me-1"><Coin /></el-icon>Collector</span>
-        <div class="si-dashboard__collector-strip-items">
-          <span><em>接收</em>{{ collectorStats.totalReceivedRequests ?? 0 }}</span>
-          <span><em>Span</em>{{ collectorStats.totalReceivedSpans ?? 0 }}</span>
-          <span :class="(collectorStats.successRate ?? 100) < 90 ? 'si-dashboard__text--danger' : ''">
-            <em>成功</em>{{ collectorStats.successRate ?? 100 }}%
-          </span>
-          <span><em>运行</em>{{ collectorStats.runningHours ?? 0 }}h</span>
-        </div>
-        <el-button size="small" class="si-dashboard__collector-push-end" @click="goTopology()">
-          打开拓扑
-        </el-button>
-      </section>
-
-      <section
-        v-if="panelVisible('jdbc') || panelVisible('redis')"
-        class="si-infra"
-        :class="{ 'si-infra--single': !(panelVisible('jdbc') && panelVisible('redis')) }"
-        aria-label="库与缓存"
-      >
-        <button v-if="panelVisible('jdbc')" type="button" class="si-infra__card" @click="goJdbc()">
-          <div class="si-infra__head">
-            <span class="si-infra__title"><el-icon class="me-2"><Coin /></el-icon>数据库</span>
-            <span class="si-infra__link">打开 <el-icon><ArrowRight /></el-icon></span>
-          </div>
-          <template v-if="jdbcKpis && jdbcKpis.spanCount > 0">
-            <div class="si-infra__metrics">
-              <div>
-                <em>Span</em>
-                <strong>{{ jdbcKpis.spanCount }}</strong>
-              </div>
-              <div>
-                <em>错误</em>
-                <strong :class="{ 'is-danger': jdbcKpis.errorCount > 0 }">{{ jdbcKpis.errorCount }}</strong>
-              </div>
-              <div>
-                <em>慢</em>
-                <strong :class="{ 'is-warn': jdbcKpis.slowCount > 0 }">{{ jdbcKpis.slowCount }}</strong>
-              </div>
-              <div>
-                <em>p95</em>
-                <strong>{{ formatMs(jdbcKpis.p95Ms) }}</strong>
-              </div>
-            </div>
-          </template>
-          <p v-else class="si-infra__empty">
-            暂无 JDBC 调用。业务侧开启 <code>jdbc-tracing-enabled</code> 后可在此看慢 SQL / 错误。
-          </p>
-        </button>
-
-        <button v-if="panelVisible('redis')" type="button" class="si-infra__card" @click="goRedis()">
-          <div class="si-infra__head">
-            <span class="si-infra__title"><el-icon class="me-2"><Box /></el-icon>缓存</span>
-            <span class="si-infra__link">打开 <el-icon><ArrowRight /></el-icon></span>
-          </div>
-          <template v-if="redisKpis && redisKpis.spanCount > 0">
-            <div class="si-infra__metrics">
-              <div>
-                <em>Span</em>
-                <strong>{{ redisKpis.spanCount }}</strong>
-              </div>
-              <div>
-                <em>错误</em>
-                <strong :class="{ 'is-danger': redisKpis.errorCount > 0 }">{{ redisKpis.errorCount }}</strong>
-              </div>
-              <div>
-                <em>慢</em>
-                <strong :class="{ 'is-warn': redisKpis.slowCount > 0 }">{{ redisKpis.slowCount }}</strong>
-              </div>
-              <div>
-                <em>p95</em>
-                <strong>{{ formatMs(redisKpis.p95Ms) }}</strong>
-              </div>
-            </div>
-          </template>
-          <p v-else class="si-infra__empty">
-            暂无 Redis 调用。业务侧开启 <code>redis-tracing-enabled</code> 后可在此看慢命令 / 错误。
-          </p>
-        </button>
-      </section>
-
-      <section v-if="isSolo" class="si-app" aria-label="单应用概览">
-        <div class="si-app__head">
-          <div>
-            <h3 class="si-app__name">{{ soloProfile.name }}</h3>
-          </div>
-          <el-button size="small" @click="goTraces()">全部链路</el-button>
-        </div>
-
-        <div class="si-app__metrics">
-          <div class="si-app__metric">
-            <span>请求</span>
-            <strong>{{ soloProfile.spanCount }}</strong>
-          </div>
-          <div class="si-app__metric">
-            <span>平均</span>
-            <strong>{{ formatMs(soloProfile.avgMs) }}</strong>
-          </div>
-          <div class="si-app__metric">
-            <span>p95 <PercentileHelp /></span>
-            <strong :class="soloProfile.p95Ms >= 1000 ? 'si-dashboard__text--danger' : soloProfile.p95Ms >= 500 ? 'si-dashboard__text--warning' : ''">
-              {{ formatMs(soloProfile.p95Ms) }}
-            </strong>
-          </div>
-          <div class="si-app__metric">
-            <span>错误</span>
-            <strong :class="soloProfile.errorCount > 0 ? 'si-dashboard__text--danger' : ''">{{ soloProfile.errorCount }}</strong>
-          </div>
-        </div>
-
-        <div class="si-app__traces">
-          <div class="si-app__traces-head">
-            <h6 class="si-app__traces-title">最近请求</h6>
-            <span class="si-app__traces-hint">{{ hoursLabel }}</span>
-          </div>
-          <div v-if="recentTraces.length === 0" class="si-dashboard__diag-empty">{{ emptyRequestsMessage(hours) }}</div>
-          <ul v-else class="si-app__list">
-            <li
-              v-for="tr in recentTraces"
-              :key="tr.traceId"
-              class="si-app__row"
-              @click="goTraceDetail(tr.traceId)"
-            >
-              <span class="si-http-method" :data-method="traceMethod(tr)">{{ traceMethod(tr) || 'REQ' }}</span>
-              <span class="si-app__path" :title="tracePath(tr)">{{ tracePath(tr) }}</span>
-              <span class="si-dur si-app__dur">
-                <span class="si-dur__track">
-                  <i class="si-dur__bar" :style="{ width: durationShare(tr) + '%' }"></i>
-                </span>
-                <em class="si-dur__val">{{ formatMs(tr.durationMs || 0) }}</em>
-              </span>
-              <el-tag
-                :type="traceFailed(tr) ? 'danger' : 'success'"
-                effect="dark"
-                size="small"
-                round
-              >
-                {{ traceFailed(tr) ? '失败' : '成功' }}
-              </el-tag>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <section v-else-if="showOverviewSection" class="si-overview" aria-label="服务概览">
-        <!-- 第一行：数据面板 -->
-        <div class="si-overview__row si-overview__row--data">
-          <div v-if="panelVisible('error-services')" class="si-overview__panel">
+      <!-- 统一卡片网格 -->
+      <section v-if="showOverviewSection" class="si-overview" aria-label="服务概览">
+        <!-- 第一行：摘要 + 采集器 + 数据库 + 缓存 -->
+        <div class="si-overview__row si-overview__row--meta">
+          <!-- 时段摘要卡片 -->
+          <div v-if="panelVisible('summary')" class="si-overview__panel si-overview__panel--summary">
             <div class="si-overview__head">
-              <span><el-icon class="me-2"><WarningFilled /></el-icon>异常服务</span>
-              <el-button type="danger" plain size="small" @click="goErrors">错误分析</el-button>
+              <span><el-icon class="me-2"><Calendar /></el-icon>时段摘要</span>
+              <div class="si-overview__head-actions">
+                <el-button
+                  size="small"
+                  :loading="periodExplaining"
+                  :disabled="periodExplaining || !aiStatus.invokeReady"
+                  @click="explainPeriod"
+                >
+                  <el-icon v-if="!periodExplaining" class="me-1"><MagicStick /></el-icon>
+                  {{ periodExplaining ? '小结中…' : 'AI 小结' }}
+                </el-button>
+              </div>
             </div>
-            <ul v-if="errorAnalysis.length" class="si-dashboard__rail-list">
-              <li
-                v-for="row in errorAnalysis.slice(0, 8)"
-                :key="'err-' + row.serviceName"
-                @click="goServiceSlow(row)"
-              >
-                <span class="si-dashboard__rail-name" :title="row.serviceName">{{ row.serviceName }}</span>
-                <em class="si-dashboard__text--danger">{{ Number(row.errorRate || 0).toFixed(1) }}%</em>
+            <p class="si-period__headline">{{ periodHeadline }}</p>
+            <ul v-if="periodBullets.length" class="si-period__bullets">
+              <li v-for="(b, i) in periodBullets" :key="i" :class="b.tone ? `si-period__bullet--${b.tone}` : undefined">
+                <button
+                  v-if="b.run"
+                  type="button"
+                  class="si-period__bullet-btn"
+                  @click="b.run"
+                >{{ b.text }}</button>
+                <span v-else>{{ b.text }}</span>
               </li>
             </ul>
-            <div v-else class="si-dashboard__rail-empty">当前时间窗无异常服务</div>
+            <p v-else class="si-period__empty">{{ periodEmptyHint }}</p>
           </div>
 
+          <!-- 采集器状态卡片 -->
+          <div v-if="panelVisible('collector') && collectorStats" class="si-overview__panel">
+            <div class="si-overview__head">
+              <span><el-icon class="me-2"><Coin /></el-icon>Collector</span>
+              <el-button size="small" @click="goTopology()">拓扑</el-button>
+            </div>
+            <div class="si-collector-metrics">
+              <div><em>接收</em><strong>{{ collectorStats.totalReceivedRequests ?? 0 }}</strong></div>
+              <div><em>Span</em><strong>{{ collectorStats.totalReceivedSpans ?? 0 }}</strong></div>
+              <div :class="(collectorStats.successRate ?? 100) < 90 ? 'si-dashboard__text--danger' : ''">
+                <em>成功</em><strong>{{ collectorStats.successRate ?? 100 }}%</strong>
+              </div>
+              <div><em>运行</em><strong>{{ collectorStats.runningHours ?? 0 }}h</strong></div>
+            </div>
+          </div>
+
+          <!-- 数据库卡片 -->
+          <div v-if="panelVisible('jdbc')" class="si-overview__panel">
+            <div class="si-overview__head">
+              <span><el-icon class="me-2"><Coin /></el-icon>数据库</span>
+              <el-button link type="primary" size="small" @click="goJdbc()">打开</el-button>
+            </div>
+            <template v-if="jdbcKpis && jdbcKpis.spanCount > 0">
+              <div class="si-collector-metrics">
+                <div><em>Span</em><strong>{{ jdbcKpis.spanCount }}</strong></div>
+                <div><em>错误</em><strong :class="{ 'is-danger': jdbcKpis.errorCount > 0 }">{{ jdbcKpis.errorCount }}</strong></div>
+                <div><em>慢</em><strong :class="{ 'is-warn': jdbcKpis.slowCount > 0 }">{{ jdbcKpis.slowCount }}</strong></div>
+                <div><em>p95</em><strong>{{ formatMs(jdbcKpis.p95Ms) }}</strong></div>
+              </div>
+            </template>
+            <p v-else class="si-infra__empty">
+              暂无 JDBC 调用
+            </p>
+          </div>
+
+          <!-- 缓存卡片 -->
+          <div v-if="panelVisible('redis')" class="si-overview__panel">
+            <div class="si-overview__head">
+              <span><el-icon class="me-2"><Box /></el-icon>缓存</span>
+              <el-button link type="primary" size="small" @click="goRedis()">打开</el-button>
+            </div>
+            <template v-if="redisKpis && redisKpis.spanCount > 0">
+              <div class="si-collector-metrics">
+                <div><em>Span</em><strong>{{ redisKpis.spanCount }}</strong></div>
+                <div><em>错误</em><strong :class="{ 'is-danger': redisKpis.errorCount > 0 }">{{ redisKpis.errorCount }}</strong></div>
+                <div><em>慢</em><strong :class="{ 'is-warn': redisKpis.slowCount > 0 }">{{ redisKpis.slowCount }}</strong></div>
+                <div><em>p95</em><strong>{{ formatMs(redisKpis.p95Ms) }}</strong></div>
+              </div>
+            </template>
+            <p v-else class="si-infra__empty">
+              暂无 Redis 调用
+            </p>
+          </div>
+        </div>
+
+        <!-- 第二行：服务健康 + 慢服务 + 异常服务 + 错误预算 -->
+        <div class="si-overview__row si-overview__row--data">
           <div v-if="panelVisible('service-health')" class="si-overview__panel">
             <div class="si-overview__head">
               <span><el-icon class="me-2"><FirstAidKit /></el-icon>服务健康</span>
@@ -396,6 +268,24 @@
             <div v-else class="si-dashboard__rail-empty">{{ emptyInRangeShort(hours, '延迟样本') }}</div>
           </div>
 
+          <div v-if="panelVisible('error-services')" class="si-overview__panel">
+            <div class="si-overview__head">
+              <span><el-icon class="me-2"><WarningFilled /></el-icon>异常服务</span>
+              <el-button type="danger" plain size="small" @click="goErrors">错误分析</el-button>
+            </div>
+            <ul v-if="errorAnalysis.length" class="si-dashboard__rail-list">
+              <li
+                v-for="row in errorAnalysis.slice(0, 8)"
+                :key="'err-' + row.serviceName"
+                @click="goServiceSlow(row)"
+              >
+                <span class="si-dashboard__rail-name" :title="row.serviceName">{{ row.serviceName }}</span>
+                <em class="si-dashboard__text--danger">{{ Number(row.errorRate || 0).toFixed(1) }}%</em>
+              </li>
+            </ul>
+            <div v-else class="si-dashboard__rail-empty">当前时间窗无异常服务</div>
+          </div>
+
           <div v-if="showSloPanel" class="si-overview__panel si-overview__panel--slo">
             <div class="si-overview__head">
               <span><el-icon class="me-2"><Target /></el-icon>错误预算</span>
@@ -414,12 +304,12 @@
               </li>
             </ul>
             <div v-else class="si-dashboard__rail-empty">
-              暂无 SLO。可到设置页按服务配置可用性目标。
+              暂无 SLO
             </div>
           </div>
         </div>
 
-        <!-- 第二行：图表面板 -->
+        <!-- 第三行：热点依赖 + 健康分布 + Sankey + 漏斗 -->
         <div class="si-overview__row si-overview__row--charts">
           <div v-if="panelVisible('hot-dependencies')" class="si-overview__panel">
             <div class="si-overview__head">
@@ -450,7 +340,6 @@
             </div>
             <div v-else class="si-dashboard__rail-empty">
               <p class="si-dashboard__rail-empty-text">{{ emptyInRangeShort(hours, '依赖') }}</p>
-              <p class="si-dashboard__rail-empty-hint">跨服务调用出现后可在此与拓扑图查看</p>
             </div>
           </div>
 
@@ -486,7 +375,7 @@
           </div>
         </div>
 
-        <!-- 第三行：底部面板 -->
+        <!-- 第四行：最近请求 + 服务排名 -->
         <div
           v-if="panelVisible('recent-traces') || panelVisible('service-rank')"
           class="si-overview__row si-overview__row--bottom"
@@ -680,6 +569,9 @@ const showOverviewSection = computed(() =>
   || panelVisible('slow-services')
   || panelVisible('hot-dependencies')
   || showSloPanel.value
+  || panelVisible('health-donut')
+  || panelVisible('sankey')
+  || panelVisible('error-funnel')
   || panelVisible('recent-traces')
   || panelVisible('service-rank')
 )
@@ -2466,6 +2358,11 @@ onUnmounted(() => {
   display: grid;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
+  align-items: stretch;
+}
+
+.si-overview__row--meta {
+  grid-template-columns: repeat(4, 1fr);
 }
 
 .si-overview__row--data {
@@ -2478,7 +2375,6 @@ onUnmounted(() => {
 
 .si-overview__row--bottom {
   grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
-  min-height: 14rem;
 }
 
 .si-overview__row--single {
@@ -2486,6 +2382,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1400px) {
+  .si-overview__row--meta,
   .si-overview__row--data,
   .si-overview__row--charts {
     grid-template-columns: repeat(2, 1fr);
@@ -2493,11 +2390,92 @@ onUnmounted(() => {
 }
 
 @media (max-width: 900px) {
+  .si-overview__row--meta,
   .si-overview__row--data,
   .si-overview__row--charts,
   .si-overview__row--bottom {
     grid-template-columns: 1fr;
   }
+}
+
+/* 面板统一高度 */
+.si-overview__panel {
+  min-height: 180px;
+}
+
+.si-overview__row--meta .si-overview__panel {
+  min-height: 140px;
+}
+
+.si-overview__row--charts .si-overview__panel {
+  min-height: 220px;
+}
+
+.si-overview__row--bottom .si-overview__panel {
+  min-height: 280px;
+}
+
+/* 采集器指标样式 */
+.si-collector-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.si-collector-metrics div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.si-collector-metrics em {
+  font-size: 0.7rem;
+  color: var(--si-muted);
+  font-style: normal;
+}
+
+.si-collector-metrics strong {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--si-ink);
+}
+
+/* 时段摘要卡片 */
+.si-overview__panel--summary .si-period__headline {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--si-ink);
+  margin: 0.5rem 0;
+  line-height: 1.4;
+}
+
+.si-overview__panel--summary .si-period__bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.si-overview__panel--summary .si-period__bullets li {
+  font-size: 0.78rem;
+  color: var(--si-ink-soft);
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.si-overview__panel--summary .si-period__bullets li:last-child {
+  border-bottom: none;
+}
+
+.si-overview__panel--summary .si-period__empty {
+  font-size: 0.78rem;
+  color: var(--si-muted);
+  margin: 0.5rem 0;
+}
+
+.si-overview__head-actions {
+  display: flex;
+  gap: 0.3rem;
 }
 
 .si-overview__panel {

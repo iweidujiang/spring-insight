@@ -41,6 +41,7 @@
     <div class="si-workspace">
       <header class="si-topbar">
         <div class="si-topbar__end">
+          <ThemeToggle />
           <NotificationComponent />
           <div v-if="showUserMenu" class="si-user">
             <el-dropdown trigger="click" @command="onUserCommand">
@@ -88,6 +89,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import InsightMark from './components/InsightMark.vue'
 import NotificationComponent from './components/NotificationComponent.vue'
+import ThemeToggle from './components/ThemeToggle.vue'
 import { fetchAuthStatus, getUiToken, getUiUsername, logout } from './services/AuthService'
 import { buildNavLocation } from './utils/insightQuery'
 

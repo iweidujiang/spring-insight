@@ -17,6 +17,7 @@ import SettingsView from './views/SettingsView.vue'
 import AboutView from './views/AboutView.vue'
 import LoginView from './views/LoginView.vue'
 import { fetchAuthStatus, getUiToken } from './services/AuthService'
+import { initTheme } from './composables/useTheme'
 
 // 导入样式（Element Plus 主题变量在品牌色之后覆盖）
 import 'font-awesome/css/font-awesome.min.css'
@@ -132,8 +133,7 @@ router.beforeEach(async (to, _from, next) => {
   next()
 })
 
-// 强制使用暗色主题
-document.documentElement.setAttribute('data-theme', 'dark')
+initTheme()
 
 const app = createApp(App)
 app.use(router)

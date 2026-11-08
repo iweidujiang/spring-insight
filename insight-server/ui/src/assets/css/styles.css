@@ -121,6 +121,11 @@
   --si-table-warning-bg: rgba(245, 158, 11, 0.06);
   --si-table-warning-color: #78350f;
 
+  /* 主题切换按钮 */
+  --si-theme-toggle-bg: transparent;
+  --si-theme-toggle-hover: rgba(0, 184, 212, 0.06);
+  --si-theme-toggle-color: var(--si-muted);
+
   /* 通知面板 */
   --si-notification-bg: var(--si-dropdown-bg);
   --si-notification-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
@@ -318,6 +323,10 @@
   --si-table-danger-color: #FCA5A5;
   --si-table-warning-bg: rgba(251, 191, 36, 0.08);
   --si-table-warning-color: #FCD34D;
+
+  --si-theme-toggle-bg: transparent;
+  --si-theme-toggle-hover: rgba(56, 189, 248, 0.08);
+  --si-theme-toggle-color: #94A3B8;
 
   --si-notification-bg: var(--si-dropdown-bg);
   --si-notification-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
@@ -1005,6 +1014,48 @@ samp {
   font-size: var(--si-type-meta);
 }
 
+/* ── 主题切换按钮 ── */
+.si-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: var(--si-theme-toggle-bg);
+  color: var(--si-theme-toggle-color);
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: background 0.15s ease, color 0.15s ease;
+  position: relative;
+}
+
+.si-theme-toggle:hover {
+  background: var(--si-theme-toggle-hover);
+  color: var(--si-brand);
+}
+
+.si-theme-toggle__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+}
+
+/* 主题切换时的全局过渡 */
+.si-theme-transitioning,
+.si-theme-transitioning *,
+.si-theme-transitioning *::before,
+.si-theme-transitioning *::after {
+  transition: background-color 0.3s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
 /* ── 统一表单控件高度 ── */
 .el-button--small {
   height: 36px;
@@ -1026,6 +1077,11 @@ samp {
 
 /* ── 移动端触摸目标 ≥ 44px ── */
 @media (max-width: 768px) {
+  .si-theme-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   .notification-button {
     min-width: 44px;
     min-height: 44px;
