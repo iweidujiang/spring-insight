@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
 import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetector;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.server.jvm.InMemoryJvmMetricStore;
+import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
+import io.github.iweidujiang.springinsight.server.jvm.JvmMetricStore;
 import io.github.iweidujiang.springinsight.server.topology.TopologyDiffService;
 import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
@@ -113,5 +116,22 @@ public class CollectorTestConfiguration {
     @Bean
     public TopologyDiffService topologyDiffService(TraceSpanPersistenceService persistence) {
         return new TopologyDiffService(persistence);
+    }
+
+    /**
+     * @return JVM 指标环形缓冲（CollectorController / CollectorApiController 依赖）
+     */
+    @Bean
+    public JvmMetricStore jvmMetricStore() {
+        return new InMemoryJvmMetricStore();
+    }
+
+    /**
+     * @param jvmMetricStore 指标存储
+     * @return JVM 查询门面
+     */
+    @Bean
+    public JvmMetricQueryService jvmMetricQueryService(JvmMetricStore jvmMetricStore) {
+        return new JvmMetricQueryService(jvmMetricStore);
     }
 }
