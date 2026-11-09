@@ -54,7 +54,7 @@ docker run --rm -p 9966:9966 \
 java -jar insight-server-1.2.0.jar
 ```
 
-浏览器打开 <http://localhost:9966/>。Compose 默认登录：`admin` / `1`（可用 `.env` 改密码或关闭鉴权）。告警 / AI 等在控制台 **设置** 页配置。
+浏览器打开 <http://localhost:9966/>。官方 `compose.yaml` 默认**不**开控制台登录；本地开发用 `compose.dev.yaml` 时默认 `admin` / `1`（可用 `.env` 改密码或关闭鉴权）。告警 / AI 等在控制台 **设置** 页配置。
 
 ### 2. 业务服务接入
 
