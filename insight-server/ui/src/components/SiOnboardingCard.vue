@@ -68,7 +68,9 @@ function goAbout() {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
+  box-sizing: border-box;
   margin-bottom: 1rem;
   padding: 2.25rem 1.5rem 1.85rem;
   border: 1px dashed var(--card-border);
@@ -76,6 +78,13 @@ function goAbout() {
   background:
     radial-gradient(420px 160px at 50% 0%, var(--si-brand-soft), transparent 70%),
     var(--card-bg);
+}
+
+/* 父级用 flex 铺满剩余高度时垂直居中 */
+.si-empty-state:where(.si-dashboard__onboard, .si-topo-onboard) {
+  margin-bottom: 0;
+  width: 100%;
+  min-height: 0;
 }
 
 .si-empty-state__visual {

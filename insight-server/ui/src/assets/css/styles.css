@@ -467,8 +467,11 @@ samp {
 #app {
   width: 100%;
   min-height: 100dvh;
+  max-height: 100dvh;
+  height: 100dvh;
   display: flex;
   align-items: stretch;
+  overflow: hidden;
 }
 
 .si-shell {
@@ -478,12 +481,18 @@ samp {
   width: 100%;
   min-width: 0;
   min-height: 100dvh;
+  max-height: 100dvh;
+  height: 100dvh;
   display: flex;
   align-items: stretch;
+  overflow: hidden;
 }
 
 .si-shell--login {
   display: block;
+  height: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 .si-sidebar {
@@ -705,6 +714,8 @@ samp {
 }
 
 .si-main--dashboard {
+  flex: 1 1 auto;
+  min-height: 0;
   height: auto;
   max-height: none;
   overflow: hidden;
@@ -795,7 +806,7 @@ samp {
   .si-main--dashboard {
     height: auto;
     max-height: none;
-    overflow: visible;
+    overflow: hidden;
   }
 }
 

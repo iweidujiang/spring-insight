@@ -848,7 +848,10 @@ onUnmounted(() => {
 
 <style scoped>
 .si-topo-page {
-  min-height: calc(100dvh - 2rem);
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .si-topo-alert {
@@ -856,7 +859,10 @@ onUnmounted(() => {
 }
 
 .si-topo-onboard {
+  flex: 1;
+  min-height: 0;
   margin-top: 0.25rem;
+  margin-bottom: 0;
 }
 
 .si-topo-text--danger { color: var(--danger-color) !important; }

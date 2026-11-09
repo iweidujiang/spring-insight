@@ -98,7 +98,11 @@
 
     <SiAlert v-if="loadError" tone="danger" class="si-dashboard__alert">{{ loadError }}</SiAlert>
 
-    <div v-show="!loading" class="si-dashboard__content">
+    <div
+      v-show="!loading"
+      class="si-dashboard__content"
+      :class="{ 'si-dashboard__content--empty': isFirstRunEmpty }"
+    >
       <SiOnboardingCard
         v-if="isFirstRunEmpty"
         class="si-dashboard__onboard"
@@ -106,6 +110,7 @@
         @refresh="loadData"
       />
 
+      <template v-else>
       <!-- KPI 卡片 -->
       <section
         v-if="panelVisible('kpi')"
@@ -443,6 +448,7 @@
           </div>
         </div>
       </section>
+      </template>
     </div>
   </div>
 </template>
@@ -1536,6 +1542,20 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 0.75rem;
   padding-bottom: 0.75rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.si-dashboard__content--empty {
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.si-dashboard__onboard {
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 0;
 }
 
 .si-dashboard__top {
