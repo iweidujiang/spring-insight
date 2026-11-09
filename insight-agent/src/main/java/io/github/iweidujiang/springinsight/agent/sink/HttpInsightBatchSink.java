@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.model.JvmMetric;
+import io.github.iweidujiang.springinsight.agent.model.JvmMetricBatchReport;
 import io.github.iweidujiang.springinsight.agent.model.TraceBatchReport;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,9 @@ public class HttpInsightBatchSink implements InsightBatchSink {
     /** 相对 Server 根地址的 Span 批量上报路径 */
     private static final String SPANS_BATCH_PATH = "/api/v1/spans/batch";
 
+    /** 相对 Server 根地址的 JVM 指标批量上报路径 */
+    private static final String JVM_METRICS_BATCH_PATH = "/api/v1/jvm-metrics/batch";
+
     /** 单次 HTTP 连接/请求超时，避免拖垮业务异步上报线程 */
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
 
@@ -57,6 +61,11 @@ public class HttpInsightBatchSink implements InsightBatchSink {
     private final String spansBatchUrl;
 
     /**
+     * JVM 指标完整上报 URL
+     */
+    private final String jvmMetricsBatchUrl;
+
+    /**
      * 使用内置上报专用 ObjectMapper（支持 {@link java.time.Instant} 等）。
      *
      * @param properties Insight 配置（须已配置非空 {@code server-url}）
@@ -78,10 +87,11 @@ public class HttpInsightBatchSink implements InsightBatchSink {
             throw new IllegalArgumentException("spring.insight.server-url 不能为空");
         }
         this.spansBatchUrl = base + SPANS_BATCH_PATH;
+        this.jvmMetricsBatchUrl = base + JVM_METRICS_BATCH_PATH;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(REQUEST_TIMEOUT)
                 .build();
-        log.info("[HTTP上报] InsightBatchSink 已启用，目标={}", this.spansBatchUrl);
+        log.info("[HTTP上报] InsightBatchSink 已启用，目标={} / {}", this.spansBatchUrl, this.jvmMetricsBatchUrl);
     }
 
     /**
@@ -151,16 +161,51 @@ public class HttpInsightBatchSink implements InsightBatchSink {
     }
 
     /**
-     * JVM 指标暂无对应服务端存储表，仅记录 debug，避免误以为已落库。
+     * 将一批 JVM 指标封装为 {@link JvmMetricBatchReport} 并 POST 到 Insight Server。
+     * <p>
+     * 失败只打日志，不向调用方抛出。
+     * </p>
      *
-     * @param metrics JVM 指标列表
+     * @param metrics JVM 指标列表；空或 {@code null} 时直接返回
      */
     @Override
     public void acceptJvmMetrics(List<JvmMetric> metrics) {
         if (metrics == null || metrics.isEmpty()) {
             return;
         }
-        log.debug("[HTTP上报] JVM 指标批次已接收（Server 暂无专用接口）: size={}", metrics.size());
+
+        JvmMetricBatchReport report = new JvmMetricBatchReport();
+        report.setServiceName(properties.getServiceName());
+        report.setServiceInstance(resolveServiceInstance());
+        report.setBatchId(UUID.randomUUID().toString());
+        report.addAllMetrics(metrics);
+
+        try {
+            byte[] body = objectMapper.writeValueAsBytes(report);
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(jvmMetricsBatchUrl))
+                    .timeout(REQUEST_TIMEOUT)
+                    .header("Content-Type", "application/json");
+            String token = properties.normalizedIngestToken();
+            if (!token.isEmpty()) {
+                builder.header("X-Insight-Token", token);
+            }
+            HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            int status = response.statusCode();
+            if (status >= 200 && status < 300) {
+                log.debug("[HTTP上报] JVM 指标批次成功: size={}, status={}", metrics.size(), status);
+            } else {
+                log.warn("[HTTP上报] JVM 指标批次失败: size={}, status={}, body={}",
+                        metrics.size(), status, abbreviate(response.body()));
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("[HTTP上报] JVM 指标上报被中断: size={}", metrics.size());
+        } catch (Exception e) {
+            log.warn("[HTTP上报] JVM 指标批次异常: size={}, error={}", metrics.size(), e.getMessage());
+        }
     }
 
     /**

@@ -17,6 +17,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.util.StringUtils;
 
 /**
@@ -204,6 +205,15 @@ public class InsightBeanConfiguration {
     public ShutdownHook shutdownHook(AsyncSpanReporter asyncSpanReporter) {
         log.info("[Bean配置] 注册应用关闭钩子");
         return new ShutdownHook(asyncSpanReporter);
+    }
+
+    /**
+     * 仅在开启 JVM 指标时启用调度，驱动 {@link JvmMetricsReporter} 定时采集。
+     */
+    @Configuration
+    @EnableScheduling
+    @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true")
+    static class JvmMetricsSchedulingConfiguration {
     }
 
     /**
