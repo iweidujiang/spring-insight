@@ -133,6 +133,12 @@ const navGroups = [
     items: [
       { to: '/', label: '仪表盘', icon: 'Odometer', match: (p: string) => p === '/' },
       { to: '/topology', label: '拓扑图', icon: 'Share', match: (p: string) => p === '/topology' },
+      {
+        to: '/services',
+        label: '服务',
+        icon: 'Monitor',
+        match: (p: string) => p === '/services' || p.startsWith('/services/')
+      },
       { to: '/traces', label: '链路追踪', icon: 'List', match: (p: string) => p === '/traces' || p.startsWith('/traces/') },
       { to: '/jdbc', label: '数据库', icon: 'Coin', match: (p: string) => p === '/jdbc' },
       { to: '/redis', label: '缓存', icon: 'Box', match: (p: string) => p === '/redis' },

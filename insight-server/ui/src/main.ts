@@ -13,6 +13,7 @@ import ErrorAnalysisView from './views/ErrorAnalysisView.vue'
 import JdbcView from './views/JdbcView.vue'
 import RedisView from './views/RedisView.vue'
 import ServiceDetailView from './views/ServiceDetailView.vue'
+import ServicesView from './views/ServicesView.vue'
 import SettingsView from './views/SettingsView.vue'
 import AboutView from './views/AboutView.vue'
 import LoginView from './views/LoginView.vue'
@@ -83,6 +84,12 @@ const router = createRouter({
       name: 'redis',
       component: RedisView,
       meta: { title: '缓存' }
+    },
+    {
+      path: '/services',
+      name: 'services',
+      component: ServicesView,
+      meta: { title: '服务' }
     },
     {
       path: '/services/:serviceName',

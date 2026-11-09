@@ -252,7 +252,7 @@
               row-key="serviceName"
               clickable
               :row-class="healthRowClass"
-              @row-click="goServiceSlow"
+              @row-click="goServiceDetail"
             />
             <div v-else class="si-dashboard__diag-empty si-dashboard__diag-empty--rich">
               <p class="si-dashboard__diag-empty-text">{{ emptyLatencySampleMessage(hours) }}</p>
@@ -269,7 +269,7 @@
               <li
                 v-for="row in slowServices.slice(0, 6)"
                 :key="'slow-' + row.serviceName"
-                @click="goServiceSlow(row)"
+                @click="goServiceDetail(row)"
               >
                 <span class="si-dashboard__rail-name" :title="row.serviceName">{{ row.serviceName }}</span>
                 <em :class="row.p95Ms >= 1000 ? 'si-dashboard__text--danger' : row.p95Ms >= 500 ? 'si-dashboard__text--warning' : ''">
@@ -289,7 +289,7 @@
               <li
                 v-for="row in errorAnalysis.slice(0, 8)"
                 :key="'err-' + row.serviceName"
-                @click="goServiceSlow(row)"
+                @click="goServiceDetail(row)"
               >
                 <span class="si-dashboard__rail-name" :title="row.serviceName">{{ row.serviceName }}</span>
                 <em class="si-dashboard__text--danger">{{ Number(row.errorRate || 0).toFixed(1) }}%</em>
@@ -905,7 +905,7 @@ type DashKpi = {
 const kpiStats = computed<DashKpi[]>(() => {
   const errorCount = errorAnalysis.value.length
   return [
-    { key: 'services', title: '监控服务', count: String(services.value.length), unit: '个', to: '/traces' },
+    { key: 'services', title: '监控服务', count: String(services.value.length), unit: '个', to: '/services' },
     { key: 'spans', title: '链路总数', count: String(totalSpans.value), unit: '条', to: '/traces' },
     { key: 'deps', title: '依赖关系', count: String(dependencies.value.length), unit: '条', to: '/topology' },
     {
@@ -965,6 +965,16 @@ const goTraceDetail = (traceId: string) => {
 }
 
 const goSlowTraces = () => goTraces({ minDurationMs: '500' })
+
+/** 进入服务详情（KPI / 依赖 / JVM） */
+const goServiceDetail = (row: { serviceName?: string }) => {
+  const name = String(row?.serviceName || '').trim()
+  if (!name) return
+  router.push({
+    path: `/services/${encodeURIComponent(name)}`,
+    query: { hours: String(hours.value) }
+  })
+}
 
 const goServiceSlow = (row: { serviceName: string; p50Ms?: number }) => {
   const minDur = Math.max(100, Math.floor(Number(row.p50Ms) || 100))

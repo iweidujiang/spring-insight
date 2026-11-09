@@ -3,11 +3,12 @@
     <header class="si-svc-detail__top">
       <div class="si-svc-detail__title-block">
         <el-button link type="primary" size="small" class="si-svc-detail__back" @click="goBack">
-          <el-icon class="me-1"><ArrowLeft /></el-icon>返回
+          <el-icon class="me-1"><ArrowLeft /></el-icon>服务列表
         </el-button>
         <h2 class="si-svc-detail__title">
           <el-icon class="me-2"><Box /></el-icon>{{ serviceName || '服务详情' }}
         </h2>
+        <p class="si-svc-detail__lead">KPI、依赖、最近链路与 JVM 运行时</p>
       </div>
       <div class="si-svc-detail__actions">
         <label class="visually-hidden" for="svc-detail-hours">时间范围</label>
@@ -575,8 +576,7 @@ const onResize = () => {
 }
 
 const goBack = () => {
-  if (window.history.length > 1) router.back()
-  else router.push({ path: '/topology', query: { hours: String(hours.value) } })
+  router.push({ path: '/services', query: { hours: String(hours.value) } })
 }
 
 const goTraces = (extra: Record<string, string | number> = {}) => {
@@ -693,10 +693,16 @@ onUnmounted(() => {
 }
 
 .si-svc-detail__title {
-  margin: 0.15rem 0 0.2rem;
+  margin: 0.15rem 0 0.15rem;
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--si-ink);
+}
+
+.si-svc-detail__lead {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--si-muted);
 }
 
 .si-svc-detail__back {
