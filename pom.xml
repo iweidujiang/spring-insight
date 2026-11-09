@@ -6,7 +6,7 @@
 
     <groupId>io.github.iweidujiang</groupId>
     <artifactId>spring-insight-boot2-parent</artifactId>
-    <version>0.5.1</version>
+    <version>0.6.0</version>
 
     <packaging>pom</packaging>
 

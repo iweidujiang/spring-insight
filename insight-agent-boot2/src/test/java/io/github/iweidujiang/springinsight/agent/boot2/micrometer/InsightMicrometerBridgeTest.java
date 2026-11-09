@@ -37,6 +37,11 @@ public class InsightMicrometerBridgeTest {
             public void acceptTraceSpans(List<TraceSpan> spans) {
                 // no-op
             }
+
+            @Override
+            public void acceptJvmMetrics(List<io.github.iweidujiang.springinsight.agent.boot2.model.JvmMetric> metrics) {
+                // no-op
+            }
         };
         ObjectProvider<InsightBatchSink> sinkProvider = new ObjectProvider<InsightBatchSink>() {
             @Override

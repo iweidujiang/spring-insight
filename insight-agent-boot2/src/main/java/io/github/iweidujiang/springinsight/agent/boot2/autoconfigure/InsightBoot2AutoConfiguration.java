@@ -2,6 +2,8 @@ package io.github.iweidujiang.springinsight.agent.boot2.autoconfigure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.agent.boot2.collector.AsyncSpanReporter;
+import io.github.iweidujiang.springinsight.agent.boot2.collector.JvmMetricsCollector;
+import io.github.iweidujiang.springinsight.agent.boot2.collector.JvmMetricsReporter;
 import io.github.iweidujiang.springinsight.agent.boot2.instrumentation.HttpRequestInterceptor;
 import io.github.iweidujiang.springinsight.agent.boot2.listener.SpanReportingListener;
 import io.github.iweidujiang.springinsight.agent.boot2.sink.HttpInsightBatchSink;
@@ -17,6 +19,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -30,22 +33,29 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * GitHub：https://github.com/iweidujiang
  */
 @Configuration
-@EnableConfigurationProperties(InsightBoot2Properties.class)
+@EnableConfigurationProperties({InsightBoot2Properties.class, InsightJvmMetricsProperties.class})
 @ConditionalOnProperty(prefix = "spring.insight", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class InsightBoot2AutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(InsightBoot2AutoConfiguration.class);
 
     private final InsightBoot2Properties properties;
+    private final InsightJvmMetricsProperties jvmMetricsProperties;
+    private final Environment environment;
 
     /**
      * 解析服务名并打印启动就绪日志。
      *
-     * @param properties  Insight 配置
-     * @param environment Spring Environment
+     * @param properties           Insight 配置
+     * @param jvmMetricsProperties JVM 指标配置
+     * @param environment          Spring Environment
      */
-    public InsightBoot2AutoConfiguration(InsightBoot2Properties properties, Environment environment) {
+    public InsightBoot2AutoConfiguration(InsightBoot2Properties properties,
+                                         InsightJvmMetricsProperties jvmMetricsProperties,
+                                         Environment environment) {
         this.properties = properties;
+        this.jvmMetricsProperties = jvmMetricsProperties;
+        this.environment = environment;
         properties.resolveServiceNameFromEnvironment(environment);
         if (!properties.validate()) {
             log.warn("[Spring Insight] 未解析到服务名，本次不采集。请配置 spring.application.name 或 spring.insight.service-name。");
@@ -100,6 +110,62 @@ public class InsightBoot2AutoConfiguration {
     public SpanReportingListener spanReportingListener(AsyncSpanReporter asyncSpanReporter,
                                                        ObjectProvider<io.github.iweidujiang.springinsight.agent.boot2.micrometer.InsightMicrometerBridge> micrometerBridge) {
         return new SpanReportingListener(asyncSpanReporter, micrometerBridge, properties);
+    }
+
+    /**
+     * JVM 指标采集器（默认关）。
+     *
+     * @return 采集器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true")
+    public JvmMetricsCollector jvmMetricsCollector() {
+        String serviceInstance = properties.getServiceInstance();
+        if (!StringUtils.hasText(serviceInstance)) {
+            serviceInstance = "localhost:" + resolveServerPort();
+        }
+        Integer hostPort = null;
+        try {
+            hostPort = Integer.valueOf(resolveServerPort());
+        } catch (NumberFormatException e) {
+            hostPort = Integer.valueOf(8080);
+        }
+        return new JvmMetricsCollector(properties.getServiceName(), serviceInstance, hostPort);
+    }
+
+    /**
+     * JVM 指标定时上报。
+     *
+     * @param jvmMetricsCollector 采集器
+     * @param asyncSpanReporter   异步队列
+     * @return 报告器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true")
+    public JvmMetricsReporter jvmMetricsReporter(JvmMetricsCollector jvmMetricsCollector,
+                                                 AsyncSpanReporter asyncSpanReporter) {
+        log.info("[Boot2配置] JVM 指标报告器已启用，上报间隔: {}ms",
+                Integer.valueOf(jvmMetricsProperties.getReportInterval()));
+        return new JvmMetricsReporter(jvmMetricsCollector, asyncSpanReporter);
+    }
+
+    private String resolveServerPort() {
+        String port = environment.getProperty("server.port", "8080");
+        if (!StringUtils.hasText(port) || "0".equals(port)) {
+            return "8080";
+        }
+        return port.trim();
+    }
+
+    /**
+     * 仅在开启 JVM 指标时启用调度。
+     */
+    @Configuration
+    @EnableScheduling
+    @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true")
+    static class JvmMetricsSchedulingConfiguration {
     }
 
     /**

@@ -108,6 +108,20 @@
       "type": "java.lang.String[]",
       "description": "HTTP 追踪排除路径（Ant 风格）。",
       "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties"
+    },
+    {
+      "name": "spring.insight.jvm-metrics.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 JVM 指标采集与上报（默认关）。开启后定时 POST /api/v1/jvm-metrics/batch。",
+      "defaultValue": false,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightJvmMetricsProperties"
+    },
+    {
+      "name": "spring.insight.jvm-metrics.report-interval",
+      "type": "java.lang.Integer",
+      "description": "JVM 指标上报间隔（毫秒）。",
+      "defaultValue": 30000,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightJvmMetricsProperties"
     }
   ],
   "hints": []

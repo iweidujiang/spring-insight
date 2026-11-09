@@ -3,7 +3,7 @@
 面向 **Spring Boot 2.7 / Java 8+** 的轻量监测 Agent：业务侧加一个 Starter，把 Span 上报到监测中心，即可查看服务拓扑与调用链路。
 
 - 仓库分支：`2.7.x`
-- 当前版本：**`0.5.1`**（Maven Central；与主线 Boot3 Agent 同号）
+- 当前版本：**`0.6.0`**（与主线 Boot3 Agent 同号；发 Central 前请先本地 `mvn install`）
 - 监测中心（Docker / jar）请使用同仓库 **`main`** 分支发布的 `insight-server`（推荐 `0.9.0+`，与本 Agent 协议兼容）
 
 ---
@@ -16,7 +16,7 @@
 <dependency>
   <groupId>io.github.iweidujiang</groupId>
   <artifactId>spring-insight-agent-starter-boot2</artifactId>
-  <version>0.5.1</version>
+  <version>0.6.0</version>
 </dependency>
 ```
 
@@ -50,6 +50,8 @@ spring:
 | `spring.insight.jdbc-slow-threshold-ms` | `500` | 慢 SQL 阈值（毫秒）；`<=0` 表示成功也上报 |
 | `spring.insight.redis-tracing-enabled` | `false` | Redis 追踪（包装 RedisConnectionFactory）；错误始终上报，成功仅慢命令 |
 | `spring.insight.redis-slow-threshold-ms` | `500` | 慢命令阈值（毫秒）；`<=0` 表示成功也上报 |
+| `spring.insight.jvm-metrics.enabled` | `false` | JVM 指标采集上报（堆 / GC / 线程）；需 Server ≥ 2.0.0 |
+| `spring.insight.jvm-metrics.report-interval` | `30000` | JVM 上报间隔（毫秒） |
 | `spring.insight.sample-rate` | `1` | 头部采样率（0～1）；未采样不上报、出站 flags=`00` |
 | `spring.insight.micrometer-enabled` | `true` | 桥接宿主 MeterRegistry |
 | `spring.insight.diagnostic-logs` | `false` | 请求级诊断日志 |
@@ -67,7 +69,7 @@ docker run --rm -p 9966:9966 \
 
 ## 能力
 
-Servlet MVC SERVER Span、OpenFeign CLIENT（`remoteService` 优先 `@FeignClient` name）、RestTemplate CLIENT（须 `RestTemplateBuilder`）、可选 JDBC / Redis CLIENT（默认关）、HttpURLConnection 批量上报、可选 Micrometer（`spring.insight.*`）、WebFlux 入口、WebClient / Gateway 出站 CLIENT。
+Servlet MVC SERVER Span、OpenFeign CLIENT（`remoteService` 优先 `@FeignClient` name）、RestTemplate CLIENT（须 `RestTemplateBuilder`）、可选 JDBC / Redis CLIENT（默认关）、可选 JVM 指标上报（默认关）、HttpURLConnection 批量上报、可选 Micrometer（`spring.insight.*`）、WebFlux 入口、WebClient / Gateway 出站 CLIENT。
 
 ---
 

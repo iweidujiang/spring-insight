@@ -1,8 +1,9 @@
 # Changelog
 
-## [Unreleased]
+## [Unreleased] → 目标 **0.6.0**
 
-目标版本：**0.5.1**
+### 新增
+- **JVM 指标上报**：开启 `spring.insight.jvm-metrics.enabled=true` 后定时采集堆 / GC / 线程等，批量 POST 到监测中心（与主线 0.6.0 对齐；默认关闭）
 
 ### 修复
 - **缓存追踪兼容**：Lettuce 异步命令在完成后再结束调用记录，回调中可保留原请求上下文；Jedis 连接池借出的连接可被正确追踪，归还后清理包装状态
@@ -11,8 +12,8 @@
 ### 坐标（预览）
 | 项 | 值 |
 |----|-----|
-| Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.5.1` |
-| Agent | `io.github.iweidujiang:insight-agent-boot2:0.5.1` |
+| Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.6.0` |
+| Agent | `io.github.iweidujiang:insight-agent-boot2:0.6.0` |
 
 ---
 
