@@ -73,6 +73,49 @@
         <el-button size="small" @click="goTopology">打开拓扑</el-button>
       </div>
 
+      <section class="si-svc-detail__jvm" aria-label="JVM 指标">
+        <div class="si-svc-detail__jvm-head">
+          <h3 class="si-svc-detail__jvm-title">JVM 运行时</h3>
+          <el-select
+            v-if="jvmInstances.length > 1"
+            v-model="jvmInstance"
+            size="small"
+            class="si-svc-detail__jvm-instance"
+            placeholder="全部实例"
+            clearable
+            @change="loadJvm"
+          >
+            <el-option
+              v-for="inst in jvmInstances"
+              :key="inst"
+              :label="inst"
+              :value="inst"
+            />
+          </el-select>
+        </div>
+        <p v-if="jvmLatestMeta" class="si-svc-detail__jvm-meta">{{ jvmLatestMeta }}</p>
+        <div v-if="jvmLoading" class="si-svc-detail__card-empty">加载 JVM 指标…</div>
+        <div v-else-if="!jvmFound" class="si-svc-detail__card-empty si-svc-detail__jvm-empty">
+          暂无 JVM 指标。在业务服务开启
+          <code>spring.insight.jvm-metrics.enabled=true</code>
+          并上报后，这里会显示堆、GC 与线程曲线。
+        </div>
+        <div v-else class="si-svc-detail__jvm-charts">
+          <div class="si-svc-detail__jvm-chart-card">
+            <div class="si-svc-detail__jvm-chart-label">堆内存</div>
+            <div ref="heapChartEl" class="si-svc-detail__jvm-canvas"></div>
+          </div>
+          <div class="si-svc-detail__jvm-chart-card">
+            <div class="si-svc-detail__jvm-chart-label">GC 累计次数</div>
+            <div ref="gcChartEl" class="si-svc-detail__jvm-canvas"></div>
+          </div>
+          <div class="si-svc-detail__jvm-chart-card">
+            <div class="si-svc-detail__jvm-chart-label">线程</div>
+            <div ref="threadChartEl" class="si-svc-detail__jvm-canvas"></div>
+          </div>
+        </div>
+      </section>
+
       <div class="si-svc-detail__grid">
         <div class="si-svc-detail__grid-col">
           <el-card class="si-svc-detail__card si-svc-detail__card--full" shadow="never">
@@ -163,14 +206,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import * as echarts from 'echarts'
 import { ArrowLeft, Box, Refresh } from '@element-plus/icons-vue'
 import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import SiLoading from '../components/SiLoading.vue'
 import type { SiColumn } from '../components/siTable'
+import { useChartTheme } from '../composables/useChartTheme'
 import { formatDuration } from '../utils/traceTimeline'
 import { TIME_RANGE_OPTIONS, emptyRequestsMessage } from '../utils/timeRange'
 import { resolveHours, persistHours, persistService, mergeQuery } from '../utils/insightQuery'
@@ -178,6 +223,7 @@ import { loadFailedMessage, deeplinkMissMessage } from '../utils/timeRange'
 
 const route = useRoute()
 const router = useRouter()
+const { colors: chartColors } = useChartTheme()
 
 const serviceName = ref('')
 const hours = ref(24)
@@ -185,6 +231,47 @@ const loading = ref(true)
 const loadError = ref('')
 const deeplinkHint = ref('')
 const summary = ref<Awaited<ReturnType<typeof ApiService.getServiceSummary>> | null>(null)
+
+type JvmPoint = Awaited<ReturnType<typeof ApiService.getServiceJvmMetrics>>['points'][number]
+const jvmLoading = ref(false)
+const jvmFound = ref(false)
+const jvmInstance = ref('')
+const jvmInstances = ref<string[]>([])
+const jvmPoints = ref<JvmPoint[]>([])
+const jvmLatest = ref<Record<string, unknown> | null>(null)
+const heapChartEl = ref<HTMLElement | null>(null)
+const gcChartEl = ref<HTMLElement | null>(null)
+const threadChartEl = ref<HTMLElement | null>(null)
+let heapChart: echarts.ECharts | null = null
+let gcChart: echarts.ECharts | null = null
+let threadChart: echarts.ECharts | null = null
+
+const jvmLatestMeta = computed(() => {
+  const snap = jvmLatest.value
+  if (!snap) return ''
+  const parts: string[] = []
+  if (snap.javaVersion) parts.push(`Java ${snap.javaVersion}`)
+  if (snap.jvmName) parts.push(String(snap.jvmName))
+  if (snap.serviceInstance) parts.push(String(snap.serviceInstance))
+  const heapUsed = Number(snap.heapMemoryUsed ?? 0)
+  const heapMax = Number(snap.heapMemoryMax ?? 0)
+  if (heapMax > 0) {
+    parts.push(`堆 ${formatBytes(heapUsed)} / ${formatBytes(heapMax)}`)
+  }
+  return parts.join(' · ')
+})
+
+function formatBytes(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let v = n
+  let i = 0
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024
+    i += 1
+  }
+  return `${v >= 10 || i === 0 ? v.toFixed(0) : v.toFixed(1)} ${units[i]}`
+}
 
 type SvcKpi = {
   key: string
@@ -318,6 +405,175 @@ const onHoursChange = () => {
   load()
 }
 
+const disposeJvmCharts = () => {
+  heapChart?.dispose()
+  gcChart?.dispose()
+  threadChart?.dispose()
+  heapChart = null
+  gcChart = null
+  threadChart = null
+}
+
+const baseLineOption = (times: string[], series: echarts.SeriesOption[]) => {
+  const c = chartColors.value
+  return {
+    color: [c.brand, c.warning, c.success],
+    grid: { left: 48, right: 16, top: 28, bottom: 28 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: c.tooltipBg,
+      borderColor: c.tooltipBorder,
+      textStyle: { color: c.tooltipText }
+    },
+    legend: {
+      top: 0,
+      textStyle: { color: c.inkSoft, fontSize: 11 }
+    },
+    xAxis: {
+      type: 'category',
+      data: times,
+      axisLabel: { color: c.muted, fontSize: 10 },
+      axisLine: { lineStyle: { color: c.axisLine } }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: c.muted, fontSize: 10 },
+      splitLine: { lineStyle: { color: c.splitLine, type: 'dashed' } }
+    },
+    series
+  } as echarts.EChartsOption
+}
+
+const renderJvmCharts = async () => {
+  await nextTick()
+  if (!jvmFound.value || jvmPoints.value.length === 0) {
+    disposeJvmCharts()
+    return
+  }
+  const points = jvmPoints.value
+  const times = points.map((p) => {
+    const d = new Date(p.timestamp)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  })
+  const c = chartColors.value
+
+  if (heapChartEl.value) {
+    heapChart ||= echarts.init(heapChartEl.value)
+    heapChart.setOption(
+      baseLineOption(times, [
+        {
+          name: '已用',
+          type: 'line',
+          showSymbol: false,
+          data: points.map((p) => Number((p.heapMemoryUsed / (1024 * 1024)).toFixed(2)))
+        },
+        {
+          name: '已提交',
+          type: 'line',
+          showSymbol: false,
+          data: points.map((p) => Number((p.heapMemoryCommitted / (1024 * 1024)).toFixed(2)))
+        },
+        {
+          name: '上限',
+          type: 'line',
+          showSymbol: false,
+          lineStyle: { type: 'dashed' },
+          data: points.map((p) =>
+            p.heapMemoryMax > 0 ? Number((p.heapMemoryMax / (1024 * 1024)).toFixed(2)) : null
+          )
+        }
+      ]),
+      true
+    )
+    heapChart.setOption({
+      yAxis: { name: 'MB', nameTextStyle: { color: c.muted, fontSize: 10 } }
+    })
+  }
+
+  if (gcChartEl.value) {
+    gcChart ||= echarts.init(gcChartEl.value)
+    gcChart.setOption(
+      baseLineOption(times, [
+        {
+          name: 'GC 次数',
+          type: 'line',
+          showSymbol: false,
+          areaStyle: { opacity: 0.08 },
+          data: points.map((p) => p.gcCount)
+        }
+      ]),
+      true
+    )
+  }
+
+  if (threadChartEl.value) {
+    threadChart ||= echarts.init(threadChartEl.value)
+    threadChart.setOption(
+      baseLineOption(times, [
+        {
+          name: '活跃',
+          type: 'line',
+          showSymbol: false,
+          data: points.map((p) => p.activeThreads)
+        },
+        {
+          name: '峰值',
+          type: 'line',
+          showSymbol: false,
+          data: points.map((p) => p.peakThreads)
+        },
+        {
+          name: '守护',
+          type: 'line',
+          showSymbol: false,
+          data: points.map((p) => p.daemonThreads)
+        }
+      ]),
+      true
+    )
+  }
+}
+
+const loadJvm = async () => {
+  const name = serviceName.value
+  if (!name) {
+    jvmFound.value = false
+    jvmPoints.value = []
+    jvmLatest.value = null
+    disposeJvmCharts()
+    return
+  }
+  jvmLoading.value = true
+  try {
+    const data = await ApiService.getServiceJvmMetrics(
+      name,
+      hours.value,
+      jvmInstance.value || undefined
+    )
+    jvmFound.value = data.found
+    jvmInstances.value = data.instances
+    if (!jvmInstance.value && data.instance) {
+      jvmInstance.value = data.instance
+    }
+    jvmPoints.value = data.points
+    jvmLatest.value = data.latest
+    await renderJvmCharts()
+  } catch {
+    jvmFound.value = false
+    jvmPoints.value = []
+    jvmLatest.value = null
+    disposeJvmCharts()
+  } finally {
+    jvmLoading.value = false
+  }
+}
+
+const onResize = () => {
+  heapChart?.resize()
+  gcChart?.resize()
+  threadChart?.resize()
+}
+
 const goBack = () => {
   if (window.history.length > 1) router.back()
   else router.push({ path: '/topology', query: { hours: String(hours.value) } })
@@ -366,9 +622,11 @@ const load = async () => {
   loadError.value = ''
   deeplinkHint.value = ''
   summary.value = null
+  jvmInstance.value = ''
   if (!name) {
     loading.value = false
     deeplinkHint.value = deeplinkMissMessage('service')
+    disposeJvmCharts()
     return
   }
   persistService(name)
@@ -379,6 +637,7 @@ const load = async () => {
     if (!data.found) {
       deeplinkHint.value = `近 ${hours.value === 0 ? '全部' : hours.value + ' 小时'}窗口内未找到服务「${name}」的 Span；可扩大时间窗或从拓扑重新进入。`
     }
+    await loadJvm()
   } catch {
     loadError.value = loadFailedMessage('服务详情')
   } finally {
@@ -394,13 +653,23 @@ watch(
   }
 )
 
+watch(chartColors, () => {
+  if (jvmFound.value) void renderJvmCharts()
+})
+
 onMounted(() => {
   hours.value = resolveHours(route.query, 24)
   persistHours(hours.value)
   if (route.query.hours == null || route.query.hours === '') {
     syncHoursToRoute()
   }
+  window.addEventListener('resize', onResize)
   load()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+  disposeJvmCharts()
 })
 </script>
 
@@ -440,6 +709,75 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   flex: 0 0 auto;
+}
+
+.si-svc-detail__jvm {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem 1rem;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card-bg);
+}
+
+.si-svc-detail__jvm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.si-svc-detail__jvm-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--si-ink);
+}
+
+.si-svc-detail__jvm-instance {
+  width: 12rem;
+}
+
+.si-svc-detail__jvm-meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  color: var(--si-muted);
+}
+
+.si-svc-detail__jvm-empty code {
+  font-size: 0.78em;
+}
+
+.si-svc-detail__jvm-charts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.si-svc-detail__jvm-chart-card {
+  min-width: 0;
+  padding: 0.35rem 0.25rem 0.15rem;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--si-surface-2, transparent);
+}
+
+.si-svc-detail__jvm-chart-label {
+  padding: 0 0.45rem 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--si-ink-soft);
+}
+
+.si-svc-detail__jvm-canvas {
+  width: 100%;
+  height: 180px;
+}
+
+@media (max-width: 1100px) {
+  .si-svc-detail__jvm-charts {
+    grid-template-columns: 1fr;
+  }
 }
 
 .si-svc-detail__card {

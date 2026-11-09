@@ -8,7 +8,7 @@
   <a href="https://www.oracle.com/java/"><img src="https://img.shields.io/badge/Agent-JDK%2017%2B-orange" alt="Java" /></a>
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-3.5.9-brightgreen" alt="Spring Boot" /></a>
   <a href="https://github.com/iweidujiang/spring-insight/releases/tag/v1.2.0"><img src="https://img.shields.io/badge/Server-1.2.0-green.svg" alt="Server" /></a>
-  <a href="https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.5.1"><img src="https://img.shields.io/badge/Agent-0.5.1-blue.svg" alt="Agent" /></a>
+  <a href="https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.6.0"><img src="https://img.shields.io/badge/Agent-0.6.0-blue.svg" alt="Agent" /></a>
 </p>
 
 **Lightweight APM / distributed tracing for Spring Boot.**
@@ -62,7 +62,7 @@ java -jar insight-server-1.2.0.jar
 <dependency>
   <groupId>io.github.iweidujiang</groupId>
   <artifactId>spring-insight-agent-starter</artifactId>
-  <version>0.5.1</version>
+  <version>0.6.0</version>
 </dependency>
 ```
 

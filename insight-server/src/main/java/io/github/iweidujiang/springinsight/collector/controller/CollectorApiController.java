@@ -4,6 +4,7 @@ import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorS
 import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetectionResult;
 import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetector;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
 import io.github.iweidujiang.springinsight.server.topology.TopologyDiffService;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
@@ -46,6 +47,7 @@ public class CollectorApiController {
     private final SpanStore spanStore;
     private final AnomalyDetector anomalyDetector;
     private final TopologyDiffService topologyDiffService;
+    private final JvmMetricQueryService jvmMetricQueryService;
 
     public CollectorApiController(TraceSpanPersistenceService traceSpanPersistenceService,
                                   TraceSpanCollectorService traceSpanCollectorService,
@@ -54,10 +56,12 @@ public class CollectorApiController {
                                   TroubleshootPackExportService troubleshootPackExportService,
                                   SpanStore spanStore,
                                   AnomalyDetector anomalyDetector,
-                                  TopologyDiffService topologyDiffService) {
+                                  TopologyDiffService topologyDiffService,
+                                  JvmMetricQueryService jvmMetricQueryService) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.storageProperties = storageProperties;
+        this.jvmMetricQueryService = jvmMetricQueryService;
         this.traceContextExportService = traceContextExportService;
         this.troubleshootPackExportService = troubleshootPackExportService;
         this.spanStore = spanStore;
@@ -339,6 +343,27 @@ public class CollectorApiController {
                     serviceName, hours, recentLimit, slowOpLimit));
         } catch (Exception e) {
             log.error("获取服务{}详情摘要失败", serviceName, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 单服务 JVM 指标曲线（堆 / GC / 线程）；无数据时 found=false。
+     *
+     * @param serviceName 服务名
+     * @param hours       时间窗小时
+     * @param instance    可选实例过滤
+     * @return JVM 视图 JSON
+     */
+    @GetMapping("/services/{serviceName}/jvm-metrics")
+    public ResponseEntity<?> getServiceJvmMetrics(
+            @PathVariable("serviceName") String serviceName,
+            @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "instance", required = false) String instance) {
+        try {
+            return ResponseEntity.ok(jvmMetricQueryService.buildServiceView(serviceName, hours, instance));
+        } catch (Exception e) {
+            log.error("获取服务{} JVM 指标失败", serviceName, e);
             return ResponseEntity.internalServerError().build();
         }
     }

@@ -305,6 +305,68 @@ export class ApiService {
     }
   }
 
+  /** 单服务 JVM 指标（堆 / GC / 线程曲线） */
+  static async getServiceJvmMetrics(
+    serviceName: string,
+    hours: number = 24,
+    instance?: string
+  ): Promise<{
+    serviceName: string
+    hours: number
+    found: boolean
+    instance: string | null
+    instances: string[]
+    pointCount: number
+    points: Array<{
+      timestamp: number
+      serviceInstance?: string
+      heapMemoryUsed: number
+      heapMemoryMax: number
+      heapMemoryCommitted: number
+      nonHeapMemoryUsed: number
+      gcCount: number
+      gcTime: number
+      activeThreads: number
+      peakThreads: number
+      daemonThreads: number
+      systemLoadAverage: number
+    }>
+    latest: Record<string, unknown> | null
+  }> {
+    const encoded = encodeURIComponent(serviceName)
+    const qs = new URLSearchParams({ hours: String(hours) })
+    if (instance) qs.set('instance', instance)
+    const raw = await requestWithDefault<any>(
+      `/services/${encoded}/jvm-metrics?${qs.toString()}`,
+      { found: false, instances: [], points: [], latest: null }
+    )
+    return {
+      serviceName: String(raw.serviceName ?? serviceName),
+      hours: Number(raw.hours ?? hours),
+      found: Boolean(raw.found),
+      instance: raw.instance != null && raw.instance !== '' ? String(raw.instance) : null,
+      instances: Array.isArray(raw.instances) ? raw.instances.map((x: any) => String(x)) : [],
+      pointCount: Number(raw.pointCount ?? raw.point_count ?? 0),
+      points: Array.isArray(raw.points)
+        ? raw.points.map((p: any) => ({
+            timestamp: Number(p.timestamp ?? 0),
+            serviceInstance: p.serviceInstance != null ? String(p.serviceInstance) : undefined,
+            heapMemoryUsed: Number(p.heapMemoryUsed ?? 0),
+            heapMemoryMax: Number(p.heapMemoryMax ?? 0),
+            heapMemoryCommitted: Number(p.heapMemoryCommitted ?? 0),
+            nonHeapMemoryUsed: Number(p.nonHeapMemoryUsed ?? 0),
+            gcCount: Number(p.gcCount ?? 0),
+            gcTime: Number(p.gcTime ?? 0),
+            activeThreads: Number(p.activeThreads ?? 0),
+            peakThreads: Number(p.peakThreads ?? 0),
+            daemonThreads: Number(p.daemonThreads ?? 0),
+            systemLoadAverage: Number(p.systemLoadAverage ?? 0)
+          }))
+        : [],
+      latest: raw.latest && typeof raw.latest === 'object' ? raw.latest : null
+    }
+  }
+
   /** JDBC 追踪汇总（数据库页）：KPI / 按库 / 最近 Span */
   static async getJdbcSummary(
     hours: number = 24,

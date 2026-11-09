@@ -2,9 +2,11 @@ package io.github.iweidujiang.springinsight.collector.controller;
 
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.collector.model.CollectorRequest;
+import io.github.iweidujiang.springinsight.collector.model.JvmMetricBatchRequest;
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
 import io.github.iweidujiang.springinsight.server.CompanionAgentVersion;
 import io.github.iweidujiang.springinsight.server.ServerVersion;
+import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -39,21 +41,25 @@ public class CollectorController {
 
     private final TraceSpanCollectorService traceSpanCollectorService;
     private final TraceSpanPersistenceService persistenceService;
+    private final JvmMetricQueryService jvmMetricQueryService;
     private final String serverVersion;
     private final String agentVersion;
 
     /**
      * @param traceSpanCollectorService 采集服务
      * @param persistenceService        持久化门面
+     * @param jvmMetricQueryService     JVM 指标入库
      * @param environment               用于解析版本
      * @param buildPropertiesProvider   Maven build-info（可选）
      */
     public CollectorController(TraceSpanCollectorService traceSpanCollectorService,
                                TraceSpanPersistenceService persistenceService,
+                               JvmMetricQueryService jvmMetricQueryService,
                                Environment environment,
                                ObjectProvider<BuildProperties> buildPropertiesProvider) {
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.persistenceService = persistenceService;
+        this.jvmMetricQueryService = jvmMetricQueryService;
         this.serverVersion = ServerVersion.resolve(environment, buildPropertiesProvider.getIfAvailable());
         this.agentVersion = CompanionAgentVersion.resolve(environment);
     }
@@ -105,6 +111,42 @@ public class CollectorController {
                     TraceSpanCollectorService.CollectorResponse.error("服务器内部错误: " + e.getMessage());
 
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * JVM 指标批量上报。
+     *
+     * @param request 批次请求
+     * @return 受理结果
+     */
+    @PostMapping("/jvm-metrics/batch")
+    public ResponseEntity<?> collectJvmMetricsBatch(@Valid @RequestBody JvmMetricBatchRequest request) {
+        log.info("[Collector控制器] 收到 JVM 指标上报: {}", request.getSummary());
+        try {
+            if (!request.hasMetrics()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "JVM 指标列表为空"
+                ));
+            }
+            int accepted = jvmMetricQueryService.ingest(
+                    request.getServiceName(),
+                    request.getServiceInstance(),
+                    request.getMetrics());
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            body.put("accepted", accepted);
+            body.put("batchId", request.getBatchId());
+            body.put("timestamp", Instant.now());
+            return ResponseEntity.accepted().body(body);
+        } catch (Exception e) {
+            log.error("[Collector控制器] JVM 指标上报异常: {}, 异常: {}",
+                    request.getSummary(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "success", false,
+                    "message", "服务器内部错误: " + e.getMessage()
+            ));
         }
     }
 
@@ -180,6 +222,7 @@ public class CollectorController {
                 "endpoints", Map.of(
                         "health", "/api/v1/health",
                         "batchSpans", "/api/v1/spans/batch",
+                        "batchJvmMetrics", "/api/v1/jvm-metrics/batch",
                         "singleSpan", "/api/v1/spans/single",
                         "stats", "/api/v1/stats"
                 )

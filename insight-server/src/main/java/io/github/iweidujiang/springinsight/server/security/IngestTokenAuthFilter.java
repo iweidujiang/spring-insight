@@ -29,7 +29,7 @@ public class IngestTokenAuthFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 仅拦截 {@code /api/v1/spans/*}；未开启鉴权时直接放行。
+     * 仅拦截 Span / JVM 上报路径；未开启鉴权时直接放行。
      *
      * @param request     请求
      * @param response    响应
@@ -43,7 +43,7 @@ public class IngestTokenAuthFilter extends OncePerRequestFilter {
             return;
         }
         String path = request.getRequestURI();
-        if (path == null || !path.startsWith("/api/v1/spans")) {
+        if (path == null || !isIngestPath(path)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -53,6 +53,14 @@ public class IngestTokenAuthFilter extends OncePerRequestFilter {
             return;
         }
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * @param path 请求路径
+     * @return 是否为需要 ingest token 的上报接口
+     */
+    private static boolean isIngestPath(String path) {
+        return path.startsWith("/api/v1/spans") || path.startsWith("/api/v1/jvm-metrics");
     }
 
     /**

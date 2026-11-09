@@ -150,7 +150,7 @@ let hintTimer: number | null = null
 
 const agentVersionForSnippet = computed(() => {
   const v = agentVersion.value.trim()
-  return !v || v === '…' || v === 'unknown' ? '0.5.1' : v
+  return !v || v === '…' || v === 'unknown' ? '0.6.0' : v
 })
 
 const techTags = ['Spring Boot 3.5', 'Java 17+', 'Vue 3', 'TypeScript', 'ECharts']
