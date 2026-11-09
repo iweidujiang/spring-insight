@@ -82,12 +82,12 @@ public final class DashboardLayouts {
                 panel("collector", "collector", 0, 2, 4, 1, true),
                 panel("jdbc", "jdbc", 0, 3, 2, 1, true),
                 panel("redis", "redis", 2, 3, 2, 1, true),
-                panel("service-health", "service-health", 0, 4, 2, 2, true),
-                panel("slow-services", "slow-services", 2, 4, 1, 1, true),
-                panel("hot-dependencies", "hot-dependencies", 3, 4, 1, 1, true),
-                panel("slo-budget", "slo-budget", 0, 6, 4, 1, true),
-                panel("recent-traces", "recent-traces", 0, 7, 2, 2, true),
-                panel("service-rank", "service-rank", 2, 7, 2, 2, true)
+                panel("service-health", "service-health", 0, 4, 1, 1, true),
+                panel("slow-services", "slow-services", 1, 4, 1, 1, true),
+                panel("hot-dependencies", "hot-dependencies", 2, 4, 1, 1, true),
+                panel("slo-budget", "slo-budget", 3, 4, 1, 1, true),
+                panel("recent-traces", "recent-traces", 0, 5, 2, 2, true),
+                panel("service-rank", "service-rank", 2, 5, 2, 2, true)
         ));
         return layout;
     }

@@ -150,7 +150,7 @@
       <!-- 统一卡片网格 -->
       <section v-if="showOverviewSection" class="si-overview" aria-label="服务概览">
         <!-- 第一行：摘要 + 采集器 + 数据库 + 缓存 -->
-        <div class="si-overview__row si-overview__row--meta">
+        <div v-if="showMetaRow" class="si-overview__row si-overview__row--meta">
           <!-- 时段摘要卡片 -->
           <div v-if="panelVisible('summary')" class="si-overview__panel si-overview__panel--summary">
             <div class="si-overview__head">
@@ -237,8 +237,8 @@
           </div>
         </div>
 
-        <!-- 第二行：服务健康 + 慢服务 + 异常服务 + 错误预算 -->
-        <div class="si-overview__row si-overview__row--data">
+        <!-- 第二行：服务健康 / 慢服务 / 异常 / 热点依赖 / 错误预算（可见项均分整行） -->
+        <div v-if="showDataRow" class="si-overview__row si-overview__row--data">
           <div v-if="panelVisible('service-health')" class="si-overview__panel">
             <div class="si-overview__head">
               <span><el-icon class="me-2"><FirstAidKit /></el-icon>服务健康</span>
@@ -298,31 +298,6 @@
             <div v-else class="si-dashboard__rail-empty">当前时间窗无异常服务</div>
           </div>
 
-          <div v-if="showSloPanel" class="si-overview__panel si-overview__panel--slo">
-            <div class="si-overview__head">
-              <span><el-icon class="me-2"><Target /></el-icon>错误预算</span>
-              <el-button size="small" @click="goSloSettings">设置</el-button>
-            </div>
-            <ul v-if="sloBudgets.length" class="si-dashboard__rail-list">
-              <li
-                v-for="row in sloBudgets.slice(0, 8)"
-                :key="'slo-' + row.service"
-                :title="sloBudgetTitle(row)"
-              >
-                <span class="si-dashboard__rail-name" :title="row.service">{{ row.service }}</span>
-                <em :class="sloStatusClass(row.status)">
-                  {{ sloStatusLabel(row.status) }} · {{ formatPct(row.actualAvailability) }}
-                </em>
-              </li>
-            </ul>
-            <div v-else class="si-dashboard__rail-empty">
-              暂无 SLO
-            </div>
-          </div>
-        </div>
-
-        <!-- 第三行：热点依赖 + 健康分布 + Sankey + 漏斗 -->
-        <div class="si-overview__row si-overview__row--charts">
           <div v-if="panelVisible('hot-dependencies')" class="si-overview__panel">
             <div class="si-overview__head">
               <span>热点依赖 TOP {{ Math.min(6, hotDependencies.length) }}</span>
@@ -355,7 +330,31 @@
             </div>
           </div>
 
-          <!-- 服务健康状态分布 -->
+          <div v-if="showSloPanel" class="si-overview__panel si-overview__panel--slo">
+            <div class="si-overview__head">
+              <span><el-icon class="me-2"><Target /></el-icon>错误预算</span>
+              <el-button size="small" @click="goSloSettings">设置</el-button>
+            </div>
+            <ul v-if="sloBudgets.length" class="si-dashboard__rail-list">
+              <li
+                v-for="row in sloBudgets.slice(0, 8)"
+                :key="'slo-' + row.service"
+                :title="sloBudgetTitle(row)"
+              >
+                <span class="si-dashboard__rail-name" :title="row.service">{{ row.service }}</span>
+                <em :class="sloStatusClass(row.status)">
+                  {{ sloStatusLabel(row.status) }} · {{ formatPct(row.actualAvailability) }}
+                </em>
+              </li>
+            </ul>
+            <div v-else class="si-dashboard__rail-empty">
+              暂无 SLO
+            </div>
+          </div>
+        </div>
+
+        <!-- 图表行：仅当有健康分布 / Sankey / 漏斗时展示 -->
+        <div v-if="showChartsRow" class="si-overview__row si-overview__row--charts">
           <div v-if="panelVisible('health-donut')" class="si-overview__panel si-overview__panel--donut">
             <div class="si-overview__head">
               <span><el-icon class="me-2"><PieChart /></el-icon>健康状态分布</span>
@@ -363,7 +362,6 @@
             <div ref="healthDonutChartEl" class="si-overview__donut-canvas"></div>
           </div>
 
-          <!-- 调用链路流向 Sankey 图 -->
           <div v-if="panelVisible('sankey')" class="si-overview__panel si-overview__panel--sankey">
             <div class="si-overview__head">
               <span><el-icon class="me-2"><Share /></el-icon>调用链路流向</span>
@@ -375,7 +373,6 @@
             <div v-else ref="sankeyChartEl" class="si-overview__sankey-canvas"></div>
           </div>
 
-          <!-- 错误处理漏斗 -->
           <div v-if="panelVisible('error-funnel')" class="si-overview__panel si-overview__panel--funnel">
             <div class="si-overview__head">
               <span><el-icon class="me-2"><Filter /></el-icon>错误处理漏斗</span>
@@ -387,9 +384,9 @@
           </div>
         </div>
 
-        <!-- 第四行：最近请求 + 服务排名 -->
+        <!-- 底行：最近请求 + 服务排名 -->
         <div
-          v-if="panelVisible('recent-traces') || panelVisible('service-rank')"
+          v-if="showBottomRow"
           class="si-overview__row si-overview__row--bottom"
           :class="{ 'si-overview__row--single': !(panelVisible('recent-traces') && panelVisible('service-rank')) }"
         >
@@ -581,17 +578,36 @@ const showSloPanel = computed(() => {
   return panel.visible !== false
 })
 
-const showOverviewSection = computed(() =>
-  panelVisible('error-services')
-  || panelVisible('service-health')
+const showMetaRow = computed(() =>
+  panelVisible('summary')
+  || (panelVisible('collector') && !!collectorStats.value)
+  || panelVisible('jdbc')
+  || panelVisible('redis')
+)
+
+const showDataRow = computed(() =>
+  panelVisible('service-health')
   || panelVisible('slow-services')
+  || panelVisible('error-services')
   || panelVisible('hot-dependencies')
   || showSloPanel.value
-  || panelVisible('health-donut')
+)
+
+const showChartsRow = computed(() =>
+  panelVisible('health-donut')
   || panelVisible('sankey')
   || panelVisible('error-funnel')
-  || panelVisible('recent-traces')
-  || panelVisible('service-rank')
+)
+
+const showBottomRow = computed(() =>
+  panelVisible('recent-traces') || panelVisible('service-rank')
+)
+
+const showOverviewSection = computed(() =>
+  showMetaRow.value
+  || showDataRow.value
+  || showChartsRow.value
+  || showBottomRow.value
 )
 
 const soloProfile = computed(() => {
@@ -1540,16 +1556,13 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding-bottom: 0.75rem;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: thin;
+  gap: 0.55rem;
+  padding-bottom: 0;
+  overflow: hidden;
 }
 
 .si-dashboard__content--empty {
   overflow: hidden;
-  padding-bottom: 0;
 }
 
 .si-dashboard__onboard {
@@ -1559,12 +1572,12 @@ onUnmounted(() => {
 }
 
 .si-dashboard__top {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: 1fr auto auto;
   align-items: center;
-  gap: 0.85rem 1.25rem;
-  padding: 0.85rem 0.5rem 0.6rem;
+  gap: 0.55rem 1rem;
+  padding: 0.45rem 0.5rem 0.35rem;
 }
 
 .si-dashboard__title {
@@ -1788,13 +1801,17 @@ onUnmounted(() => {
   list-style: none;
   margin: 0;
   padding: 0.2rem 0;
-  max-height: 9.5rem;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
 }
 
 /* TOP 进度条 */
 .si-top-progress {
+  flex: 1 1 0;
+  min-height: 0;
   padding: 0.25rem 0;
+  overflow-y: auto;
 }
 
 .si-top-progress__item {
@@ -1902,6 +1919,11 @@ onUnmounted(() => {
 }
 
 .si-dashboard__rail-empty {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 0.75rem;
   font-size: 0.75rem;
   color: var(--si-muted);
@@ -1932,11 +1954,11 @@ onUnmounted(() => {
 }
 
 .si-dashboard__kpis {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 1rem 1.25rem;
+  padding: 0.55rem 1rem;
   border-radius: 12px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
@@ -2366,10 +2388,15 @@ onUnmounted(() => {
 }
 
 .si-infra__empty {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin: 0;
   font-size: 0.82rem;
   line-height: 1.45;
   color: var(--si-muted);
+  text-align: center;
 }
 
 .si-infra__empty code {
@@ -2383,72 +2410,81 @@ onUnmounted(() => {
 }
 
 .si-overview {
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  min-height: 0;
+  gap: 0.5rem;
+  overflow: hidden;
 }
 
-/* 行布局 */
+/* 行内可见卡片均分整行宽度，避免 4/3/1 留白 */
 .si-overview__row {
-  display: grid;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-wrap: nowrap;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
   align-items: stretch;
+  margin-bottom: 0;
 }
 
 .si-overview__row--meta {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.si-overview__row--data {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.si-overview__row--charts {
-  grid-template-columns: repeat(4, 1fr);
+  flex: 0.85 1 0;
 }
 
 .si-overview__row--bottom {
-  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+  flex: 1.15 1 0;
 }
 
-.si-overview__row--single {
-  grid-template-columns: 1fr;
+.si-overview__row > .si-overview__panel {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
 }
 
-@media (max-width: 1400px) {
-  .si-overview__row--meta,
-  .si-overview__row--data,
-  .si-overview__row--charts {
-    grid-template-columns: repeat(2, 1fr);
+.si-overview__row--bottom > .si-overview__panel--traces {
+  flex: 1.4 1 0;
+}
+
+.si-overview__row--bottom > .si-overview__panel--rank {
+  flex: 0.8 1 0;
+}
+
+.si-overview__row--single > .si-overview__panel {
+  flex: 1 1 0;
+}
+
+@media (max-width: 1100px) {
+  .si-overview__row {
+    flex-wrap: wrap;
+  }
+
+  .si-overview__row > .si-overview__panel {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-height: 10rem;
+  }
+
+  .si-overview__row--bottom > .si-overview__panel--traces,
+  .si-overview__row--bottom > .si-overview__panel--rank {
+    flex: 1 1 100%;
   }
 }
 
 @media (max-width: 900px) {
-  .si-overview__row--meta,
-  .si-overview__row--data,
-  .si-overview__row--charts,
-  .si-overview__row--bottom {
-    grid-template-columns: 1fr;
+  .si-overview {
+    overflow-y: auto;
   }
-}
 
-/* 面板统一高度 */
-.si-overview__panel {
-  min-height: 180px;
-}
+  .si-overview__row {
+    flex: 0 0 auto;
+    flex-direction: column;
+  }
 
-.si-overview__row--meta .si-overview__panel {
-  min-height: 140px;
-}
-
-.si-overview__row--charts .si-overview__panel {
-  min-height: 220px;
-}
-
-.si-overview__row--bottom .si-overview__panel {
-  min-height: 280px;
+  .si-overview__row > .si-overview__panel {
+    flex: 0 0 auto;
+    min-height: 11rem;
+  }
 }
 
 /* 采集器指标样式 */
@@ -2479,10 +2515,11 @@ onUnmounted(() => {
 
 /* 时段摘要卡片 */
 .si-overview__panel--summary .si-period__headline {
+  flex: 0 0 auto;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--si-ink);
-  margin: 0.5rem 0;
+  margin: 0.35rem 0;
   line-height: 1.4;
 }
 
@@ -2490,6 +2527,9 @@ onUnmounted(() => {
   list-style: none;
   padding: 0;
   margin: 0;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .si-overview__panel--summary .si-period__bullets li {
@@ -2519,11 +2559,13 @@ onUnmounted(() => {
   border: 1px solid var(--card-border);
   background: var(--card-bg);
   box-shadow: var(--box-shadow);
-  padding: 0.5rem 0.7rem;
+  padding: 0.45rem 0.65rem;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
+  overflow: hidden;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
@@ -2533,6 +2575,7 @@ onUnmounted(() => {
 }
 
 .si-overview__head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2540,41 +2583,28 @@ onUnmounted(() => {
   font-size: 0.8rem;
   font-weight: 650;
   color: var(--si-ink);
-  padding-bottom: 0.45rem;
+  padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--card-border);
 }
 
 .si-overview__scroll {
-  max-height: 14rem;
+  flex: 1 1 0;
+  min-height: 0;
   overflow: auto;
 }
 
 .si-overview__panel--traces .si-app__list {
-  max-height: 18rem;
+  flex: 1 1 0;
+  min-height: 0;
   overflow: auto;
 }
 
-.si-overview__rank-canvas {
-  flex: 1;
-  min-height: 12rem;
-  width: 100%;
-}
-
-.si-overview__donut-canvas {
-  flex: 1;
-  min-height: 10rem;
-  width: 100%;
-}
-
-.si-overview__sankey-canvas {
-  flex: 1;
-  min-height: 14rem;
-  width: 100%;
-}
-
+.si-overview__rank-canvas,
+.si-overview__donut-canvas,
+.si-overview__sankey-canvas,
 .si-overview__funnel-canvas {
-  flex: 1;
-  min-height: 16rem;
+  flex: 1 1 0;
+  min-height: 0;
   width: 100%;
 }
 
@@ -2583,15 +2613,6 @@ onUnmounted(() => {
   margin-top: 0.5rem;
 }
 
-@media (max-width: 1100px) {
-  .si-overview__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .si-overview__row--bottom {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* 拓扑主、排名辅（遗留样式，首页已不再使用拓扑舞台） */
 .si-dashboard__body {
