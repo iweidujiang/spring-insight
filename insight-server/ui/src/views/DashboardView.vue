@@ -99,6 +99,13 @@
     <SiAlert v-if="loadError" tone="danger" class="si-dashboard__alert">{{ loadError }}</SiAlert>
 
     <div v-show="!loading" class="si-dashboard__content">
+      <SiOnboardingCard
+        v-if="isFirstRunEmpty"
+        class="si-dashboard__onboard"
+        :refreshing="loading"
+        @refresh="loadData"
+      />
+
       <!-- KPI 卡片 -->
       <section
         v-if="panelVisible('kpi')"
@@ -447,6 +454,7 @@ import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
+import SiOnboardingCard from '../components/SiOnboardingCard.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import type { SiColumn } from '../components/siTable'
 import {
@@ -497,6 +505,10 @@ const errorAnalysis = ref<any[]>([])
 const collectorStats = ref<any>({})
 const totalSpans = ref(0)
 const recentTraces = ref<any[]>([])
+/** 当前时间窗完全无服务 / Span：展示首跑接入引导 */
+const isFirstRunEmpty = computed(
+  () => !loadError.value && services.value.length === 0 && totalSpans.value === 0
+)
 const periodInsight = ref<PeriodInsight | null>(null)
 const periodExplain = ref<AiExplainResult | null>(null)
 const periodExplaining = ref(false)
@@ -1677,6 +1689,10 @@ onUnmounted(() => {
   margin-left: 1rem;
   margin-right: 1rem;
   margin-bottom: 0;
+}
+
+.si-dashboard__onboard {
+  margin: 0 0 0.85rem;
 }
 
 .si-dashboard__text--danger { color: var(--danger-color) !important; }

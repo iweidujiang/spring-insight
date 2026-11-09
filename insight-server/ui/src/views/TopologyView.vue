@@ -27,6 +27,13 @@
 
     <SiLoading v-if="loading" text="正在加载拓扑数据..." />
 
+    <SiOnboardingCard
+      v-else-if="isEmpty"
+      class="si-topo-onboard"
+      :refreshing="loading"
+      @refresh="loadData"
+    />
+
     <div v-else-if="isSolo" class="si-topo-solo">
       <section class="si-topo-solo__hero">
         <div class="si-topo-solo__node" aria-hidden="true">
@@ -301,6 +308,7 @@ import { Download, Clock, Share, Refresh, FullScreen, Pointer, ArrowRight, Magic
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
+import SiOnboardingCard from '../components/SiOnboardingCard.vue'
 import SiFilterBar from '../components/SiFilterBar.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
@@ -361,6 +369,10 @@ const { colors: chartColors } = useChartTheme()
 
 const healthAvailable = computed(() => healthByService.value != null)
 
+/** 当前时间窗无任何服务与调用边：首跑接入引导 */
+const isEmpty = computed(
+  () => !loadError.value && serviceNames.value.length === 0 && dependencies.value.length === 0
+)
 const isSolo = computed(() => dependencies.value.length === 0 && serviceNames.value.length === 1)
 const soloName = computed(() => serviceNames.value[0] || '未命名服务')
 const soloLatency = computed(() => {
@@ -841,6 +853,10 @@ onUnmounted(() => {
 
 .si-topo-alert {
   margin-bottom: 0.75rem;
+}
+
+.si-topo-onboard {
+  margin-top: 0.25rem;
 }
 
 .si-topo-text--danger { color: var(--danger-color) !important; }

@@ -79,6 +79,40 @@
       </el-card>
     </div>
 
+    <el-card id="setup" class="si-about__setup" shadow="never" aria-label="业务服务接入">
+      <template #header>
+        <div class="si-about__demo-head">
+          <h5 class="si-about__demo-title"><el-icon class="si-about__icon--me-2"><Connection /></el-icon>业务服务接入</h5>
+          <span class="si-about__demo-sub">详细步骤与可复制片段</span>
+        </div>
+      </template>
+      <ol class="si-about__setup-list">
+        <li>
+          <strong>引入 Starter</strong>
+          <pre class="si-about__code"><code>&lt;dependency&gt;
+  &lt;groupId&gt;io.github.iweidujiang&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-insight-agent-starter&lt;/artifactId&gt;
+  &lt;version&gt;{{ agentVersionForSnippet }}&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+          <el-button size="small" plain @click="copyMaven">复制依赖</el-button>
+        </li>
+        <li>
+          <strong>配置监测中心地址</strong>
+          <pre class="si-about__code"><code>spring:
+  application:
+    name: my-service
+  insight:
+    server-url: http://localhost:9966</code></pre>
+          <el-button size="small" plain @click="copyYaml">复制配置</el-button>
+        </li>
+        <li>
+          <strong>造流量并刷新控制台</strong>
+          <span>启动业务服务，访问几个接口后回到仪表盘或拓扑点击刷新。</span>
+        </li>
+      </ol>
+      <p v-if="copyHint" class="si-about__copy-hint" role="status">{{ copyHint }}</p>
+    </el-card>
+
     <el-card class="si-about__demo" shadow="never" aria-label="演示路径">
       <template #header>
         <div class="si-about__demo-head">
@@ -98,18 +132,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { RouterLink } from 'vue-router'
-import { Clock, Box, Monitor, Link, VideoPlay } from '@element-plus/icons-vue'
+import { computed, nextTick, ref, onMounted, onUnmounted, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+import { Clock, Box, Monitor, Link, VideoPlay, Connection } from '@element-plus/icons-vue'
 import axios from 'axios'
 import SiPageHeader from '../components/SiPageHeader.vue'
 
+const route = useRoute()
 const currentTime = ref('')
 const buildTime = ref('')
 const serverVersion = ref('…')
 const agentVersion = ref('…')
 const storageMode = ref('')
+const copyHint = ref('')
 let timeInterval: number | null = null
+let hintTimer: number | null = null
+
+const agentVersionForSnippet = computed(() => {
+  const v = agentVersion.value.trim()
+  return !v || v === '…' || v === 'unknown' ? '0.5.1' : v
+})
 
 const techTags = ['Spring Boot 3.5', 'Java 17+', 'Vue 3', 'TypeScript', 'ECharts']
 
@@ -141,15 +183,65 @@ async function loadServerMeta() {
   }
 }
 
+function flashHint(text: string) {
+  copyHint.value = text
+  if (hintTimer != null) window.clearTimeout(hintTimer)
+  hintTimer = window.setTimeout(() => {
+    copyHint.value = ''
+    hintTimer = null
+  }, 2000)
+}
+
+async function copyText(text: string, okMsg: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    flashHint(okMsg)
+  } catch {
+    flashHint('复制失败，请手动选择上方代码')
+  }
+}
+
+function copyMaven() {
+  const snippet = `<dependency>
+  <groupId>io.github.iweidujiang</groupId>
+  <artifactId>spring-insight-agent-starter</artifactId>
+  <version>${agentVersionForSnippet.value}</version>
+</dependency>`
+  void copyText(snippet, '已复制 Maven 依赖')
+}
+
+function copyYaml() {
+  const snippet = `spring:
+  application:
+    name: my-service
+  insight:
+    server-url: http://localhost:9966`
+  void copyText(snippet, '已复制 YAML 配置')
+}
+
+async function scrollToSetupHash() {
+  if (route.hash !== '#setup') return
+  await nextTick()
+  document.getElementById('setup')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 onMounted(() => {
   buildTime.value = new Date().toLocaleString('zh-CN')
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
-  loadServerMeta()
+  void loadServerMeta().then(() => scrollToSetupHash())
 })
+
+watch(
+  () => route.hash,
+  () => {
+    void scrollToSetupHash()
+  }
+)
 
 onUnmounted(() => {
   if (timeInterval) clearInterval(timeInterval)
+  if (hintTimer != null) window.clearTimeout(hintTimer)
 })
 </script>
 
@@ -307,6 +399,7 @@ onUnmounted(() => {
   }
 }
 
+.si-about__setup,
 .si-about__demo {
   margin-top: 0.75rem;
   border-radius: 14px;
@@ -315,15 +408,66 @@ onUnmounted(() => {
   box-shadow: var(--box-shadow);
   --el-card-border-color: var(--card-border);
   --el-card-bg-color: var(--card-bg);
+  scroll-margin-top: 1rem;
 }
 
+.si-about__setup :deep(.el-card__header),
 .si-about__demo :deep(.el-card__header) {
   padding: 1rem 1.1rem 0;
   border-bottom: none;
 }
 
+.si-about__setup :deep(.el-card__body),
 .si-about__demo :deep(.el-card__body) {
   padding: 0.75rem 1.1rem 1.15rem;
+}
+
+.si-about__setup-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+  color: var(--si-ink);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.si-about__setup-list li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.si-about__setup-list li > span {
+  color: var(--si-muted);
+  font-size: 0.86rem;
+}
+
+.si-about__code {
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--si-form-border, var(--card-border));
+  background: var(--si-surface-2, var(--si-paper-deep));
+  overflow-x: auto;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--si-ink);
+}
+
+.si-about__code code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  white-space: pre;
+}
+
+.si-about__copy-hint {
+  margin: 0.65rem 0 0;
+  font-size: 0.82rem;
+  color: var(--success-color, #10b981);
 }
 
 .si-about__demo-list {
