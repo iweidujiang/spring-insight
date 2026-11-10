@@ -29,6 +29,13 @@ public class InsightServerStorageProperties {
     private int maxSpans = 50_000;
 
     /**
+     * 全量快照类查询（拓扑依赖、错误拆解等）允许的最大持有条数；
+     * 超过后拒绝该查询并返回友好错误；延迟 / 按服务计数等改为走聚合接口。
+     * {@code 0} 表示不限制。
+     */
+    private int snapshotQueryMaxSpans = 20_000;
+
+    /**
      * file 模式下的持久化文件路径
      */
     private String filePath = "./data/spans.json";

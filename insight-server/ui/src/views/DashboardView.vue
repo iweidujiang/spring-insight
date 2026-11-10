@@ -97,6 +97,7 @@
     </div>
 
     <SiAlert v-if="loadError" tone="danger" class="si-dashboard__alert">{{ loadError }}</SiAlert>
+    <SiAlert v-else-if="queryBudgetHint" tone="warning" class="si-dashboard__alert">{{ queryBudgetHint }}</SiAlert>
 
     <div
       v-show="!loading"
@@ -469,6 +470,8 @@ import SiDataTable from '../components/SiDataTable.vue'
 import type { SiColumn } from '../components/siTable'
 import {
   ApiService,
+  isQueryTooLargeError,
+  queryTooLargeDetail,
   type AiExplainResult,
   type DashboardLayout,
   type DashboardTemplate,
@@ -485,7 +488,8 @@ import {
   emptyRequestsMessage,
   emptyLatencySampleMessage,
   emptyInRangeShort,
-  loadFailedMessage
+  loadFailedMessage,
+  queryTooLargeMessage
 } from '../utils/timeRange'
 import { mergeQuery, persistHours, resolveHours } from '../utils/insightQuery'
 
@@ -494,6 +498,7 @@ const route = useRoute()
 
 const loading = ref(true)
 const loadError = ref('')
+const queryBudgetHint = ref('')
 const exporting = ref(false)
 const layoutSaving = ref(false)
 const layoutMenuOpen = ref(false)
@@ -1366,7 +1371,15 @@ const loadData = async () => {
   try {
     loading.value = true
     loadError.value = ''
+    queryBudgetHint.value = ''
     const h = hours.value
+    const capacity = await ApiService.getStorageCapacity()
+    if (capacity.queryOverBudget) {
+      queryBudgetHint.value = queryTooLargeMessage({
+        storedSpans: capacity.storedSpans,
+        snapshotQueryMaxSpans: capacity.snapshotQueryMaxSpans
+      })
+    }
     const [
       serviceNames,
       serviceDeps,
@@ -1381,15 +1394,37 @@ const loadData = async () => {
       budgets
     ] = await Promise.all([
       ApiService.getServiceNames(),
-      ApiService.getServiceDependencies(h),
+      ApiService.getServiceDependencies(h).catch((err) => {
+        if (isQueryTooLargeError(err)) {
+          queryBudgetHint.value = queryTooLargeMessage(queryTooLargeDetail(err))
+          return []
+        }
+        throw err
+      }),
       ApiService.getServiceStats(h),
       ApiService.getServiceLatency(h, 20),
       ApiService.getErrorAnalysis(h),
       ApiService.getCollectorStats(),
       ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 16 }),
-      ApiService.getPeriodInsight(h),
-      ApiService.getJdbcSummary(h, undefined, 1).catch(() => null),
-      ApiService.getRedisSummary(h, undefined, 1).catch(() => null),
+      ApiService.getPeriodInsight(h).catch((err) => {
+        if (isQueryTooLargeError(err)) {
+          queryBudgetHint.value = queryTooLargeMessage(queryTooLargeDetail(err))
+          return null
+        }
+        throw err
+      }),
+      ApiService.getJdbcSummary(h, undefined, 1).catch((err) => {
+        if (isQueryTooLargeError(err)) {
+          queryBudgetHint.value = queryTooLargeMessage(queryTooLargeDetail(err))
+        }
+        return null
+      }),
+      ApiService.getRedisSummary(h, undefined, 1).catch((err) => {
+        if (isQueryTooLargeError(err)) {
+          queryBudgetHint.value = queryTooLargeMessage(queryTooLargeDetail(err))
+        }
+        return null
+      }),
       ApiService.listSloBudgets(h === 0 ? 0 : h)
     ])
     services.value = serviceNames

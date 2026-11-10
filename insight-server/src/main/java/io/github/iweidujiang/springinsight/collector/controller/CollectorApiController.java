@@ -7,6 +7,7 @@ import io.github.iweidujiang.springinsight.server.config.InsightServerStoragePro
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
 import io.github.iweidujiang.springinsight.server.presence.ServicePresenceService;
 import io.github.iweidujiang.springinsight.server.topology.TopologyDiffService;
+import io.github.iweidujiang.springinsight.storage.SnapshotQueryTooLargeException;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import io.github.iweidujiang.springinsight.storage.service.TroubleshootPackExportService;
@@ -82,6 +83,7 @@ public class CollectorApiController {
             List<String> services = traceSpanPersistenceService.getAllServiceNames();
             return ResponseEntity.ok(services);
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取服务列表失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -121,6 +123,7 @@ public class CollectorApiController {
             body.put("limit", pageSize);
             return ResponseEntity.ok(body);
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取最近链路失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -138,6 +141,7 @@ public class CollectorApiController {
             log.debug("[UI接口] 服务依赖条数={}", dependencies.size());
             return ResponseEntity.ok(dependencies);
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取服务依赖关系失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -169,6 +173,7 @@ public class CollectorApiController {
         try {
             return ResponseEntity.ok(topologyDiffService.diff(hoursA, hoursB));
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("拓扑对比失败: hoursA={} hoursB={}", hoursA, hoursB, e);
             return ResponseEntity.internalServerError().body(Map.of("message", "拓扑对比失败"));
         }
@@ -184,6 +189,7 @@ public class CollectorApiController {
             var stats = traceSpanPersistenceService.getSpanCountByService(hours);
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取服务统计失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -205,6 +211,7 @@ public class CollectorApiController {
             String filter = service == null || service.isBlank() ? null : service.trim();
             return ResponseEntity.ok(spanStore.aggregateSnapshot(since, filter));
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取服务级聚合失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -221,6 +228,7 @@ public class CollectorApiController {
             var rows = traceSpanPersistenceService.getServiceLatencySummaries(hours, limit);
             return ResponseEntity.ok(servicePresenceService.attachPresence(attachAnomalyMarks(rows)));
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取服务延迟摘要失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -234,6 +242,7 @@ public class CollectorApiController {
         try {
             return ResponseEntity.ok(servicePresenceService.listPresence());
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取服务存活状态失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -276,6 +285,7 @@ public class CollectorApiController {
             var errors = traceSpanPersistenceService.findHighErrorServices(hours);
             return ResponseEntity.ok(errors);
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取错误分析失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -297,6 +307,7 @@ public class CollectorApiController {
         try {
             return ResponseEntity.ok(traceSpanPersistenceService.getJdbcSummary(hours, service, recentLimit));
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取 JDBC 汇总失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -318,6 +329,7 @@ public class CollectorApiController {
         try {
             return ResponseEntity.ok(traceSpanPersistenceService.getRedisSummary(hours, service, recentLimit));
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取 Redis 汇总失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -335,6 +347,7 @@ public class CollectorApiController {
         try {
             return ResponseEntity.ok(traceSpanPersistenceService.findErrorBreakdown(hours));
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取错误分类失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -362,6 +375,7 @@ public class CollectorApiController {
             body.putAll(servicePresenceService.presenceFor(serviceName));
             return ResponseEntity.ok(body);
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取服务{}详情摘要失败", serviceName, e);
             return ResponseEntity.internalServerError().build();
         }
@@ -383,6 +397,7 @@ public class CollectorApiController {
         try {
             return ResponseEntity.ok(jvmMetricQueryService.buildServiceView(serviceName, hours, instance));
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取服务{} JVM 指标失败", serviceName, e);
             return ResponseEntity.internalServerError().build();
         }
@@ -406,6 +421,7 @@ public class CollectorApiController {
                     hours, limit, serviceName, status, q, minDurationMs, pathPrefix);
             return ResponseEntity.ok(traces);
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取服务{}的链路失败", serviceName, e);
             return ResponseEntity.internalServerError().build();
         }
@@ -436,6 +452,8 @@ public class CollectorApiController {
             capacity.put("storedSpans", traceSpanPersistenceService.getStoredSpanCount());
             capacity.put("maxSpans", storageProperties.getMaxSpans());
             capacity.put("evictedSpans", traceSpanPersistenceService.getEvictedSpanCount());
+            capacity.put("snapshotQueryMaxSpans", storageProperties.getSnapshotQueryMaxSpans());
+            capacity.put("queryOverBudget", traceSpanPersistenceService.isOverSnapshotBudget());
 
             Map<String, Object> result = new HashMap<>();
             result.put("collectorStats", collectorStats);
@@ -444,8 +462,20 @@ public class CollectorApiController {
 
             return ResponseEntity.ok(result);
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("[UI接口] 获取实时统计失败", e);
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 控制器内 catch 勿吞掉快照预算异常，交给全局处理返回 503。
+     *
+     * @param e 捕获的异常
+     */
+    private static void rethrowIfSnapshotBudgetExceeded(Exception e) {
+        if (e instanceof SnapshotQueryTooLargeException tooLarge) {
+            throw tooLarge;
         }
     }
 
@@ -458,6 +488,7 @@ public class CollectorApiController {
             var traceSpans = traceSpanPersistenceService.getTraceById(traceId);
             return ResponseEntity.ok(traceSpans);
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取指定链路失败", e);
             return ResponseEntity.internalServerError().build();
         }
@@ -478,6 +509,7 @@ public class CollectorApiController {
             }
             return ResponseEntity.ok(context);
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("导出 Trace Context 失败: traceId={}", traceId, e);
             return ResponseEntity.internalServerError().build();
         }
@@ -501,6 +533,7 @@ public class CollectorApiController {
             }
             return ResponseEntity.ok(pack);
         } catch (Exception e) {
+            rethrowIfSnapshotBudgetExceeded(e);
             log.error("导出排障包失败: traceId={}", traceId, e);
             return ResponseEntity.internalServerError().build();
         }

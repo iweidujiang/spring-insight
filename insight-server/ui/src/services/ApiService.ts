@@ -66,6 +66,30 @@ async function requestWithDefault<T>(url: string, defaultValue: T, options: Axio
   }
 }
 
+/** 是否为全量快照预算超限（503 QUERY_TOO_LARGE） */
+export function isQueryTooLargeError(error: unknown): boolean {
+  const ax = error as AxiosError<any>
+  const data = ax?.response?.data
+  return ax?.response?.status === 503 && data?.code === 'QUERY_TOO_LARGE'
+}
+
+/** 从错误体取出 QUERY_TOO_LARGE 详情 */
+export function queryTooLargeDetail(error: unknown): {
+  storedSpans?: number
+  snapshotQueryMaxSpans?: number
+  message?: string
+} | null {
+  if (!isQueryTooLargeError(error)) return null
+  const data = (error as AxiosError<any>).response?.data
+  const detail = data?.detail ?? {}
+  return {
+    storedSpans: detail.storedSpans != null ? Number(detail.storedSpans) : undefined,
+    snapshotQueryMaxSpans:
+      detail.snapshotQueryMaxSpans != null ? Number(detail.snapshotQueryMaxSpans) : undefined,
+    message: typeof data?.message === 'string' ? data.message : undefined
+  }
+}
+
 /** 后端 Map 使用 snake_case，统一转成前端 camelCase */
 function normalizeDependency(raw: any) {
   return {
@@ -129,8 +153,8 @@ export class ApiService {
   }
 
   static async getServiceDependencies(hours: number = 24): Promise<any[]> {
-    const rows = await requestWithDefault<any[]>(`/dependencies?hours=${hours}`, [])
-    return rows.map(normalizeDependency)
+    const rows = await request<any[]>(`/dependencies?hours=${hours}`)
+    return (Array.isArray(rows) ? rows : []).map(normalizeDependency)
   }
 
   static async getServiceStats(hours: number = 0): Promise<any[]> {
@@ -463,11 +487,11 @@ export class ApiService {
       recentLimit: String(recentLimit)
     })
     if (service && service.trim()) qs.set('service', service.trim())
-    const raw = await requestWithDefault<any>(`/jdbc/summary?${qs.toString()}`, {})
-    const k = raw.kpis ?? {}
+    const raw = await request<any>(`/jdbc/summary?${qs.toString()}`)
+    const k = raw?.kpis ?? {}
     return {
-      hours: Number(raw.hours ?? hours),
-      serviceName: String(raw.serviceName ?? service ?? ''),
+      hours: Number(raw?.hours ?? hours),
+      serviceName: String(raw?.serviceName ?? service ?? ''),
       kpis: {
         spanCount: Number(k.spanCount ?? k.span_count ?? 0),
         errorCount: Number(k.errorCount ?? k.error_count ?? 0),
@@ -476,7 +500,7 @@ export class ApiService {
         p95Ms: Number(k.p95Ms ?? k.p95_ms ?? 0),
         maxMs: Number(k.maxMs ?? k.max_ms ?? 0)
       },
-      byRemote: Array.isArray(raw.byRemote)
+      byRemote: Array.isArray(raw?.byRemote)
         ? raw.byRemote.map((row: any) => ({
             remoteService: String(row.remoteService ?? row.remote_service ?? ''),
             callCount: Number(row.callCount ?? row.call_count ?? 0),
@@ -485,7 +509,7 @@ export class ApiService {
             avgMs: Number(row.avgMs ?? row.avg_ms ?? 0),
             maxMs: Number(row.maxMs ?? row.max_ms ?? 0)
           }))
-        : Array.isArray(raw.by_remote)
+        : Array.isArray(raw?.by_remote)
           ? raw.by_remote.map((row: any) => ({
               remoteService: String(row.remoteService ?? row.remote_service ?? ''),
               callCount: Number(row.callCount ?? row.call_count ?? 0),
@@ -495,7 +519,7 @@ export class ApiService {
               maxMs: Number(row.maxMs ?? row.max_ms ?? 0)
             }))
           : [],
-      recent: Array.isArray(raw.recent)
+      recent: Array.isArray(raw?.recent)
         ? raw.recent.map((row: any) => ({
             traceId: String(row.traceId ?? row.trace_id ?? ''),
             spanId: String(row.spanId ?? row.span_id ?? ''),
@@ -560,8 +584,8 @@ export class ApiService {
       recentLimit: String(recentLimit)
     })
     if (service && service.trim()) qs.set('service', service.trim())
-    const raw = await requestWithDefault<any>(`/redis/summary?${qs.toString()}`, {})
-    const k = raw.kpis ?? {}
+    const raw = await request<any>(`/redis/summary?${qs.toString()}`)
+    const k = raw?.kpis ?? {}
     const mapRemote = (row: any) => ({
       remoteService: String(row.remoteService ?? row.remote_service ?? ''),
       callCount: Number(row.callCount ?? row.call_count ?? 0),
@@ -652,6 +676,29 @@ export class ApiService {
       return raw.collectorStats
     }
     return raw && typeof raw === 'object' ? raw : {}
+  }
+
+  /**
+   * 存储容量与查询预算（来自 /stats.capacity；失败时返回空对象）。
+   */
+  static async getStorageCapacity(): Promise<{
+    storageMode?: string
+    storedSpans: number
+    maxSpans: number
+    evictedSpans: number
+    snapshotQueryMaxSpans: number
+    queryOverBudget: boolean
+  }> {
+    const raw = await requestWithDefault<any>('/stats', {})
+    const cap = raw?.capacity ?? {}
+    return {
+      storageMode: cap.storageMode,
+      storedSpans: Number(cap.storedSpans ?? 0),
+      maxSpans: Number(cap.maxSpans ?? 0),
+      evictedSpans: Number(cap.evictedSpans ?? 0),
+      snapshotQueryMaxSpans: Number(cap.snapshotQueryMaxSpans ?? 0),
+      queryOverBudget: Boolean(cap.queryOverBudget)
+    }
   }
 
   static async getRecentSpans(hours: number = 24, limit: number = 50): Promise<any[]> {
@@ -909,7 +956,10 @@ export class ApiService {
     try {
       const raw = await request<any>(`/insights/period?hours=${hours}`)
       return normalizePeriodInsight(raw, hours)
-    } catch {
+    } catch (error) {
+      if (isQueryTooLargeError(error)) {
+        throw error
+      }
       return null
     }
   }

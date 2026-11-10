@@ -47,7 +47,9 @@ public class StorageTestConfiguration {
      * @return 持久化门面
      */
     @Bean
-    public TraceSpanPersistenceService traceSpanPersistenceService(SpanStore spanStore) {
-        return new TraceSpanPersistenceService(spanStore);
+    public TraceSpanPersistenceService traceSpanPersistenceService(
+            SpanStore spanStore,
+            InsightServerStorageProperties storageProperties) {
+        return new TraceSpanPersistenceService(spanStore, storageProperties);
     }
 }

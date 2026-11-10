@@ -128,3 +128,18 @@ export function capacityWarnMessage(percent: number): string | null {
   }
   return null
 }
+
+/**
+ * 全量查询超预算（503 QUERY_TOO_LARGE）时的用户提示。
+ */
+export function queryTooLargeMessage(detail?: {
+  storedSpans?: number
+  snapshotQueryMaxSpans?: number
+} | null): string {
+  const stored = detail?.storedSpans
+  const max = detail?.snapshotQueryMaxSpans
+  if (stored != null && max != null && max > 0) {
+    return `已存 ${stored} 条 Span，超过全量查询上限 ${max}。拓扑等重查询已暂停；请缩短时间范围、在设置页清理存储，或提高查询上限。延迟与服务统计仍尽量可用。`
+  }
+  return '当前数据量过大，部分全量查询已暂停。请缩短时间范围或在设置页清理存储后再试。'
+}

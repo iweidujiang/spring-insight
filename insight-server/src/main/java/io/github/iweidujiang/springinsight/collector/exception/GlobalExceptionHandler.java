@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.collector.exception;
 
+import io.github.iweidujiang.springinsight.storage.SnapshotQueryTooLargeException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -110,6 +112,31 @@ public class GlobalExceptionHandler {
         log.warn("[全局异常处理] 业务异常: {} -> {}", request.getRequestURI(), ex.getMessage());
 
         return ResponseEntity.status(ex.getStatus()).body(response);
+    }
+
+    /**
+     * Span 持有量过大，拒绝全量快照类查询。
+     */
+    @ExceptionHandler(SnapshotQueryTooLargeException.class)
+    public ResponseEntity<Map<String, Object>> handleSnapshotTooLarge(
+            SnapshotQueryTooLargeException ex, HttpServletRequest request) {
+
+        Map<String, Object> response = createErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        response.put("code", SnapshotQueryTooLargeException.CODE);
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("storedSpans", ex.getStoredSpans());
+        detail.put("snapshotQueryMaxSpans", ex.getSnapshotQueryMaxSpans());
+        detail.put("hint", "缩短时间范围、在设置页清理存储，或提高 spring.insight.server.storage.snapshot-query-max-spans");
+        response.put("detail", detail);
+
+        log.warn("[全局异常处理] 查询过大: {} stored={} max={}",
+                request.getRequestURI(), ex.getStoredSpans(), ex.getSnapshotQueryMaxSpans());
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
     }
 
     /**

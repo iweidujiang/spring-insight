@@ -1,11 +1,14 @@
 package io.github.iweidujiang.springinsight.storage.service;
 
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
+import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
+import io.github.iweidujiang.springinsight.storage.SnapshotQueryTooLargeException;
 import io.github.iweidujiang.springinsight.storage.impl.TraceSummaryCalculator;
+import io.github.iweidujiang.springinsight.storage.spi.ServiceAggregate;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
 import io.github.iweidujiang.springinsight.storage.spi.TraceSummary;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StopWatch;
 
@@ -30,10 +33,30 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class TraceSpanPersistenceService {
 
     private final SpanStore spanStore;
+    private final InsightServerStorageProperties storageProperties;
+
+    /**
+     * 单测便捷构造（不启用快照预算）。
+     *
+     * @param spanStore 存储 SPI
+     */
+    public TraceSpanPersistenceService(SpanStore spanStore) {
+        this(spanStore, null);
+    }
+
+    /**
+     * @param spanStore          存储 SPI
+     * @param storageProperties  存储配置（可空；空则不限制快照预算）
+     */
+    @Autowired
+    public TraceSpanPersistenceService(SpanStore spanStore,
+                                       InsightServerStorageProperties storageProperties) {
+        this.spanStore = spanStore;
+        this.storageProperties = storageProperties;
+    }
 
     /**
      * 写入单条 Span。
@@ -63,6 +86,48 @@ public class TraceSpanPersistenceService {
         sw.stop();
         log.info("[存储] 写入 {} 条 Span（mode={}），耗时={}ms，当前持有={}",
                 added, spanStore.mode(), sw.getTotalTimeMillis(), spanStore.size());
+    }
+
+    /**
+     * 配置的全量快照查询上限；{@code 0} 表示不限制。
+     *
+     * @return 上限条数
+     */
+    public int snapshotQueryMaxSpans() {
+        if (storageProperties == null) {
+            return 0;
+        }
+        return Math.max(0, storageProperties.getSnapshotQueryMaxSpans());
+    }
+
+    /**
+     * 当前持有量是否超过全量快照预算。
+     *
+     * @return 超限时 true
+     */
+    public boolean isOverSnapshotBudget() {
+        int max = snapshotQueryMaxSpans();
+        return max > 0 && spanStore.size() > max;
+    }
+
+    /**
+     * 拓扑依赖 / 错误拆解等重查询前校验；超限抛 {@link SnapshotQueryTooLargeException}。
+     */
+    public void assertHeavyQueryAllowed() {
+        if (!isOverSnapshotBudget()) {
+            return;
+        }
+        throw new SnapshotQueryTooLargeException(spanStore.size(), snapshotQueryMaxSpans());
+    }
+
+    /**
+     * 带预算校验的全量快照。
+     *
+     * @return Span 快照
+     */
+    private List<TraceSpan> heavySnapshot() {
+        assertHeavyQueryAllowed();
+        return spanStore.snapshot();
     }
 
     /**
@@ -98,7 +163,18 @@ public class TraceSpanPersistenceService {
             int lastHours, int limit, String serviceName, String status, String query,
             long minDurationMs, String pathPrefix) {
         long sinceTime = sinceEpochMillis(lastHours);
-        int max = Math.max(1, limit);
+        int max = Math.max(1, Math.min(200, limit));
+        // 大数据量走 SPI 分页聚合，避免复制全量快照
+        if (isOverSnapshotBudget()) {
+            List<TraceSummary> page = spanStore.listTraces(
+                    sinceTime, serviceName, status, query, minDurationMs, pathPrefix,
+                    0, max, "time_desc");
+            List<Map<String, Object>> out = new ArrayList<>(page.size());
+            for (TraceSummary row : page) {
+                out.add(TraceSummaryCalculator.toMap(row));
+            }
+            return out;
+        }
         List<TraceSummary> rows = TraceSummaryCalculator.collect(
                 spanStore.snapshot(), sinceTime, serviceName, status, query, minDurationMs, pathPrefix);
         rows.sort((a, b) -> Long.compare(b.startTime(), a.startTime()));
@@ -206,6 +282,15 @@ public class TraceSpanPersistenceService {
      * @return 去重后的服务名列表
      */
     public List<String> getAllServiceNames() {
+        if (isOverSnapshotBudget()) {
+            return spanStore.aggregateSnapshot(0L, null).stream()
+                    .map(ServiceAggregate::serviceName)
+                    .filter(Objects::nonNull)
+                    .filter(n -> !n.isBlank())
+                    .distinct()
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
         return spanStore.snapshot().stream()
                 .map(TraceSpan::getServiceName)
                 .filter(Objects::nonNull)
@@ -217,10 +302,14 @@ public class TraceSpanPersistenceService {
 
     /**
      * 各服务最近一次 Span 开始时间（全库，不受查询时间窗限制）。
+     * <p>超过快照预算时返回空 Map（存活降级为未知，避免全量扫描）。</p>
      *
      * @return serviceName → max(startTime)；无 Span 的服务不会出现
      */
     public Map<String, Long> getLastActivityEpochMsByService() {
+        if (isOverSnapshotBudget()) {
+            return Map.of();
+        }
         Map<String, Long> lastByService = new HashMap<>();
         for (TraceSpan s : spanStore.snapshot()) {
             if (s == null) {
@@ -264,7 +353,7 @@ public class TraceSpanPersistenceService {
         record Key(String src, String tgt) {}
         // [callCount, durationSum, lastStartMs]
         Map<Key, long[]> agg = new HashMap<>();
-        for (TraceSpan s : spanStore.snapshot()) {
+        for (TraceSpan s : heavySnapshot()) {
             if (s == null) {
                 continue;
             }
@@ -332,7 +421,7 @@ public class TraceSpanPersistenceService {
         Map<String, Long> byRemoteMax = new HashMap<>();
         List<TraceSpan> jdbcSpans = new ArrayList<>();
 
-        for (TraceSpan s : spanStore.snapshot()) {
+        for (TraceSpan s : heavySnapshot()) {
             if (s == null || !isJdbcComponent(s)) {
                 continue;
             }
@@ -467,7 +556,7 @@ public class TraceSpanPersistenceService {
         Map<String, Long> byRemoteMax = new HashMap<>();
         List<TraceSpan> redisSpans = new ArrayList<>();
 
-        for (TraceSpan s : spanStore.snapshot()) {
+        for (TraceSpan s : heavySnapshot()) {
             if (s == null || !isRedisComponent(s)) {
                 continue;
             }
@@ -595,6 +684,17 @@ public class TraceSpanPersistenceService {
      */
     public List<Map<String, Object>> getSpanCountByService(int lastHours) {
         long sinceTime = sinceEpochMillis(lastHours);
+        if (isOverSnapshotBudget()) {
+            return spanStore.aggregateSnapshot(sinceTime, null).stream()
+                    .sorted((a, b) -> Long.compare(b.spanCount(), a.spanCount()))
+                    .map(a -> {
+                        Map<String, Object> row = new LinkedHashMap<>();
+                        row.put("service_name", a.serviceName());
+                        row.put("span_count", a.spanCount());
+                        return row;
+                    })
+                    .collect(Collectors.toList());
+        }
         Map<String, Long> counts = new HashMap<>();
         for (TraceSpan s : spanStore.snapshot()) {
             if (n(s.getStartTime()) < sinceTime) {
@@ -632,6 +732,24 @@ public class TraceSpanPersistenceService {
      * @return 窗口内 {@code error_calls > 0} 的服务（含 total_calls / error_rate）
      */
     public List<Map<String, Object>> findHighErrorServicesSince(long sinceEpochMs) {
+        if (isOverSnapshotBudget()) {
+            List<Map<String, Object>> out = new ArrayList<>();
+            for (ServiceAggregate a : spanStore.aggregateSnapshot(sinceEpochMs, null)) {
+                if (a.errorCount() <= 0L || a.spanCount() <= 0L) {
+                    continue;
+                }
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("service_name", a.serviceName());
+                row.put("total_calls", a.spanCount());
+                row.put("error_calls", a.errorCount());
+                row.put("error_rate", Math.round((a.errorCount() * 10000.0 / a.spanCount())) / 100.0);
+                out.add(row);
+            }
+            out.sort((x, y) -> Double.compare(
+                    ((Number) y.get("error_rate")).doubleValue(),
+                    ((Number) x.get("error_rate")).doubleValue()));
+            return out;
+        }
         Map<String, long[]> agg = new HashMap<>();
         for (TraceSpan s : spanStore.snapshot()) {
             if (n(s.getStartTime()) < sinceEpochMs) {
@@ -679,7 +797,7 @@ public class TraceSpanPersistenceService {
         Map<String, Map<String, Long>> statusByService = new HashMap<>();
         Map<String, Map<String, Long>> exceptionByService = new HashMap<>();
 
-        for (TraceSpan s : spanStore.snapshot()) {
+        for (TraceSpan s : heavySnapshot()) {
             if (s == null || n(s.getStartTime()) < sinceTime) {
                 continue;
             }
@@ -764,7 +882,7 @@ public class TraceSpanPersistenceService {
         Map<String, Map<String, Object>> otherBuckets = new HashMap<>();
         long totalErrorSpans = 0L;
 
-        for (TraceSpan s : spanStore.snapshot()) {
+        for (TraceSpan s : heavySnapshot()) {
             if (s == null || n(s.getStartTime()) < sinceTime || !isError(s)) {
                 continue;
             }
@@ -872,6 +990,33 @@ public class TraceSpanPersistenceService {
         long sinceTime = sinceEpochMs;
         int max = Math.max(1, limit);
 
+        if (isOverSnapshotBudget()) {
+            List<Map<String, Object>> fromAgg = new ArrayList<>();
+            for (ServiceAggregate a : spanStore.aggregateSnapshot(sinceTime, null)) {
+                if (a.spanCount() <= 0L) {
+                    continue;
+                }
+                double errRate = Math.round((a.errorCount() * 10000.0 / a.spanCount())) / 100.0;
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("service_name", a.serviceName());
+                row.put("span_count", a.spanCount());
+                row.put("error_count", a.errorCount());
+                row.put("error_rate", errRate);
+                row.put("avg_ms", a.avgDuration());
+                row.put("p50_ms", a.p50Duration());
+                row.put("p95_ms", a.p95Duration());
+                row.put("max_ms", a.maxDuration());
+                fromAgg.add(row);
+            }
+            fromAgg.sort((a, b) -> Long.compare(
+                    ((Number) b.get("p95_ms")).longValue(),
+                    ((Number) a.get("p95_ms")).longValue()));
+            if (fromAgg.size() > max) {
+                return new ArrayList<>(fromAgg.subList(0, max));
+            }
+            return fromAgg;
+        }
+
         record Acc(List<Long> durations, long errorCount) {}
         Map<String, Acc> byService = new HashMap<>();
 
@@ -956,7 +1101,7 @@ public class TraceSpanPersistenceService {
         // traceId -> max duration among spans in window（取慢样本）
         Map<String, Long> slowTraceMax = new HashMap<>();
 
-        for (TraceSpan s : spanStore.snapshot()) {
+        for (TraceSpan s : heavySnapshot()) {
             if (s == null) {
                 continue;
             }
@@ -1113,7 +1258,7 @@ public class TraceSpanPersistenceService {
         Map<String, Map<String, Object>> errorTypeBuckets = new HashMap<>();
         Map<String, long[]> edgeAgg = new HashMap<>();
 
-        for (TraceSpan s : spanStore.snapshot()) {
+        for (TraceSpan s : heavySnapshot()) {
             if (s == null) {
                 continue;
             }
@@ -1306,7 +1451,8 @@ public class TraceSpanPersistenceService {
         Map<String, List<Long>> opDurations = new HashMap<>();
         Map<String, long[]> opErrors = new HashMap<>();
 
-        for (TraceSpan s : spanStore.snapshot()) {
+        List<TraceSpan> snap = heavySnapshot();
+        for (TraceSpan s : snap) {
             if (s == null || n(s.getStartTime()) < sinceTime) {
                 continue;
             }
@@ -1322,7 +1468,7 @@ public class TraceSpanPersistenceService {
         boolean localFound = !durations.isEmpty();
         if (!localFound) {
             // 外部依赖：统计指向该 remote 的 CLIENT Span
-            for (TraceSpan s : spanStore.snapshot()) {
+            for (TraceSpan s : snap) {
                 if (s == null || n(s.getStartTime()) < sinceTime) {
                     continue;
                 }

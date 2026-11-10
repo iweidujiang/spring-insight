@@ -23,6 +23,7 @@
     </SiPageHeader>
 
     <SiAlert v-if="loadError" tone="danger" class="si-topo-alert">{{ loadError }}</SiAlert>
+    <SiAlert v-else-if="queryBudgetHint" tone="warning" class="si-topo-alert">{{ queryBudgetHint }}</SiAlert>
     <SiAlert v-if="deeplinkHint" tone="warning" class="si-topo-alert">{{ deeplinkHint }}</SiAlert>
 
     <SiLoading v-if="loading" text="正在加载拓扑数据..." />
@@ -327,7 +328,7 @@ import SiLoading from '../components/SiLoading.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import type { SiColumn } from '../components/siTable'
-import { ApiService, type AiExplainResult } from '../services/ApiService'
+import { ApiService, isQueryTooLargeError, queryTooLargeDetail, type AiExplainResult } from '../services/ApiService'
 import { useTheme } from '../composables/useTheme'
 import {
   buildTopologyOption,
@@ -340,7 +341,8 @@ import { presenceTitle } from '../utils/servicePresence'
 import {
   emptyRequestsMessage,
   deeplinkMissMessage,
-  loadFailedMessage
+  loadFailedMessage,
+  queryTooLargeMessage
 } from '../utils/timeRange'
 import {
   mergeQuery,
@@ -354,6 +356,7 @@ const route = useRoute()
 const { effectiveTheme } = useTheme()
 const loading = ref(true)
 const loadError = ref('')
+const queryBudgetHint = ref('')
 const deeplinkHint = ref('')
 const currentTime = ref('')
 const hours = ref(72)
@@ -775,12 +778,26 @@ const loadData = async () => {
   try {
     loading.value = true
     loadError.value = ''
+    queryBudgetHint.value = ''
     deeplinkHint.value = ''
     selection.value = { kind: null, service: '' }
     edgeExplain.value = null
     const h = hours.value
+    const capacity = await ApiService.getStorageCapacity()
+    if (capacity.queryOverBudget) {
+      queryBudgetHint.value = queryTooLargeMessage({
+        storedSpans: capacity.storedSpans,
+        snapshotQueryMaxSpans: capacity.snapshotQueryMaxSpans
+      })
+    }
     const [deps, names, latency, recent, healthResult, presenceRows] = await Promise.all([
-      ApiService.getServiceDependencies(h),
+      ApiService.getServiceDependencies(h).catch((err) => {
+        if (isQueryTooLargeError(err)) {
+          queryBudgetHint.value = queryTooLargeMessage(queryTooLargeDetail(err))
+          return []
+        }
+        throw err
+      }),
       ApiService.getServiceNames(),
       ApiService.getServiceLatency(h, 200),
       ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 12 }),
@@ -822,7 +839,12 @@ const loadData = async () => {
     presenceByService.value = presenceMap
   } catch (error) {
     console.error('加载拓扑数据失败:', error)
-    loadError.value = loadFailedMessage('服务拓扑')
+    if (isQueryTooLargeError(error)) {
+      queryBudgetHint.value = queryTooLargeMessage(queryTooLargeDetail(error))
+      loadError.value = ''
+    } else {
+      loadError.value = loadFailedMessage('服务拓扑')
+    }
   } finally {
     loading.value = false
     await syncChart()
