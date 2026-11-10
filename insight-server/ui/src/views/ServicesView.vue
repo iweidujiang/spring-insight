@@ -36,6 +36,15 @@
           <template #cell-service="{ row }">
             <span class="si-services__name">{{ row.serviceName }}</span>
           </template>
+          <template #cell-presence="{ row }">
+            <span
+              :title="presenceTitle(row.presence, row.quietMinutes, row.staleThresholdMinutes)"
+            >
+              <SiStatusBadge :tone="presenceTone(row.presence)">
+                {{ presenceLabel(row.presence) }}
+              </SiStatusBadge>
+            </span>
+          </template>
           <template #cell-action="{ row }">
             <el-button type="primary" link size="small" @click.stop="goDetail(row)">详情</el-button>
             <el-button link size="small" @click.stop="goTraces(row.serviceName)">链路</el-button>
@@ -57,10 +66,12 @@ import SiEmpty from '../components/SiEmpty.vue'
 import SiFilterBar from '../components/SiFilterBar.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
+import SiStatusBadge from '../components/SiStatusBadge.vue'
 import type { SiColumn } from '../components/siTable'
 import { formatDuration } from '../utils/traceTimeline'
 import { emptyInRangeShort, loadFailedMessage } from '../utils/timeRange'
 import { resolveHours, persistHours, mergeQuery } from '../utils/insightQuery'
+import { presenceLabel, presenceTitle, presenceTone } from '../utils/servicePresence'
 
 type ServiceRow = {
   serviceName: string
@@ -69,6 +80,9 @@ type ServiceRow = {
   errorRate: number
   avgMs: number
   p95Ms: number
+  presence: string
+  quietMinutes: number | null
+  staleThresholdMinutes: number
 }
 
 const route = useRoute()
@@ -86,6 +100,13 @@ const columns: SiColumn<ServiceRow>[] = [
     cellClass: 'si-services__col-name',
     value: (row) => row.serviceName,
     title: (row) => row.serviceName
+  },
+  {
+    key: 'presence',
+    label: '存活',
+    cellClass: 'si-services__col-presence',
+    value: (row) => presenceLabel(row.presence),
+    title: (row) => presenceTitle(row.presence, row.quietMinutes, row.staleThresholdMinutes)
   },
   { key: 'spans', label: 'Span', value: (row) => row.spanCount },
   {
@@ -134,25 +155,68 @@ const goAboutSetup = () => {
   void router.push({ path: '/about', hash: '#setup' })
 }
 
+const emptyPresence = {
+  presence: 'unknown',
+  quietMinutes: null as number | null,
+  staleThresholdMinutes: 5
+}
+
 const load = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const latency = await ApiService.getServiceLatency(hours.value, 200)
+    const [latency, presenceRows] = await Promise.all([
+      ApiService.getServiceLatency(hours.value, 200),
+      ApiService.getServicePresence()
+    ])
+    const presenceByName = new Map(
+      presenceRows.map((row) => [
+        row.serviceName,
+        {
+          presence: row.presence,
+          quietMinutes: row.quietMinutes,
+          staleThresholdMinutes: row.staleThresholdMinutes
+        }
+      ])
+    )
     const mapped = latency
-      .map((row) => ({
-        serviceName: String(row.serviceName || '').trim(),
-        spanCount: Number(row.spanCount || 0),
-        errorCount: Number(row.errorCount || 0),
-        errorRate: Number(row.errorRate || 0),
-        avgMs: Number(row.avgMs || 0),
-        p95Ms: Number(row.p95Ms || 0)
-      }))
+      .map((row) => {
+        const serviceName = String(row.serviceName || '').trim()
+        const presence = presenceByName.get(serviceName) || {
+          presence: row.presence || 'unknown',
+          quietMinutes: row.quietMinutes ?? null,
+          staleThresholdMinutes: Number(row.staleThresholdMinutes || 5)
+        }
+        return {
+          serviceName,
+          spanCount: Number(row.spanCount || 0),
+          errorCount: Number(row.errorCount || 0),
+          errorRate: Number(row.errorRate || 0),
+          avgMs: Number(row.avgMs || 0),
+          p95Ms: Number(row.p95Ms || 0),
+          ...presence
+        }
+      })
       .filter((row) => row.serviceName)
       .sort((a, b) => b.spanCount - a.spanCount)
 
     if (mapped.length > 0) {
       rows.value = mapped
+    } else if (presenceRows.length > 0) {
+      rows.value = presenceRows
+        .slice()
+        .sort((a, b) => a.serviceName.localeCompare(b.serviceName))
+        .map((row) => ({
+          serviceName: row.serviceName,
+          spanCount: 0,
+          errorCount: 0,
+          errorRate: 0,
+          avgMs: 0,
+          p95Ms: 0,
+          presence: row.presence,
+          quietMinutes: row.quietMinutes,
+          staleThresholdMinutes: row.staleThresholdMinutes
+        }))
     } else {
       const names = await ApiService.getServiceNames()
       rows.value = names
@@ -165,7 +229,8 @@ const load = async () => {
           errorCount: 0,
           errorRate: 0,
           avgMs: 0,
-          p95Ms: 0
+          p95Ms: 0,
+          ...emptyPresence
         }))
     }
   } catch {
@@ -195,6 +260,10 @@ onMounted(() => {
   margin: 0 0 0.35rem;
   font-size: 0.92rem;
   color: var(--si-ink);
+}
+
+.si-services__col-presence {
+  width: 5.5rem;
 }
 
 .si-services__empty-hint {

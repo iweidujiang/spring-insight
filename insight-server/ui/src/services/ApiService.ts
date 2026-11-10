@@ -93,6 +93,20 @@ function normalizeErrorRow(raw: any) {
   }
 }
 
+function normalizePresenceFields(raw: any) {
+  const quietRaw = raw?.quiet_minutes ?? raw?.quietMinutes
+  return {
+    presence: String(raw?.presence ?? 'unknown'),
+    lastActivityEpochMs:
+      raw?.last_activity_epoch_ms != null || raw?.lastActivityEpochMs != null
+        ? Number(raw.last_activity_epoch_ms ?? raw.lastActivityEpochMs)
+        : null,
+    lastActivityAt: raw?.last_activity_at ?? raw?.lastActivityAt ?? null,
+    quietMinutes: quietRaw == null || quietRaw === '' ? null : Number(quietRaw),
+    staleThresholdMinutes: Number(raw?.stale_threshold_minutes ?? raw?.staleThresholdMinutes ?? 5)
+  }
+}
+
 function normalizeLatencyRow(raw: any) {
   return {
     serviceName: raw.service_name ?? raw.serviceName ?? '',
@@ -104,7 +118,8 @@ function normalizeLatencyRow(raw: any) {
     p95Ms: Number(raw.p95_ms ?? raw.p95Ms ?? 0),
     maxMs: Number(raw.max_ms ?? raw.maxMs ?? 0),
     anomaly: Boolean(raw.anomaly),
-    anomalyDetail: raw.anomalyDetail ?? null
+    anomalyDetail: raw.anomalyDetail ?? null,
+    ...normalizePresenceFields(raw)
   }
 }
 
@@ -126,6 +141,35 @@ export class ApiService {
   static async getServiceLatency(hours: number = 24, limit: number = 20): Promise<any[]> {
     const rows = await requestWithDefault<any[]>(`/services/latency?hours=${hours}&limit=${limit}`, [])
     return rows.map(normalizeLatencyRow)
+  }
+
+  /**
+   * 服务存活：按全库最近 Span 判定 online / stale（旧 Server 无接口时返回空）。
+   */
+  static async getServicePresence(): Promise<
+    Array<{
+      serviceName: string
+      presence: string
+      lastActivityEpochMs: number | null
+      lastActivityAt: string | null
+      quietMinutes: number | null
+      staleThresholdMinutes: number
+    }>
+  > {
+    try {
+      const rows = await requestWithDefault<any[]>('/services/presence', [])
+      return (Array.isArray(rows) ? rows : [])
+        .map((raw) => {
+          const fields = normalizePresenceFields(raw)
+          return {
+            serviceName: String(raw?.service_name ?? raw?.serviceName ?? '').trim(),
+            ...fields
+          }
+        })
+        .filter((row) => row.serviceName)
+    } catch {
+      return []
+    }
   }
 
   /**
@@ -233,6 +277,11 @@ export class ApiService {
     found: boolean
     /** 仅作为 remoteService 出现的外部依赖（如 JDBC），无本地 SERVER Span */
     external: boolean
+    presence: string
+    lastActivityEpochMs: number | null
+    lastActivityAt: string | null
+    quietMinutes: number | null
+    staleThresholdMinutes: number
     kpis: {
       spanCount: number
       errorCount: number
@@ -262,11 +311,13 @@ export class ApiService {
     })
     const raw = await requestWithDefault<any>(`/services/${encoded}/summary?${qs.toString()}`, {})
     const k = raw.kpis ?? {}
+    const presence = normalizePresenceFields(raw)
     return {
       serviceName: String(raw.serviceName ?? serviceName),
       hours: Number(raw.hours ?? hours),
       found: Boolean(raw.found),
       external: Boolean(raw.external),
+      ...presence,
       kpis: {
         spanCount: Number(k.span_count ?? k.spanCount ?? 0),
         errorCount: Number(k.error_count ?? k.errorCount ?? 0),

@@ -5,6 +5,7 @@ import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetectionResult
 import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetector;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
+import io.github.iweidujiang.springinsight.server.presence.ServicePresenceService;
 import io.github.iweidujiang.springinsight.server.topology.TopologyDiffService;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
@@ -48,6 +49,7 @@ public class CollectorApiController {
     private final AnomalyDetector anomalyDetector;
     private final TopologyDiffService topologyDiffService;
     private final JvmMetricQueryService jvmMetricQueryService;
+    private final ServicePresenceService servicePresenceService;
 
     public CollectorApiController(TraceSpanPersistenceService traceSpanPersistenceService,
                                   TraceSpanCollectorService traceSpanCollectorService,
@@ -57,7 +59,8 @@ public class CollectorApiController {
                                   SpanStore spanStore,
                                   AnomalyDetector anomalyDetector,
                                   TopologyDiffService topologyDiffService,
-                                  JvmMetricQueryService jvmMetricQueryService) {
+                                  JvmMetricQueryService jvmMetricQueryService,
+                                  ServicePresenceService servicePresenceService) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.storageProperties = storageProperties;
@@ -67,6 +70,7 @@ public class CollectorApiController {
         this.spanStore = spanStore;
         this.anomalyDetector = anomalyDetector;
         this.topologyDiffService = topologyDiffService;
+        this.servicePresenceService = servicePresenceService;
     }
 
     /**
@@ -207,7 +211,7 @@ public class CollectorApiController {
     }
 
     /**
-     * 服务延迟摘要（avg / p50 / p95 / 错误率），按 p95 降序
+     * 服务延迟摘要（avg / p50 / p95 / 错误率），按 p95 降序；附带存活状态。
      */
     @GetMapping("/services/latency")
     public ResponseEntity<?> getServiceLatency(
@@ -215,9 +219,22 @@ public class CollectorApiController {
             @RequestParam(value = "limit", defaultValue = "20") int limit) {
         try {
             var rows = traceSpanPersistenceService.getServiceLatencySummaries(hours, limit);
-            return ResponseEntity.ok(attachAnomalyMarks(rows));
+            return ResponseEntity.ok(servicePresenceService.attachPresence(attachAnomalyMarks(rows)));
         } catch (Exception e) {
             log.error("获取服务延迟摘要失败", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 服务存活列表：按全库最近 Span 时间判定 online / stale。
+     */
+    @GetMapping("/services/presence")
+    public ResponseEntity<?> getServicePresence() {
+        try {
+            return ResponseEntity.ok(servicePresenceService.listPresence());
+        } catch (Exception e) {
+            log.error("获取服务存活状态失败", e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -339,8 +356,11 @@ public class CollectorApiController {
             @RequestParam(value = "recentLimit", defaultValue = "15") int recentLimit,
             @RequestParam(value = "slowOpLimit", defaultValue = "10") int slowOpLimit) {
         try {
-            return ResponseEntity.ok(traceSpanPersistenceService.getServiceDetailSummary(
-                    serviceName, hours, recentLimit, slowOpLimit));
+            Map<String, Object> body = new LinkedHashMap<>(
+                    traceSpanPersistenceService.getServiceDetailSummary(
+                            serviceName, hours, recentLimit, slowOpLimit));
+            body.putAll(servicePresenceService.presenceFor(serviceName));
+            return ResponseEntity.ok(body);
         } catch (Exception e) {
             log.error("获取服务{}详情摘要失败", serviceName, e);
             return ResponseEntity.internalServerError().build();

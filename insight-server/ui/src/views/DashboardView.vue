@@ -241,7 +241,14 @@
         <div v-if="showDataRow" class="si-overview__row si-overview__row--data">
           <div v-if="panelVisible('service-health')" class="si-overview__panel">
             <div class="si-overview__head">
-              <span><el-icon class="me-2"><FirstAidKit /></el-icon>服务健康</span>
+              <span>
+                <el-icon class="me-2"><FirstAidKit /></el-icon>服务健康
+                <em
+                  v-if="staleServiceCount > 0"
+                  class="si-dashboard__stale-hint"
+                  :title="`${staleServiceCount} 个服务超过存活阈值无上报`"
+                >· {{ staleServiceCount }} 沉默</em>
+              </span>
               <el-button size="small" @click="goSlowTraces()">慢链路</el-button>
             </div>
             <SiDataTable
@@ -470,6 +477,7 @@ import {
   type SloBudget
 } from '../services/ApiService'
 import { formatDuration } from '../utils/traceTimeline'
+import { presenceTitle } from '../utils/servicePresence'
 import { useChartTheme } from '../composables/useChartTheme'
 import {
   TIME_RANGE_OPTIONS,
@@ -793,6 +801,10 @@ const healthSnapshot = computed(() =>
     .slice(0, 8)
 )
 
+const staleServiceCount = computed(
+  () => serviceLatency.value.filter((row: any) => row?.presence === 'stale').length
+)
+
 const hotDependencies = computed(() =>
   [...dependencies.value]
     .sort((a, b) => (b.callCount || 0) - (a.callCount || 0))
@@ -842,6 +854,9 @@ type HealthRow = {
   errorCount?: number
   anomaly?: boolean
   anomalyDetail?: { message?: string } | null
+  presence?: string
+  quietMinutes?: number | null
+  staleThresholdMinutes?: number
 }
 
 const healthColumns: SiColumn<HealthRow>[] = [
@@ -849,11 +864,21 @@ const healthColumns: SiColumn<HealthRow>[] = [
     key: 'service',
     label: '服务',
     cellClass: 'si-dashboard__svc',
-    value: (row) => (row.anomaly ? `${row.serviceName} · 异常` : row.serviceName),
-    title: (row) =>
-      row.anomaly && row.anomalyDetail?.message
-        ? String(row.anomalyDetail.message)
-        : row.serviceName
+    value: (row) => {
+      const bits = [row.serviceName]
+      if (row.presence === 'stale') bits.push('沉默')
+      else if (row.anomaly) bits.push('异常')
+      return bits.join(' · ')
+    },
+    title: (row) => {
+      if (row.presence === 'stale') {
+        return presenceTitle(row.presence, row.quietMinutes ?? null, row.staleThresholdMinutes ?? 5)
+      }
+      if (row.anomaly && row.anomalyDetail?.message) {
+        return String(row.anomalyDetail.message)
+      }
+      return row.serviceName
+    }
   },
   { key: 'avg', label: '均耗时', value: (row) => formatMs(row.avgMs || 0) },
   {
@@ -871,8 +896,12 @@ const healthColumns: SiColumn<HealthRow>[] = [
   }
 ]
 
-const healthRowClass = (row: HealthRow) =>
-  row.anomaly ? 'si-dashboard__diag-row is-anomaly' : 'si-dashboard__diag-row'
+const healthRowClass = (row: HealthRow) => {
+  const classes = ['si-dashboard__diag-row']
+  if (row.anomaly) classes.push('is-anomaly')
+  if (row.presence === 'stale') classes.push('is-stale')
+  return classes.join(' ')
+}
 
 const traceFailed = (tr: any) => !!(tr?.hasError || tr?.statusCode === 'ERROR')
 
@@ -2785,6 +2814,18 @@ onUnmounted(() => {
 
 :deep(.si-dashboard__diag-row.is-anomaly) {
   background: color-mix(in srgb, var(--si-danger, #dc3545) 8%, transparent);
+}
+
+:deep(.si-dashboard__diag-row.is-stale) {
+  opacity: 0.78;
+}
+
+.si-dashboard__stale-hint {
+  margin-left: 0.25rem;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--si-warning, #f59e0b);
 }
 
 :deep(.si-dashboard__svc) {

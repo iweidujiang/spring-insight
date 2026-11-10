@@ -171,12 +171,18 @@
                     'si-topo-service-list__item--healthy': getServiceHealthLevel(svc) === 'healthy',
                     'si-topo-service-list__item--warning': getServiceHealthLevel(svc) === 'warning',
                     'si-topo-service-list__item--degraded': getServiceHealthLevel(svc) === 'degraded',
-                    'si-topo-service-list__item--critical': getServiceHealthLevel(svc) === 'critical'
+                    'si-topo-service-list__item--critical': getServiceHealthLevel(svc) === 'critical',
+                    'si-topo-service-list__item--stale': getServicePresence(svc) === 'stale'
                   }"
                   @click="highlightService(svc)"
                 >
                   <span class="si-topo-service-list__dot"></span>
                   <span class="si-topo-service-list__name">{{ svc }}</span>
+                  <span
+                    v-if="getServicePresence(svc) === 'stale'"
+                    class="si-topo-service-list__stale"
+                    :title="presenceTitleFor(svc)"
+                  >沉默</span>
                   <span v-if="nodeCallCount(svc)" class="si-topo-service-list__count">{{ nodeCallCount(svc) }}</span>
                 </li>
               </ul>
@@ -193,6 +199,13 @@
             <template v-if="selection.kind === 'node' && selection.service">
               <p class="si-topo-rail__kicker">服务节点</p>
               <p class="si-topo-rail__name">{{ selection.service }}</p>
+              <p
+                v-if="getServicePresence(selection.service) === 'stale'"
+                class="si-topo-rail__stale"
+                :title="presenceTitleFor(selection.service)"
+              >
+                {{ presenceTitleFor(selection.service) }}
+              </p>
               <dl class="si-topo-rail__stats">
                 <div><dt>关联调用</dt><dd>{{ nodeCallCount(selection.service) }}</dd></div>
                 <div><dt>平均耗时</dt><dd>{{ formatMs(nodeAvgMs(selection.service)) }}</dd></div>
@@ -323,6 +336,7 @@ import {
 } from '../utils/topologyGraph'
 import { useChartTheme } from '../composables/useChartTheme'
 import { formatDuration } from '../utils/traceTimeline'
+import { presenceTitle } from '../utils/servicePresence'
 import {
   emptyRequestsMessage,
   deeplinkMissMessage,
@@ -350,6 +364,16 @@ const serviceLatency = ref<any[]>([])
 const recentTraces = ref<any[]>([])
 /** null = 健康 API 不可用，回退错误数着色；对象 = 按健康分着色 */
 const healthByService = ref<Record<string, ServiceHealthInfo> | null>(null)
+const presenceByService = ref<
+  Record<
+    string,
+    {
+      presence: string
+      quietMinutes: number | null
+      staleThresholdMinutes: number
+    }
+  >
+>({})
 const chartEl = ref<HTMLElement | null>(null)
 const explaining = ref(false)
 const edgeExplain = ref<AiExplainResult | null>(null)
@@ -401,6 +425,15 @@ const sortedServiceNames = computed(() => {
 
 const getServiceHealthLevel = (serviceName: string): string | undefined => {
   return healthByService.value?.[serviceName]?.level
+}
+
+const getServicePresence = (serviceName: string): string => {
+  return presenceByService.value?.[serviceName]?.presence || 'unknown'
+}
+
+const presenceTitleFor = (serviceName: string): string => {
+  const row = presenceByService.value?.[serviceName]
+  return presenceTitle(row?.presence, row?.quietMinutes ?? null, row?.staleThresholdMinutes ?? 5)
 }
 
 const formatMs = (ms: number) => formatDuration(Number(ms) || 0)
@@ -746,7 +779,7 @@ const loadData = async () => {
     selection.value = { kind: null, service: '' }
     edgeExplain.value = null
     const h = hours.value
-    const [deps, names, latency, recent, healthResult] = await Promise.all([
+    const [deps, names, latency, recent, healthResult, presenceRows] = await Promise.all([
       ApiService.getServiceDependencies(h),
       ApiService.getServiceNames(),
       ApiService.getServiceLatency(h, 200),
@@ -760,13 +793,33 @@ const loadData = async () => {
           return map
         },
         () => null
-      )
+      ),
+      ApiService.getServicePresence()
     ])
     dependencies.value = deps
     serviceNames.value = names
     serviceLatency.value = latency
     recentTraces.value = Array.isArray(recent) ? recent : []
     healthByService.value = healthResult
+    const presenceMap: typeof presenceByService.value = {}
+    presenceRows.forEach((row) => {
+      presenceMap[row.serviceName] = {
+        presence: row.presence,
+        quietMinutes: row.quietMinutes,
+        staleThresholdMinutes: row.staleThresholdMinutes
+      }
+    })
+    // latency 行也可能已带 presence（兼容旧接口无 /presence）
+    latency.forEach((row: any) => {
+      const name = String(row?.serviceName || '').trim()
+      if (!name || presenceMap[name]) return
+      presenceMap[name] = {
+        presence: row.presence || 'unknown',
+        quietMinutes: row.quietMinutes ?? null,
+        staleThresholdMinutes: Number(row.staleThresholdMinutes || 5)
+      }
+    })
+    presenceByService.value = presenceMap
   } catch (error) {
     console.error('加载拓扑数据失败:', error)
     loadError.value = loadFailedMessage('服务拓扑')
@@ -1102,6 +1155,24 @@ onUnmounted(() => {
 .si-topo-service-list__item--warning .si-topo-service-list__dot { background: var(--warning-color); }
 .si-topo-service-list__item--degraded .si-topo-service-list__dot { background: #c2410c; }
 .si-topo-service-list__item--critical .si-topo-service-list__dot { background: var(--danger-color); }
+
+.si-topo-service-list__item--stale {
+  opacity: 0.72;
+}
+
+.si-topo-service-list__stale {
+  margin-left: auto;
+  margin-right: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--warning-color, #f59e0b);
+}
+
+.si-topo-rail__stale {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  color: var(--warning-color, #f59e0b);
+}
 
 .si-topo-service-list__name {
   flex: 1;

@@ -3,10 +3,12 @@ package io.github.iweidujiang.springinsight.testsupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
 import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetector;
+import io.github.iweidujiang.springinsight.server.config.InsightServerPresenceProperties;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.server.jvm.InMemoryJvmMetricStore;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricStore;
+import io.github.iweidujiang.springinsight.server.presence.ServicePresenceService;
 import io.github.iweidujiang.springinsight.server.topology.TopologyDiffService;
 import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
@@ -133,5 +135,24 @@ public class CollectorTestConfiguration {
     @Bean
     public JvmMetricQueryService jvmMetricQueryService(JvmMetricStore jvmMetricStore) {
         return new JvmMetricQueryService(jvmMetricStore);
+    }
+
+    /**
+     * @return 服务存活阈值（默认 5 分钟）
+     */
+    @Bean
+    public InsightServerPresenceProperties insightServerPresenceProperties() {
+        return new InsightServerPresenceProperties();
+    }
+
+    /**
+     * @param persistence 持久化
+     * @param properties  存活阈值
+     * @return 服务存活判定（CollectorApiController 依赖）
+     */
+    @Bean
+    public ServicePresenceService servicePresenceService(TraceSpanPersistenceService persistence,
+                                                         InsightServerPresenceProperties properties) {
+        return new ServicePresenceService(persistence, properties);
     }
 }

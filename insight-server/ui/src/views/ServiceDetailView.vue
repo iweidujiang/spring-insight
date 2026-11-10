@@ -7,8 +7,22 @@
         </el-button>
         <h2 class="si-svc-detail__title">
           <el-icon class="me-2"><Box /></el-icon>{{ serviceName || '服务详情' }}
+          <span
+            v-if="summary"
+            class="si-svc-detail__presence"
+            :title="presenceTitle(summary.presence, summary.quietMinutes, summary.staleThresholdMinutes)"
+          >
+            <SiStatusBadge :tone="presenceTone(summary.presence)">
+              {{ presenceLabel(summary.presence) }}
+            </SiStatusBadge>
+          </span>
         </h2>
-        <p class="si-svc-detail__lead">KPI、依赖、最近链路与 JVM 运行时</p>
+        <p class="si-svc-detail__lead">
+          KPI、依赖、最近链路与 JVM 运行时
+          <template v-if="summary?.presence === 'stale' && summary.quietMinutes != null">
+            · 已 {{ Math.floor(summary.quietMinutes) }} 分钟无数据
+          </template>
+        </p>
       </div>
       <div class="si-svc-detail__actions">
         <label class="visually-hidden" for="svc-detail-hours">时间范围</label>
@@ -215,12 +229,14 @@ import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import SiLoading from '../components/SiLoading.vue'
+import SiStatusBadge from '../components/SiStatusBadge.vue'
 import type { SiColumn } from '../components/siTable'
 import { useChartTheme } from '../composables/useChartTheme'
 import { formatDuration } from '../utils/traceTimeline'
 import { TIME_RANGE_OPTIONS, emptyRequestsMessage } from '../utils/timeRange'
 import { resolveHours, persistHours, persistService, mergeQuery } from '../utils/insightQuery'
 import { loadFailedMessage, deeplinkMissMessage } from '../utils/timeRange'
+import { presenceLabel, presenceTitle, presenceTone } from '../utils/servicePresence'
 
 const route = useRoute()
 const router = useRouter()
@@ -693,10 +709,19 @@ onUnmounted(() => {
 }
 
 .si-svc-detail__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
   margin: 0.15rem 0 0.15rem;
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--si-ink);
+}
+
+.si-svc-detail__presence {
+  display: inline-flex;
+  vertical-align: middle;
 }
 
 .si-svc-detail__lead {

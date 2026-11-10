@@ -216,6 +216,30 @@ public class TraceSpanPersistenceService {
     }
 
     /**
+     * 各服务最近一次 Span 开始时间（全库，不受查询时间窗限制）。
+     *
+     * @return serviceName → max(startTime)；无 Span 的服务不会出现
+     */
+    public Map<String, Long> getLastActivityEpochMsByService() {
+        Map<String, Long> lastByService = new HashMap<>();
+        for (TraceSpan s : spanStore.snapshot()) {
+            if (s == null) {
+                continue;
+            }
+            String name = s.getServiceName();
+            if (name == null || name.isBlank()) {
+                continue;
+            }
+            long start = n(s.getStartTime());
+            if (start <= 0L) {
+                continue;
+            }
+            lastByService.merge(name, start, Math::max);
+        }
+        return lastByService;
+    }
+
+    /**
      * 服务间依赖边汇总（拓扑用）。
      * <p>不含 {@code component=JDBC}/{@code REDIS}：库 / 缓存不进服务拓扑。</p>
      *

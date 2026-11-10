@@ -84,4 +84,17 @@ class InsightServerFeaturePropertiesTest {
         assertTrue(p.isInvokeReady());
         assertEquals("https://api.openai.com/v1", p.normalizedBaseUrl());
     }
+
+    /**
+     * 存活阈值默认 5 分钟，非法值抬到至少 1。
+     */
+    @Test
+    void presenceThresholdDefaultsAndClamp() {
+        InsightServerPresenceProperties p = new InsightServerPresenceProperties();
+        assertEquals(5, p.normalizedStaleThresholdMinutes());
+        assertEquals(5L * 60_000L, p.staleThresholdMillis());
+        p.setStaleThresholdMinutes(0);
+        assertEquals(1, p.normalizedStaleThresholdMinutes());
+        assertEquals(60_000L, p.staleThresholdMillis());
+    }
 }

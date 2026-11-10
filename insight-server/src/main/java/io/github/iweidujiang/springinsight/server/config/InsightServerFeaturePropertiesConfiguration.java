@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration;
 
 /**
- * 注册 0.3 起新增的 Server 配置属性（Alert / AI；默认关闭）。
+ * 注册 Server 功能配置属性（Alert / AI / 服务存活阈值）。
  *
  * @since 2026-09-18
  * @author 公众号：苏渡苇 GitHub：https://github.com/iweidujiang
@@ -12,7 +12,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableConfigurationProperties({
         InsightServerAlertProperties.class,
-        InsightServerAiProperties.class
+        InsightServerAiProperties.class,
+        InsightServerPresenceProperties.class
 })
 public class InsightServerFeaturePropertiesConfiguration {
 }
