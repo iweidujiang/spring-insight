@@ -15,6 +15,8 @@
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-11-11
+
 ### 变更
 - **控制台控件统一**：按钮、表格、表单、标签、对话框等改用统一组件库，并与现有石青品牌色、亮 / 暗色主题对齐；布局栅格与图表行为不变
 - **亮 / 暗 / 跟随系统主题**：右上角可再次切换；选择写入本机并记住；页面与图表随主题变化
@@ -36,6 +38,13 @@
 ### 兼容
 - 常规链路观测仍可继续使用 Agent **`0.5.x`**；**JVM 曲线**需升级到 Agent / Starter **`0.6.0`**，并设置 `spring.insight.jvm-metrics.enabled=true`
 - 未开启 JVM 采集时，行为与此前一致；推荐配套 Starter **`0.6.0`**
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.6.0` |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:2.0.0` |
+| Release jar | `insight-server-2.0.0.jar` |
 
 ## [1.2.0] — 2026-10-24
 
@@ -420,20 +429,24 @@
 
 # Agent
 
-## [Unreleased] → 目标 **0.6.0**
+## [Unreleased]
+
+## [0.6.0] — 2026-11-11
 
 ### 新增
 - **JVM 指标上报**：开启采集后，定时把堆 / GC / 线程等指标批量发到监测中心；默认仍关闭
 
 ### 说明
-- 需配套 Server **`2.0.0`**（或当前 SNAPSHOT）才可在服务详情看到曲线
-- Boot2 需在分支 `2.7.x` 对齐后再发同号（若配额允许）
+- 需配套 Server **`≥ 2.0.0`** 才可在服务详情看到曲线
+- Boot2 同号已在分支 `2.7.x` 对齐，可按配额一并发 Central
 
-### 坐标（发版后）
+### 坐标
 | 项 | 值 |
 |----|-----|
-| Starter | `io.github.iweidujiang:spring-insight-agent-starter:0.6.0` |
-| Agent | `io.github.iweidujiang:insight-agent:0.6.0` |
+| Starter（Boot3） | `io.github.iweidujiang:spring-insight-agent-starter:0.6.0` |
+| Agent（Boot3） | `io.github.iweidujiang:insight-agent:0.6.0` |
+| Starter（Boot2） | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.6.0` |
+| Agent（Boot2） | `io.github.iweidujiang:insight-agent-boot2:0.6.0` |
 
 ---
 

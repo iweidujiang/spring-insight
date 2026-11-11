@@ -7,7 +7,7 @@
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" /></a>
   <a href="https://www.oracle.com/java/"><img src="https://img.shields.io/badge/Agent-JDK%2017%2B-orange" alt="Java" /></a>
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-3.5.9-brightgreen" alt="Spring Boot" /></a>
-  <a href="https://github.com/iweidujiang/spring-insight/releases/tag/v1.2.0"><img src="https://img.shields.io/badge/Server-1.2.0-green.svg" alt="Server" /></a>
+  <a href="https://github.com/iweidujiang/spring-insight/releases/tag/v2.0.0"><img src="https://img.shields.io/badge/Server-2.0.0-green.svg" alt="Server" /></a>
   <a href="https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.6.0"><img src="https://img.shields.io/badge/Agent-0.6.0-blue.svg" alt="Agent" /></a>
 </p>
 
@@ -41,17 +41,17 @@ docker run --rm -p 9966:9966 \
   -e SPRING_INSIGHT_SERVER_STORAGE_MODE=file \
   -e SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH=/data/spans.json \
   -v spring-insight-data:/data \
-  ghcr.io/iweidujiang/spring-insight-server:1.2.0
+  ghcr.io/iweidujiang/spring-insight-server:2.0.0
 ```
 
 或仓库根目录：`docker compose up -d`
 
 **可执行 jar**
 
-从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-1.2.0.jar`（需 JDK 17+）：
+从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-2.0.0.jar`（需 JDK 17+）：
 
 ```bash
-java -jar insight-server-1.2.0.jar
+java -jar insight-server-2.0.0.jar
 ```
 
 浏览器打开 <http://localhost:9966/>。官方 `compose.yaml` 默认**不**开控制台登录；本地开发用 `compose.dev.yaml` 时默认 `admin` / `1`（可用 `.env` 改密码或关闭鉴权）。告警 / AI 等在控制台 **设置** 页配置。
