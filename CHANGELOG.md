@@ -1,15 +1,22 @@
 # Changelog
 
-## [Unreleased] → 目标 **0.6.0**
+## [Unreleased]
+
+## [0.6.0] — 2026-11-11
 
 ### 新增
-- **JVM 指标上报**：开启 `spring.insight.jvm-metrics.enabled=true` 后定时采集堆 / GC / 线程等，批量 POST 到监测中心（与主线 0.6.0 对齐；默认关闭）
+- **JVM 指标上报**：开启后定时采集堆 / GC / 线程等并批量发到监测中心（与主线 0.6.0 对齐；默认关闭）
 
 ### 修复
 - **缓存追踪兼容**：Lettuce 异步命令在完成后再结束调用记录，回调中可保留原请求上下文；Jedis 连接池借出的连接可被正确追踪，归还后清理包装状态
 - **Reactive 工厂**：包装同步工厂时仍保留 Reactive 接口，Reactive 连接本身不包装（与原先「不含 Reactive」一致）
+- **数据库追踪**：多层 DataSource 包装时不再因代理嵌套导致栈溢出
 
-### 坐标（预览）
+### 说明
+- 需配套 Server **`≥ 2.0.0`** 才可在服务详情看到 JVM 曲线
+- 与主线 Boot3 Agent **`0.6.0`** 同号；本分支只发 Boot2 坐标
+
+### 坐标
 | 项 | 值 |
 |----|-----|
 | Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.6.0` |
