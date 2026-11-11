@@ -481,7 +481,7 @@ export class ApiService {
     }
   }
 
-  /** JDBC 追踪汇总（数据库页）：KPI / 按库 / 最近 Span */
+  /** JDBC 追踪汇总（数据库页）：KPI / 按库 / SQL 指纹 / 最近 Span */
   static async getJdbcSummary(
     hours: number = 24,
     service?: string,
@@ -504,6 +504,21 @@ export class ApiService {
       slowCount: number
       avgMs: number
       maxMs: number
+    }>
+    byFingerprint: Array<{
+      fingerprint: string
+      sqlType: string
+      remoteService: string
+      callCount: number
+      errorCount: number
+      slowCount: number
+      avgMs: number
+      p95Ms: number
+      maxMs: number
+      sampleSql: string | null
+      sampleTraceId: string
+      sampleSpanId: string
+      sampleServiceName: string
     }>
     recent: Array<{
       traceId: string
@@ -528,6 +543,29 @@ export class ApiService {
     if (service && service.trim()) qs.set('service', service.trim())
     const raw = await request<any>(`/jdbc/summary?${qs.toString()}`)
     const k = raw?.kpis ?? {}
+    const mapRemote = (row: any) => ({
+      remoteService: String(row.remoteService ?? row.remote_service ?? ''),
+      callCount: Number(row.callCount ?? row.call_count ?? 0),
+      errorCount: Number(row.errorCount ?? row.error_count ?? 0),
+      slowCount: Number(row.slowCount ?? row.slow_count ?? 0),
+      avgMs: Number(row.avgMs ?? row.avg_ms ?? 0),
+      maxMs: Number(row.maxMs ?? row.max_ms ?? 0)
+    })
+    const mapFingerprint = (row: any) => ({
+      fingerprint: String(row.fingerprint ?? ''),
+      sqlType: String(row.sqlType ?? row.sql_type ?? ''),
+      remoteService: String(row.remoteService ?? row.remote_service ?? ''),
+      callCount: Number(row.callCount ?? row.call_count ?? 0),
+      errorCount: Number(row.errorCount ?? row.error_count ?? 0),
+      slowCount: Number(row.slowCount ?? row.slow_count ?? 0),
+      avgMs: Number(row.avgMs ?? row.avg_ms ?? 0),
+      p95Ms: Number(row.p95Ms ?? row.p95_ms ?? 0),
+      maxMs: Number(row.maxMs ?? row.max_ms ?? 0),
+      sampleSql: row.sampleSql ?? row.sample_sql ?? null,
+      sampleTraceId: String(row.sampleTraceId ?? row.sample_trace_id ?? ''),
+      sampleSpanId: String(row.sampleSpanId ?? row.sample_span_id ?? ''),
+      sampleServiceName: String(row.sampleServiceName ?? row.sample_service_name ?? '')
+    })
     return {
       hours: Number(raw?.hours ?? hours),
       serviceName: String(raw?.serviceName ?? service ?? ''),
@@ -540,23 +578,14 @@ export class ApiService {
         maxMs: Number(k.maxMs ?? k.max_ms ?? 0)
       },
       byRemote: Array.isArray(raw?.byRemote)
-        ? raw.byRemote.map((row: any) => ({
-            remoteService: String(row.remoteService ?? row.remote_service ?? ''),
-            callCount: Number(row.callCount ?? row.call_count ?? 0),
-            errorCount: Number(row.errorCount ?? row.error_count ?? 0),
-            slowCount: Number(row.slowCount ?? row.slow_count ?? 0),
-            avgMs: Number(row.avgMs ?? row.avg_ms ?? 0),
-            maxMs: Number(row.maxMs ?? row.max_ms ?? 0)
-          }))
+        ? raw.byRemote.map(mapRemote)
         : Array.isArray(raw?.by_remote)
-          ? raw.by_remote.map((row: any) => ({
-              remoteService: String(row.remoteService ?? row.remote_service ?? ''),
-              callCount: Number(row.callCount ?? row.call_count ?? 0),
-              errorCount: Number(row.errorCount ?? row.error_count ?? 0),
-              slowCount: Number(row.slowCount ?? row.slow_count ?? 0),
-              avgMs: Number(row.avgMs ?? row.avg_ms ?? 0),
-              maxMs: Number(row.maxMs ?? row.max_ms ?? 0)
-            }))
+          ? raw.by_remote.map(mapRemote)
+          : [],
+      byFingerprint: Array.isArray(raw?.byFingerprint)
+        ? raw.byFingerprint.map(mapFingerprint)
+        : Array.isArray(raw?.by_fingerprint)
+          ? raw.by_fingerprint.map(mapFingerprint)
           : [],
       recent: Array.isArray(raw?.recent)
         ? raw.recent.map((row: any) => ({

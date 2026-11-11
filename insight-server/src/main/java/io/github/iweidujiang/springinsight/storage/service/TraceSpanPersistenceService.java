@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.storage.service;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.SnapshotQueryTooLargeException;
+import io.github.iweidujiang.springinsight.storage.SqlFingerprintNormalizer;
 import io.github.iweidujiang.springinsight.storage.impl.TraceSummaryCalculator;
 import io.github.iweidujiang.springinsight.storage.spi.ServiceAggregate;
 import io.github.iweidujiang.springinsight.storage.spi.SpanStore;
@@ -407,7 +408,7 @@ public class TraceSpanPersistenceService {
      * @param lastHours   时间窗小时；{@code <=0} 不限
      * @param serviceName 可选业务服务过滤（Span.serviceName）
      * @param recentLimit 最近 JDBC Span 条数
-     * @return hours / kpis / byRemote / recent
+     * @return hours / kpis / byRemote / byFingerprint / recent
      */
     public Map<String, Object> getJdbcSummary(int lastHours, String serviceName, int recentLimit) {
         long sinceTime = sinceEpochMillis(lastHours);
@@ -419,6 +420,13 @@ public class TraceSpanPersistenceService {
         long slowCount = 0L;
         Map<String, long[]> byRemoteAgg = new HashMap<>(); // [count, err, slow, durSum]
         Map<String, Long> byRemoteMax = new HashMap<>();
+        // fingerprint|remote → durations / err / sample
+        Map<String, List<Long>> fpDurations = new HashMap<>();
+        Map<String, long[]> fpErrSlow = new HashMap<>(); // [err, slow]
+        Map<String, TraceSpan> fpSample = new HashMap<>();
+        Map<String, String> fpText = new HashMap<>();
+        Map<String, String> fpRemote = new HashMap<>();
+        Map<String, String> fpType = new HashMap<>();
         List<TraceSpan> jdbcSpans = new ArrayList<>();
 
         for (TraceSpan s : heavySnapshot()) {
@@ -459,6 +467,28 @@ public class TraceSpanPersistenceService {
             }
             a[3] += dur;
             byRemoteMax.merge(remote, dur, Math::max);
+
+            String rawSql = tagValue(s, "db.sql");
+            String fingerprint = SqlFingerprintNormalizer.normalize(rawSql);
+            if (!fingerprint.isEmpty()) {
+                String key = fingerprint + "\0" + remote;
+                fpDurations.computeIfAbsent(key, x -> new ArrayList<>()).add(dur);
+                long[] es = fpErrSlow.computeIfAbsent(key, x -> new long[]{0L, 0L});
+                if (err) {
+                    es[0]++;
+                }
+                if (slow) {
+                    es[1]++;
+                }
+                fpSample.putIfAbsent(key, s);
+                fpText.putIfAbsent(key, fingerprint);
+                fpRemote.putIfAbsent(key, remote);
+                String type = tagValue(s, "db.sql_type");
+                if (type == null || type.isBlank()) {
+                    type = SqlFingerprintNormalizer.sqlType(fingerprint);
+                }
+                fpType.putIfAbsent(key, type == null ? "" : type);
+            }
             jdbcSpans.add(s);
         }
 
@@ -501,6 +531,46 @@ public class TraceSpanPersistenceService {
                 ((Number) b.get("callCount")).longValue(),
                 ((Number) a.get("callCount")).longValue()));
 
+        List<Map<String, Object>> byFingerprint = new ArrayList<>();
+        for (Map.Entry<String, List<Long>> e : fpDurations.entrySet()) {
+            String key = e.getKey();
+            List<Long> durs = e.getValue();
+            if (durs == null || durs.isEmpty()) {
+                continue;
+            }
+            List<Long> sorted = new ArrayList<>(durs);
+            sorted.sort(Long::compareTo);
+            long sum = 0L;
+            for (Long d : sorted) {
+                sum += d;
+            }
+            long[] es = fpErrSlow.getOrDefault(key, new long[]{0L, 0L});
+            TraceSpan sample = fpSample.get(key);
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("fingerprint", fpText.getOrDefault(key, ""));
+            row.put("sqlType", fpType.getOrDefault(key, ""));
+            row.put("remoteService", fpRemote.getOrDefault(key, ""));
+            row.put("callCount", (long) sorted.size());
+            row.put("errorCount", es[0]);
+            row.put("slowCount", es[1]);
+            row.put("avgMs", Math.round((sum / (double) sorted.size()) * 100.0) / 100.0);
+            row.put("p95Ms", percentile(sorted, 0.95));
+            row.put("maxMs", sorted.get(sorted.size() - 1));
+            if (sample != null) {
+                row.put("sampleSql", tagValue(sample, "db.sql"));
+                row.put("sampleTraceId", sample.getTraceId());
+                row.put("sampleSpanId", sample.getSpanId());
+                row.put("sampleServiceName", sample.getServiceName());
+            }
+            byFingerprint.add(row);
+        }
+        byFingerprint.sort((a, b) -> Long.compare(
+                ((Number) b.get("p95Ms")).longValue(),
+                ((Number) a.get("p95Ms")).longValue()));
+        if (byFingerprint.size() > 50) {
+            byFingerprint = new ArrayList<>(byFingerprint.subList(0, 50));
+        }
+
         jdbcSpans.sort((a, b) -> Long.compare(n(b.getStartTime()), n(a.getStartTime())));
         List<Map<String, Object>> recent = new ArrayList<>();
         int n = Math.min(recentMax, jdbcSpans.size());
@@ -532,6 +602,7 @@ public class TraceSpanPersistenceService {
         body.put("serviceName", svc);
         body.put("kpis", kpis);
         body.put("byRemote", byRemote);
+        body.put("byFingerprint", byFingerprint);
         body.put("recent", recent);
         return body;
     }

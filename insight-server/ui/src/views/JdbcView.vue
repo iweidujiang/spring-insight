@@ -83,6 +83,27 @@
           />
         </SiSection>
 
+        <SiSection
+          title="SQL 指纹"
+          icon="Document"
+          :count="summary.byFingerprint.length"
+          label="按语句形态聚合"
+        >
+          <p class="si-jdbc-fp-hint">参数已归一化为 ?；点击行可打开样例 Trace。</p>
+          <SiDataTable
+            :rows="summary.byFingerprint"
+            :columns="fingerprintColumns"
+            :row-key="fingerprintKey"
+            clickable
+            @row-click="onFingerprintClick"
+          >
+            <template #cell-fingerprint="{ row }">
+              <span v-if="row.sqlType" class="si-jdbc-sql-type">{{ row.sqlType }}</span>
+              {{ row.fingerprint || '—' }}
+            </template>
+          </SiDataTable>
+        </SiSection>
+
         <SiSection title="最近 JDBC Span" icon="List" :count="summary.recent.length" label="最近 JDBC">
           <SiDataTable
             :rows="summary.recent"
@@ -150,6 +171,7 @@ const loading = ref(true)
 const loadError = ref('')
 type JdbcSummary = Awaited<ReturnType<typeof ApiService.getJdbcSummary>>
 type RemoteRow = JdbcSummary['byRemote'][number]
+type FingerprintRow = JdbcSummary['byFingerprint'][number]
 type RecentRow = JdbcSummary['recent'][number]
 
 const summary = ref<JdbcSummary | null>(null)
@@ -175,6 +197,36 @@ const remoteColumns: SiColumn<RemoteRow>[] = [
     cellClass: (row) => (row.slowCount > 0 ? 'si-jdbc-cell--warning' : undefined)
   },
   { key: 'avgMs', label: '平均', numeric: true, value: (row) => formatDuration(row.avgMs) },
+  { key: 'maxMs', label: '最大', numeric: true, value: (row) => formatDuration(row.maxMs) }
+]
+
+const fingerprintColumns: SiColumn<FingerprintRow>[] = [
+  {
+    key: 'fingerprint',
+    label: '指纹',
+    truncate: true,
+    title: (row) => row.sampleSql || row.fingerprint || undefined
+  },
+  {
+    key: 'remoteService',
+    label: '库',
+    truncate: true,
+    title: (row) => row.remoteService || undefined,
+    value: (row) => row.remoteService || '—'
+  },
+  { key: 'callCount', label: '次数', numeric: true },
+  {
+    key: 'errorCount',
+    label: '错误',
+    numeric: true,
+    cellClass: (row) => (row.errorCount > 0 ? 'si-jdbc-cell--danger' : undefined)
+  },
+  {
+    key: 'p95Ms',
+    label: 'p95',
+    numeric: true,
+    value: (row) => formatDuration(row.p95Ms)
+  },
   { key: 'maxMs', label: '最大', numeric: true, value: (row) => formatDuration(row.maxMs) }
 ]
 
@@ -234,6 +286,13 @@ const clearServiceFilter = () => {
 const jdbcFailed = (row: RecentRow) => row.success === false || row.statusCode === 'ERROR'
 
 const recentKey = (row: RecentRow, index: number) => `${row.spanId || row.traceId}-${index}`
+
+const fingerprintKey = (row: FingerprintRow, index: number) =>
+  `${row.fingerprint}-${row.remoteService}-${index}`
+
+const onFingerprintClick = (row: FingerprintRow) => {
+  goTrace(row.sampleTraceId, row.sampleSpanId)
+}
 
 const onRecentClick = (row: RecentRow) => {
   goTrace(row.traceId, row.spanId)
@@ -325,6 +384,12 @@ onMounted(async () => {
 .si-jdbc-hint {
   margin: 0 0 1rem;
   font-size: 0.85rem;
+  color: var(--si-muted, #6b7f76);
+}
+
+.si-jdbc-fp-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
   color: var(--si-muted, #6b7f76);
 }
 

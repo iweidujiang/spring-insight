@@ -180,6 +180,13 @@ class TraceListFilterTest {
                 .orElseThrow()
                 .get("sql"));
 
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> byFingerprint = (List<Map<String, Object>>) all.get("byFingerprint");
+        assertTrue(byFingerprint.size() >= 2);
+        assertTrue(byFingerprint.stream().anyMatch(r ->
+                String.valueOf(r.get("fingerprint")).contains("SLEEP_MS")
+                        || String.valueOf(r.get("sampleSql")).contains("SLEEP_MS")));
+
         Map<String, Object> filtered = persistence.getJdbcSummary(24, "provider", 10);
         @SuppressWarnings("unchecked")
         Map<String, Object> fk = (Map<String, Object>) filtered.get("kpis");
