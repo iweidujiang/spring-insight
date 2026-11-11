@@ -148,6 +148,7 @@ const navGroups = [
   {
     label: '运维',
     items: [
+      { to: '/alerts', label: '告警历史', icon: 'Bell', match: (p: string) => p === '/alerts' },
       { to: '/settings', label: '设置', icon: 'Setting', match: (p: string) => p === '/settings' }
     ]
   },

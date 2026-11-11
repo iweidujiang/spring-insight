@@ -112,7 +112,7 @@ class InsightAlertSchedulerTest {
                 senders(),
                 lastMetrics,
                 mockAi(),
-                new AnomalyDetector());
+                new AnomalyDetector(), new AlertHistoryStore());
         scheduler.scan();
 
         assertEquals(1, hits.get());
@@ -145,7 +145,7 @@ class InsightAlertSchedulerTest {
                 senders(),
                 lastMetrics,
                 mockAi(),
-                new AnomalyDetector());
+                new AnomalyDetector(), new AlertHistoryStore());
         scheduler.scan();
         assertEquals(0, hits.get());
         assertEquals(1.0, lastMetrics.count("quiet"));
@@ -182,7 +182,7 @@ class InsightAlertSchedulerTest {
                 senders(),
                 lastMetrics,
                 mockAi(),
-                new AnomalyDetector());
+                new AnomalyDetector(), new AlertHistoryStore());
         scheduler.scan();
         assertEquals(1, hits.get());
         assertTrue(body.get().contains("\"serviceName\":\"sca-user\""));
@@ -215,7 +215,7 @@ class InsightAlertSchedulerTest {
         when(settings.effectiveAlert()).thenReturn(errorProps);
         when(settings.snapshot()).thenReturn(snap);
         InsightAlertScheduler blocked = new InsightAlertScheduler(
-                settings, storeWithOneError(), senders(), lastMetrics, mockAi(), new AnomalyDetector());
+                settings, storeWithOneError(), senders(), lastMetrics, mockAi(), new AnomalyDetector(), new AlertHistoryStore());
         blocked.scan();
         assertEquals(0, hits.get());
         assertEquals(1.0, lastMetrics.count("silence"));
@@ -224,7 +224,7 @@ class InsightAlertSchedulerTest {
         when(settings.effectiveAlert()).thenReturn(latencyProps);
         lastMetrics = new InsightAlertMetrics(new SimpleMeterRegistry());
         InsightAlertScheduler allowed = new InsightAlertScheduler(
-                settings, storeWithSlowSpan(250L), senders(), lastMetrics, mockAi(), new AnomalyDetector());
+                settings, storeWithSlowSpan(250L), senders(), lastMetrics, mockAi(), new AnomalyDetector(), new AlertHistoryStore());
         allowed.scan();
         assertEquals(1, hits.get());
         assertEquals(1.0, lastMetrics.count("success"));
@@ -245,7 +245,7 @@ class InsightAlertSchedulerTest {
         InsightRuntimeSettingsService settings = mock(InsightRuntimeSettingsService.class);
         when(settings.effectiveAlert()).thenReturn(props);
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
-                settings, persistence, senders(), metrics, mockAi(), new AnomalyDetector());
+                settings, persistence, senders(), metrics, mockAi(), new AnomalyDetector(), new AlertHistoryStore());
         scheduler.scan();
         scheduler.scan();
         assertEquals(2, hits.get());
@@ -296,7 +296,7 @@ class InsightAlertSchedulerTest {
 
         TraceSpanPersistenceService firing = storeWithOneError();
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
-                settings, firing, senders(), lastMetrics, mockAi(), new AnomalyDetector());
+                settings, firing, senders(), lastMetrics, mockAi(), new AnomalyDetector(), new AlertHistoryStore());
 
         scheduler.scan();
         assertEquals(1, firstHits.get());
@@ -315,10 +315,14 @@ class InsightAlertSchedulerTest {
         assertEquals(1, escalateHits.get());
 
         InsightAlertScheduler recovered = new InsightAlertScheduler(
-                settings, storeAllOk(), senders(), lastMetrics, mockAi(), new AnomalyDetector());
+                settings, storeAllOk(), senders(), lastMetrics, mockAi(), new AnomalyDetector(), new AlertHistoryStore());
         recovered.putActiveAlert("sca-order", System.currentTimeMillis() - 31 * 60_000L, true);
         recovered.scan();
         assertNull(recovered.activeAlert("sca-order"));
+
+        List<Map<String, Object>> hist = scheduler.recentHistory(20);
+        assertTrue(hist.stream().anyMatch(r -> "fire".equals(r.get("event"))));
+        assertTrue(hist.stream().anyMatch(r -> "escalate".equals(r.get("event"))));
     }
 
     /**
@@ -345,7 +349,7 @@ class InsightAlertSchedulerTest {
         when(settings.effectiveAlert()).thenReturn(props);
         when(settings.effectiveChannels()).thenReturn(List.of(channel));
         InsightAlertScheduler scheduler = new InsightAlertScheduler(
-                settings, storeWithOneError(), senders(), lastMetrics, mockAi(), new AnomalyDetector());
+                settings, storeWithOneError(), senders(), lastMetrics, mockAi(), new AnomalyDetector(), new AlertHistoryStore());
         scheduler.scan();
         assertEquals(1, hits.get());
         assertTrue(body.get().contains("\"serviceName\":\"sca-order\""));
@@ -368,7 +372,7 @@ class InsightAlertSchedulerTest {
                 senders(),
                 lastMetrics,
                 mockAi(),
-                new AnomalyDetector());
+                new AnomalyDetector(), new AlertHistoryStore());
     }
 
     private static InsightAiExplainService mockAi() {

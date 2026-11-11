@@ -15,6 +15,7 @@ import RedisView from './views/RedisView.vue'
 import ServiceDetailView from './views/ServiceDetailView.vue'
 import ServicesView from './views/ServicesView.vue'
 import SettingsView from './views/SettingsView.vue'
+import AlertHistoryView from './views/AlertHistoryView.vue'
 import AboutView from './views/AboutView.vue'
 import LoginView from './views/LoginView.vue'
 import { fetchAuthStatus, getUiToken, setUiToken, setUiUsername } from './services/AuthService'
@@ -96,6 +97,12 @@ const router = createRouter({
       name: 'service-detail',
       component: ServiceDetailView,
       meta: { title: '服务详情' }
+    },
+    {
+      path: '/alerts',
+      name: 'alerts',
+      component: AlertHistoryView,
+      meta: { title: '告警历史' }
     },
     {
       path: '/settings',

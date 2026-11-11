@@ -210,6 +210,45 @@ export class ApiService {
     }
   }
 
+  /**
+   * 告警历史（触发 / 恢复 / 升级）；旧 Server 无接口时返回空。
+   */
+  static async getAlertHistory(limit: number = 50): Promise<
+    Array<{
+      id: string
+      event: string
+      serviceName: string
+      metric: string
+      value: number | null
+      threshold: number | null
+      at: string
+      atEpochMs: number
+      durationMinutes: number | null
+      delivered: boolean
+    }>
+  > {
+    try {
+      const body = await request<{ items?: any[] }>(`/alert/history?limit=${limit}`)
+      return (Array.isArray(body?.items) ? body.items : []).map((raw) => ({
+        id: String(raw?.id ?? `${raw?.atEpochMs ?? ''}-${raw?.serviceName ?? ''}-${raw?.event ?? ''}`),
+        event: String(raw?.event ?? ''),
+        serviceName: String(raw?.serviceName ?? raw?.service_name ?? ''),
+        metric: String(raw?.metric ?? ''),
+        value: raw?.value == null || raw?.value === '' ? null : Number(raw.value),
+        threshold: raw?.threshold == null || raw?.threshold === '' ? null : Number(raw.threshold),
+        at: String(raw?.at ?? ''),
+        atEpochMs: Number(raw?.atEpochMs ?? raw?.at_epoch_ms ?? 0),
+        durationMinutes:
+          raw?.durationMinutes == null && raw?.duration_minutes == null
+            ? null
+            : Number(raw.durationMinutes ?? raw.duration_minutes),
+        delivered: Boolean(raw?.delivered)
+      }))
+    } catch {
+      return []
+    }
+  }
+
   /** 列出 SLO 配置 */
   static async listSlos(): Promise<ServiceSlo[]> {
     try {

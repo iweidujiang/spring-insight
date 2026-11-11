@@ -51,11 +51,14 @@ public class InsightAlertScheduler {
     private final InsightAlertMetrics metrics;
     private final InsightAiExplainService aiExplainService;
     private final AnomalyDetector anomalyDetector;
+    private final AlertHistoryStore historyStore;
 
     /** 服务名 → 上次成功推送的 epoch 毫秒 */
     private final ConcurrentHashMap<String, Long> lastFiredAt = new ConcurrentHashMap<>();
     /** 服务名 → 活跃告警（未恢复）状态 */
     private final ConcurrentHashMap<String, AlertEscalationState> activeAlerts = new ConcurrentHashMap<>();
+    /** 服务名 → 最近一次触发快照（供恢复写历史） */
+    private final ConcurrentHashMap<String, Map<String, Object>> lastAlertSnapshots = new ConcurrentHashMap<>();
     private final AtomicBoolean warnedNotReady = new AtomicBoolean(false);
 
     private ScheduledExecutorService scheduler;
@@ -67,19 +70,22 @@ public class InsightAlertScheduler {
      * @param metrics             结果计数
      * @param aiExplainService    可选告警 AI 解读
      * @param anomalyDetector     无阈值异常检测
+     * @param historyStore        告警历史环形缓冲
      */
     public InsightAlertScheduler(InsightRuntimeSettingsService settingsService,
                                  TraceSpanPersistenceService persistenceService,
                                  List<InsightAlertChannelSender> channelSenders,
                                  InsightAlertMetrics metrics,
                                  InsightAiExplainService aiExplainService,
-                                 AnomalyDetector anomalyDetector) {
+                                 AnomalyDetector anomalyDetector,
+                                 AlertHistoryStore historyStore) {
         this.settingsService = settingsService;
         this.persistenceService = persistenceService;
         this.channelSenders = channelSenders == null ? List.of() : List.copyOf(channelSenders);
         this.metrics = metrics;
         this.aiExplainService = aiExplainService;
         this.anomalyDetector = anomalyDetector;
+        this.historyStore = historyStore == null ? new AlertHistoryStore() : historyStore;
     }
 
     /**
@@ -237,6 +243,7 @@ public class InsightAlertScheduler {
                 }
                 return prev;
             });
+            rememberSnapshot(service, evaluation, state, now);
             if (!allowNotify) {
                 continue;
             }
@@ -253,7 +260,9 @@ public class InsightAlertScheduler {
         }
         for (String service : new ArrayList<>(activeAlerts.keySet())) {
             if (!stillFiring.contains(service)) {
-                activeAlerts.remove(service);
+                AlertEscalationState cleared = activeAlerts.remove(service);
+                recordRecover(service, cleared, now, at);
+                lastAlertSnapshots.remove(service);
                 log.debug("[告警] 已恢复，清除活跃状态: service={}", service);
             }
         }
@@ -340,6 +349,18 @@ public class InsightAlertScheduler {
 
         boolean ok = dispatch(type, new AlertPayload(payload), channelConfig(properties, channel, type));
         metrics.record(type, ok ? "success" : "failure");
+        AlertEvaluation.MatchedCondition matched = evaluation.matched().get(0);
+        historyStore.record(
+                AlertHistoryStore.EVENT_ESCALATE,
+                service,
+                matched.condition().getMetric(),
+                matched.value(),
+                matched.condition().getThreshold(),
+                at,
+                now,
+                durationMinutes,
+                ok,
+                matchedConditions(evaluation));
         if (ok) {
             activeAlerts.put(service, state.markEscalated());
             metrics.record("escalation");
@@ -439,11 +460,82 @@ public class InsightAlertScheduler {
         if (delivered) {
             lastFiredAt.put(service, now);
             metrics.record("success");
+            historyStore.record(
+                    AlertHistoryStore.EVENT_FIRE,
+                    service,
+                    first.condition().getMetric(),
+                    value,
+                    first.condition().getThreshold(),
+                    at,
+                    now,
+                    null,
+                    true,
+                    matchedConditions(evaluation));
             log.info("[告警] 已推送: service={}, metric={}, value={}, aiAttached={}",
                     service, first.condition().getMetric(), value, payload.getOrDefault("aiAttached", false));
         } else {
             metrics.record("failure");
         }
+    }
+
+    /**
+     * 记住当前触发快照，供恢复写历史。
+     */
+    private void rememberSnapshot(String service,
+                                  AlertEvaluation evaluation,
+                                  AlertEscalationState state,
+                                  long now) {
+        if (evaluation == null || evaluation.matched().isEmpty()) {
+            return;
+        }
+        AlertEvaluation.MatchedCondition first = evaluation.matched().get(0);
+        Map<String, Object> snap = new LinkedHashMap<>();
+        snap.put("metric", first.condition().getMetric());
+        snap.put("value", first.value());
+        snap.put("threshold", first.condition().getThreshold());
+        snap.put("matchedConditions", matchedConditions(evaluation));
+        snap.put("firstFiredAtMs", state == null ? now : state.firstFiredAtMs());
+        lastAlertSnapshots.put(service, snap);
+    }
+
+    /**
+     * 写入恢复历史。
+     */
+    private void recordRecover(String service, AlertEscalationState cleared, long now, String at) {
+        Map<String, Object> snap = lastAlertSnapshots.get(service);
+        String metric = snap == null ? "" : String.valueOf(snap.getOrDefault("metric", ""));
+        Double value = snap != null && snap.get("value") instanceof Number n
+                ? n.doubleValue() : null;
+        Double threshold = snap != null && snap.get("threshold") instanceof Number n
+                ? n.doubleValue() : null;
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> matched = snap != null && snap.get("matchedConditions") instanceof List<?> list
+                ? (List<Map<String, Object>>) list
+                : List.of();
+        long first = cleared != null ? cleared.firstFiredAtMs()
+                : (snap != null && snap.get("firstFiredAtMs") instanceof Number n ? n.longValue() : now);
+        long durationMinutes = Math.max(0L, (now - first) / 60_000L);
+        historyStore.record(
+                AlertHistoryStore.EVENT_RECOVER,
+                service,
+                metric,
+                value,
+                threshold,
+                at,
+                now,
+                durationMinutes,
+                false,
+                matched);
+    }
+
+    /**
+     * 测试用：最近告警历史。
+     *
+     * @param limit 条数
+     * @return 历史行
+     */
+    List<Map<String, Object>> recentHistory(int limit) {
+        return historyStore.recent(limit);
     }
 
     /**
