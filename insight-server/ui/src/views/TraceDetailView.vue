@@ -40,6 +40,16 @@
         >
           异常 <el-icon class="ms-1"><ArrowDown /></el-icon>
         </el-button>
+        <el-button
+          size="small"
+          :type="criticalOnly ? 'warning' : 'default'"
+          :plain="!criticalOnly"
+          :disabled="loading || spans.length === 0"
+          title="只显示关键路径上的 Span，便于看清主耗时链"
+          @click="toggleCriticalOnly"
+        >
+          {{ criticalOnly ? '全部 Span' : '仅关键路径' }}
+        </el-button>
         <el-button size="small" @click="goBack">
           <el-icon class="me-1"><ArrowLeft /></el-icon>返回
         </el-button>
@@ -125,13 +135,21 @@
             <div class="trace-stage__head">
               <h3 class="trace-stage__title">
                 <el-icon class="me-2"><Operation /></el-icon>调用时间线
+                <span v-if="criticalOnly" class="trace-stage__badge">仅关键路径 · {{ visibleRows.length }}/{{ timeline.rows.length }}</span>
               </h3>
               <span class="trace-waterfall-hint">
-                缩进=父子 · 角标=SERVER/CLIENT · CLIENT 可带 →下游 · 橙边=关键路径 · 红条=异常
+                点击聚焦后 ↑↓ 选 Span · 橙边=关键路径 · 红条脉冲=异常 · JDBC 行可看 SQL 预览
               </span>
             </div>
 
-            <div class="trace-waterfall" ref="waterfallEl">
+            <div
+              class="trace-waterfall"
+              ref="waterfallEl"
+              tabindex="0"
+              role="listbox"
+              aria-label="调用时间线，可用方向键选择 Span"
+              @keydown="onWaterfallKeydown"
+            >
               <div class="trace-waterfall__axis">
                 <div class="trace-waterfall__axis-label"></div>
                 <div class="trace-waterfall__axis-track">
@@ -146,16 +164,19 @@
               </div>
 
               <div
-                v-for="(row, idx) in timeline.rows"
+                v-for="(row, idx) in visibleRows"
                 :key="row.span.spanId || idx"
                 :data-span-id="row.span.spanId"
                 class="trace-waterfall__row"
+                role="option"
+                :aria-selected="selectedSpanId === row.span.spanId"
                 :class="{
                   'is-error': row.isError,
                   'is-active': selectedSpanId === row.span.spanId,
                   'is-critical': row.isOnCriticalPath
                 }"
-                @click="selectSpan(row.span.spanId)"
+                :style="{ '--row-svc-color': row.color }"
+                @click="onRowClick(row.span.spanId)"
               >
                 <div class="trace-waterfall__meta" :style="{ paddingLeft: `${10 + row.depth * 14}px` }">
                   <div class="trace-waterfall__svc-row">
@@ -167,6 +188,14 @@
                     >{{ normalizeSpanKind(row.span.spanKind) }}</span>
                   </div>
                   <span class="trace-waterfall__op" :title="waterfallOpTitle(row)">{{ formatWaterfallOpLabel(row.span) }}</span>
+                  <span
+                    v-if="sqlPreviewFromSpan(row.span)"
+                    class="trace-waterfall__sql"
+                    :title="rawSqlFromSpan(row.span)"
+                  >
+                    <span v-if="sqlTypeFromSpan(row.span)" class="trace-waterfall__sql-type">{{ sqlTypeFromSpan(row.span) }}</span>
+                    {{ sqlPreviewFromSpan(row.span) }}
+                  </span>
                 </div>
                 <div class="trace-waterfall__track">
                   <div
@@ -201,6 +230,7 @@
                   <div><dt>耗时</dt><dd>{{ formatDuration(Number(selected.durationMs) || 0) }}</dd></div>
                   <div><dt>状态</dt><dd>{{ selected.statusCode || '-' }}</dd></div>
                   <div><dt>远端</dt><dd>{{ remoteLabel(selected) }}</dd></div>
+                  <div v-if="selectedSql"><dt>SQL</dt><dd class="trace-selected__sql">{{ selectedSql }}</dd></div>
                   <div><dt>spanId</dt><dd><code>{{ selected.spanId }}</code></dd></div>
                   <div><dt>parent</dt><dd><code>{{ selected.parentSpanId || '(root)' }}</code></dd></div>
                 </dl>
@@ -282,9 +312,13 @@ import SiDataTable from '../components/SiDataTable.vue'
 import type { SiColumn } from '../components/siTable'
 import {
   buildTraceTimeline,
+  filterWaterfallRows,
   formatDuration,
   formatWaterfallOpLabel,
   normalizeSpanKind,
+  rawSqlFromSpan,
+  sqlPreviewFromSpan,
+  sqlTypeFromSpan,
   type TraceSpanLike,
   type WaterfallRow
 } from '../utils/traceTimeline'
@@ -320,6 +354,7 @@ const aiStatus = ref({
   reason: ''
 })
 const waterfallEl = ref<HTMLElement | null>(null)
+const criticalOnly = ref(false)
 let copyTimer: number | null = null
 
 const aiExplainTitle = computed(() => {
@@ -331,6 +366,10 @@ const aiExplainTitle = computed(() => {
 })
 
 const timeline = computed(() => buildTraceTimeline(spans.value))
+
+const visibleRows = computed(() =>
+  filterWaterfallRows(timeline.value.rows, criticalOnly.value)
+)
 
 const spanColumns: SiColumn<WaterfallRow>[] = [
   { key: 'service', label: '服务', value: (row) => row.span.serviceName },
@@ -361,18 +400,27 @@ const onSpanRowClick = (row: WaterfallRow) => {
 }
 
 const errorSpanIds = computed(() =>
-  timeline.value.rows.filter((r) => r.isError && r.span.spanId).map((r) => r.span.spanId as string)
+  visibleRows.value.filter((r) => r.isError && r.span.spanId).map((r) => r.span.spanId as string)
 )
 
 const selected = computed(() =>
   spans.value.find((s) => s.spanId === selectedSpanId.value) || null
 )
 
+const selectedSql = computed(() =>
+  selected.value ? rawSqlFromSpan(selected.value) : ''
+)
+
 const tagEntries = computed(() => {
   const tags = selected.value?.tags
   if (!tags || typeof tags !== 'object') return [] as [string, string][]
   return Object.entries(tags)
-    .filter(([, v]) => v != null && String(v).length > 0)
+    .filter(([k, v]) => {
+      if (v == null || String(v).length === 0) return false
+      // SQL 已在上方单独展示，避免 Tags 重复堆叠
+      if (k === 'db.sql' || k === 'sql') return false
+      return true
+    })
     .map(([k, v]) => [k, String(v)] as [string, string])
     .sort((a, b) => a[0].localeCompare(b[0]))
 })
@@ -398,6 +446,65 @@ const selectSpan = (id?: string | null) => {
   scrollSelectedIntoView()
 }
 
+const onRowClick = (id?: string | null) => {
+  selectSpan(id)
+  waterfallEl.value?.focus({ preventScroll: true })
+}
+
+const ensureSelectionVisible = () => {
+  const rows = visibleRows.value
+  if (!rows.length) return
+  const cur = selectedSpanId.value
+  if (cur && rows.some((r) => r.span.spanId === cur)) return
+  const prefer =
+    rows.find((r) => r.isError)?.span.spanId ||
+    rows.find((r) => r.isOnCriticalPath)?.span.spanId ||
+    rows[0]?.span.spanId
+  selectSpan(prefer)
+}
+
+const toggleCriticalOnly = () => {
+  criticalOnly.value = !criticalOnly.value
+  ensureSelectionVisible()
+}
+
+const jumpVisible = (dir: 1 | -1) => {
+  const rows = visibleRows.value.filter((r) => r.span.spanId)
+  if (!rows.length) return
+  const cur = selectedSpanId.value
+  let idx = rows.findIndex((r) => r.span.spanId === cur)
+  if (idx < 0) {
+    idx = dir > 0 ? -1 : 0
+  }
+  const next = rows[(idx + dir + rows.length) % rows.length]
+  selectSpan(next.span.spanId)
+}
+
+const onWaterfallKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    jumpVisible(-1)
+    return
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    jumpVisible(1)
+    return
+  }
+  if (e.key === 'Home') {
+    e.preventDefault()
+    const first = visibleRows.value.find((r) => r.span.spanId)
+    if (first) selectSpan(first.span.spanId)
+    return
+  }
+  if (e.key === 'End') {
+    e.preventDefault()
+    const list = visibleRows.value.filter((r) => r.span.spanId)
+    const last = list[list.length - 1]
+    if (last) selectSpan(last.span.spanId)
+  }
+}
+
 const jumpError = (dir: 1 | -1) => {
   const ids = errorSpanIds.value
   if (!ids.length) return
@@ -408,6 +515,7 @@ const jumpError = (dir: 1 | -1) => {
   }
   const next = ids[(idx + dir + ids.length) % ids.length]
   selectSpan(next)
+  waterfallEl.value?.focus({ preventScroll: true })
 }
 
 const copyTraceId = async () => {
@@ -497,9 +605,14 @@ const runExplain = async () => {
 
 const waterfallOpTitle = (row: WaterfallRow) => {
   const kind = normalizeSpanKind(row.span.spanKind)
-  const label = formatWaterfallOpLabel(row.span)
   const remote = String(row.span.remoteService || '').trim()
-  const bits = [row.span.operationName || '-', kind || null, remote ? `remote=${remote}` : null].filter(Boolean)
+  const sql = rawSqlFromSpan(row.span)
+  const bits = [
+    row.span.operationName || '-',
+    kind || null,
+    remote ? `remote=${remote}` : null,
+    sql || null
+  ].filter(Boolean)
   return bits.join(' · ')
 }
 
@@ -510,13 +623,15 @@ const barTitle = (row: WaterfallRow) => {
   ].filter(Boolean).join(' · ')
   const kind = normalizeSpanKind(row.span.spanKind)
   const label = formatWaterfallOpLabel(row.span)
-  return `${row.span.serviceName}${kind ? ` [${kind}]` : ''} · ${label}\n偏移 +${formatDuration(row.offsetMs)} · 耗时 ${formatDuration(row.durationMs)}${flags ? `\n${flags}` : ''}`
+  const sql = sqlPreviewFromSpan(row.span, 120)
+  return `${row.span.serviceName}${kind ? ` [${kind}]` : ''} · ${label}\n偏移 +${formatDuration(row.offsetMs)} · 耗时 ${formatDuration(row.durationMs)}${flags ? `\n${flags}` : ''}${sql ? `\n${sql}` : ''}`
 }
 
 const load = async () => {
   const id = String(route.params.traceId || '')
   traceId.value = id
   selectedSpanId.value = null
+  criticalOnly.value = false
   loadError.value = ''
   deeplinkHint.value = ''
   if (!id) {
@@ -712,6 +827,21 @@ onMounted(async () => {
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--si-ink);
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.55rem;
+}
+
+.trace-stage__badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  color: var(--si-critical-color, #c2410c);
+  background: color-mix(in srgb, var(--si-critical-color, #c2410c) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--si-critical-color, #c2410c) 35%, transparent);
 }
 
 .trace-waterfall-hint {
@@ -769,6 +899,11 @@ onMounted(async () => {
   background: var(--si-paper);
   padding: 0.55rem 0.65rem 0.7rem;
   overflow-x: auto;
+  outline: none;
+}
+
+.trace-waterfall:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--si-brand) 45%, transparent);
 }
 
 .trace-waterfall__axis,
@@ -824,9 +959,48 @@ onMounted(async () => {
   box-shadow: inset 3px 0 0 var(--si-critical-color);
 }
 
+.trace-waterfall__row.is-error {
+  animation: si-wf-error-pulse 1.6s ease-in-out infinite;
+}
+
 .trace-waterfall__row.is-error:hover,
 .trace-waterfall__row.is-error.is-active {
   background: var(--si-error-row-bg);
+}
+
+@keyframes si-wf-error-pulse {
+  0%,
+  100% {
+    box-shadow: inset 3px 0 0 var(--danger-color);
+  }
+  50% {
+    box-shadow:
+      inset 3px 0 0 var(--danger-color),
+      0 0 0 4px color-mix(in srgb, var(--danger-color) 22%, transparent);
+  }
+}
+
+.trace-waterfall__row.is-critical.is-error {
+  animation: si-wf-error-critical-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes si-wf-error-critical-pulse {
+  0%,
+  100% {
+    box-shadow: inset 3px 0 0 var(--si-critical-color);
+  }
+  50% {
+    box-shadow:
+      inset 3px 0 0 var(--danger-color),
+      0 0 0 4px color-mix(in srgb, var(--danger-color) 22%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trace-waterfall__row.is-error,
+  .trace-waterfall__row.is-critical.is-error {
+    animation: none;
+  }
 }
 
 .trace-waterfall__meta {
@@ -834,6 +1008,11 @@ onMounted(async () => {
   flex-direction: column;
   gap: 0.02rem;
   min-width: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--row-svc-color, transparent) 9%, transparent);
+  padding-top: 0.08rem;
+  padding-bottom: 0.08rem;
+  padding-right: 0.25rem;
 }
 
 .trace-waterfall__svc-row {
@@ -884,6 +1063,29 @@ onMounted(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.trace-waterfall__sql {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.68rem;
+  color: var(--si-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.trace-waterfall__sql-type {
+  display: inline-block;
+  margin-right: 0.3rem;
+  padding: 0.02rem 0.28rem;
+  border-radius: 0.2rem;
+  background: var(--si-brand-soft, color-mix(in srgb, var(--si-brand) 16%, transparent));
+  color: var(--si-brand);
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-family: inherit;
 }
 
 .trace-waterfall__track {
@@ -955,6 +1157,13 @@ onMounted(async () => {
   color: var(--si-ink);
   font-size: 0.84rem;
   word-break: break-all;
+}
+
+.trace-selected__sql {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
 }
 
 .trace-error-box {

@@ -88,6 +88,56 @@ export function formatWaterfallOpLabel(span: TraceSpanLike): string {
   return `${op} → ${remote}`
 }
 
+/**
+ * 从 Span tags 取 SQL 原文（db.sql），压成单行。
+ */
+export function rawSqlFromSpan(span: TraceSpanLike): string {
+  const tags = span.tags
+  if (!tags || typeof tags !== 'object') return ''
+  const sql = String(tags['db.sql'] ?? tags.sql ?? '').trim()
+  return sql ? sql.replace(/\s+/g, ' ') : ''
+}
+
+/**
+ * 瀑布图用的 SQL 截断预览；无 SQL 时返回空串。
+ */
+export function sqlPreviewFromSpan(span: TraceSpanLike, maxLen = 72): string {
+  const sql = rawSqlFromSpan(span)
+  if (!sql) return ''
+  const limit = Math.max(16, maxLen)
+  if (sql.length <= limit) return sql
+  return `${sql.slice(0, limit - 1)}…`
+}
+
+/**
+ * SQL 类型标签：优先 db.sql_type，否则从 SQL 头推断。
+ */
+export function sqlTypeFromSpan(span: TraceSpanLike): string {
+  const tags = span.tags
+  if (tags && typeof tags === 'object') {
+    const typed = String(tags['db.sql_type'] ?? '').trim().toUpperCase()
+    if (typed) return typed
+  }
+  const sql = rawSqlFromSpan(span)
+  if (!sql) return ''
+  const head = sql.split(/\s+/, 1)[0]?.toUpperCase() || ''
+  if (['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'MERGE', 'CALL', 'WITH'].includes(head)) {
+    return head
+  }
+  return ''
+}
+
+/**
+ * 仅关键路径时过滤瀑布行；关闭时原样返回。
+ */
+export function filterWaterfallRows(
+  rows: WaterfallRow[],
+  criticalOnly: boolean
+): WaterfallRow[] {
+  if (!criticalOnly) return rows
+  return rows.filter((r) => r.isOnCriticalPath)
+}
+
 /** 根据 parentSpanId 计算深度；找不到父节点时深度为 0 */
 function computeDepths(spans: TraceSpanLike[]): Map<string, number> {
   const byId = new Map<string, TraceSpanLike>()
