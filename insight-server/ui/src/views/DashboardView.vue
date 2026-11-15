@@ -15,21 +15,15 @@
         </el-tag>
       </div>
       <div class="si-dashboard__actions">
-        <label class="si-dashboard__hours visually-hidden" for="dashboard-hours">时间范围</label>
-        <el-select
-          id="dashboard-hours"
-          v-model="hours"
-          class="si-dashboard__hours"
+        <SiTimeRange
+          v-model="observationWindow"
+          hours-id="dashboard-hours"
+          label="时间范围"
+          layout="compact"
           size="small"
-          @change="onHoursChange"
-        >
-          <el-option
-            v-for="opt in TIME_RANGE_OPTIONS"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </el-select>
+          class="si-dashboard__hours"
+          @change="onWindowChange"
+        />
         <div class="si-layout-menu" ref="layoutMenuRef">
           <el-button
             class="si-dashboard__btn"
@@ -466,6 +460,7 @@ import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
 import SiOnboardingCard from '../components/SiOnboardingCard.vue'
+import SiTimeRange from '../components/SiTimeRange.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import type { SiColumn } from '../components/siTable'
 import {
@@ -483,15 +478,22 @@ import { formatDuration } from '../utils/traceTimeline'
 import { presenceTitle } from '../utils/servicePresence'
 import { useChartTheme } from '../composables/useChartTheme'
 import {
-  TIME_RANGE_OPTIONS,
   formatHoursLabel,
+  formatWindowLabel,
   emptyRequestsMessage,
   emptyLatencySampleMessage,
   emptyInRangeShort,
   loadFailedMessage,
   queryTooLargeMessage
 } from '../utils/timeRange'
-import { mergeQuery, persistHours, resolveHours } from '../utils/insightQuery'
+import {
+  mergeQuery,
+  persistWindow,
+  resolveWindow,
+  windowHours,
+  windowQueryPatch,
+  type ObservationWindow
+} from '../utils/insightQuery'
 
 const router = useRouter()
 const route = useRoute()
@@ -510,7 +512,8 @@ const layout = ref<DashboardLayout | null>(null)
 const templates = ref<DashboardTemplate[]>([])
 /** 布局 API 不可用时不限制面板显隐 */
 const layoutControlsEnabled = ref(false)
-const hours = ref(72)
+const observationWindow = ref<ObservationWindow>({ kind: 'rolling', hours: 72 })
+const hours = computed(() => windowHours(observationWindow.value))
 const currentTime = ref('')
 const services = ref<string[]>([])
 const dependencies = ref<any[]>([])
@@ -635,7 +638,7 @@ const soloProfile = computed(() => {
   }
 })
 
-const hoursLabel = computed(() => formatHoursLabel(hours.value))
+const hoursLabel = computed(() => formatWindowLabel(observationWindow.value))
 
 const periodHeadline = computed(() => {
   if (!periodInsight.value) return '暂无时段摘要'
@@ -712,7 +715,7 @@ const periodBullets = computed((): PeriodBullet[] => {
       run: () => goTraces({
         service: topErr.serviceName,
         status: 'error',
-        ...(hours.value > 0 ? { hours: String(hours.value) } : {})
+        ...(hours.value > 0 ? navWindowQuery() : {})
       })
     })
   }
@@ -969,8 +972,10 @@ const onKpiClick = (to: string) => {
 }
 
 const goTopology = () => router.push('/topology')
-const goJdbc = () => router.push({ path: '/jdbc', query: { hours: String(hours.value) } })
-const goRedis = () => router.push({ path: '/redis', query: { hours: String(hours.value) } })
+const navWindowQuery = () => mergeQuery({}, windowQueryPatch(observationWindow.value))
+
+const goJdbc = () => router.push({ path: '/jdbc', query: navWindowQuery() })
+const goRedis = () => router.push({ path: '/redis', query: navWindowQuery() })
 const goTraces = (query: Record<string, string> = {}) => router.push({ path: '/traces', query })
 const goErrors = () => router.push('/error-analysis')
 const goSloSettings = () => router.push({ path: '/settings', query: { section: 'slo' } })
@@ -1006,7 +1011,7 @@ const goServiceDetail = (row: { serviceName?: string }) => {
   if (!name) return
   router.push({
     path: `/services/${encodeURIComponent(name)}`,
-    query: { hours: String(hours.value) }
+    query: navWindowQuery()
   })
 }
 
@@ -1059,7 +1064,7 @@ const mountRankChart = () => {
     if (typeof name === 'string' && name) {
       router.push({
         path: `/services/${encodeURIComponent(name)}`,
-        query: { hours: String(hours.value) }
+        query: navWindowQuery()
       })
     }
   })
@@ -1332,22 +1337,22 @@ watch(() => chartColors.value, () => {
   updateCharts()
 })
 
-const syncHoursToRoute = async () => {
-  persistHours(hours.value)
+const syncWindowToRoute = async () => {
+  persistWindow(observationWindow.value)
   await router.replace({
     path: route.path,
-    query: mergeQuery(route.query, { hours: String(hours.value) })
+    query: mergeQuery(route.query, windowQueryPatch(observationWindow.value))
   })
 }
 
-const onHoursChange = async () => {
-  await syncHoursToRoute()
+const onWindowChange = async () => {
+  await syncWindowToRoute()
   await loadData()
 }
 
 const expandAllStored = async () => {
-  hours.value = 0
-  await onHoursChange()
+  observationWindow.value = { kind: 'rolling', hours: 0 }
+  await onWindowChange()
 }
 
 const exportSnapshot = async () => {
@@ -1372,6 +1377,7 @@ const loadData = async () => {
     loading.value = true
     loadError.value = ''
     queryBudgetHint.value = ''
+    const window = observationWindow.value
     const h = hours.value
     const capacity = await ApiService.getStorageCapacity()
     if (capacity.queryOverBudget) {
@@ -1394,32 +1400,38 @@ const loadData = async () => {
       budgets
     ] = await Promise.all([
       ApiService.getServiceNames(),
-      ApiService.getServiceDependencies(h).catch((err) => {
+      ApiService.getServiceDependencies(window).catch((err) => {
         if (isQueryTooLargeError(err)) {
           queryBudgetHint.value = queryTooLargeMessage(queryTooLargeDetail(err))
           return []
         }
         throw err
       }),
-      ApiService.getServiceStats(h),
-      ApiService.getServiceLatency(h, 20),
-      ApiService.getErrorAnalysis(h),
+      ApiService.getServiceStats(window),
+      ApiService.getServiceLatency(window, 20),
+      ApiService.getErrorAnalysis(window),
       ApiService.getCollectorStats(),
-      ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 16 }),
-      ApiService.getPeriodInsight(h).catch((err) => {
+      ApiService.getRecentTraces({
+        window:
+          window.kind === 'rolling' && window.hours === 0
+            ? { kind: 'rolling', hours: 168 }
+            : window,
+        limit: 16
+      }),
+      ApiService.getPeriodInsight(window).catch((err) => {
         if (isQueryTooLargeError(err)) {
           queryBudgetHint.value = queryTooLargeMessage(queryTooLargeDetail(err))
           return null
         }
         throw err
       }),
-      ApiService.getJdbcSummary(h, undefined, 1).catch((err) => {
+      ApiService.getJdbcSummary(window, undefined, 1).catch((err) => {
         if (isQueryTooLargeError(err)) {
           queryBudgetHint.value = queryTooLargeMessage(queryTooLargeDetail(err))
         }
         return null
       }),
-      ApiService.getRedisSummary(h, undefined, 1).catch((err) => {
+      ApiService.getRedisSummary(window, undefined, 1).catch((err) => {
         if (isQueryTooLargeError(err)) {
           queryBudgetHint.value = queryTooLargeMessage(queryTooLargeDetail(err))
         }
@@ -1588,10 +1600,14 @@ onMounted(async () => {
   timeInterval = window.setInterval(updateCurrentTime, 1000)
   window.addEventListener('resize', handleResize)
   document.addEventListener('click', onDocumentClick)
-  hours.value = resolveHours(route.query, 72)
-  persistHours(hours.value)
-  if (route.query.hours == null || route.query.hours === '') {
-    await syncHoursToRoute()
+  observationWindow.value = resolveWindow(route.query, 72)
+  persistWindow(observationWindow.value)
+  const q = route.query
+  const hasWindowInUrl =
+    (typeof q.hours === 'string' && q.hours !== '') ||
+    (typeof q.from === 'string' && q.from !== '' && typeof q.to === 'string' && q.to !== '')
+  if (!hasWindowInUrl) {
+    await syncWindowToRoute()
   }
   try {
     aiStatus.value = await ApiService.getAiStatus()

@@ -25,21 +25,15 @@
         </p>
       </div>
       <div class="si-svc-detail__actions">
-        <label class="visually-hidden" for="svc-detail-hours">时间范围</label>
-        <el-select
-          id="svc-detail-hours"
-          v-model="hours"
-          class="si-svc-detail__hours"
+        <SiTimeRange
+          v-model="observationWindow"
+          hours-id="svc-detail-hours"
+          label="时间范围"
+          layout="compact"
           size="small"
-          @change="onHoursChange"
-        >
-          <el-option
-            v-for="opt in TIME_RANGE_OPTIONS"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </el-select>
+          class="si-svc-detail__hours"
+          @change="onWindowChange"
+        />
         <el-button
           type="primary"
           size="small"
@@ -230,11 +224,20 @@ import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiStatusBadge from '../components/SiStatusBadge.vue'
+import SiTimeRange from '../components/SiTimeRange.vue'
 import type { SiColumn } from '../components/siTable'
 import { useChartTheme } from '../composables/useChartTheme'
 import { formatDuration } from '../utils/traceTimeline'
-import { TIME_RANGE_OPTIONS, emptyRequestsMessage } from '../utils/timeRange'
-import { resolveHours, persistHours, persistService, mergeQuery } from '../utils/insightQuery'
+import { emptyRequestsMessage } from '../utils/timeRange'
+import {
+  mergeQuery,
+  persistWindow,
+  persistService,
+  resolveWindow,
+  windowHours,
+  windowQueryPatch,
+  type ObservationWindow
+} from '../utils/insightQuery'
 import { loadFailedMessage, deeplinkMissMessage } from '../utils/timeRange'
 import { presenceLabel, presenceTitle, presenceTone } from '../utils/servicePresence'
 
@@ -243,7 +246,8 @@ const router = useRouter()
 const { colors: chartColors } = useChartTheme()
 
 const serviceName = ref('')
-const hours = ref(24)
+const observationWindow = ref<ObservationWindow>({ kind: 'rolling', hours: 24 })
+const hours = computed(() => windowHours(observationWindow.value))
 const loading = ref(true)
 const loadError = ref('')
 const deeplinkHint = ref('')
@@ -409,18 +413,20 @@ const onRecentClick = (row: RecentTraceRow) => {
   goTrace(String(row.traceId || ''))
 }
 
-const syncHoursToRoute = () => {
-  persistHours(hours.value)
+const syncWindowToRoute = () => {
+  persistWindow(observationWindow.value)
   router.replace({
     path: route.path,
-    query: mergeQuery(route.query, { hours: String(hours.value) })
+    query: mergeQuery(route.query, windowQueryPatch(observationWindow.value))
   })
 }
 
-const onHoursChange = () => {
-  syncHoursToRoute()
+const onWindowChange = () => {
+  syncWindowToRoute()
   load()
 }
+
+const navWindowQuery = () => mergeQuery({}, windowQueryPatch(observationWindow.value))
 
 const disposeJvmCharts = () => {
   heapChart?.dispose()
@@ -564,7 +570,7 @@ const loadJvm = async () => {
   try {
     const data = await ApiService.getServiceJvmMetrics(
       name,
-      hours.value,
+      observationWindow.value,
       jvmInstance.value || undefined
     )
     jvmFound.value = data.found
@@ -592,25 +598,25 @@ const onResize = () => {
 }
 
 const goBack = () => {
-  router.push({ path: '/services', query: { hours: String(hours.value) } })
+  router.push({ path: '/services', query: navWindowQuery() })
 }
 
 const goTraces = (extra: Record<string, string | number> = {}) => {
-  const query: Record<string, string> = {
-    service: serviceName.value,
-    hours: String(hours.value)
+  const query: Record<string, string | null | undefined> = {
+    ...windowQueryPatch(observationWindow.value),
+    service: serviceName.value
   }
   for (const [k, v] of Object.entries(extra)) {
     if (v != null && v !== '') query[k] = String(v)
   }
-  router.push({ path: '/traces', query })
+  router.push({ path: '/traces', query: mergeQuery({}, query) })
 }
 
 const goTopology = () => {
   persistService(serviceName.value)
   router.push({
     path: '/topology',
-    query: { service: serviceName.value, hours: String(hours.value) }
+    query: mergeQuery(navWindowQuery(), { service: serviceName.value })
   })
 }
 
@@ -619,7 +625,7 @@ const goService = (name: string) => {
   if (!n) return
   router.push({
     path: `/services/${encodeURIComponent(n)}`,
-    query: { hours: String(hours.value) }
+    query: navWindowQuery()
   })
 }
 
@@ -628,7 +634,7 @@ const goTrace = (traceId: string) => {
   router.push({
     name: 'trace-detail',
     params: { traceId },
-    query: { hours: String(hours.value) }
+    query: navWindowQuery()
   })
 }
 
@@ -648,7 +654,7 @@ const load = async () => {
   persistService(name)
   loading.value = true
   try {
-    const data = await ApiService.getServiceSummary(name, hours.value, 15, 10)
+    const data = await ApiService.getServiceSummary(name, observationWindow.value, 15, 10)
     summary.value = data
     if (!data.found) {
       deeplinkHint.value = `近 ${hours.value === 0 ? '全部' : hours.value + ' 小时'}窗口内未找到服务「${name}」的 Span；可扩大时间窗或从拓扑重新进入。`
@@ -664,7 +670,7 @@ const load = async () => {
 watch(
   () => route.params.serviceName,
   () => {
-    hours.value = resolveHours(route.query, 24)
+    observationWindow.value = resolveWindow(route.query, 24)
     load()
   }
 )
@@ -674,10 +680,14 @@ watch(chartColors, () => {
 })
 
 onMounted(() => {
-  hours.value = resolveHours(route.query, 24)
-  persistHours(hours.value)
-  if (route.query.hours == null || route.query.hours === '') {
-    syncHoursToRoute()
+  observationWindow.value = resolveWindow(route.query, 24)
+  persistWindow(observationWindow.value)
+  const q = route.query
+  const hasWindowInUrl =
+    (typeof q.hours === 'string' && q.hours !== '') ||
+    (typeof q.from === 'string' && q.from !== '' && typeof q.to === 'string' && q.to !== '')
+  if (!hasWindowInUrl) {
+    syncWindowToRoute()
   }
   window.addEventListener('resize', onResize)
   load()

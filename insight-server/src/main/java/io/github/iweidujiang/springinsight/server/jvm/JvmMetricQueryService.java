@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.server.jvm;
 
 import io.github.iweidujiang.springinsight.agent.model.JvmMetric;
+import io.github.iweidujiang.springinsight.storage.QueryWindow;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -52,10 +53,27 @@ public class JvmMetricQueryService {
      * @return 视图 Map
      */
     public Map<String, Object> buildServiceView(String serviceName, int hours, String instance) {
+        return buildServiceView(serviceName, QueryWindow.ofHours(hours), instance);
+    }
+
+    /**
+     * 组装服务详情页所需的 JVM 视图（支持绝对时间窗）。
+     *
+     * @param serviceName 服务名
+     * @param window      观测窗
+     * @param instance    可选实例过滤
+     * @return 视图 Map
+     */
+    public Map<String, Object> buildServiceView(String serviceName, QueryWindow window, String instance) {
+        QueryWindow w = window != null ? window : QueryWindow.ofHours(24);
         Map<String, Object> body = new LinkedHashMap<>();
         String svc = serviceName == null ? "" : serviceName.trim();
         body.put("serviceName", svc);
-        body.put("hours", hours);
+        body.put("hours", w.hoursEcho());
+        if (w.isAbsolute()) {
+            body.put("from", w.fromInclusiveMs());
+            body.put("to", w.toExclusiveMs() > 0L ? w.toExclusiveMs() : null);
+        }
 
         List<String> instances = jvmMetricStore.listInstances(svc);
         body.put("instances", instances);
@@ -66,8 +84,8 @@ public class JvmMetricQueryService {
         }
         body.put("instance", inst.isEmpty() ? null : inst);
 
-        long toMs = System.currentTimeMillis();
-        long fromMs = hours <= 0 ? 0L : toMs - hours * 3600_000L;
+        long toMs = w.toExclusiveMs() > 0L ? w.toExclusiveMs() : System.currentTimeMillis();
+        long fromMs = w.fromInclusiveMs();
         List<JvmMetric> points = jvmMetricStore.query(svc, inst, fromMs, toMs);
         body.put("found", !points.isEmpty());
         body.put("pointCount", points.size());

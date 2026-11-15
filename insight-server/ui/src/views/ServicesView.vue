@@ -5,11 +5,11 @@
         点进某个服务可查看 KPI、依赖、最近链路与 JVM 运行时曲线。
       </template>
       <SiFilterBar
-        v-model:hours="hours"
+        v-model:window="observationWindow"
         :show-service="false"
         :loading="loading"
         hours-id="services-hours"
-        @hours-change="onHoursChange"
+        @window-change="onWindowChange"
         @refresh="load"
       />
     </SiPageHeader>
@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Monitor } from '@element-plus/icons-vue'
 import { ApiService } from '../services/ApiService'
@@ -70,7 +70,14 @@ import SiStatusBadge from '../components/SiStatusBadge.vue'
 import type { SiColumn } from '../components/siTable'
 import { formatDuration } from '../utils/traceTimeline'
 import { emptyInRangeShort, loadFailedMessage } from '../utils/timeRange'
-import { resolveHours, persistHours, mergeQuery } from '../utils/insightQuery'
+import {
+  mergeQuery,
+  persistWindow,
+  resolveWindow,
+  windowHours,
+  windowQueryPatch,
+  type ObservationWindow
+} from '../utils/insightQuery'
 import { presenceLabel, presenceTitle, presenceTone } from '../utils/servicePresence'
 
 type ServiceRow = {
@@ -88,7 +95,8 @@ type ServiceRow = {
 const route = useRoute()
 const router = useRouter()
 
-const hours = ref(24)
+const observationWindow = ref<ObservationWindow>({ kind: 'rolling', hours: 24 })
+const hours = computed(() => windowHours(observationWindow.value))
 const loading = ref(true)
 const loadError = ref('')
 const rows = ref<ServiceRow[]>([])
@@ -120,25 +128,27 @@ const columns: SiColumn<ServiceRow>[] = [
   { key: 'action', label: '操作', cellClass: 'si-services__col-action' }
 ]
 
-const syncHoursToRoute = () => {
-  persistHours(hours.value)
+const syncQueryToRoute = () => {
+  persistWindow(observationWindow.value)
   router.replace({
     path: route.path,
-    query: mergeQuery(route.query, { hours: String(hours.value) })
+    query: mergeQuery(route.query, windowQueryPatch(observationWindow.value))
   })
 }
 
-const onHoursChange = () => {
-  syncHoursToRoute()
+const onWindowChange = () => {
+  syncQueryToRoute()
   load()
 }
+
+const navWindowQuery = () => mergeQuery({}, windowQueryPatch(observationWindow.value))
 
 const goDetail = (row: ServiceRow) => {
   const name = String(row.serviceName || '').trim()
   if (!name) return
   router.push({
     path: `/services/${encodeURIComponent(name)}`,
-    query: { hours: String(hours.value) }
+    query: navWindowQuery()
   })
 }
 
@@ -147,7 +157,7 @@ const goTraces = (serviceName: string) => {
   if (!name) return
   router.push({
     path: '/traces',
-    query: { service: name, hours: String(hours.value) }
+    query: mergeQuery(navWindowQuery(), { service: name })
   })
 }
 
@@ -166,7 +176,7 @@ const load = async () => {
   loadError.value = ''
   try {
     const [latency, presenceRows] = await Promise.all([
-      ApiService.getServiceLatency(hours.value, 200),
+      ApiService.getServiceLatency(observationWindow.value, 200),
       ApiService.getServicePresence()
     ])
     const presenceByName = new Map(
@@ -242,10 +252,14 @@ const load = async () => {
 }
 
 onMounted(() => {
-  hours.value = resolveHours(route.query, 24)
-  persistHours(hours.value)
-  if (route.query.hours == null || route.query.hours === '') {
-    syncHoursToRoute()
+  observationWindow.value = resolveWindow(route.query, 24)
+  persistWindow(observationWindow.value)
+  const q = route.query
+  const hasWindowInUrl =
+    (typeof q.hours === 'string' && q.hours !== '') ||
+    (typeof q.from === 'string' && q.from !== '' && typeof q.to === 'string' && q.to !== '')
+  if (!hasWindowInUrl) {
+    syncQueryToRoute()
   }
   load()
 })

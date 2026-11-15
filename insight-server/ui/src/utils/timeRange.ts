@@ -1,11 +1,13 @@
 /** 控制台时间范围选项与空状态文案（仪表盘 / 拓扑 / 链路共用） */
 
+import type { ObservationWindow } from './insightQuery'
+
 export interface TimeRangeOption {
   value: number
   label: string
 }
 
-/** 统一选项：近 N 小时 / 近 7 天 / 全部已存 */
+/** 统一选项：近 N 小时 / 近 7 天 / 全部已存；-1 = 自定义起止 */
 export const TIME_RANGE_OPTIONS: readonly TimeRangeOption[] = [
   { value: 1, label: '近 1 小时' },
   { value: 6, label: '近 6 小时' },
@@ -13,8 +15,12 @@ export const TIME_RANGE_OPTIONS: readonly TimeRangeOption[] = [
   { value: 24, label: '近 24 小时' },
   { value: 72, label: '近 72 小时' },
   { value: 168, label: '近 7 天' },
-  { value: 0, label: '全部已存' }
+  { value: 0, label: '全部已存' },
+  { value: -1, label: '自定义起止' }
 ]
+
+/** 选择器里表示「自定义起止」的哨兵值 */
+export const CUSTOM_TIME_RANGE_VALUE = -1
 
 /**
  * 将小时数格式化为与下拉框一致的短标签。
@@ -22,11 +28,27 @@ export const TIME_RANGE_OPTIONS: readonly TimeRangeOption[] = [
  * @param hours 小时数；0 表示全部已存
  */
 export function formatHoursLabel(hours: number): string {
+  if (hours < 0) return '自定义起止'
   const hit = TIME_RANGE_OPTIONS.find((o) => o.value === hours)
   if (hit) return hit.label
   if (hours <= 0) return '全部已存'
   if (hours === 168) return '近 7 天'
   return `近 ${hours} 小时`
+}
+
+function formatAbsShort(ms: number): string {
+  const d = new Date(ms)
+  if (Number.isNaN(d.getTime())) return '—'
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/**
+ * 观测窗短标签（空状态 / 页头）。
+ */
+export function formatWindowLabel(window: ObservationWindow): string {
+  if (window.kind === 'rolling') return formatHoursLabel(window.hours)
+  return `${formatAbsShort(window.fromMs)} – ${formatAbsShort(window.toMs)}`
 }
 
 /**

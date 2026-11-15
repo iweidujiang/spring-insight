@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { TIME_RANGE_OPTIONS } from '../utils/timeRange'
+import type { ObservationWindow } from '../utils/insightQuery'
+import SiTimeRange from './SiTimeRange.vue'
 
 const props = withDefaults(
   defineProps<{
     service?: string
-    hours: number
+    /** @deprecated 请用 window；保留以兼容旧绑定 */
+    hours?: number
+    window?: ObservationWindow
     services?: readonly string[]
     loading?: boolean
     showService?: boolean
@@ -36,8 +39,10 @@ const props = withDefaults(
 const emit = defineEmits<{
   'update:service': [value: string]
   'update:hours': [value: number]
+  'update:window': [value: ObservationWindow]
   serviceChange: [value: string]
   hoursChange: [value: number]
+  windowChange: [value: ObservationWindow]
   refresh: []
 }>()
 
@@ -49,13 +54,26 @@ const serviceModel = computed({
   }
 })
 
-const hoursModel = computed({
-  get: () => props.hours,
-  set: (value: number) => {
-    emit('update:hours', value)
-    emit('hoursChange', value)
+const windowModel = computed({
+  get: (): ObservationWindow => {
+    if (props.window) return props.window
+    return { kind: 'rolling', hours: props.hours ?? 24 }
+  },
+  set: (value: ObservationWindow) => {
+    emit('update:window', value)
+    emit('windowChange', value)
+    if (value.kind === 'rolling') {
+      emit('update:hours', value.hours)
+      emit('hoursChange', value.hours)
+    }
   }
 })
+
+const onWindowChange = (value: ObservationWindow) => {
+  windowModel.value = value
+}
+
+const selectSize = computed(() => (props.layout === 'fields' ? 'default' : 'small'))
 </script>
 
 <template>
@@ -75,20 +93,14 @@ const hoursModel = computed({
       </el-select>
     </template>
 
-    <label class="visually-hidden" :for="hoursId">{{ hoursLabel }}</label>
-    <el-select
-      :id="hoursId"
-      v-model="hoursModel"
-      class="si-filter-bar__control"
+    <SiTimeRange
+      v-model="windowModel"
+      :hours-id="hoursId"
+      :label="hoursLabel"
+      layout="compact"
       size="small"
-    >
-      <el-option
-        v-for="opt in TIME_RANGE_OPTIONS"
-        :key="opt.value"
-        :label="opt.label"
-        :value="opt.value"
-      />
-    </el-select>
+      @change="onWindowChange"
+    />
 
     <slot name="leading" />
 
@@ -122,17 +134,14 @@ const hoursModel = computed({
       </el-select>
     </div>
 
-    <div class="si-filter-bar__field">
-      <label class="si-filter-bar__label" :for="hoursId">{{ hoursLabel }}</label>
-      <el-select :id="hoursId" v-model="hoursModel" size="default" class="si-filter-bar__select">
-        <el-option
-          v-for="opt in TIME_RANGE_OPTIONS"
-          :key="opt.value"
-          :label="opt.label"
-          :value="opt.value"
-        />
-      </el-select>
-    </div>
+    <SiTimeRange
+      v-model="windowModel"
+      :hours-id="hoursId"
+      :label="hoursLabel"
+      layout="fields"
+      :size="selectSize"
+      @change="onWindowChange"
+    />
 
     <slot name="fields" />
 

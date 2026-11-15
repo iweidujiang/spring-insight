@@ -2,11 +2,11 @@
   <div class="si-page fade-in si-topo-page">
     <SiPageHeader title="服务拓扑图" icon="Share">
       <SiFilterBar
-        v-model:hours="hours"
+        v-model:window="observationWindow"
         :show-service="false"
         :loading="loading"
         hours-id="hours-topology"
-        @hours-change="onHoursChange"
+        @window-change="onWindowChange"
         @refresh="loadData"
       >
         <el-button
@@ -346,9 +346,12 @@ import {
 } from '../utils/timeRange'
 import {
   mergeQuery,
-  persistHours,
+  persistWindow,
   persistService,
-  resolveHours
+  resolveWindow,
+  windowHours,
+  windowQueryPatch,
+  type ObservationWindow
 } from '../utils/insightQuery'
 
 const router = useRouter()
@@ -359,7 +362,8 @@ const loadError = ref('')
 const queryBudgetHint = ref('')
 const deeplinkHint = ref('')
 const currentTime = ref('')
-const hours = ref(72)
+const observationWindow = ref<ObservationWindow>({ kind: 'rolling', hours: 72 })
+const hours = computed(() => windowHours(observationWindow.value))
 let syncingSelection = false
 const dependencies = ref<any[]>([])
 const serviceNames = ref<string[]>([])
@@ -594,11 +598,16 @@ const updateCurrentTime = () => {
   currentTime.value = new Date().toTimeString().split(' ')[0]
 }
 
-const goDashboard = () => router.push({ path: '/', query: { hours: String(hours.value) } })
+const navWindowQuery = () => mergeQuery({}, windowQueryPatch(observationWindow.value))
+
+const goDashboard = () => router.push({ path: '/', query: navWindowQuery() })
 const goServiceTraces = (serviceName: string) => {
   if (!serviceName) return
   persistService(serviceName)
-  router.push({ path: '/traces', query: { service: serviceName, hours: String(hours.value) } })
+  router.push({
+    path: '/traces',
+    query: mergeQuery(navWindowQuery(), { service: serviceName })
+  })
 }
 const goServiceDetail = (serviceName: string) => {
   const name = String(serviceName || '').trim()
@@ -606,18 +615,18 @@ const goServiceDetail = (serviceName: string) => {
   persistService(name)
   router.push({
     path: `/services/${encodeURIComponent(name)}`,
-    query: { hours: String(hours.value) }
+    query: navWindowQuery()
   })
 }
 const goTraceDetail = (traceId: string) => {
   if (!traceId) return
-  router.push({ name: 'trace-detail', params: { traceId }, query: { hours: String(hours.value) } })
+  router.push({ name: 'trace-detail', params: { traceId }, query: navWindowQuery() })
 }
 
 const syncContextToRoute = async () => {
   if (syncingSelection) return
   const patch: Record<string, string | null> = {
-    hours: String(hours.value)
+    ...windowQueryPatch(observationWindow.value)
   }
   if (selection.value.kind === 'node' && selection.value.service) {
     persistService(selection.value.service)
@@ -634,7 +643,7 @@ const syncContextToRoute = async () => {
     patch.source = null
     patch.target = null
   }
-  persistHours(hours.value)
+  persistWindow(observationWindow.value)
   await router.replace({ path: route.path, query: mergeQuery(route.query, patch) })
 }
 
@@ -667,11 +676,11 @@ const selectEdge = (source: string, target: string) => {
   void syncContextToRoute()
 }
 
-const onHoursChange = async () => {
-  persistHours(hours.value)
+const onWindowChange = async () => {
+  persistWindow(observationWindow.value)
   await router.replace({
     path: route.path,
-    query: mergeQuery(route.query, { hours: String(hours.value) })
+    query: mergeQuery(route.query, windowQueryPatch(observationWindow.value))
   })
   await loadData()
 }
@@ -782,7 +791,7 @@ const loadData = async () => {
     deeplinkHint.value = ''
     selection.value = { kind: null, service: '' }
     edgeExplain.value = null
-    const h = hours.value
+    const window = observationWindow.value
     const capacity = await ApiService.getStorageCapacity()
     if (capacity.queryOverBudget) {
       queryBudgetHint.value = queryTooLargeMessage({
@@ -791,7 +800,7 @@ const loadData = async () => {
       })
     }
     const [deps, names, latency, recent, healthResult, presenceRows] = await Promise.all([
-      ApiService.getServiceDependencies(h).catch((err) => {
+      ApiService.getServiceDependencies(window).catch((err) => {
         if (isQueryTooLargeError(err)) {
           queryBudgetHint.value = queryTooLargeMessage(queryTooLargeDetail(err))
           return []
@@ -799,9 +808,15 @@ const loadData = async () => {
         throw err
       }),
       ApiService.getServiceNames(),
-      ApiService.getServiceLatency(h, 200),
-      ApiService.getRecentTraces({ hours: h === 0 ? 168 : h, limit: 12 }),
-      ApiService.getServiceHealth(h).then(
+      ApiService.getServiceLatency(window, 200),
+      ApiService.getRecentTraces({
+        window:
+          window.kind === 'rolling' && window.hours === 0
+            ? { kind: 'rolling', hours: 168 }
+            : window,
+        limit: 12
+      }),
+      ApiService.getServiceHealth(window).then(
         (rows) => {
           const map: Record<string, ServiceHealthInfo> = {}
           rows.forEach((row) => {
@@ -895,12 +910,16 @@ onMounted(async () => {
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
   window.addEventListener('resize', handleResize)
-  hours.value = resolveHours(route.query, 72)
-  persistHours(hours.value)
-  if (route.query.hours == null || route.query.hours === '') {
+  observationWindow.value = resolveWindow(route.query, 72)
+  persistWindow(observationWindow.value)
+  const q = route.query
+  const hasWindowInUrl =
+    (typeof q.hours === 'string' && q.hours !== '') ||
+    (typeof q.from === 'string' && q.from !== '' && typeof q.to === 'string' && q.to !== '')
+  if (!hasWindowInUrl) {
     await router.replace({
       path: route.path,
-      query: mergeQuery(route.query, { hours: String(hours.value) })
+      query: mergeQuery(route.query, windowQueryPatch(observationWindow.value))
     })
   }
   try {

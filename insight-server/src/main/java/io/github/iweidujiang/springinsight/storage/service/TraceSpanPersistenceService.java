@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.storage.service;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.storage.SnapshotQueryTooLargeException;
+import io.github.iweidujiang.springinsight.storage.QueryWindow;
 import io.github.iweidujiang.springinsight.storage.SqlFingerprintNormalizer;
 import io.github.iweidujiang.springinsight.storage.impl.TraceSummaryCalculator;
 import io.github.iweidujiang.springinsight.storage.spi.ServiceAggregate;
@@ -163,21 +164,48 @@ public class TraceSpanPersistenceService {
     public List<Map<String, Object>> getRecentTraceSummaries(
             int lastHours, int limit, String serviceName, String status, String query,
             long minDurationMs, String pathPrefix) {
-        long sinceTime = sinceEpochMillis(lastHours);
+        return getRecentTraceSummaries(
+                QueryWindow.ofHours(lastHours), limit, serviceName, status, query, minDurationMs, pathPrefix);
+    }
+
+    /**
+     * 按时间窗取最近链路摘要。
+     *
+     * @param window        观测窗
+     * @param limit         上限
+     * @param serviceName   可选服务
+     * @param status        状态筛选
+     * @param query         关键字
+     * @param minDurationMs 最小耗时
+     * @param pathPrefix    路径前缀
+     * @return 摘要行
+     */
+    public List<Map<String, Object>> getRecentTraceSummaries(
+            QueryWindow window, int limit, String serviceName, String status, String query,
+            long minDurationMs, String pathPrefix) {
+        QueryWindow w = window != null ? window : QueryWindow.ofHours(24);
+        long sinceTime = w.fromInclusiveMs();
         int max = Math.max(1, Math.min(200, limit));
         // 大数据量走 SPI 分页聚合，避免复制全量快照
         if (isOverSnapshotBudget()) {
             List<TraceSummary> page = spanStore.listTraces(
                     sinceTime, serviceName, status, query, minDurationMs, pathPrefix,
-                    0, max, "time_desc");
+                    0, Math.min(200, max * 3), "time_desc");
             List<Map<String, Object>> out = new ArrayList<>(page.size());
             for (TraceSummary row : page) {
+                if (!w.contains(row.startTime())) {
+                    continue;
+                }
                 out.add(TraceSummaryCalculator.toMap(row));
+                if (out.size() >= max) {
+                    break;
+                }
             }
             return out;
         }
         List<TraceSummary> rows = TraceSummaryCalculator.collect(
                 spanStore.snapshot(), sinceTime, serviceName, status, query, minDurationMs, pathPrefix);
+        rows.removeIf(row -> !w.contains(row.startTime()));
         rows.sort((a, b) -> Long.compare(b.startTime(), a.startTime()));
         if (rows.size() > max) {
             rows = rows.subList(0, max);
@@ -341,6 +369,17 @@ public class TraceSpanPersistenceService {
     }
 
     /**
+     * 按观测窗取拓扑边。
+     *
+     * @param window 观测窗
+     * @return 依赖边
+     */
+    public List<Map<String, Object>> getServiceDependencies(QueryWindow window) {
+        QueryWindow w = window != null ? window : QueryWindow.ofHours(24);
+        return getServiceDependenciesBetween(w.fromInclusiveMs(), w.toExclusiveMs());
+    }
+
+    /**
      * 半开区间 {@code [fromInclusiveMs, toExclusiveMs)} 内的拓扑边。
      * <p>
      * {@code fromInclusiveMs <= 0} 不设下界；{@code toExclusiveMs <= 0} 不设上界。
@@ -411,7 +450,19 @@ public class TraceSpanPersistenceService {
      * @return hours / kpis / byRemote / byFingerprint / recent
      */
     public Map<String, Object> getJdbcSummary(int lastHours, String serviceName, int recentLimit) {
-        long sinceTime = sinceEpochMillis(lastHours);
+        return getJdbcSummary(QueryWindow.ofHours(lastHours), serviceName, recentLimit);
+    }
+
+    /**
+     * JDBC 追踪汇总（支持绝对时间窗）。
+     *
+     * @param window      观测窗
+     * @param serviceName 可选服务
+     * @param recentLimit 最近 Span 条数
+     * @return hours / from / to / kpis / byRemote / byFingerprint / recent
+     */
+    public Map<String, Object> getJdbcSummary(QueryWindow window, String serviceName, int recentLimit) {
+        QueryWindow w = window != null ? window : QueryWindow.ofHours(24);
         String svc = serviceName != null ? serviceName.trim() : "";
         int recentMax = Math.max(1, Math.min(recentLimit, 200));
 
@@ -433,7 +484,7 @@ public class TraceSpanPersistenceService {
             if (s == null || !isJdbcComponent(s)) {
                 continue;
             }
-            if (n(s.getStartTime()) < sinceTime) {
+            if (!w.contains(n(s.getStartTime()))) {
                 continue;
             }
             if (!svc.isEmpty() && (s.getServiceName() == null || !svc.equals(s.getServiceName()))) {
@@ -598,7 +649,7 @@ public class TraceSpanPersistenceService {
         }
 
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("hours", lastHours);
+        putWindowEcho(body, w);
         body.put("serviceName", svc);
         body.put("kpis", kpis);
         body.put("byRemote", byRemote);
@@ -616,7 +667,19 @@ public class TraceSpanPersistenceService {
      * @return hours / kpis / byRemote / recent
      */
     public Map<String, Object> getRedisSummary(int lastHours, String serviceName, int recentLimit) {
-        long sinceTime = sinceEpochMillis(lastHours);
+        return getRedisSummary(QueryWindow.ofHours(lastHours), serviceName, recentLimit);
+    }
+
+    /**
+     * Redis 出站汇总（支持绝对时间窗）。
+     *
+     * @param window      观测窗
+     * @param serviceName 可选服务
+     * @param recentLimit 最近条数
+     * @return 汇总
+     */
+    public Map<String, Object> getRedisSummary(QueryWindow window, String serviceName, int recentLimit) {
+        QueryWindow w = window != null ? window : QueryWindow.ofHours(24);
         String svc = serviceName != null ? serviceName.trim() : "";
         int recentMax = Math.max(1, Math.min(recentLimit, 200));
 
@@ -631,7 +694,7 @@ public class TraceSpanPersistenceService {
             if (s == null || !isRedisComponent(s)) {
                 continue;
             }
-            if (n(s.getStartTime()) < sinceTime) {
+            if (!w.contains(n(s.getStartTime()))) {
                 continue;
             }
             if (!svc.isEmpty() && (s.getServiceName() == null || !svc.equals(s.getServiceName()))) {
@@ -734,7 +797,7 @@ public class TraceSpanPersistenceService {
         }
 
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("hours", lastHours);
+        putWindowEcho(body, w);
         body.put("serviceName", svc);
         body.put("kpis", kpis);
         body.put("byRemote", byRemote);
@@ -754,7 +817,18 @@ public class TraceSpanPersistenceService {
      * @return 按服务 Span 数
      */
     public List<Map<String, Object>> getSpanCountByService(int lastHours) {
-        long sinceTime = sinceEpochMillis(lastHours);
+        return getSpanCountByService(QueryWindow.ofHours(lastHours));
+    }
+
+    /**
+     * 按观测窗统计各服务 Span 数。
+     *
+     * @param window 观测窗
+     * @return 按服务 Span 数
+     */
+    public List<Map<String, Object>> getSpanCountByService(QueryWindow window) {
+        QueryWindow w = window != null ? window : QueryWindow.ofHours(0);
+        long sinceTime = w.fromInclusiveMs();
         if (isOverSnapshotBudget()) {
             return spanStore.aggregateSnapshot(sinceTime, null).stream()
                     .sorted((a, b) -> Long.compare(b.spanCount(), a.spanCount()))
@@ -768,7 +842,7 @@ public class TraceSpanPersistenceService {
         }
         Map<String, Long> counts = new HashMap<>();
         for (TraceSpan s : spanStore.snapshot()) {
-            if (n(s.getStartTime()) < sinceTime) {
+            if (!w.contains(n(s.getStartTime()))) {
                 continue;
             }
             String name = s.getServiceName();
@@ -793,7 +867,18 @@ public class TraceSpanPersistenceService {
      * @return 有错误的服务分析
      */
     public List<Map<String, Object>> findHighErrorServices(int lastHours) {
-        return findHighErrorServicesSince(sinceEpochMillis(lastHours));
+        return findHighErrorServices(QueryWindow.ofHours(lastHours));
+    }
+
+    /**
+     * 按观测窗找高错误服务。
+     *
+     * @param window 观测窗
+     * @return 有错误的服务分析
+     */
+    public List<Map<String, Object>> findHighErrorServices(QueryWindow window) {
+        QueryWindow w = window != null ? window : QueryWindow.ofHours(24);
+        return findHighErrorServicesSince(w.fromInclusiveMs());
     }
 
     /**
@@ -945,8 +1030,18 @@ public class TraceSpanPersistenceService {
      * @return 含 by_service / by_status_code / by_exception 的结构
      */
     public Map<String, Object> findErrorBreakdown(int lastHours) {
-        long sinceTime = sinceEpochMillis(lastHours);
-        List<Map<String, Object>> byService = findHighErrorServices(lastHours);
+        return findErrorBreakdown(QueryWindow.ofHours(lastHours));
+    }
+
+    /**
+     * 错误分析增强（支持绝对时间窗）。
+     *
+     * @param window 观测窗
+     * @return 含 by_service / by_status_code / by_exception 的结构
+     */
+    public Map<String, Object> findErrorBreakdown(QueryWindow window) {
+        QueryWindow w = window != null ? window : QueryWindow.ofHours(24);
+        List<Map<String, Object>> byService = findHighErrorServices(w);
 
         Map<String, Map<String, Object>> statusBuckets = new HashMap<>();
         Map<String, Map<String, Object>> exceptionBuckets = new HashMap<>();
@@ -954,7 +1049,7 @@ public class TraceSpanPersistenceService {
         long totalErrorSpans = 0L;
 
         for (TraceSpan s : heavySnapshot()) {
-            if (s == null || n(s.getStartTime()) < sinceTime || !isError(s)) {
+            if (s == null || !w.contains(n(s.getStartTime())) || !isError(s)) {
                 continue;
             }
             totalErrorSpans++;
@@ -968,7 +1063,7 @@ public class TraceSpanPersistenceService {
         }
 
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("hours", lastHours);
+        putWindowEcho(body, w);
         body.put("total_error_spans", totalErrorSpans);
         body.put("by_service", byService);
         body.put("by_status_code", sortBreakdownRows(statusBuckets));
@@ -1047,7 +1142,19 @@ public class TraceSpanPersistenceService {
      * @return 延迟摘要
      */
     public List<Map<String, Object>> getServiceLatencySummaries(int lastHours, int limit) {
-        return getServiceLatencySummariesSince(sinceEpochMillis(lastHours), limit);
+        return getServiceLatencySummaries(QueryWindow.ofHours(lastHours), limit);
+    }
+
+    /**
+     * 按观测窗取服务延迟摘要。
+     *
+     * @param window 观测窗
+     * @param limit  上限
+     * @return 延迟摘要
+     */
+    public List<Map<String, Object>> getServiceLatencySummaries(QueryWindow window, int limit) {
+        QueryWindow w = window != null ? window : QueryWindow.ofHours(24);
+        return getServiceLatencySummariesSince(w.fromInclusiveMs(), limit);
     }
 
     /**
@@ -1501,10 +1608,25 @@ public class TraceSpanPersistenceService {
      */
     public Map<String, Object> getServiceDetailSummary(String serviceName, int lastHours,
                                                        int recentLimit, int slowOpLimit) {
+        return getServiceDetailSummary(serviceName, QueryWindow.ofHours(lastHours), recentLimit, slowOpLimit);
+    }
+
+    /**
+     * 单服务详情摘要（支持绝对时间窗）。
+     *
+     * @param serviceName 服务名
+     * @param window      观测窗
+     * @param recentLimit 最近 Trace 条数
+     * @param slowOpLimit 慢操作 Top 条数
+     * @return 摘要
+     */
+    public Map<String, Object> getServiceDetailSummary(String serviceName, QueryWindow window,
+                                                       int recentLimit, int slowOpLimit) {
+        QueryWindow w = window != null ? window : QueryWindow.ofHours(24);
         String svc = serviceName == null ? "" : serviceName.trim();
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("serviceName", svc);
-        body.put("hours", lastHours);
+        putWindowEcho(body, w);
         body.put("external", false);
         if (svc.isEmpty()) {
             body.put("found", false);
@@ -1516,7 +1638,6 @@ public class TraceSpanPersistenceService {
             return body;
         }
 
-        long sinceTime = sinceEpochMillis(lastHours);
         List<Long> durations = new ArrayList<>();
         long errorCount = 0L;
         Map<String, List<Long>> opDurations = new HashMap<>();
@@ -1524,7 +1645,7 @@ public class TraceSpanPersistenceService {
 
         List<TraceSpan> snap = heavySnapshot();
         for (TraceSpan s : snap) {
-            if (s == null || n(s.getStartTime()) < sinceTime) {
+            if (s == null || !w.contains(n(s.getStartTime()))) {
                 continue;
             }
             if (!svc.equals(s.getServiceName())) {
@@ -1540,7 +1661,7 @@ public class TraceSpanPersistenceService {
         if (!localFound) {
             // 外部依赖：统计指向该 remote 的 CLIENT Span
             for (TraceSpan s : snap) {
-                if (s == null || n(s.getStartTime()) < sinceTime) {
+                if (s == null || !w.contains(n(s.getStartTime()))) {
                     continue;
                 }
                 if (!svc.equals(s.getRemoteService())) {
@@ -1562,7 +1683,7 @@ public class TraceSpanPersistenceService {
 
         List<Map<String, Object>> outbound = new ArrayList<>();
         List<Map<String, Object>> inbound = new ArrayList<>();
-        for (Map<String, Object> edge : getServiceDependencies(lastHours)) {
+        for (Map<String, Object> edge : getServiceDependencies(w)) {
             String src = String.valueOf(edge.getOrDefault("source_service", ""));
             String tgt = String.valueOf(edge.getOrDefault("target_service", ""));
             if (svc.equals(src)) {
@@ -1581,7 +1702,7 @@ public class TraceSpanPersistenceService {
         body.put("outbound", outbound);
         body.put("inbound", inbound);
         body.put("recentTraces", getRecentTraceSummaries(
-                lastHours, Math.max(1, recentLimit), svc, "all", null, 0L, null));
+                w, Math.max(1, recentLimit), svc, "all", null, 0L, null));
         return body;
     }
 
@@ -1775,6 +1896,18 @@ public class TraceSpanPersistenceService {
             return 0L;
         }
         return Instant.now().minus(lastHours, ChronoUnit.HOURS).toEpochMilli();
+    }
+
+    /**
+     * 响应体回显时间窗：滚动写 hours；绝对写 from/to，hours=-1。
+     */
+    private static void putWindowEcho(Map<String, Object> body, QueryWindow window) {
+        QueryWindow w = window != null ? window : QueryWindow.ofHours(24);
+        body.put("hours", w.hoursEcho());
+        if (w.isAbsolute()) {
+            body.put("from", w.fromInclusiveMs());
+            body.put("to", w.toExclusiveMs() > 0L ? w.toExclusiveMs() : null);
+        }
     }
 
     private static long n(Long v) {

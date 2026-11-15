@@ -3,20 +3,20 @@
     <SiPageHeader title="数据库" icon="Coin">
       <SiFilterBar
         v-model:service="selectedService"
-        v-model:hours="hours"
+        v-model:window="observationWindow"
         :services="services"
         :loading="loading"
         service-id="jdbc-service"
         hours-id="jdbc-hours"
         @service-change="onFilterChange"
-        @hours-change="onHoursChange"
+        @window-change="onWindowChange"
         @refresh="load"
       />
     </SiPageHeader>
 
     <p class="si-jdbc-hint">
       <el-icon class="me-1"><InfoFilled /></el-icon>
-      仅统计 <code>component=JDBC</code> · {{ formatHoursLabel(hours) }}
+      仅统计 <code>component=JDBC</code> · {{ formatWindowLabel(observationWindow) }}
       <template v-if="selectedService"> · 服务 {{ selectedService }}</template>
     </p>
 
@@ -136,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { InfoFilled, Coin } from '@element-plus/icons-vue'
 import SiAlert from '../components/SiAlert.vue'
@@ -152,19 +152,23 @@ import { ApiService } from '../services/ApiService'
 import { formatDuration } from '../utils/traceTimeline'
 import {
   emptyInRangeShort,
-  formatHoursLabel,
+  formatWindowLabel,
   loadFailedMessage
 } from '../utils/timeRange'
 import {
   mergeQuery,
-  persistHours,
-  resolveHours
+  persistWindow,
+  resolveWindow,
+  windowHours,
+  windowQueryPatch,
+  type ObservationWindow
 } from '../utils/insightQuery'
 
 const route = useRoute()
 const router = useRouter()
 
-const hours = ref(24)
+const observationWindow = ref<ObservationWindow>({ kind: 'rolling', hours: 24 })
+const hours = computed(() => windowHours(observationWindow.value))
 const selectedService = ref('')
 const services = ref<string[]>([])
 const loading = ref(true)
@@ -257,18 +261,18 @@ const shortId = (id: string) => {
 }
 
 const syncQueryToRoute = () => {
-  persistHours(hours.value)
+  persistWindow(observationWindow.value)
   // 不写 session 服务名：避免「全部服务」冲掉链路/拓扑记住的入口服务
   router.replace({
     path: '/jdbc',
     query: mergeQuery(route.query, {
-      hours: String(hours.value),
+      ...windowQueryPatch(observationWindow.value),
       service: selectedService.value || null
     })
   })
 }
 
-const onHoursChange = () => {
+const onWindowChange = () => {
   syncQueryToRoute()
   load()
 }
@@ -300,8 +304,10 @@ const onRecentClick = (row: RecentRow) => {
 
 const goTrace = (traceId: string, spanId?: string) => {
   if (!traceId) return
-  const query: Record<string, string> = { hours: String(hours.value) }
-  if (spanId) query.span = spanId
+  const query = mergeQuery({}, {
+    ...windowQueryPatch(observationWindow.value),
+    ...(spanId ? { span: spanId } : {})
+  })
   router.push({
     name: 'trace-detail',
     params: { traceId },
@@ -322,7 +328,7 @@ const load = async () => {
   loadError.value = ''
   try {
     summary.value = await ApiService.getJdbcSummary(
-      hours.value,
+      observationWindow.value,
       selectedService.value || undefined,
       50
     )
@@ -335,12 +341,16 @@ const load = async () => {
 }
 
 onMounted(async () => {
-  hours.value = resolveHours(route.query, 24)
+  observationWindow.value = resolveWindow(route.query, 24)
   // 仅 URL 显式带 service 时筛选；不沿用链路/拓扑的 session 服务（常为入口 Consumer）
   selectedService.value =
     typeof route.query.service === 'string' ? route.query.service.trim() : ''
-  persistHours(hours.value)
-  if (route.query.hours == null || route.query.hours === '') {
+  persistWindow(observationWindow.value)
+  const q = route.query
+  const hasWindowInUrl =
+  (typeof q.hours === 'string' && q.hours !== '') ||
+  (typeof q.from === 'string' && q.from !== '' && typeof q.to === 'string' && q.to !== '')
+  if (!hasWindowInUrl) {
     syncQueryToRoute()
   }
   await loadServices()

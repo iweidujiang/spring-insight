@@ -22,7 +22,7 @@
       layout="fields"
       :show-refresh="false"
       v-model:service="selectedService"
-      v-model:hours="hours"
+      v-model:window="observationWindow"
       :services="services"
       :loading="loading"
       service-id="service-select"
@@ -30,7 +30,7 @@
       service-label="服务"
       all-services-label="全部"
       @service-change="onFilterChange"
-      @hours-change="onFilterChange"
+      @window-change="onFilterChange"
     >
       <template #fields>
         <div class="si-filter-bar__field">
@@ -208,7 +208,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Download, Clock, Search, Refresh, Grid, CopyDocument, InfoFilled } from '@element-plus/icons-vue'
 import { ApiService } from '../services/ApiService'
@@ -224,7 +224,16 @@ import {
   EMPTY_HINT_RELAX,
   loadFailedMessage
 } from '../utils/timeRange'
-import { persistHours, persistService, resolveHours, resolveService } from '../utils/insightQuery'
+import {
+  mergeQuery,
+  persistWindow,
+  persistService,
+  resolveWindow,
+  resolveService,
+  windowHours,
+  windowQueryPatch,
+  type ObservationWindow
+} from '../utils/insightQuery'
 
 const router = useRouter()
 const route = useRoute()
@@ -234,7 +243,8 @@ const currentTime = ref('')
 const services = ref<string[]>([])
 const traces = ref<any[]>([])
 const selectedService = ref('')
-const hours = ref(24)
+const observationWindow = ref<ObservationWindow>({ kind: 'rolling', hours: 24 })
+const hours = computed(() => windowHours(observationWindow.value))
 const limit = ref(50)
 const statusFilter = ref('all')
 const minDurationMs = ref(0)
@@ -306,7 +316,7 @@ const goCompare = () => {
   const [a, b] = selectedIds.value
   router.push({
     path: '/traces/compare',
-    query: { a, b, hours: String(hours.value) }
+    query: mergeQuery(windowQueryPatch(observationWindow.value), { a, b })
   })
 }
 
@@ -343,24 +353,26 @@ const updateCurrentTime = () => {
 }
 
 const syncQueryToRoute = () => {
-  persistHours(hours.value)
+  persistWindow(observationWindow.value)
   persistService(selectedService.value)
-  const q: Record<string, string> = {
-    hours: String(hours.value)
-  }
-  if (selectedService.value) q.service = selectedService.value
-  if (statusFilter.value !== 'all') q.status = statusFilter.value
-  if (minDurationMs.value > 0) q.minDurationMs = String(minDurationMs.value)
-  if (pathPrefix.value.trim()) q.pathPrefix = pathPrefix.value.trim()
-  if (limit.value !== 50) q.limit = String(limit.value)
-  if (query.value.trim()) q.q = query.value.trim()
-  router.replace({ path: '/traces', query: q })
+  router.replace({
+    path: '/traces',
+    query: mergeQuery(route.query, {
+      ...windowQueryPatch(observationWindow.value),
+      service: selectedService.value || null,
+      status: statusFilter.value !== 'all' ? statusFilter.value : null,
+      minDurationMs: minDurationMs.value > 0 ? String(minDurationMs.value) : null,
+      pathPrefix: pathPrefix.value.trim() || null,
+      limit: limit.value !== 50 ? String(limit.value) : null,
+      q: query.value.trim() || null
+    })
+  })
 }
 
 const applyRouteQuery = () => {
   syncingFromRoute = true
   const q = route.query
-  hours.value = resolveHours(q, 24)
+  observationWindow.value = resolveWindow(q, 24)
   // URL 显式带 service（含空）时以 URL 为准；否则用 session 记忆（侧栏跨页）
   selectedService.value = 'service' in q
     ? (typeof q.service === 'string' ? q.service : '')
@@ -374,7 +386,7 @@ const applyRouteQuery = () => {
   }
   pathPrefix.value = typeof q.pathPrefix === 'string' ? q.pathPrefix : ''
   query.value = typeof q.q === 'string' ? q.q : ''
-  persistHours(hours.value)
+  persistWindow(observationWindow.value)
   persistService(selectedService.value)
   syncingFromRoute = false
 }
@@ -383,8 +395,12 @@ const loadData = async () => {
   try {
     loading.value = true
     loadError.value = ''
+    const traceWindow =
+      observationWindow.value.kind === 'rolling' && observationWindow.value.hours === 0
+        ? ({ kind: 'rolling', hours: 168 } as ObservationWindow)
+        : observationWindow.value
     traces.value = await ApiService.getRecentTraces({
-      hours: hours.value,
+      window: traceWindow,
       limit: limit.value,
       service: selectedService.value || undefined,
       status: statusFilter.value,
@@ -416,7 +432,7 @@ const loadServices = async () => {
 
 const resetFilters = () => {
   selectedService.value = ''
-  hours.value = 24
+  observationWindow.value = { kind: 'rolling', hours: 24 }
   limit.value = 50
   statusFilter.value = 'all'
   minDurationMs.value = 0

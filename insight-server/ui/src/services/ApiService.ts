@@ -1,5 +1,31 @@
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios'
+import type { ObservationWindow } from '../utils/insightQuery'
 import { getUiToken, setUiToken } from './AuthService'
+
+/** 滚动小时或绝对观测窗 */
+export type HoursOrWindow = number | ObservationWindow
+
+/**
+ * 规范化为观测窗。
+ */
+export function asObservationWindow(input: HoursOrWindow | undefined, fallback = 24): ObservationWindow {
+  if (input && typeof input === 'object' && 'kind' in input) return input
+  const hours = typeof input === 'number' && Number.isFinite(input) ? input : fallback
+  return { kind: 'rolling', hours }
+}
+
+/**
+ * 把观测窗写入查询串（绝对用 from/to，否则 hours）。
+ */
+export function appendWindowParams(qs: URLSearchParams, input: HoursOrWindow | undefined, fallback = 24): void {
+  const w = asObservationWindow(input, fallback)
+  if (w.kind === 'absolute') {
+    qs.set('from', String(w.fromMs))
+    qs.set('to', String(w.toMs))
+    return
+  }
+  qs.set('hours', String(w.hours))
+}
 
 const apiClient = axios.create({
   baseURL: '/api/v1/ui',
@@ -152,18 +178,24 @@ export class ApiService {
     return requestWithDefault<string[]>('/services', [])
   }
 
-  static async getServiceDependencies(hours: number = 24): Promise<any[]> {
-    const rows = await request<any[]>(`/dependencies?hours=${hours}`)
+  static async getServiceDependencies(hours: HoursOrWindow = 24): Promise<any[]> {
+    const qs = new URLSearchParams()
+    appendWindowParams(qs, hours, 24)
+    const rows = await request<any[]>(`/dependencies?${qs.toString()}`)
     return (Array.isArray(rows) ? rows : []).map(normalizeDependency)
   }
 
-  static async getServiceStats(hours: number = 0): Promise<any[]> {
-    const rows = await requestWithDefault<any[]>(`/services/stats?hours=${hours}`, [])
+  static async getServiceStats(hours: HoursOrWindow = 0): Promise<any[]> {
+    const qs = new URLSearchParams()
+    appendWindowParams(qs, hours, 0)
+    const rows = await requestWithDefault<any[]>(`/services/stats?${qs.toString()}`, [])
     return rows.map(normalizeServiceStat)
   }
 
-  static async getServiceLatency(hours: number = 24, limit: number = 20): Promise<any[]> {
-    const rows = await requestWithDefault<any[]>(`/services/latency?hours=${hours}&limit=${limit}`, [])
+  static async getServiceLatency(hours: HoursOrWindow = 24, limit: number = 20): Promise<any[]> {
+    const qs = new URLSearchParams({ limit: String(limit) })
+    appendWindowParams(qs, hours, 24)
+    const rows = await requestWithDefault<any[]>(`/services/latency?${qs.toString()}`, [])
     return rows.map(normalizeLatencyRow)
   }
 
@@ -331,7 +363,7 @@ export class ApiService {
   /** 单服务详情摘要（KPI / 慢操作 / 依赖 / 最近 Trace） */
   static async getServiceSummary(
     serviceName: string,
-    hours: number = 24,
+    hours: HoursOrWindow = 24,
     recentLimit: number = 15,
     slowOpLimit: number = 10
   ): Promise<{
@@ -368,10 +400,10 @@ export class ApiService {
   }> {
     const encoded = encodeURIComponent(serviceName)
     const qs = new URLSearchParams({
-      hours: String(hours),
       recentLimit: String(recentLimit),
       slowOpLimit: String(slowOpLimit)
     })
+    appendWindowParams(qs, hours, 24)
     const raw = await requestWithDefault<any>(`/services/${encoded}/summary?${qs.toString()}`, {})
     const k = raw.kpis ?? {}
     const presence = normalizePresenceFields(raw)
@@ -422,7 +454,7 @@ export class ApiService {
   /** 单服务 JVM 指标（堆 / GC / 线程曲线） */
   static async getServiceJvmMetrics(
     serviceName: string,
-    hours: number = 24,
+    hours: HoursOrWindow = 24,
     instance?: string
   ): Promise<{
     serviceName: string
@@ -448,7 +480,8 @@ export class ApiService {
     latest: Record<string, unknown> | null
   }> {
     const encoded = encodeURIComponent(serviceName)
-    const qs = new URLSearchParams({ hours: String(hours) })
+    const qs = new URLSearchParams()
+    appendWindowParams(qs, hours, 24)
     if (instance) qs.set('instance', instance)
     const raw = await requestWithDefault<any>(
       `/services/${encoded}/jvm-metrics?${qs.toString()}`,
@@ -483,7 +516,7 @@ export class ApiService {
 
   /** JDBC 追踪汇总（数据库页）：KPI / 按库 / SQL 指纹 / 最近 Span */
   static async getJdbcSummary(
-    hours: number = 24,
+    hours: HoursOrWindow = 24,
     service?: string,
     recentLimit: number = 50
   ): Promise<{
@@ -536,10 +569,11 @@ export class ApiService {
       sql: string | null
     }>
   }> {
+    const w = asObservationWindow(hours, 24)
     const qs = new URLSearchParams({
-      hours: String(hours),
       recentLimit: String(recentLimit)
     })
+    appendWindowParams(qs, w, 24)
     if (service && service.trim()) qs.set('service', service.trim())
     const raw = await request<any>(`/jdbc/summary?${qs.toString()}`)
     const k = raw?.kpis ?? {}
@@ -567,7 +601,7 @@ export class ApiService {
       sampleServiceName: String(row.sampleServiceName ?? row.sample_service_name ?? '')
     })
     return {
-      hours: Number(raw?.hours ?? hours),
+      hours: Number(raw?.hours ?? (w.kind === 'rolling' ? w.hours : -1)),
       serviceName: String(raw?.serviceName ?? service ?? ''),
       kpis: {
         spanCount: Number(k.spanCount ?? k.span_count ?? 0),
@@ -609,7 +643,7 @@ export class ApiService {
 
   /** Redis 追踪汇总（缓存页）：KPI / 按实例 / 最近 Span */
   static async getRedisSummary(
-    hours: number = 24,
+    hours: HoursOrWindow = 24,
     service?: string,
     recentLimit: number = 50
   ): Promise<{
@@ -648,9 +682,9 @@ export class ApiService {
     }>
   }> {
     const qs = new URLSearchParams({
-      hours: String(hours),
       recentLimit: String(recentLimit)
     })
+    appendWindowParams(qs, hours, 24)
     if (service && service.trim()) qs.set('service', service.trim())
     const raw = await request<any>(`/redis/summary?${qs.toString()}`)
     const k = raw?.kpis ?? {}
@@ -697,13 +731,15 @@ export class ApiService {
     }
   }
 
-  static async getErrorAnalysis(hours: number = 24): Promise<any[]> {
-    const rows = await requestWithDefault<any[]>(`/errors/analysis?hours=${hours}`, [])
+  static async getErrorAnalysis(hours: HoursOrWindow = 24): Promise<any[]> {
+    const qs = new URLSearchParams()
+    appendWindowParams(qs, hours, 24)
+    const rows = await requestWithDefault<any[]>(`/errors/analysis?${qs.toString()}`, [])
     return rows.map(normalizeErrorRow)
   }
 
   /** 错误分类增强：状态码 / 异常类 / 服务级 */
-  static async getErrorBreakdown(hours: number = 24): Promise<{
+  static async getErrorBreakdown(hours: HoursOrWindow = 24): Promise<{
     hours: number
     totalErrorSpans: number
     byService: any[]
@@ -711,7 +747,9 @@ export class ApiService {
     byException: any[]
     byOther: any[]
   }> {
-    const raw = await requestWithDefault<any>(`/errors/breakdown?hours=${hours}`, {})
+    const qs = new URLSearchParams()
+    appendWindowParams(qs, hours, 24)
+    const raw = await requestWithDefault<any>(`/errors/breakdown?${qs.toString()}`, {})
     const normalizeBucket = (row: any) => ({
       category: row.category ?? '',
       key: row.key ?? '',
@@ -779,7 +817,8 @@ export class ApiService {
 
   /** 按 Trace 聚合的链路列表 */
   static async getRecentTraces(params: {
-    hours?: number
+    hours?: HoursOrWindow
+    window?: ObservationWindow
     limit?: number
     service?: string
     status?: string
@@ -788,7 +827,7 @@ export class ApiService {
     pathPrefix?: string
   } = {}): Promise<any[]> {
     const qs = new URLSearchParams()
-    qs.set('hours', String(params.hours ?? 24))
+    appendWindowParams(qs, params.window ?? params.hours, 24)
     qs.set('limit', String(params.limit ?? 50))
     if (params.service) qs.set('service', params.service)
     if (params.status && params.status !== 'all') qs.set('status', params.status)

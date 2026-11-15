@@ -7,6 +7,7 @@ import io.github.iweidujiang.springinsight.server.config.InsightServerStoragePro
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
 import io.github.iweidujiang.springinsight.server.presence.ServicePresenceService;
 import io.github.iweidujiang.springinsight.server.topology.TopologyDiffService;
+import io.github.iweidujiang.springinsight.storage.QueryWindow;
 import io.github.iweidujiang.springinsight.storage.SnapshotQueryTooLargeException;
 import io.github.iweidujiang.springinsight.storage.service.TraceContextExportService;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
@@ -95,6 +96,8 @@ public class CollectorApiController {
     @GetMapping("/traces/recent")
     public ResponseEntity<?> getRecentTraces(
             @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to,
             @RequestParam(value = "limit", required = false) Integer limit,
             @RequestParam(value = "offset", required = false) Integer offset,
             @RequestParam(value = "sort", required = false) String sort,
@@ -105,16 +108,22 @@ public class CollectorApiController {
             @RequestParam(value = "pathPrefix", required = false) String pathPrefix) {
 
         try {
+            QueryWindow window = QueryWindow.resolve(hours, from, to);
             if (offset == null) {
                 int max = limit == null ? 100 : limit;
                 var traces = traceSpanPersistenceService.getRecentTraceSummaries(
-                        hours, max, service, status, q, minDurationMs, pathPrefix);
+                        window, max, service, status, q, minDurationMs, pathPrefix);
                 return ResponseEntity.ok(traces);
             }
             int pageSize = limit == null ? 50 : Math.min(200, Math.max(1, limit));
             int off = Math.max(0, offset);
-            long since = hours <= 0 ? 0L : Instant.now().minus(hours, ChronoUnit.HOURS).toEpochMilli();
+            long since = window.fromInclusiveMs();
             var data = spanStore.listTraces(since, service, status, q, minDurationMs, pathPrefix, off, pageSize, sort);
+            if (window.toExclusiveMs() > 0L) {
+                data = data.stream()
+                        .filter(row -> window.contains(row.startTime()))
+                        .toList();
+            }
             long total = spanStore.countTraces(since, service, status, q, minDurationMs, pathPrefix);
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("data", data);
@@ -134,10 +143,13 @@ public class CollectorApiController {
      */
     @GetMapping("/dependencies")
     public ResponseEntity<?> getDependencies(
-            @RequestParam(value = "hours", defaultValue = "24") int hours) {
+            @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to) {
 
         try {
-            var dependencies = traceSpanPersistenceService.getServiceDependencies(hours);
+            var dependencies = traceSpanPersistenceService.getServiceDependencies(
+                    QueryWindow.resolve(hours, from, to));
             log.debug("[UI接口] 服务依赖条数={}", dependencies.size());
             return ResponseEntity.ok(dependencies);
         } catch (Exception e) {
@@ -151,12 +163,16 @@ public class CollectorApiController {
      * 拓扑边（与 {@code /dependencies} 相同数据，便于按拓扑语义调用）。
      *
      * @param hours 时间窗小时
+     * @param from  可选绝对起点
+     * @param to    可选绝对终点
      * @return 依赖边列表
      */
     @GetMapping("/topology")
     public ResponseEntity<?> getTopology(
-            @RequestParam(value = "hours", defaultValue = "24") int hours) {
-        return getDependencies(hours);
+            @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to) {
+        return getDependencies(hours, from, to);
     }
 
     /**
@@ -184,9 +200,12 @@ public class CollectorApiController {
      */
     @GetMapping("/services/stats")
     public ResponseEntity<?> getServiceStats(
-            @RequestParam(value = "hours", defaultValue = "0") int hours) {
+            @RequestParam(value = "hours", defaultValue = "0") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to) {
         try {
-            var stats = traceSpanPersistenceService.getSpanCountByService(hours);
+            var stats = traceSpanPersistenceService.getSpanCountByService(
+                    QueryWindow.resolve(hours, from, to));
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             rethrowIfSnapshotBudgetExceeded(e);
@@ -223,9 +242,12 @@ public class CollectorApiController {
     @GetMapping("/services/latency")
     public ResponseEntity<?> getServiceLatency(
             @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to,
             @RequestParam(value = "limit", defaultValue = "20") int limit) {
         try {
-            var rows = traceSpanPersistenceService.getServiceLatencySummaries(hours, limit);
+            var rows = traceSpanPersistenceService.getServiceLatencySummaries(
+                    QueryWindow.resolve(hours, from, to), limit);
             return ResponseEntity.ok(servicePresenceService.attachPresence(attachAnomalyMarks(rows)));
         } catch (Exception e) {
             rethrowIfSnapshotBudgetExceeded(e);
@@ -279,10 +301,13 @@ public class CollectorApiController {
      */
     @GetMapping("/errors/analysis")
     public ResponseEntity<?> getErrorAnalysis(
-            @RequestParam(value = "hours", defaultValue = "24") int hours) {
+            @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to) {
 
         try {
-            var errors = traceSpanPersistenceService.findHighErrorServices(hours);
+            var errors = traceSpanPersistenceService.findHighErrorServices(
+                    QueryWindow.resolve(hours, from, to));
             return ResponseEntity.ok(errors);
         } catch (Exception e) {
             rethrowIfSnapshotBudgetExceeded(e);
@@ -302,10 +327,13 @@ public class CollectorApiController {
     @GetMapping("/jdbc/summary")
     public ResponseEntity<?> getJdbcSummary(
             @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to,
             @RequestParam(value = "service", required = false) String service,
             @RequestParam(value = "recentLimit", defaultValue = "50") int recentLimit) {
         try {
-            return ResponseEntity.ok(traceSpanPersistenceService.getJdbcSummary(hours, service, recentLimit));
+            return ResponseEntity.ok(traceSpanPersistenceService.getJdbcSummary(
+                    QueryWindow.resolve(hours, from, to), service, recentLimit));
         } catch (Exception e) {
             rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取 JDBC 汇总失败", e);
@@ -324,10 +352,13 @@ public class CollectorApiController {
     @GetMapping("/redis/summary")
     public ResponseEntity<?> getRedisSummary(
             @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to,
             @RequestParam(value = "service", required = false) String service,
             @RequestParam(value = "recentLimit", defaultValue = "50") int recentLimit) {
         try {
-            return ResponseEntity.ok(traceSpanPersistenceService.getRedisSummary(hours, service, recentLimit));
+            return ResponseEntity.ok(traceSpanPersistenceService.getRedisSummary(
+                    QueryWindow.resolve(hours, from, to), service, recentLimit));
         } catch (Exception e) {
             rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取 Redis 汇总失败", e);
@@ -343,9 +374,12 @@ public class CollectorApiController {
      */
     @GetMapping("/errors/breakdown")
     public ResponseEntity<?> getErrorBreakdown(
-            @RequestParam(value = "hours", defaultValue = "24") int hours) {
+            @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to) {
         try {
-            return ResponseEntity.ok(traceSpanPersistenceService.findErrorBreakdown(hours));
+            return ResponseEntity.ok(traceSpanPersistenceService.findErrorBreakdown(
+                    QueryWindow.resolve(hours, from, to)));
         } catch (Exception e) {
             rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取错误分类失败", e);
@@ -366,12 +400,14 @@ public class CollectorApiController {
     public ResponseEntity<?> getServiceSummary(
             @PathVariable("serviceName") String serviceName,
             @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to,
             @RequestParam(value = "recentLimit", defaultValue = "15") int recentLimit,
             @RequestParam(value = "slowOpLimit", defaultValue = "10") int slowOpLimit) {
         try {
             Map<String, Object> body = new LinkedHashMap<>(
                     traceSpanPersistenceService.getServiceDetailSummary(
-                            serviceName, hours, recentLimit, slowOpLimit));
+                            serviceName, QueryWindow.resolve(hours, from, to), recentLimit, slowOpLimit));
             body.putAll(servicePresenceService.presenceFor(serviceName));
             return ResponseEntity.ok(body);
         } catch (Exception e) {
@@ -393,9 +429,12 @@ public class CollectorApiController {
     public ResponseEntity<?> getServiceJvmMetrics(
             @PathVariable("serviceName") String serviceName,
             @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to,
             @RequestParam(value = "instance", required = false) String instance) {
         try {
-            return ResponseEntity.ok(jvmMetricQueryService.buildServiceView(serviceName, hours, instance));
+            QueryWindow window = QueryWindow.resolve(hours, from, to);
+            return ResponseEntity.ok(jvmMetricQueryService.buildServiceView(serviceName, window, instance));
         } catch (Exception e) {
             rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取服务{} JVM 指标失败", serviceName, e);
@@ -410,6 +449,8 @@ public class CollectorApiController {
     public ResponseEntity<?> getServiceTraces(
             @PathVariable("serviceName") String serviceName,
             @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "from", required = false) Long from,
+            @RequestParam(value = "to", required = false) Long to,
             @RequestParam(value = "limit", defaultValue = "100") int limit,
             @RequestParam(value = "status", defaultValue = "all") String status,
             @RequestParam(value = "q", required = false) String q,
@@ -418,7 +459,7 @@ public class CollectorApiController {
 
         try {
             var traces = traceSpanPersistenceService.getRecentTraceSummaries(
-                    hours, limit, serviceName, status, q, minDurationMs, pathPrefix);
+                    QueryWindow.resolve(hours, from, to), limit, serviceName, status, q, minDurationMs, pathPrefix);
             return ResponseEntity.ok(traces);
         } catch (Exception e) {
             rethrowIfSnapshotBudgetExceeded(e);

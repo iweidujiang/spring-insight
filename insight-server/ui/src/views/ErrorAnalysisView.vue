@@ -2,11 +2,11 @@
   <div class="si-page fade-in si-err-page">
     <SiPageHeader title="错误分析" icon="WarningFilled">
       <SiFilterBar
-        v-model:hours="hours"
+        v-model:window="observationWindow"
         :show-service="false"
         :loading="loading"
         hours-id="hours-select-err"
-        @hours-change="onHoursChange"
+        @window-change="onWindowChange"
         @refresh="loadData"
       >
         <template #leading>
@@ -231,7 +231,14 @@ import SiPageHeader from '../components/SiPageHeader.vue'
 import type { SiColumn } from '../components/siTable'
 import { useChartTheme } from '../composables/useChartTheme'
 import { formatHoursLabel, loadFailedMessage } from '../utils/timeRange'
-import { mergeQuery, persistHours, resolveHours } from '../utils/insightQuery'
+import {
+  mergeQuery,
+  persistWindow,
+  resolveWindow,
+  windowHours,
+  windowQueryPatch,
+  type ObservationWindow
+} from '../utils/insightQuery'
 
 const route = useRoute()
 const router = useRouter()
@@ -242,7 +249,8 @@ const explainResult = ref<AiExplainResult | null>(null)
 const aiReady = ref(false)
 const aiStatusReason = ref('')
 const currentTime = ref('')
-const hours = ref(24)
+const observationWindow = ref<ObservationWindow>({ kind: 'rolling', hours: 24 })
+const hours = computed(() => windowHours(observationWindow.value))
 const errorAnalysis = ref<any[]>([])
 const byStatusCode = ref<any[]>([])
 const byException = ref<any[]>([])
@@ -483,16 +491,25 @@ const viewServiceDetails = (serviceName: string) => {
   if (!name) return
   router.push({
     path: `/services/${encodeURIComponent(name)}`,
-    query: { hours: String(hours.value) }
+    query: mergeQuery({}, windowQueryPatch(observationWindow.value))
   })
 }
 
 const viewCategoryTraces = (key: string) => {
-  router.push({ path: '/traces', query: { status: 'error', q: key, hours: String(hours.value) } })
+  router.push({
+    path: '/traces',
+    query: mergeQuery(windowQueryPatch(observationWindow.value), {
+      status: 'error',
+      q: key
+    })
+  })
 }
 
 const goErrorTraces = () => {
-  router.push({ path: '/traces', query: { status: 'error', hours: String(hours.value) } })
+  router.push({
+    path: '/traces',
+    query: mergeQuery(windowQueryPatch(observationWindow.value), { status: 'error' })
+  })
 }
 
 async function onExplainErrors() {
@@ -533,11 +550,11 @@ const exportCsv = async () => {
   }
 }
 
-const onHoursChange = async () => {
-  persistHours(hours.value)
+const onWindowChange = async () => {
+  persistWindow(observationWindow.value)
   await router.replace({
     path: route.path,
-    query: mergeQuery(route.query, { hours: String(hours.value) })
+    query: mergeQuery(route.query, windowQueryPatch(observationWindow.value))
   })
   await loadData()
 }
@@ -546,7 +563,7 @@ const loadData = async () => {
   try {
     loading.value = true
     loadError.value = ''
-    const breakdown = await ApiService.getErrorBreakdown(hours.value)
+    const breakdown = await ApiService.getErrorBreakdown(observationWindow.value)
     errorAnalysis.value = breakdown.byService
     byStatusCode.value = breakdown.byStatusCode
     byException.value = breakdown.byException
@@ -574,12 +591,16 @@ onMounted(async () => {
   updateCurrentTime()
   timeInterval = window.setInterval(updateCurrentTime, 1000)
   window.addEventListener('resize', handleResize)
-  hours.value = resolveHours(route.query, 24)
-  persistHours(hours.value)
-  if (route.query.hours == null || route.query.hours === '') {
+  observationWindow.value = resolveWindow(route.query, 24)
+  persistWindow(observationWindow.value)
+  const q = route.query
+  const hasWindowInUrl =
+    (typeof q.hours === 'string' && q.hours !== '') ||
+    (typeof q.from === 'string' && q.from !== '' && typeof q.to === 'string' && q.to !== '')
+  if (!hasWindowInUrl) {
     await router.replace({
       path: route.path,
-      query: mergeQuery(route.query, { hours: String(hours.value) })
+      query: mergeQuery(route.query, windowQueryPatch(observationWindow.value))
     })
   }
   await refreshAiStatus()
