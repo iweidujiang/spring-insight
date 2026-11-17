@@ -131,6 +131,7 @@
                     <span class="si-topo-swatch si-topo-swatch--warning">警告</span>
                     <span class="si-topo-swatch si-topo-swatch--degraded">降级</span>
                     <span class="si-topo-swatch si-topo-swatch--critical">严重</span>
+                    <HealthScoreHelp />
                   </span>
                 </template>
               </p>
@@ -212,12 +213,43 @@
                 <div><dt>平均耗时</dt><dd>{{ formatMs(nodeAvgMs(selection.service)) }}</dd></div>
                 <div><dt>错误</dt><dd :class="{ 'si-topo-text--danger': nodeErrorCount(selection.service) > 0 }">{{ nodeErrorCount(selection.service) }}</dd></div>
                 <div v-if="nodeHealth(selection.service)">
-                  <dt>健康分</dt>
+                  <dt>
+                    健康分
+                    <el-tooltip
+                      placement="left"
+                      :show-after="200"
+                      popper-class="si-topo-health-tip"
+                    >
+                      <template #content>
+                        <div class="si-topo-health-tip__body">
+                          <p
+                            v-for="(line, i) in healthExplainLines(nodeHealth(selection.service)!)"
+                            :key="i"
+                          >{{ line }}</p>
+                        </div>
+                      </template>
+                      <span class="si-topo-rail__hint" tabindex="0">组成</span>
+                    </el-tooltip>
+                  </dt>
                   <dd :class="healthLevelClass(nodeHealth(selection.service)!.level)">
                     {{ nodeHealth(selection.service)!.score }}
                     <span class="si-topo-rail__level">{{ healthLevelText(nodeHealth(selection.service)!.level) }}</span>
                   </dd>
                 </div>
+                <template v-if="nodeHealth(selection.service)">
+                  <div>
+                    <dt>错误率</dt>
+                    <dd>{{ formatHealthRate(nodeHealth(selection.service)!.errorRate) }}</dd>
+                  </div>
+                  <div>
+                    <dt>p95</dt>
+                    <dd>{{ formatMs(nodeHealth(selection.service)!.p95 ?? 0) }}</dd>
+                  </div>
+                  <div>
+                    <dt>窗口数据</dt>
+                    <dd>{{ nodeHealth(selection.service)!.hasData === false ? '无 Span' : '有 Span' }}</dd>
+                  </div>
+                </template>
               </dl>
               <div class="si-topo-rail__actions">
                 <el-button type="primary" size="small" class="si-topo-btn--block" @click="goServiceDetail(selection.service)">
@@ -320,6 +352,8 @@ import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { Download, Clock, Share, Refresh, FullScreen, Pointer, ArrowRight, MagicStick, List, Expand, Fold } from '@element-plus/icons-vue'
 import PercentileHelp from '../components/PercentileHelp.vue'
+import HealthScoreHelp from '../components/HealthScoreHelp.vue'
+import { healthScoreTooltipLines } from '../utils/healthScore'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
 import SiOnboardingCard from '../components/SiOnboardingCard.vue'
@@ -533,6 +567,19 @@ const topologyOpts = () => ({
 
 const nodeHealth = (name: string): ServiceHealthInfo | null =>
   healthByService.value?.[name] || null
+
+const healthExplainLines = (h: ServiceHealthInfo) =>
+  healthScoreTooltipLines({
+    errorRate: Number(h.errorRate) || 0,
+    p95: Number(h.p95) || 0,
+    hasData: h.hasData !== false
+  })
+
+const formatHealthRate = (rate: number | undefined) => {
+  const n = Number(rate)
+  if (!Number.isFinite(n)) return '—'
+  return `${(Math.round(n * 10) / 10).toFixed(1)}%`
+}
 
 const healthLevelText = (level: string) => {
   switch (level) {
@@ -1063,6 +1110,31 @@ onUnmounted(() => {
 
 .si-topo-text--degraded {
   color: #c2410c;
+}
+
+.si-topo-rail__hint {
+  margin-left: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--si-brand);
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.12em;
+}
+
+.si-topo-health-tip__body {
+  margin: 0;
+  max-width: 18rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.si-topo-health-tip__body p {
+  margin: 0;
+}
+
+.si-topo-health-tip__body p + p {
+  margin-top: 0.3rem;
 }
 
 .si-topo-rail__level {

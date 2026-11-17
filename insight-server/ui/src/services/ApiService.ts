@@ -346,10 +346,11 @@ export class ApiService {
 
   /**
    * 服务健康评分；旧 Server 无此接口时抛错，由调用方回退错误数着色。
+   * 健康 API 目前仅支持滚动 hours；绝对窗时用近似距今小时。
    *
-   * @param hours 时间窗小时
+   * @param hours 时间窗小时或观测窗
    */
-  static async getServiceHealth(hours: number = 1): Promise<Array<{
+  static async getServiceHealth(hours: HoursOrWindow = 1): Promise<Array<{
     service: string
     score: number
     level: string
@@ -357,7 +358,9 @@ export class ApiService {
     p95: number
     hasData: boolean
   }>> {
-    const rows = await request<any[]>(`/services/health?hours=${hours}`)
+    const w = asObservationWindow(hours, 1)
+    const h = w.kind === 'rolling' ? w.hours : Math.max(1, Math.ceil((Date.now() - w.fromMs) / 3_600_000))
+    const rows = await request<any[]>(`/services/health?hours=${h}`)
     if (!Array.isArray(rows)) {
       return []
     }

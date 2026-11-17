@@ -1,5 +1,6 @@
 import type { EChartsOption } from 'echarts'
 import { getChartThemeColors, type ChartThemeColors } from './chartTheme'
+import { healthScoreTooltipLines } from './healthScore'
 
 export interface ServiceDependency {
   sourceService: string
@@ -218,6 +219,9 @@ export function buildTopologyOption(
       value,
       healthScore: health?.score,
       healthLevel: health?.level,
+      healthErrorRate: health?.errorRate,
+      healthP95: health?.p95,
+      healthHasData: health?.hasData,
       errorCount,
       symbolSize: baseSize,
       symbol: 'roundRect', // 使用圆角矩形模拟 3D 方块
@@ -297,6 +301,14 @@ export function buildTopologyOption(
         let healthLine = ''
         if (d.healthScore != null && d.healthLevel) {
           healthLine = `<br/>健康分: <b>${d.healthScore}</b>（${levelLabel(d.healthLevel)}）`
+          if (d.healthErrorRate != null || d.healthP95 != null || d.healthHasData != null) {
+            const lines = healthScoreTooltipLines({
+              errorRate: Number(d.healthErrorRate) || 0,
+              p95: Number(d.healthP95) || 0,
+              hasData: d.healthHasData !== false
+            })
+            healthLine += lines.map((line) => `<br/><span style="opacity:.85">${line}</span>`).join('')
+          }
         } else if (d.errorCount != null && d.errorCount > 0) {
           healthLine = `<br/>错误 Span: ${d.errorCount}`
         }
