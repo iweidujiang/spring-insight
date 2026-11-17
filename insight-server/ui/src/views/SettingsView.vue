@@ -277,6 +277,16 @@
                     <el-icon v-if="testingId !== channel.id" class="si-icon--me-1"><Promotion /></el-icon>测试发送
                   </el-button>
                 </div>
+                <el-alert
+                  v-if="channelFeedback[channel.id]"
+                  class="si-channel__feedback"
+                  :type="channelFeedback[channel.id].ok ? 'success' : 'error'"
+                  :title="channelFeedback[channel.id].text"
+                  :closable="true"
+                  show-icon
+                  role="status"
+                  @close="clearChannelFeedback(channel.id)"
+                />
                 <pre v-if="channelResults[channel.id]" class="si-settings__preview">{{ channelResults[channel.id] }}</pre>
               </el-form>
             </article>
@@ -617,6 +627,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import {
   Check, Bell, Filter, Delete, Plus, TopRight, Share, ArrowDown, ArrowRight,
   View, Promotion, MagicStick, Aim, Coin, DocumentChecked,
@@ -739,6 +750,7 @@ const CHANNEL_TYPES: ChannelType[] = ['webhook', 'email', 'dingtalk', 'feishu', 
 
 const testingId = ref('')
 const channelResults = reactive<Record<string, string>>({})
+const channelFeedback = reactive<Record<string, { ok: boolean; text: string }>>({})
 const openChannels = reactive<Record<string, boolean>>({ webhook: true })
 const channels = ref<ChannelDraft[]>([])
 
@@ -974,6 +986,24 @@ const form = reactive<RuntimeSettingsSaveBody>({
 function showMsg(text: string, ok: boolean) {
   message.value = text
   messageOk.value = ok
+  // 浮动提示，避免长页滚到顶部才能看到结果
+  if (ok) {
+    ElMessage.success({ message: text, duration: 4500, showClose: true })
+  } else {
+    ElMessage.error({ message: text, duration: 6500, showClose: true })
+  }
+}
+
+/**
+ * 渠道试发结果写在卡片内，并同步顶部 / 浮动提示。
+ */
+function showChannelFeedback(channelId: string, text: string, ok: boolean) {
+  channelFeedback[channelId] = { ok, text }
+  showMsg(text, ok)
+}
+
+function clearChannelFeedback(channelId: string) {
+  delete channelFeedback[channelId]
 }
 
 async function refreshStorage() {
@@ -1172,6 +1202,7 @@ async function onSave() {
 async function testChannel(channel: ChannelDraft, send: boolean) {
   testingId.value = channel.id
   channelResults[channel.id] = ''
+  clearChannelFeedback(channel.id)
   try {
     const res = await ApiService.testAlertChannel({
       send,
@@ -1192,13 +1223,19 @@ async function testChannel(channel: ChannelDraft, send: boolean) {
     })
     channelResults[channel.id] = JSON.stringify(res, null, 2)
     if (send) {
-      showMsg(res.ok ? `${channel.name} 测试发送成功` : `${channel.name} 测试发送失败：${res.error || '未成功'}`, !!res.ok)
+      showChannelFeedback(
+        channel.id,
+        res.ok
+          ? `${channel.name} 测试发送成功`
+          : `${channel.name} 测试发送失败：${res.error || '未成功'}`,
+        !!res.ok
+      )
     } else {
-      showMsg(`已生成${channel.name}预览（未发送）`, true)
+      showChannelFeedback(channel.id, `已生成${channel.name}预览（未发送）`, true)
     }
   } catch (e: any) {
     const msg = e?.response?.data?.message || e?.message || '测试失败'
-    showMsg(msg, false)
+    showChannelFeedback(channel.id, msg, false)
   } finally {
     testingId.value = ''
   }
@@ -1621,6 +1658,10 @@ onUnmounted(() => {
 
 .si-channel__body {
   padding: 0 0.75rem 0.75rem;
+}
+
+.si-channel__feedback {
+  margin: 0 0.75rem 0.75rem;
 }
 
 .si-channel__actions {

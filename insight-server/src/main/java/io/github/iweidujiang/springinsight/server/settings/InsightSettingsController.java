@@ -165,9 +165,49 @@ public class InsightSettingsController {
             resp.put("dryRun", false);
             resp.put("sent", true);
             resp.put("ok", false);
-            resp.put("error", e.getMessage() == null ? "发送失败" : e.getMessage());
+            resp.put("error", explainChannelSendError(type, e));
             return ResponseEntity.ok(resp);
         }
+    }
+
+    /**
+     * 把试发异常转成可读说明（出网失败时提示检查 insight-server 所在机器）。
+     *
+     * @param type 渠道类型
+     * @param e    异常
+     * @return 用户可见错误文案
+     */
+    static String explainChannelSendError(String type, Exception e) {
+        String raw = e == null || e.getMessage() == null || e.getMessage().isBlank()
+                ? "发送失败"
+                : e.getMessage().trim();
+        Throwable cur = e;
+        while (cur != null) {
+            String name = cur.getClass().getSimpleName();
+            String msg = cur.getMessage() == null ? "" : cur.getMessage();
+            if (msg.contains("Network unreachable")
+                    || msg.contains("Connection refused")
+                    || msg.contains("Connection timed out")
+                    || msg.contains("connect timed out")
+                    || msg.contains("Unknown host")
+                    || name.contains("UnknownHost")
+                    || name.contains("ConnectException")
+                    || name.contains("NoRouteToHost")
+                    || name.contains("HttpTimeout")) {
+                String channel = switch (type == null ? "" : type) {
+                    case "dingtalk" -> "钉钉 oapi.dingtalk.com";
+                    case "feishu" -> "飞书开放接口";
+                    case "wecom" -> "企业微信接口";
+                    case "email" -> "SMTP 服务器";
+                    case "webhook" -> "Webhook 目标";
+                    default -> "通知服务";
+                };
+                return "无法连接到 " + channel + "（" + raw + "）。"
+                        + "请确认运行 insight-server 的机器能出网访问该地址（代理、防火墙、Docker 网络）。";
+            }
+            cur = cur.getCause();
+        }
+        return raw;
     }
 
     /**
