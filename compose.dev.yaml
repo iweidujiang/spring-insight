@@ -33,7 +33,9 @@ services:
       SPRING_INSIGHT_SERVER_SECURITY_UI_AUTH_ENABLED: ${INSIGHT_UI_AUTH_ENABLED:-true}
       SPRING_INSIGHT_SERVER_SECURITY_UI_USERNAME: ${INSIGHT_UI_USERNAME:-admin}
       SPRING_INSIGHT_SERVER_SECURITY_UI_PASSWORD: ${INSIGHT_UI_PASSWORD:-1}
-      JAVA_OPTS: ${JAVA_OPTS:-}
+      # Windows Docker Desktop 上 DNS 常先解析到 IPv6，容器内 IPv6 路由不可达时
+      # Java 连钉钉等外网会报 Network unreachable；默认偏好 IPv4。
+      JAVA_OPTS: ${JAVA_OPTS:--Djava.net.preferIPv4Stack=true}
     volumes:
       - insight-spans-dev:/data
     restart: unless-stopped
