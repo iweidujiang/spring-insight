@@ -1,6 +1,12 @@
 import type { EChartsOption } from 'echarts'
 import { getChartThemeColors, type ChartThemeColors } from './chartTheme'
 import { healthScoreTooltipLines } from './healthScore'
+import {
+  assignHierarchicalPositions,
+  type TopologyLayoutMode
+} from './topologyLayout'
+
+export type { TopologyLayoutMode }
 
 export interface ServiceDependency {
   sourceService: string
@@ -96,7 +102,7 @@ function zoomForNodes(nodeCount: number, compact: boolean): number {
   return compact ? 0.58 : 0.66
 }
 
-/** 构建带箭头的服务依赖图（circular 布局，避免 force 把节点挤出视口） */
+/** 构建带箭头的服务依赖图（circular / force / hierarchical） */
 export function buildTopologyOption(
   dependencies: ServiceDependency[],
   opts: {
@@ -111,6 +117,8 @@ export function buildTopologyOption(
     theme?: ChartThemeColors
     /** 是否启用深色科技风 */
     darkTechStyle?: boolean
+    /** 布局：环形 / 力导向 / 层次（网关在上） */
+    layoutMode?: TopologyLayoutMode
   } = {}
 ): EChartsOption {
   const compact = opts.compact === true
@@ -120,6 +128,7 @@ export function buildTopologyOption(
   const healthEnabled = healthBy != null
   const errorBy = opts.errorCountByService || {}
   const darkTech = opts.darkTechStyle !== false // 默认启用
+  const layoutMode: TopologyLayoutMode = opts.layoutMode || 'circular'
   const callCounts = new Map<string, number>()
   const links: Array<Record<string, unknown>> = []
 
@@ -282,6 +291,46 @@ export function buildTopologyOption(
   const solo = !empty && links.length === 0
   const zoom = solo ? (compact ? 0.72 : 0.78) : zoomForNodes(nodes.length, compact)
 
+  let layout: 'none' | 'circular' | 'force' = 'circular'
+  let circular: { rotateLabel: boolean } | undefined = { rotateLabel: false }
+  let force:
+    | {
+        repulsion: number
+        gravity: number
+        edgeLength: number | number[]
+        layoutAnimation: boolean
+        friction: number
+      }
+    | undefined
+  let seriesNodes: Array<Record<string, unknown>> = nodes
+
+  if (layoutMode === 'force') {
+    layout = 'force'
+    circular = undefined
+    force = {
+      repulsion: compact ? 180 : 280,
+      gravity: 0.08,
+      edgeLength: compact ? [60, 140] : [80, 180],
+      layoutAnimation: true,
+      friction: 0.6
+    }
+  } else if (layoutMode === 'hierarchical') {
+    layout = 'none'
+    circular = undefined
+    const positions = assignHierarchicalPositions(dependencies)
+    let orphanIdx = 0
+    seriesNodes = nodes.map((n) => {
+      const pos = positions.get(n.name)
+      if (pos) {
+        return { ...n, x: pos.x, y: pos.y, fixed: true }
+      }
+      const x = 80 + (orphanIdx % 8) * 120
+      const y = 680 + Math.floor(orphanIdx / 8) * 70
+      orphanIdx += 1
+      return { ...n, x, y, fixed: true }
+    })
+  }
+
   return {
     backgroundColor: 'transparent',
     textStyle: { color: darkTech ? 'rgba(255,255,255,0.7)' : theme.muted },
@@ -344,14 +393,15 @@ export function buildTopologyOption(
     animationDurationUpdate: 450,
     series: [{
       type: 'graph',
-      layout: 'circular',
-      circular: { rotateLabel: false },
-      data: nodes,
+      layout,
+      ...(circular ? { circular } : {}),
+      ...(force ? { force } : {}),
+      data: seriesNodes,
       links,
       roam: true,
       cursor: 'pointer',
       scaleLimit: { min: 0.4, max: 2.8 },
-      zoom,
+      zoom: layoutMode === 'hierarchical' ? (compact ? 0.7 : 0.78) : zoom,
       center: ['50%', solo ? '54%' : '50%'],
       edgeSymbol: ['none', 'arrow'],
       edgeSymbolSize: [0, compact ? 10 : 12],

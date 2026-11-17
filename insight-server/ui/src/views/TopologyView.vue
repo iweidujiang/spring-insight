@@ -117,9 +117,12 @@
                 <el-icon class="me-2"><Share /></el-icon>服务依赖拓扑
               </h3>
               <p class="si-topo-legend">
-                <span>{{ serviceNames.length }} 个服务</span>
+                <span>{{ graphServiceCount }} 个服务</span>
                 <span>·</span>
-                <span>{{ dependencies.length }} 条调用链路</span>
+                <span>{{ graphDependencies.length }} 条调用链路</span>
+                <span v-if="minCallCount > 0 && graphDependencies.length < dependencies.length">
+                  （已滤 {{ dependencies.length - graphDependencies.length }}）
+                </span>
                 <span>·</span>
                 <span>箭头 = 调用方向</span>
                 <span>·</span>
@@ -137,6 +140,32 @@
               </p>
             </div>
             <div class="si-topo-stage__toolbar">
+              <el-select
+                v-model="layoutMode"
+                size="small"
+                class="si-topo-layout-select"
+                aria-label="拓扑布局"
+                @change="onLayoutModeChange"
+              >
+                <el-option
+                  v-for="opt in layoutOptions"
+                  :key="opt.value"
+                  :label="opt.label"
+                  :value="opt.value"
+                />
+              </el-select>
+              <label class="si-topo-min-call" title="隐藏调用次数低于该值的边">
+                <span>最少调用</span>
+                <el-input-number
+                  v-model="minCallCount"
+                  size="small"
+                  :min="0"
+                  :max="999999"
+                  :step="1"
+                  controls-position="right"
+                  @change="onMinCallChange"
+                />
+              </label>
               <el-button type="primary" plain size="small" title="重绘" @click="refreshTopology">
                 <el-icon><Refresh /></el-icon>
               </el-button>
@@ -369,6 +398,15 @@ import {
   resolveTopologyClick,
   type ServiceHealthInfo
 } from '../utils/topologyGraph'
+import {
+  TOPOLOGY_LAYOUT_OPTIONS,
+  filterDependenciesByMinCall,
+  persistLayoutMode,
+  persistMinCallCount,
+  readStoredLayoutMode,
+  readStoredMinCallCount,
+  type TopologyLayoutMode
+} from '../utils/topologyLayout'
 import { useChartTheme } from '../composables/useChartTheme'
 import { formatDuration } from '../utils/traceTimeline'
 import { presenceTitle } from '../utils/servicePresence'
@@ -425,6 +463,9 @@ const selection = ref<{ kind: 'node' | 'edge' | null; service: string; peer?: st
   service: ''
 })
 const serviceListCollapsed = ref(false)
+const layoutMode = ref<TopologyLayoutMode>(readStoredLayoutMode())
+const minCallCount = ref(readStoredMinCallCount())
+const layoutOptions = TOPOLOGY_LAYOUT_OPTIONS
 
 let topologyChart: echarts.ECharts | null = null
 let timeInterval: number | null = null
@@ -433,6 +474,34 @@ let dashAnimationTimer: number | null = null
 const { colors: chartColors } = useChartTheme()
 
 const healthAvailable = computed(() => healthByService.value != null)
+
+/** 图上实际绘制的边（按最少调用过滤） */
+const graphDependencies = computed(() =>
+  filterDependenciesByMinCall(dependencies.value, minCallCount.value)
+)
+
+const graphServiceCount = computed(() => {
+  const names = new Set<string>()
+  graphDependencies.value.forEach((d: any) => {
+    if (d.sourceService) names.add(d.sourceService)
+    if (d.targetService) names.add(d.targetService)
+  })
+  if (minCallCount.value <= 0) {
+    serviceNames.value.forEach((n) => names.add(n))
+  }
+  return names.size
+})
+
+/** 过滤后仍出现在边上的服务；过滤开启时不再补孤立节点 */
+const graphStandaloneServices = computed(() => {
+  if (minCallCount.value <= 0) return serviceNames.value
+  const onEdge = new Set<string>()
+  graphDependencies.value.forEach((d: any) => {
+    if (d.sourceService) onEdge.add(d.sourceService)
+    if (d.targetService) onEdge.add(d.targetService)
+  })
+  return serviceNames.value.filter((n) => onEdge.has(n))
+})
 
 /** 当前时间窗无任何服务与调用边：首跑接入引导 */
 const isEmpty = computed(
@@ -557,13 +626,26 @@ const errorCountByService = () => {
 }
 
 const topologyOpts = () => ({
-  standaloneServices: serviceNames.value,
+  standaloneServices: graphStandaloneServices.value,
   theme: chartColors.value,
   healthByService: healthByService.value,
   errorCountByService: errorCountByService(),
   darkTechStyle: effectiveTheme.value === 'dark',
+  layoutMode: layoutMode.value,
   ...highlightOpts()
 })
+
+const onLayoutModeChange = (mode: TopologyLayoutMode) => {
+  persistLayoutMode(mode)
+  updateChart()
+}
+
+const onMinCallChange = (val: number | undefined) => {
+  const n = Math.max(0, Math.floor(Number(val) || 0))
+  minCallCount.value = n
+  persistMinCallCount(n)
+  updateChart()
+}
 
 const nodeHealth = (name: string): ServiceHealthInfo | null =>
   healthByService.value?.[name] || null
@@ -785,7 +867,7 @@ const disposeChart = () => {
 
 const updateChart = () => {
   if (!topologyChart) return
-  topologyChart.setOption(buildTopologyOption(dependencies.value, topologyOpts()), { notMerge: true })
+  topologyChart.setOption(buildTopologyOption(graphDependencies.value, topologyOpts()), { notMerge: true })
   nextTick(() => topologyChart?.resize())
 }
 
@@ -804,7 +886,7 @@ watch(() => effectiveTheme.value, () => {
 
 const fitToScreen = () => {
   if (!topologyChart) return
-  topologyChart.setOption(buildTopologyOption(dependencies.value, topologyOpts()), { notMerge: true })
+  topologyChart.setOption(buildTopologyOption(graphDependencies.value, topologyOpts()), { notMerge: true })
   topologyChart.resize()
 }
 
@@ -1018,6 +1100,25 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.si-topo-layout-select {
+  width: 9.5rem;
+}
+
+.si-topo-min-call {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--si-muted);
+  white-space: nowrap;
+}
+
+.si-topo-min-call :deep(.el-input-number) {
+  width: 6.5rem;
 }
 
 .si-topo-table-arrow {
