@@ -34,6 +34,8 @@ spring:
       alert:
         enabled: false
         webhook-url: ""
+        # Webhook / 邮件深链用的控制台根地址；IM 渠道也可各自填 server-url
+        console-base-url: ""
         metric: error_rate
         threshold: 10.0
         window-minutes: 15

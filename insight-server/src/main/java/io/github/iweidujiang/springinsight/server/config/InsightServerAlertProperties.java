@@ -28,6 +28,12 @@ public class InsightServerAlertProperties {
     private String webhookUrl = "";
 
     /**
+     * 控制台根地址（如 {@code http://localhost:9966}），写入 Webhook / 邮件深链；
+     * IM 渠道仍可用各自 {@code serverUrl}，未填时也可回退到本字段。
+     */
+    private String consoleBaseUrl = "";
+
+    /**
      * 指标：{@code error_rate}（百分比）、{@code error_count}（窗口内错误 Span 数）、
      * {@code latency_p95}（窗口内 p95 耗时，毫秒）。未配置 {@link #conditions} 时仍生效。
      *

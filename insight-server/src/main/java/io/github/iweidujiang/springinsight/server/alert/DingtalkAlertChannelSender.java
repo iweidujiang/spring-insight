@@ -103,13 +103,7 @@ public class DingtalkAlertChannelSender implements InsightAlertChannelSender {
                 + "- 当前值: " + value + "\n"
                 + "- 阈值: " + threshold + "\n"
                 + "- 时间: " + time;
-        String base = serverUrl == null ? "" : serverUrl.trim();
-        while (base.endsWith("/")) {
-            base = base.substring(0, base.length() - 1);
-        }
-        String actionUrl = base + "/traces?service="
-                + URLEncoder.encode(service, StandardCharsets.UTF_8)
-                + "&status=ERROR";
+        String actionUrl = AlertConsoleLinks.primaryUrl(fields, serverUrl);
         Map<String, Object> button = new LinkedHashMap<>();
         button.put("title", "查看详情");
         button.put("actionURL", actionUrl);

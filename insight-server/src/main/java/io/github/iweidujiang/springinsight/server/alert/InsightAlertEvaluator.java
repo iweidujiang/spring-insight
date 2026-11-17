@@ -285,7 +285,70 @@ public final class InsightAlertEvaluator {
         body.put("serviceName", serviceName);
         body.put("value", value);
         body.put("at", atIso);
+        attachConsoleLinks(body, properties);
         return body;
+    }
+
+    /**
+     * 把控制台深链写入 payload（相对路径 + 可选绝对 URL）。
+     *
+     * @param body       告警字段
+     * @param properties 告警配置
+     */
+    public static void attachConsoleLinks(Map<String, Object> body, InsightServerAlertProperties properties) {
+        if (body == null) {
+            return;
+        }
+        String service = String.valueOf(body.getOrDefault("serviceName", ""));
+        String metric = String.valueOf(body.getOrDefault("metric", ""));
+        int window = properties != null ? properties.getWindowMinutes() : 15;
+        Object wm = body.get("windowMinutes");
+        if (wm instanceof Number n) {
+            window = n.intValue();
+        }
+        String base = resolveConsoleBase(properties);
+        Map<String, Object> links = AlertConsoleLinks.build(base, service, metric, window);
+        body.put("consoleLinks", links);
+        Object primaryUrl = links.get("primaryUrl");
+        if (primaryUrl != null) {
+            body.put("primaryUrl", primaryUrl);
+        }
+        Object tracesPath = links.get("tracesPath");
+        if (tracesPath != null) {
+            body.put("tracesPath", tracesPath);
+        }
+        Object servicePath = links.get("servicePath");
+        if (servicePath != null) {
+            body.put("servicePath", servicePath);
+        }
+    }
+
+    /**
+     * 解析控制台根地址：alert.consoleBaseUrl → 钉钉 / 飞书 / 企微 serverUrl。
+     *
+     * @param properties 告警配置
+     * @return 根地址，可能为空
+     */
+    public static String resolveConsoleBase(InsightServerAlertProperties properties) {
+        if (properties == null) {
+            return "";
+        }
+        if (properties.getConsoleBaseUrl() != null && !properties.getConsoleBaseUrl().isBlank()) {
+            return AlertConsoleLinks.normalizeBase(properties.getConsoleBaseUrl());
+        }
+        if (properties.getDingtalk() != null && properties.getDingtalk().getServerUrl() != null
+                && !properties.getDingtalk().getServerUrl().isBlank()) {
+            return AlertConsoleLinks.normalizeBase(properties.getDingtalk().getServerUrl());
+        }
+        if (properties.getFeishu() != null && properties.getFeishu().getServerUrl() != null
+                && !properties.getFeishu().getServerUrl().isBlank()) {
+            return AlertConsoleLinks.normalizeBase(properties.getFeishu().getServerUrl());
+        }
+        if (properties.getWecom() != null && properties.getWecom().getServerUrl() != null
+                && !properties.getWecom().getServerUrl().isBlank()) {
+            return AlertConsoleLinks.normalizeBase(properties.getWecom().getServerUrl());
+        }
+        return "";
     }
 
     /**

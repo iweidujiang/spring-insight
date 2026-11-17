@@ -77,7 +77,8 @@ class FeishuAlertChannelSenderTest {
         JsonNode button = card.get("elements").get(1).get("actions").get(0);
         assertEquals("查看详情", button.get("text").get("content").asText());
         assertEquals("primary", button.get("type").asText());
-        assertEquals("http://127.0.0.1:9966/traces?service=sca-order", button.get("url").asText());
+        assertEquals("http://127.0.0.1:9966/traces?service=sca-order&status=error&hours=1",
+                button.get("url").asText());
     }
 
     /**

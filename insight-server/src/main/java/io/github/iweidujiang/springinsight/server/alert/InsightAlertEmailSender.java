@@ -129,11 +129,58 @@ public class InsightAlertEmailSender implements InsightAlertChannelSender {
         }
         for (Map.Entry<String, Object> e : payload.entrySet()) {
             String k = e.getKey();
-            if ("aiSummary".equals(k) || "aiSuggestions".equals(k)) {
+            if ("aiSummary".equals(k) || "aiSuggestions".equals(k)
+                    || "consoleLinks".equals(k) || "primaryUrl".equals(k)
+                    || "tracesPath".equals(k) || "servicePath".equals(k)) {
                 continue;
             }
             sb.append(k).append(": ").append(e.getValue()).append('\n');
         }
+        appendConsoleLinks(sb, payload);
         return sb.toString().trim();
+    }
+
+    /**
+     * 邮件末尾附带控制台深链。
+     *
+     * @param sb      正文
+     * @param payload 告警字段
+     */
+    static void appendConsoleLinks(StringBuilder sb, Map<String, Object> payload) {
+        if (payload == null) {
+            return;
+        }
+        Object primary = payload.get("primaryUrl");
+        Object traces = null;
+        Object service = null;
+        Object linksObj = payload.get("consoleLinks");
+        if (linksObj instanceof Map<?, ?> links) {
+            if (primary == null) {
+                primary = links.get("primaryUrl");
+            }
+            traces = links.get("tracesUrl");
+            service = links.get("serviceUrl");
+            if (traces == null) {
+                traces = links.get("tracesPath");
+            }
+            if (service == null) {
+                service = links.get("servicePath");
+            }
+        }
+        if (primary == null && traces == null && service == null) {
+            return;
+        }
+        sb.append("\n\n打开控制台:\n");
+        if (primary != null && !String.valueOf(primary).isBlank()) {
+            sb.append("  主入口: ").append(primary).append('\n');
+        }
+        if (traces != null && !String.valueOf(traces).isBlank()
+                && !String.valueOf(traces).equals(String.valueOf(primary))) {
+            sb.append("  错误链路: ").append(traces).append('\n');
+        }
+        if (service != null && !String.valueOf(service).isBlank()
+                && !String.valueOf(service).equals(String.valueOf(primary))) {
+            sb.append("  服务详情: ").append(service).append('\n');
+        }
     }
 }

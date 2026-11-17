@@ -95,7 +95,7 @@ class DingtalkAlertChannelSenderTest {
         assertTrue(card.get("actionCard").get("text").asText().contains("- 当前值: 50.0"));
         assertEquals("0", card.get("actionCard").get("btnOrientation").asText());
         assertEquals("查看详情", card.get("actionCard").get("btns").get(0).get("title").asText());
-        assertEquals("http://127.0.0.1:9966/traces?service=sca-order&status=ERROR",
+        assertEquals("http://127.0.0.1:9966/traces?service=sca-order&status=error&hours=1",
                 card.get("actionCard").get("btns").get(0).get("actionURL").asText());
     }
 }

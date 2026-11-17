@@ -28,18 +28,7 @@ public class AlertHistoryStore {
     private final ArrayDeque<Map<String, Object>> events = new ArrayDeque<>();
 
     /**
-     * 记录一条告警历史。
-     *
-     * @param event           {@link #EVENT_FIRE} / {@link #EVENT_RECOVER} / {@link #EVENT_ESCALATE}
-     * @param serviceName     服务名
-     * @param metric          指标
-     * @param value           当前值
-     * @param threshold       阈值
-     * @param atIso           ISO 时间
-     * @param atEpochMs       epoch 毫秒
-     * @param durationMinutes 持续分钟（恢复 / 升级）；无则 null
-     * @param delivered       是否成功推送到渠道
-     * @param matchedConditions 命中条件（可空）
+     * 记录一条告警历史（默认 15 分钟窗）。
      */
     public void record(String event,
                        String serviceName,
@@ -51,6 +40,36 @@ public class AlertHistoryStore {
                        Long durationMinutes,
                        boolean delivered,
                        List<Map<String, Object>> matchedConditions) {
+        record(event, serviceName, metric, value, threshold, atIso, atEpochMs,
+                durationMinutes, delivered, matchedConditions, null);
+    }
+
+    /**
+     * 记录一条告警历史。
+     *
+     * @param event             {@link #EVENT_FIRE} / {@link #EVENT_RECOVER} / {@link #EVENT_ESCALATE}
+     * @param serviceName       服务名
+     * @param metric            指标
+     * @param value             当前值
+     * @param threshold         阈值
+     * @param atIso             ISO 时间
+     * @param atEpochMs         epoch 毫秒
+     * @param durationMinutes   持续分钟（恢复 / 升级）；无则 null
+     * @param delivered         是否成功推送到渠道
+     * @param matchedConditions 命中条件（可空）
+     * @param windowMinutes     告警统计窗；null 时按 15
+     */
+    public void record(String event,
+                       String serviceName,
+                       String metric,
+                       Double value,
+                       Double threshold,
+                       String atIso,
+                       long atEpochMs,
+                       Long durationMinutes,
+                       boolean delivered,
+                       List<Map<String, Object>> matchedConditions,
+                       Integer windowMinutes) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("id", UUID.randomUUID().toString());
         row.put("event", event == null ? "" : event);
@@ -71,6 +90,12 @@ public class AlertHistoryStore {
         if (matchedConditions != null && !matchedConditions.isEmpty()) {
             row.put("matchedConditions", matchedConditions);
         }
+        int window = windowMinutes == null || windowMinutes <= 0 ? 15 : windowMinutes;
+        Map<String, Object> links = AlertConsoleLinks.build("", serviceName, metric, window);
+        row.put("windowMinutes", window);
+        row.put("hours", links.get("hours"));
+        row.put("tracesPath", links.get("tracesPath"));
+        row.put("servicePath", links.get("servicePath"));
         synchronized (events) {
             events.addFirst(row);
             while (events.size() > MAX_EVENTS) {

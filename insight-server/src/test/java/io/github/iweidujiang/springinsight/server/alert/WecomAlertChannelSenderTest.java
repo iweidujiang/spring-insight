@@ -78,6 +78,7 @@ class WecomAlertChannelSenderTest {
         assertTrue(content.contains("<font color=\"info\">50.0</font>"));
         assertTrue(content.contains("> 阈值: 10.0"));
         assertTrue(content.contains("> 时间: 2026-10-19T01:00:00Z"));
-        assertTrue(content.contains("[查看详情](http://127.0.0.1:9966/traces?service=sca-order)"));
+        assertTrue(content.contains(
+                "[查看详情](http://127.0.0.1:9966/traces?service=sca-order&status=error&hours=1)"));
     }
 }

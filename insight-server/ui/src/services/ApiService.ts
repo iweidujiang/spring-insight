@@ -257,6 +257,10 @@ export class ApiService {
       atEpochMs: number
       durationMinutes: number | null
       delivered: boolean
+      windowMinutes: number | null
+      hours: number | null
+      tracesPath: string | null
+      servicePath: string | null
     }>
   > {
     try {
@@ -274,7 +278,14 @@ export class ApiService {
           raw?.durationMinutes == null && raw?.duration_minutes == null
             ? null
             : Number(raw.durationMinutes ?? raw.duration_minutes),
-        delivered: Boolean(raw?.delivered)
+        delivered: Boolean(raw?.delivered),
+        windowMinutes:
+          raw?.windowMinutes == null && raw?.window_minutes == null
+            ? null
+            : Number(raw.windowMinutes ?? raw.window_minutes),
+        hours: raw?.hours == null || raw?.hours === '' ? null : Number(raw.hours),
+        tracesPath: raw?.tracesPath ?? raw?.traces_path ?? null,
+        servicePath: raw?.servicePath ?? raw?.service_path ?? null
       }))
     } catch {
       return []

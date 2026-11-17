@@ -7,11 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -94,11 +92,7 @@ public class WecomAlertChannelSender implements InsightAlertChannelSender {
         String value = text(fields.get("value"), "");
         String threshold = text(fields.get("threshold"), "");
         String time = text(fields.get("at"), "");
-        String base = serverUrl == null ? "" : serverUrl.trim();
-        while (base.endsWith("/")) {
-            base = base.substring(0, base.length() - 1);
-        }
-        String url = base + "/traces?service=" + URLEncoder.encode(service, StandardCharsets.UTF_8);
+        String url = AlertConsoleLinks.primaryUrl(fields, serverUrl);
         String content = "## Spring Insight 告警\n"
                 + "> 服务: <font color=\"warning\">" + service + "</font>\n"
                 + "> 指标: " + metric + "\n"

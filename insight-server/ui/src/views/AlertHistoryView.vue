@@ -2,7 +2,7 @@
   <div class="si-page fade-in si-alerts-page">
     <SiPageHeader title="告警历史" icon="Bell">
       <template #description>
-        最近触发、恢复与升级记录（进程内保留，重启后清空）。可在设置页配置告警规则与渠道。
+        最近触发、恢复与升级记录（进程内保留，重启后清空）。可点击打开已筛好的错误链路或服务详情。
       </template>
       <div class="si-alerts__actions">
         <el-button size="small" :loading="loading" @click="load">
@@ -30,13 +30,29 @@
           :columns="columns"
           row-key="id"
           clickable
-          @row-click="goService"
+          @row-click="goPrimary"
         >
           <template #cell-event="{ row }">
             <SiStatusBadge :tone="eventTone(row.event)">{{ eventLabel(row.event) }}</SiStatusBadge>
           </template>
           <template #cell-service="{ row }">
             <span class="si-alerts__svc">{{ row.serviceName || '—' }}</span>
+          </template>
+          <template #cell-links="{ row }">
+            <div class="si-alerts__links" @click.stop>
+              <el-button
+                v-if="isErrorMetric(row.metric)"
+                link
+                type="primary"
+                size="small"
+                @click="goTraces(row)"
+              >
+                错误链路
+              </el-button>
+              <el-button link type="primary" size="small" @click="goService(row)">
+                服务详情
+              </el-button>
+            </div>
           </template>
         </SiDataTable>
       </section>
@@ -69,6 +85,10 @@ type AlertHistoryRow = {
   atEpochMs: number
   durationMinutes: number | null
   delivered: boolean
+  windowMinutes?: number | null
+  hours?: number | null
+  tracesPath?: string | null
+  servicePath?: string | null
 }
 
 const router = useRouter()
@@ -102,6 +122,11 @@ const eventTone = (event: string): 'danger' | 'success' | 'warn' | 'neutral' => 
   }
 }
 
+const isErrorMetric = (metric: string) => {
+  const m = String(metric || '').trim().toLowerCase()
+  return m === 'error_rate' || m === 'error_count'
+}
+
 const formatWhen = (row: AlertHistoryRow) => {
   if (row.atEpochMs > 0) {
     try {
@@ -118,6 +143,14 @@ const formatValue = (row: AlertHistoryRow) => {
   const v = Number(row.value)
   if (!Number.isFinite(v)) return '—'
   return Number.isInteger(v) ? String(v) : v.toFixed(2)
+}
+
+const hoursOf = (row: AlertHistoryRow) => {
+  const h = Number(row.hours)
+  if (Number.isFinite(h) && h >= 1) return Math.floor(h)
+  const wm = Number(row.windowMinutes)
+  if (Number.isFinite(wm) && wm > 0) return Math.max(1, Math.ceil(wm / 60))
+  return 1
 }
 
 const columns: SiColumn<AlertHistoryRow>[] = [
@@ -146,17 +179,55 @@ const columns: SiColumn<AlertHistoryRow>[] = [
     value: (row) =>
       row.durationMinutes == null ? '—' : `${Math.floor(row.durationMinutes)} 分`
   },
-  { key: 'when', label: '时间', value: (row) => formatWhen(row) }
+  { key: 'when', label: '时间', value: (row) => formatWhen(row) },
+  { key: 'links', label: '深链', cellClass: 'si-alerts__col-links' }
 ]
 
 const goSettings = () => {
   void router.push({ path: '/settings', query: { section: 'alert' } })
 }
 
+const pushPathOrRoute = (path: string | null | undefined, fallback: () => void) => {
+  const p = String(path || '').trim()
+  if (p.startsWith('/')) {
+    void router.push(p)
+    return
+  }
+  fallback()
+}
+
+const goTraces = (row: AlertHistoryRow) => {
+  const name = String(row.serviceName || '').trim()
+  if (!name) return
+  pushPathOrRoute(row.tracesPath, () => {
+    void router.push({
+      path: '/traces',
+      query: {
+        service: name,
+        status: 'error',
+        hours: String(hoursOf(row))
+      }
+    })
+  })
+}
+
 const goService = (row: AlertHistoryRow) => {
   const name = String(row.serviceName || '').trim()
   if (!name) return
-  void router.push({ path: `/services/${encodeURIComponent(name)}` })
+  pushPathOrRoute(row.servicePath, () => {
+    void router.push({
+      path: `/services/${encodeURIComponent(name)}`,
+      query: { hours: String(hoursOf(row)) }
+    })
+  })
+}
+
+const goPrimary = (row: AlertHistoryRow) => {
+  if (isErrorMetric(row.metric)) {
+    goTraces(row)
+    return
+  }
+  goService(row)
 }
 
 const load = async () => {
@@ -209,7 +280,18 @@ onMounted(() => {
   width: 5.5rem;
 }
 
+.si-alerts__col-links {
+  min-width: 9rem;
+}
+
 .si-alerts__svc {
   font-weight: 600;
+}
+
+.si-alerts__links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.35rem;
+  align-items: center;
 }
 </style>

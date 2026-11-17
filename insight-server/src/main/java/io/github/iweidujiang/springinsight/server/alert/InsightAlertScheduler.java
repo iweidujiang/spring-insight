@@ -345,6 +345,7 @@ public class InsightAlertScheduler {
         payload.put("message", "告警升级：服务 " + service + " 已持续 "
                 + durationMinutes + " 分钟未恢复（阈值 "
                 + esc.getAfterMinutes() + " 分钟）");
+        InsightAlertEvaluator.attachConsoleLinks(payload, properties);
         attachAnomaly(payload, service, first.condition().getMetric());
 
         boolean ok = dispatch(type, new AlertPayload(payload), channelConfig(properties, channel, type));
@@ -360,7 +361,8 @@ public class InsightAlertScheduler {
                 now,
                 durationMinutes,
                 ok,
-                matchedConditions(evaluation));
+                matchedConditions(evaluation),
+                properties.getWindowMinutes());
         if (ok) {
             activeAlerts.put(service, state.markEscalated());
             metrics.record("escalation");
@@ -454,6 +456,7 @@ public class InsightAlertScheduler {
         payload.put("metric", first.condition().getMetric());
         payload.put("threshold", first.condition().getThreshold());
         payload.put("matchedConditions", matchedConditions(evaluation));
+        InsightAlertEvaluator.attachConsoleLinks(payload, properties);
         attachAnomaly(payload, service, first.condition().getMetric());
         attachAiIfNeeded(payload, properties, service, value);
         boolean delivered = deliver(properties, payload);
@@ -470,7 +473,8 @@ public class InsightAlertScheduler {
                     now,
                     null,
                     true,
-                    matchedConditions(evaluation));
+                    matchedConditions(evaluation),
+                    properties.getWindowMinutes());
             log.info("[告警] 已推送: service={}, metric={}, value={}, aiAttached={}",
                     service, first.condition().getMetric(), value, payload.getOrDefault("aiAttached", false));
         } else {
@@ -525,7 +529,8 @@ public class InsightAlertScheduler {
                 now,
                 durationMinutes,
                 false,
-                matched);
+                matched,
+                null);
     }
 
     /**
