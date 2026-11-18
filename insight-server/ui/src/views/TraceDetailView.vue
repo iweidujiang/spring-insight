@@ -235,6 +235,12 @@
                   <div><dt>parent</dt><dd><code>{{ selected.parentSpanId || '(root)' }}</code></dd></div>
                 </dl>
 
+                <div v-if="selectedSql" class="trace-aside__actions">
+                  <el-button type="primary" plain size="small" @click="goSimilarSql">
+                    <el-icon class="me-1"><Coin /></el-icon>同类 SQL
+                  </el-button>
+                </div>
+
                 <div v-if="selected.errorCode || selected.errorMessage" class="trace-error-box">
                   <div class="trace-error-box__title"><el-icon class="me-1"><WarningFilled /></el-icon>错误信息</div>
                   <div v-if="selected.errorCode"><strong>errorCode</strong>：{{ selected.errorCode }}</div>
@@ -302,7 +308,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Share, CopyDocument, ArrowUp, ArrowDown, ArrowLeft, MagicStick,
-  Download, Lightning, Refresh, InfoFilled, Operation, WarningFilled, List
+  Download, Lightning, Refresh, InfoFilled, Operation, WarningFilled, List, Coin
 } from '@element-plus/icons-vue'
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
@@ -328,7 +334,13 @@ import {
   loadFailedMessage,
   TRACE_NOT_FOUND
 } from '../utils/timeRange'
-import { resolveHours } from '../utils/insightQuery'
+import {
+  mergeQuery,
+  resolveHours,
+  resolveWindow,
+  windowQueryPatch
+} from '../utils/insightQuery'
+import { normalizeSqlFingerprint } from '../utils/sqlFingerprint'
 
 const route = useRoute()
 const router = useRouter()
@@ -410,6 +422,8 @@ const selected = computed(() =>
 const selectedSql = computed(() =>
   selected.value ? rawSqlFromSpan(selected.value) : ''
 )
+
+const selectedSqlFingerprint = computed(() => normalizeSqlFingerprint(selectedSql.value))
 
 const tagEntries = computed(() => {
   const tags = selected.value?.tags
@@ -664,8 +678,41 @@ const load = async () => {
   }
 }
 
+const goSimilarSql = () => {
+  const fp = selectedSqlFingerprint.value
+  if (!fp) return
+  const window = resolveWindow(route.query, 24)
+  const service = String(selected.value?.serviceName || '').trim()
+  router.push({
+    path: '/jdbc',
+    query: mergeQuery({}, {
+      ...windowQueryPatch(window),
+      fingerprint: fp,
+      service: service || null
+    })
+  })
+}
+
 const goBack = () => {
-  router.push({ path: '/traces', query: route.query })
+  if (route.query.ret === 'jdbc') {
+    const window = resolveWindow(route.query, 24)
+    const fingerprint =
+      typeof route.query.fingerprint === 'string' ? route.query.fingerprint.trim() : ''
+    router.push({
+      path: '/jdbc',
+      query: mergeQuery(route.query, {
+        ...windowQueryPatch(window),
+        ret: null,
+        span: null,
+        fingerprint: fingerprint || null
+      })
+    })
+    return
+  }
+  router.push({
+    path: '/traces',
+    query: mergeQuery(route.query, { ret: null, span: null, fingerprint: null })
+  })
 }
 
 watch(() => route.params.traceId, () => {
@@ -1157,6 +1204,10 @@ onMounted(async () => {
   color: var(--si-ink);
   font-size: 0.84rem;
   word-break: break-all;
+}
+
+.trace-aside__actions {
+  margin: 0.65rem 0 0.85rem;
 }
 
 .trace-selected__sql {

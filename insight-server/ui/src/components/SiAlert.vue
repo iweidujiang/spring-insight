@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 
 const props = defineProps<{
-  tone: 'danger' | 'warning' | 'success'
+  tone: 'danger' | 'warning' | 'success' | 'info'
   /** 不传时：危险为 alert，其余为 status */
   role?: 'alert' | 'status'
 }>()

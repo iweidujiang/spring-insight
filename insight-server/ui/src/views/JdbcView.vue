@@ -21,6 +21,11 @@
     </p>
 
     <SiAlert v-if="loadError" tone="danger" class="si-jdbc__alert">{{ loadError }}</SiAlert>
+    <SiAlert v-else-if="focusFingerprint" tone="info" class="si-jdbc__alert">
+      正在查看同类 SQL：
+      <code class="si-jdbc-focus-fp" :title="focusFingerprint">{{ focusFingerprintShort }}</code>
+      <el-button link type="primary" size="small" class="ms-1" @click="clearFingerprintFocus">清除</el-button>
+    </SiAlert>
 
     <SiLoading v-if="loading" text="正在加载 JDBC 汇总…" />
 
@@ -86,14 +91,15 @@
         <SiSection
           title="SQL 指纹"
           icon="Document"
-          :count="summary.byFingerprint.length"
+          :count="displayedFingerprints.length"
           label="按语句形态聚合"
         >
-          <p class="si-jdbc-fp-hint">参数已归一化为 ?；点击行可打开样例 Trace。</p>
+          <p class="si-jdbc-fp-hint">参数已归一化为 ?；点击行或「样例链路」打开 Trace。</p>
           <SiDataTable
-            :rows="summary.byFingerprint"
+            :rows="displayedFingerprints"
             :columns="fingerprintColumns"
             :row-key="fingerprintKey"
+            :row-class="fingerprintRowClass"
             clickable
             @row-click="onFingerprintClick"
           >
@@ -101,14 +107,29 @@
               <span v-if="row.sqlType" class="si-jdbc-sql-type">{{ row.sqlType }}</span>
               {{ row.fingerprint || '—' }}
             </template>
+            <template #cell-action="{ row }">
+              <el-button
+                type="primary"
+                plain
+                size="small"
+                :disabled="!row.sampleTraceId"
+                @click.stop="goTrace(row.sampleTraceId, row.sampleSpanId, row.fingerprint)"
+              >
+                样例链路
+              </el-button>
+            </template>
           </SiDataTable>
+          <p v-if="focusFingerprint && displayedFingerprints.length === 0" class="si-jdbc-fp-miss">
+            当前时间窗内没有匹配该指纹的聚合行，可扩大时间范围或清除筛选。
+          </p>
         </SiSection>
 
-        <SiSection title="最近 JDBC Span" icon="List" :count="summary.recent.length" label="最近 JDBC">
+        <SiSection title="最近 JDBC Span" icon="List" :count="displayedRecent.length" label="最近 JDBC">
           <SiDataTable
-            :rows="summary.recent"
+            :rows="displayedRecent"
             :columns="recentColumns"
             :row-key="recentKey"
+            :row-class="recentRowClass"
             clickable
             @row-click="onRecentClick"
           >
@@ -128,6 +149,17 @@
             <template #cell-traceId="{ row }">
               <code class="si-jdbc-cell--small">{{ shortId(row.traceId) }}</code>
             </template>
+            <template #cell-action="{ row }">
+              <el-button
+                type="primary"
+                plain
+                size="small"
+                :disabled="!row.traceId"
+                @click.stop="goTrace(row.traceId, row.spanId, normalizeSqlFingerprint(row.sql))"
+              >
+                打开链路
+              </el-button>
+            </template>
           </SiDataTable>
         </SiSection>
       </template>
@@ -136,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { InfoFilled, Coin } from '@element-plus/icons-vue'
 import SiAlert from '../components/SiAlert.vue'
@@ -163,6 +195,7 @@ import {
   windowQueryPatch,
   type ObservationWindow
 } from '../utils/insightQuery'
+import { normalizeSqlFingerprint } from '../utils/sqlFingerprint'
 
 const route = useRoute()
 const router = useRouter()
@@ -179,6 +212,28 @@ type FingerprintRow = JdbcSummary['byFingerprint'][number]
 type RecentRow = JdbcSummary['recent'][number]
 
 const summary = ref<JdbcSummary | null>(null)
+/** 从链路「同类 SQL」或 URL 带入的指纹聚焦 */
+const focusFingerprint = ref('')
+
+const focusFingerprintShort = computed(() => {
+  const s = focusFingerprint.value
+  if (s.length <= 72) return s
+  return `${s.slice(0, 71)}…`
+})
+
+const displayedFingerprints = computed(() => {
+  const rows = summary.value?.byFingerprint || []
+  const fp = focusFingerprint.value
+  if (!fp) return rows
+  return rows.filter((r) => r.fingerprint === fp)
+})
+
+const displayedRecent = computed(() => {
+  const rows = summary.value?.recent || []
+  const fp = focusFingerprint.value
+  if (!fp) return rows
+  return rows.filter((r) => normalizeSqlFingerprint(r.sql) === fp)
+})
 
 const remoteColumns: SiColumn<RemoteRow>[] = [
   {
@@ -231,7 +286,8 @@ const fingerprintColumns: SiColumn<FingerprintRow>[] = [
     numeric: true,
     value: (row) => formatDuration(row.p95Ms)
   },
-  { key: 'maxMs', label: '最大', numeric: true, value: (row) => formatDuration(row.maxMs) }
+  { key: 'maxMs', label: '最大', numeric: true, value: (row) => formatDuration(row.maxMs) },
+  { key: 'action', label: '', stopRowClick: true }
 ]
 
 const recentColumns: SiColumn<RecentRow>[] = [
@@ -252,7 +308,8 @@ const recentColumns: SiColumn<RecentRow>[] = [
   },
   { key: 'durationMs', label: '耗时', numeric: true, value: (row) => formatDuration(row.durationMs) },
   { key: 'status', label: '状态' },
-  { key: 'traceId', label: 'Trace' }
+  { key: 'traceId', label: 'Trace' },
+  { key: 'action', label: '', stopRowClick: true }
 ]
 
 const shortId = (id: string) => {
@@ -267,9 +324,20 @@ const syncQueryToRoute = () => {
     path: '/jdbc',
     query: mergeQuery(route.query, {
       ...windowQueryPatch(observationWindow.value),
-      service: selectedService.value || null
+      service: selectedService.value || null,
+      fingerprint: focusFingerprint.value || null
     })
   })
+}
+
+const applyFingerprintFromRoute = () => {
+  const raw = route.query.fingerprint
+  focusFingerprint.value = typeof raw === 'string' ? raw.trim() : ''
+}
+
+const clearFingerprintFocus = () => {
+  focusFingerprint.value = ''
+  syncQueryToRoute()
 }
 
 const onWindowChange = () => {
@@ -294,19 +362,32 @@ const recentKey = (row: RecentRow, index: number) => `${row.spanId || row.traceI
 const fingerprintKey = (row: FingerprintRow, index: number) =>
   `${row.fingerprint}-${row.remoteService}-${index}`
 
+const fingerprintRowClass = (row: FingerprintRow) =>
+  focusFingerprint.value && row.fingerprint === focusFingerprint.value
+    ? 'si-jdbc-row--focus'
+    : undefined
+
+const recentRowClass = (row: RecentRow) =>
+  focusFingerprint.value && normalizeSqlFingerprint(row.sql) === focusFingerprint.value
+    ? 'si-jdbc-row--focus'
+    : undefined
+
 const onFingerprintClick = (row: FingerprintRow) => {
-  goTrace(row.sampleTraceId, row.sampleSpanId)
+  goTrace(row.sampleTraceId, row.sampleSpanId, row.fingerprint)
 }
 
 const onRecentClick = (row: RecentRow) => {
-  goTrace(row.traceId, row.spanId)
+  goTrace(row.traceId, row.spanId, normalizeSqlFingerprint(row.sql))
 }
 
-const goTrace = (traceId: string, spanId?: string) => {
+const goTrace = (traceId: string, spanId?: string, fingerprint?: string) => {
   if (!traceId) return
+  const fp = (fingerprint || focusFingerprint.value || '').trim()
   const query = mergeQuery({}, {
     ...windowQueryPatch(observationWindow.value),
-    ...(spanId ? { span: spanId } : {})
+    ret: 'jdbc',
+    ...(spanId ? { span: spanId } : {}),
+    ...(fp ? { fingerprint: fp } : {})
   })
   router.push({
     name: 'trace-detail',
@@ -345,22 +426,45 @@ onMounted(async () => {
   // 仅 URL 显式带 service 时筛选；不沿用链路/拓扑的 session 服务（常为入口 Consumer）
   selectedService.value =
     typeof route.query.service === 'string' ? route.query.service.trim() : ''
+  applyFingerprintFromRoute()
   persistWindow(observationWindow.value)
   const q = route.query
   const hasWindowInUrl =
   (typeof q.hours === 'string' && q.hours !== '') ||
   (typeof q.from === 'string' && q.from !== '' && typeof q.to === 'string' && q.to !== '')
-  if (!hasWindowInUrl) {
+  if (!hasWindowInUrl || focusFingerprint.value) {
     syncQueryToRoute()
   }
   await loadServices()
   await load()
 })
+
+watch(
+  () => route.query.fingerprint,
+  () => {
+    applyFingerprintFromRoute()
+  }
+)
 </script>
 
 <style scoped>
 .si-jdbc__alert {
   margin-bottom: 0.75rem;
+}
+
+.si-jdbc-focus-fp {
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
+.si-jdbc-fp-miss {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--si-muted, #6b7f76);
+}
+
+:deep(.si-jdbc-row--focus) {
+  background: color-mix(in srgb, var(--si-brand-soft) 55%, transparent) !important;
 }
 
 .si-jdbc-empty__text {
