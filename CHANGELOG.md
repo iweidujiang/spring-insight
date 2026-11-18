@@ -15,6 +15,8 @@
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-11-18
+
 ### 变更
 - **SQL 指纹聚合**：数据库页按归一化后的语句形态汇总次数、错误与 p95，可点进样例链路查看具体 SQL
 - **链路瀑布更易读**：可只看关键路径；异常 Span 有脉冲提示；JDBC 行直接显示 SQL 预览；点击时间线后可用方向键切换 Span
@@ -26,6 +28,17 @@
 - **数据库与链路互跳**：指纹 / 最近 SQL 可打开样例链路；链路详情选中带 SQL 的 Span 可跳回「同类 SQL」列表；返回可回到数据库页并保持指纹筛选
 - **加载与空态统一**：仪表盘、对比、链路、服务详情、通知等页统一用同一套加载与空态样式；局部区域可用紧凑加载
 - **贡献指南**：仓库提供贡献说明与 Issue / PR 模板，便于按 Agent / Server / 控制台分别反馈与提交
+
+### 兼容
+- 可直接升级 Server；本版无新发 Agent，继续配套 Starter **`0.6.0`**
+- JVM 曲线仍需 Agent / Starter **`0.6.0`** 并开启 `spring.insight.jvm-metrics.enabled=true`
+
+### 坐标 / 镜像
+| 项 | 值 |
+|----|-----|
+| 配套 Starter | `0.6.0` |
+| Server 镜像 | `ghcr.io/iweidujiang/spring-insight-server:2.1.0` |
+| Release jar | `insight-server-2.1.0.jar` |
 
 ## [2.0.0] — 2026-11-11
 
