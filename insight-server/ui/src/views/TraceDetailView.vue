@@ -13,6 +13,7 @@
             size="small"
             class="si-trace-detail__copy-btn"
             title="复制"
+            aria-label="复制 Trace ID"
             @click="copyTraceId"
           >
             <el-icon><CopyDocument /></el-icon>
