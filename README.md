@@ -144,10 +144,14 @@ KPI、时段摘要、健康 / 慢服务、库与缓存卡片、最近请求
 
 [掘金专栏](https://juejin.cn/column/7593077945015926811) · [CSDN 专栏](https://blog.csdn.net/iweidujiang/category_13115295.html?fromshare=blogcolumn&sharetype=blogcolumn&sharerId=13115295&sharerefer=PC&sharesource=iweidujiang&sharefrom=from_link) · [微信公众号](https://mp.weixin.qq.com/mp/appmsgalbum?__biz=MzI1MDU1MjkxOQ==&action=getalbum&album_id=4333089336431689750&scene=126&sessionid=#wechat_redirect)
 
+## 参与贡献
+
+开发、提 Issue / PR 请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。缺陷与功能建议请使用仓库提供的 Issue 模板。
+
 ## 许可
 
 [Apache License 2.0](LICENSE)
 
 ---
 
-欢迎 Star；问题与建议请开 Issue。
+欢迎 Star；问题与建议请开 [Issue](https://github.com/iweidujiang/spring-insight/issues)。

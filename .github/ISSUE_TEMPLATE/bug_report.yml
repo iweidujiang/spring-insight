@@ -1,0 +1,78 @@
+name: 缺陷报告
+description: Server / Agent / 控制台表现与预期不符
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先确认是否已用最新发版或本仓库 `main` 复现。日志与配置请脱敏。
+  - type: dropdown
+    id: area
+    attributes:
+      label: 影响范围
+      description: 可多选
+      multiple: true
+      options:
+        - Agent / Starter
+        - Server（API / 存储 / 告警）
+        - 控制台 UI
+        - 文档 / Compose
+        - 不确定
+    validations:
+      required: true
+  - type: input
+    id: server_version
+    attributes:
+      label: Server 版本
+      description: 镜像 tag、jar 名或约 `2.x.x`
+      placeholder: "例如 2.0.0 或 2.1.0-SNAPSHOT"
+    validations:
+      required: true
+  - type: input
+    id: agent_version
+    attributes:
+      label: Agent / Starter 版本
+      description: 未接入可填「无」
+      placeholder: "例如 0.6.0"
+    validations:
+      required: true
+  - type: input
+    id: boot_version
+    attributes:
+      label: 业务 Spring Boot 版本
+      placeholder: "例如 3.5.x / 2.7.x / 无业务侧"
+    validations:
+      required: false
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: 现象
+      description: 实际看到了什么
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望
+      description: 你认为应该怎样
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 尽量最小可复现
+      placeholder: |
+        1. 启动 …
+        2. 配置 …
+        3. 请求 …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志 / 截图说明
+      description: 粘贴关键片段即可；不要贴密钥、Token、完整生产数据
+    validations:
+      required: false
