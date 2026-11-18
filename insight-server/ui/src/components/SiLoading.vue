@@ -1,7 +1,12 @@
 <script setup lang="ts">
-defineProps<{
-  text?: string
-}>()
+withDefaults(
+  defineProps<{
+    text?: string
+    /** 区块内嵌加载（更矮），用于卡片 / JVM 等局部区域 */
+    compact?: boolean
+  }>(),
+  { compact: false }
+)
 </script>
 
 <template>
@@ -9,6 +14,7 @@ defineProps<{
   <div
     v-loading="true"
     class="si-loading"
+    :class="{ 'si-loading--compact': compact }"
     :element-loading-text="text || ''"
     element-loading-background="transparent"
     role="status"
@@ -19,6 +25,10 @@ defineProps<{
 <style scoped>
 .si-loading {
   min-height: 200px;
+}
+
+.si-loading--compact {
+  min-height: 96px;
 }
 
 .si-loading :deep(.el-loading-spinner .el-loading-text) {

@@ -13,15 +13,14 @@
       </el-button>
     </SiPageHeader>
 
-    <el-alert
+    <SiAlert
       v-if="message"
       class="si-settings__alert"
-      :type="messageOk ? 'success' : 'error'"
-      :title="message"
-      :closable="false"
-      show-icon
+      :tone="messageOk ? 'success' : 'danger'"
       role="status"
-    />
+    >
+      {{ message }}
+    </SiAlert>
 
     <SiLoading v-if="loading" text="加载设置…" />
 
@@ -633,6 +632,7 @@ import {
   View, Promotion, MagicStick, Aim, Coin, DocumentChecked,
   Message, ChatDotRound, ChatDotSquare, Link
 } from '@element-plus/icons-vue'
+import SiAlert from '../components/SiAlert.vue'
 import SiFormBlock from '../components/SiFormBlock.vue'
 import SiFormField from '../components/SiFormField.vue'
 import SiLoading from '../components/SiLoading.vue'

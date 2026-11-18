@@ -103,12 +103,13 @@
           </el-select>
         </div>
         <p v-if="jvmLatestMeta" class="si-svc-detail__jvm-meta">{{ jvmLatestMeta }}</p>
-        <div v-if="jvmLoading" class="si-svc-detail__card-empty">加载 JVM 指标…</div>
-        <div v-else-if="!jvmFound" class="si-svc-detail__card-empty si-svc-detail__jvm-empty">
-          暂无 JVM 指标。在业务服务开启
-          <code>spring.insight.jvm-metrics.enabled=true</code>
-          并上报后，这里会显示堆、GC 与线程曲线。
-        </div>
+        <SiLoading v-if="jvmLoading" compact text="正在加载 JVM 指标…" />
+        <SiEmpty v-else-if="!jvmFound" :icon="Monitor">
+          <p>暂无 JVM 指标。在业务服务开启
+            <code>spring.insight.jvm-metrics.enabled=true</code>
+            并上报后，这里会显示堆、GC 与线程曲线。
+          </p>
+        </SiEmpty>
         <div v-else class="si-svc-detail__jvm-charts">
           <div class="si-svc-detail__jvm-chart-card">
             <div class="si-svc-detail__jvm-chart-label">堆内存</div>
@@ -218,10 +219,11 @@
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts'
-import { ArrowLeft, Box, Refresh } from '@element-plus/icons-vue'
+import { ArrowLeft, Box, Monitor, Refresh } from '@element-plus/icons-vue'
 import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
+import SiEmpty from '../components/SiEmpty.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiStatusBadge from '../components/SiStatusBadge.vue'
 import SiTimeRange from '../components/SiTimeRange.vue'

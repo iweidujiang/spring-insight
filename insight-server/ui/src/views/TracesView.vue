@@ -196,11 +196,10 @@
             </el-button>
           </template>
           <template #empty>
-            <div class="si-trace-empty">
-              <el-icon class="si-trace-empty__icon"><InfoFilled /></el-icon>
-              <p class="si-trace-empty__text">{{ emptyNoMatchMessage(hours) }}</p>
-              <p class="si-trace-empty__hint">{{ EMPTY_HINT_RELAX }}</p>
-            </div>
+            <SiEmpty :icon="InfoFilled">
+              <p>{{ emptyNoMatchMessage(hours) }}</p>
+              <p class="si-trace-empty-hint">{{ EMPTY_HINT_RELAX }}</p>
+            </SiEmpty>
           </template>
         </SiDataTable>
     </el-card>
@@ -214,6 +213,7 @@ import { Download, Clock, Search, Refresh, Grid, CopyDocument, InfoFilled } from
 import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
+import SiEmpty from '../components/SiEmpty.vue'
 import SiFilterBar from '../components/SiFilterBar.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
@@ -550,25 +550,8 @@ onUnmounted(() => {
   gap: 0.5rem;
 }
 
-.si-trace-empty {
-  padding: 1.5rem 0;
-  text-align: center;
-}
-
-.si-trace-empty__icon {
-  font-size: 2rem;
-  color: var(--si-muted);
-  margin-bottom: 0.5rem;
-}
-
-.si-trace-empty__text {
-  margin: 0;
-  font-size: 0.95rem;
-  color: var(--si-ink-soft);
-}
-
-.si-trace-empty__hint {
-  margin: 0.25rem 0 0;
+.si-trace-empty-hint {
+  margin: 0.35rem 0 0;
   font-size: 0.8rem;
   color: var(--si-muted);
 }

@@ -39,13 +39,11 @@
       <div
         class="notification-list"
         :class="{ 'is-loading': loading && notifications.length === 0 }"
-        v-loading="loading && notifications.length === 0"
-        element-loading-text="加载中…"
-        element-loading-background="transparent"
       >
-        <div v-if="!loading && notifications.length === 0" class="notification-empty">
-          <el-empty description="暂无需要关注的事项" :image-size="60" />
-        </div>
+        <SiLoading v-if="loading && notifications.length === 0" compact text="加载中…" />
+        <SiEmpty v-else-if="notifications.length === 0" :icon="Bell">
+          <p>暂无需要关注的事项</p>
+        </SiEmpty>
         <div
           v-for="notification in notifications"
           :key="notification.id"
@@ -73,8 +71,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Bell } from '@element-plus/icons-vue'
 import { ApiService } from '../services/ApiService'
 import { getUiToken } from '../services/AuthService'
+import SiEmpty from './SiEmpty.vue'
+import SiLoading from './SiLoading.vue'
 
 interface Notification {
   id: string
@@ -329,18 +330,6 @@ onUnmounted(() => {
 
 .notification-list.is-loading {
   min-height: 140px;
-}
-
-.notification-list :deep(.el-loading-text) {
-  color: var(--si-muted);
-}
-
-.notification-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
 }
 
 .notification-item {

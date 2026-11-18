@@ -17,9 +17,7 @@
       {{ explainHint }}
     </SiAlert>
 
-    <div v-if="loading" class="si-compare__loading">
-      <el-icon is-loading><Loading /></el-icon><span class="si-compare__loading-text">加载对比数据…</span>
-    </div>
+    <SiLoading v-if="loading" text="正在加载对比数据…" />
 
     <template v-else-if="leftSpans && rightSpans">
       <div class="si-compare__list-bar">
@@ -125,16 +123,23 @@
         </div>
       </el-card>
     </template>
+
+    <SiEmpty v-else-if="!loadError" :icon="Grid">
+      <p>{{ hint || '请从链路列表勾选两条 Trace 再对比' }}</p>
+      <el-button type="primary" plain size="small" class="mt-2" @click="goBack">返回列表</el-button>
+    </SiEmpty>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Grid, Loading, Lightning, Sort, Refresh, ArrowDown, ArrowRight } from '@element-plus/icons-vue'
+import { ArrowLeft, Grid, Lightning, Sort, Refresh, ArrowDown, ArrowRight } from '@element-plus/icons-vue'
 import { ApiService, type AiCompareResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
+import SiEmpty from '../components/SiEmpty.vue'
+import SiLoading from '../components/SiLoading.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import type { SiColumn } from '../components/siTable'
 import {
@@ -475,19 +480,6 @@ onMounted(async () => {
   align-items: center;
   gap: 0.4rem;
   color: var(--si-ink) !important;
-}
-
-.si-compare__loading {
-  padding: 2rem;
-  text-align: center;
-  color: var(--si-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.si-compare__loading-text {
-  margin-left: 0.5rem;
 }
 
 .si-compare__text--danger {

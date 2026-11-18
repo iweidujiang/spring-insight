@@ -98,13 +98,10 @@
     <SiLoading v-if="loading" text="加载中..." />
 
     <template v-else>
-      <el-card v-if="spans.length === 0" class="si-trace-empty-card" shadow="never">
-        <div class="si-trace-empty-state">
-          <el-icon class="si-trace-empty-state__icon"><InfoFilled /></el-icon>
-          <p class="si-trace-empty-state__text">{{ TRACE_NOT_FOUND }}</p>
-          <p class="si-trace-empty-state__hint">{{ EMPTY_HINT_RELAX }}</p>
-        </div>
-      </el-card>
+      <SiEmpty v-if="spans.length === 0" :icon="InfoFilled">
+        <p>{{ TRACE_NOT_FOUND }}</p>
+        <p class="si-trace-empty-hint">{{ EMPTY_HINT_RELAX }}</p>
+      </SiEmpty>
 
       <template v-else>
         <!-- 摘要细条：高度让给瀑布 -->
@@ -313,6 +310,7 @@ import {
 import { ApiService, type AiExplainResult } from '../services/ApiService'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
+import SiEmpty from '../components/SiEmpty.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiDataTable from '../components/SiDataTable.vue'
 import type { SiColumn } from '../components/siTable'
@@ -743,26 +741,10 @@ onMounted(async () => {
   vertical-align: baseline;
 }
 
-.si-trace-empty-state {
-  text-align: center;
-  color: var(--si-muted);
-  padding: 2rem 0;
-}
-
-.si-trace-empty-state__icon {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
-.si-trace-empty-state__text {
-  margin: 0 0 0.25rem;
-  font-size: 0.95rem;
-}
-
-.si-trace-empty-state__hint {
-  margin: 0;
+.si-trace-empty-hint {
+  margin: 0.35rem 0 0;
   font-size: 0.8rem;
+  color: var(--si-muted);
 }
 
 .si-trace-error-msg {

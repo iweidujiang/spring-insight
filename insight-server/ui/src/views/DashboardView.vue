@@ -85,10 +85,7 @@
       </div>
     </header>
 
-    <div v-if="loading" class="si-dashboard__loading">
-      <el-icon class="is-loading" :size="20"><Loading /></el-icon>
-      <span class="si-dashboard__loading-text">加载中…</span>
-    </div>
+    <SiLoading v-if="loading" text="正在加载仪表盘…" />
 
     <SiAlert v-if="loadError" tone="danger" class="si-dashboard__alert">{{ loadError }}</SiAlert>
     <SiAlert v-else-if="queryBudgetHint" tone="warning" class="si-dashboard__alert">{{ queryBudgetHint }}</SiAlert>
@@ -459,6 +456,7 @@ import * as echarts from 'echarts'
 import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
+import SiLoading from '../components/SiLoading.vue'
 import SiOnboardingCard from '../components/SiOnboardingCard.vue'
 import SiTimeRange from '../components/SiTimeRange.vue'
 import SiDataTable from '../components/SiDataTable.vue'
@@ -1787,25 +1785,6 @@ onUnmounted(() => {
   height: 36px;
   display: inline-flex;
   align-items: center;
-}
-
-.si-dashboard__loading {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--si-muted);
-  font-size: 0.95rem;
-}
-
-.si-dashboard__loading i {
-  color: var(--si-brand);
-  font-size: 1.75rem;
-}
-
-.si-dashboard__loading-text {
-  margin-left: 0.5rem;
 }
 
 .si-dashboard__alert {
