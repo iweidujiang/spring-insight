@@ -96,10 +96,10 @@
               placeholder="Trace ID / 服务 / 操作名"
               @keyup.enter="onFilterChange"
             />
-            <el-button type="primary" :disabled="loading" title="搜索" @click="onFilterChange">
+            <el-button type="primary" :disabled="loading" title="搜索" aria-label="搜索" @click="onFilterChange">
               <el-icon><Search /></el-icon>
             </el-button>
-            <el-button :disabled="loading" title="重置" @click="resetFilters">
+            <el-button :disabled="loading" title="重置" aria-label="重置筛选" @click="resetFilters">
               <el-icon><Refresh /></el-icon>
             </el-button>
           </div>
@@ -191,7 +191,7 @@
             </el-tag>
           </template>
           <template #cell-act="{ row }">
-            <el-button size="small" title="复制 Trace ID" @click="copyTraceId(row.traceId)">
+            <el-button size="small" title="复制 Trace ID" aria-label="复制 Trace ID" @click="copyTraceId(row.traceId)">
               <el-icon><CopyDocument /></el-icon>
             </el-button>
           </template>
