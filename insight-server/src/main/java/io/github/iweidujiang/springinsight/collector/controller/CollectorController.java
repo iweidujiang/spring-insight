@@ -1,12 +1,14 @@
 package io.github.iweidujiang.springinsight.collector.controller;
 
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
+import io.github.iweidujiang.springinsight.collector.model.AgentHeartbeatRequest;
 import io.github.iweidujiang.springinsight.collector.model.CollectorRequest;
 import io.github.iweidujiang.springinsight.collector.model.JvmMetricBatchRequest;
 import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorService;
 import io.github.iweidujiang.springinsight.server.CompanionAgentVersion;
 import io.github.iweidujiang.springinsight.server.ServerVersion;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
+import io.github.iweidujiang.springinsight.server.presence.AgentHeartbeatStore;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -42,6 +44,7 @@ public class CollectorController {
     private final TraceSpanCollectorService traceSpanCollectorService;
     private final TraceSpanPersistenceService persistenceService;
     private final JvmMetricQueryService jvmMetricQueryService;
+    private final AgentHeartbeatStore agentHeartbeatStore;
     private final String serverVersion;
     private final String agentVersion;
 
@@ -49,17 +52,20 @@ public class CollectorController {
      * @param traceSpanCollectorService 采集服务
      * @param persistenceService        持久化门面
      * @param jvmMetricQueryService     JVM 指标入库
+     * @param agentHeartbeatStore       Agent 心跳缓存
      * @param environment               用于解析版本
      * @param buildPropertiesProvider   Maven build-info（可选）
      */
     public CollectorController(TraceSpanCollectorService traceSpanCollectorService,
                                TraceSpanPersistenceService persistenceService,
                                JvmMetricQueryService jvmMetricQueryService,
+                               AgentHeartbeatStore agentHeartbeatStore,
                                Environment environment,
                                ObjectProvider<BuildProperties> buildPropertiesProvider) {
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.persistenceService = persistenceService;
         this.jvmMetricQueryService = jvmMetricQueryService;
+        this.agentHeartbeatStore = agentHeartbeatStore;
         this.serverVersion = ServerVersion.resolve(environment, buildPropertiesProvider.getIfAvailable());
         this.agentVersion = CompanionAgentVersion.resolve(environment);
     }
@@ -111,6 +117,37 @@ public class CollectorController {
                     TraceSpanCollectorService.CollectorResponse.error("服务器内部错误: " + e.getMessage());
 
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * Agent 存活心跳上报。
+     * <p>
+     * 仅记录最近活跃时间；控制台在线/沉默是否合并心跳由后续版本完善。
+     * </p>
+     *
+     * @param request 心跳请求
+     * @return 受理结果
+     */
+    @PostMapping("/agent/heartbeat")
+    public ResponseEntity<?> collectAgentHeartbeat(@Valid @RequestBody AgentHeartbeatRequest request) {
+        log.debug("[Collector控制器] 收到 Agent 心跳: {}", request.getSummary());
+        try {
+            Instant at = request.getTimestamp() != null ? request.getTimestamp() : Instant.now();
+            agentHeartbeatStore.record(request.getServiceName(), at.toEpochMilli());
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("success", true);
+            body.put("serviceName", request.getServiceName());
+            body.put("serviceInstance", request.getServiceInstance());
+            body.put("timestamp", at);
+            return ResponseEntity.accepted().body(body);
+        } catch (Exception e) {
+            log.error("[Collector控制器] 心跳处理异常: {}, 异常: {}",
+                    request.getSummary(), e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "success", false,
+                    "message", "服务器内部错误: " + e.getMessage()
+            ));
         }
     }
 
@@ -223,6 +260,7 @@ public class CollectorController {
                         "health", "/api/v1/health",
                         "batchSpans", "/api/v1/spans/batch",
                         "batchJvmMetrics", "/api/v1/jvm-metrics/batch",
+                        "agentHeartbeat", "/api/v1/agent/heartbeat",
                         "singleSpan", "/api/v1/spans/single",
                         "stats", "/api/v1/stats"
                 )

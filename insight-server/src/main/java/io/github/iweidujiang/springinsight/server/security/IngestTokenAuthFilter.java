@@ -60,7 +60,9 @@ public class IngestTokenAuthFilter extends OncePerRequestFilter {
      * @return 是否为需要 ingest token 的上报接口
      */
     private static boolean isIngestPath(String path) {
-        return path.startsWith("/api/v1/spans") || path.startsWith("/api/v1/jvm-metrics");
+        return path.startsWith("/api/v1/spans")
+                || path.startsWith("/api/v1/jvm-metrics")
+                || path.startsWith("/api/v1/agent/heartbeat");
     }
 
     /**

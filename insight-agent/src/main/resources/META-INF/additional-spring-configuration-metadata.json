@@ -5,9 +5,29 @@
       "type": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightJvmMetricsProperties",
       "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightJvmMetricsProperties",
       "description": "JVM 指标采集（实验；默认关闭，因 Server 暂无专用存储/UI）。"
+    },
+    {
+      "name": "spring.insight.heartbeat",
+      "type": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightHeartbeatProperties",
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightHeartbeatProperties",
+      "description": "Agent 存活心跳（低流量时仍向监测中心报活跃；默认开启）。"
     }
   ],
   "properties": [
+    {
+      "name": "spring.insight.heartbeat.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否定期上报存活心跳。默认 true；需已配置 spring.insight.server-url。",
+      "defaultValue": true,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightHeartbeatProperties"
+    },
+    {
+      "name": "spring.insight.heartbeat.interval-ms",
+      "type": "java.lang.Integer",
+      "description": "心跳间隔（毫秒）。默认 60000。",
+      "defaultValue": 60000,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightHeartbeatProperties"
+    },
     {
       "name": "spring.insight.ingest-token",
       "type": "java.lang.String",

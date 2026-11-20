@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
+import io.github.iweidujiang.springinsight.agent.model.AgentHeartbeatReport;
 import io.github.iweidujiang.springinsight.agent.model.JvmMetric;
 import io.github.iweidujiang.springinsight.agent.model.JvmMetricBatchReport;
 import io.github.iweidujiang.springinsight.agent.model.TraceBatchReport;
@@ -17,6 +18,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 将批量 TraceSpan 通过 HTTP POST 上报到独立 Insight Server。
@@ -36,6 +38,9 @@ public class HttpInsightBatchSink implements InsightBatchSink {
 
     /** 相对 Server 根地址的 JVM 指标批量上报路径 */
     private static final String JVM_METRICS_BATCH_PATH = "/api/v1/jvm-metrics/batch";
+
+    /** 相对 Server 根地址的 Agent 存活心跳路径 */
+    private static final String AGENT_HEARTBEAT_PATH = "/api/v1/agent/heartbeat";
 
     /** 单次 HTTP 连接/请求超时，避免拖垮业务异步上报线程 */
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(5);
@@ -66,6 +71,16 @@ public class HttpInsightBatchSink implements InsightBatchSink {
     private final String jvmMetricsBatchUrl;
 
     /**
+     * Agent 心跳完整上报 URL
+     */
+    private final String agentHeartbeatUrl;
+
+    /**
+     * 心跳连续失败是否已打过限频 WARN（避免每分钟刷屏）
+     */
+    private final AtomicBoolean heartbeatFailureWarned = new AtomicBoolean(false);
+
+    /**
      * 使用内置上报专用 ObjectMapper（支持 {@link java.time.Instant} 等）。
      *
      * @param properties Insight 配置（须已配置非空 {@code server-url}）
@@ -88,10 +103,12 @@ public class HttpInsightBatchSink implements InsightBatchSink {
         }
         this.spansBatchUrl = base + SPANS_BATCH_PATH;
         this.jvmMetricsBatchUrl = base + JVM_METRICS_BATCH_PATH;
+        this.agentHeartbeatUrl = base + AGENT_HEARTBEAT_PATH;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(REQUEST_TIMEOUT)
                 .build();
-        log.info("[HTTP上报] InsightBatchSink 已启用，目标={} / {}", this.spansBatchUrl, this.jvmMetricsBatchUrl);
+        log.info("[HTTP上报] InsightBatchSink 已启用，目标={} / {} / {}",
+                this.spansBatchUrl, this.jvmMetricsBatchUrl, this.agentHeartbeatUrl);
     }
 
     /**
@@ -205,6 +222,63 @@ public class HttpInsightBatchSink implements InsightBatchSink {
             log.warn("[HTTP上报] JVM 指标上报被中断: size={}", metrics.size());
         } catch (Exception e) {
             log.warn("[HTTP上报] JVM 指标批次异常: size={}, error={}", metrics.size(), e.getMessage());
+        }
+    }
+
+    /**
+     * 将存活心跳 POST 到 Insight Server。
+     * <p>
+     * 失败只打日志（404 等限频 WARN），不向调用方抛出。
+     * </p>
+     *
+     * @param heartbeat 心跳包；null 时忽略
+     */
+    @Override
+    public void acceptHeartbeat(AgentHeartbeatReport heartbeat) {
+        if (heartbeat == null) {
+            return;
+        }
+        if (heartbeat.getServiceName() == null || heartbeat.getServiceName().isBlank()) {
+            log.debug("[HTTP上报] 心跳缺少 serviceName，跳过");
+            return;
+        }
+        try {
+            byte[] body = objectMapper.writeValueAsBytes(heartbeat);
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(agentHeartbeatUrl))
+                    .timeout(REQUEST_TIMEOUT)
+                    .header("Content-Type", "application/json");
+            String token = properties.normalizedIngestToken();
+            if (!token.isEmpty()) {
+                builder.header("X-Insight-Token", token);
+            }
+            HttpRequest request = builder.POST(HttpRequest.BodyPublishers.ofByteArray(body)).build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            int status = response.statusCode();
+            if (status >= 200 && status < 300) {
+                heartbeatFailureWarned.set(false);
+                log.debug("[HTTP上报] 心跳成功: service={}, status={}", heartbeat.getServiceName(), status);
+            } else {
+                String msg = String.format("[HTTP上报] 心跳失败: service=%s, status=%s, body=%s",
+                        heartbeat.getServiceName(), status, abbreviate(response.body()));
+                if (heartbeatFailureWarned.compareAndSet(false, true)) {
+                    log.warn(msg);
+                } else {
+                    log.debug(msg);
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("[HTTP上报] 心跳被中断: service={}", heartbeat.getServiceName());
+        } catch (Exception e) {
+            String msg = String.format("[HTTP上报] 心跳异常: service=%s, error=%s",
+                    heartbeat.getServiceName(), e.getMessage());
+            if (heartbeatFailureWarned.compareAndSet(false, true)) {
+                log.warn(msg);
+            } else {
+                log.debug(msg);
+            }
         }
     }
 

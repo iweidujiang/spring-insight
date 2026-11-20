@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.agent.sink;
 
+import io.github.iweidujiang.springinsight.agent.model.AgentHeartbeatReport;
 import io.github.iweidujiang.springinsight.agent.model.JvmMetric;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 
@@ -30,4 +31,13 @@ public interface InsightBatchSink {
      * @param metrics 本批 JVM 指标
      */
     void acceptJvmMetrics(List<JvmMetric> metrics);
+
+    /**
+     * 接收一次存活心跳；默认空实现，便于旧 Sink / 测试桩无需改动。
+     *
+     * @param heartbeat 心跳包；null 时实现方可忽略
+     */
+    default void acceptHeartbeat(AgentHeartbeatReport heartbeat) {
+        // 可选能力：未实现的 Sink 静默跳过
+    }
 }

@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.agent.autoconfigure;
 
+import io.github.iweidujiang.springinsight.agent.collector.AgentHeartbeatReporter;
 import io.github.iweidujiang.springinsight.agent.collector.AsyncSpanReporter;
 import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsCollector;
 import io.github.iweidujiang.springinsight.agent.collector.JvmMetricsReporter;
@@ -10,11 +11,13 @@ import io.github.iweidujiang.springinsight.agent.sink.HttpInsightBatchSink;
 import io.github.iweidujiang.springinsight.agent.sink.InsightBatchSink;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.autoconfigure.condition.AnyNestedCondition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -32,7 +35,11 @@ import org.springframework.util.StringUtils;
  */
 @Slf4j
 @Configuration
-@EnableConfigurationProperties({InsightProperties.class, InsightJvmMetricsProperties.class})
+@EnableConfigurationProperties({
+        InsightProperties.class,
+        InsightJvmMetricsProperties.class,
+        InsightHeartbeatProperties.class
+})
 @ConditionalOnProperty(prefix = "spring.insight", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class InsightBeanConfiguration {
 
@@ -42,18 +49,24 @@ public class InsightBeanConfiguration {
     /** JVM 指标子配置 */
     private final InsightJvmMetricsProperties jvmMetricsProperties;
 
+    /** 心跳子配置 */
+    private final InsightHeartbeatProperties heartbeatProperties;
+
     /**
      * 注入配置并解析服务名，再做校验。
      *
      * @param properties            {@code spring.insight.*}
      * @param jvmMetricsProperties  {@code spring.insight.jvm-metrics.*}
+     * @param heartbeatProperties   {@code spring.insight.heartbeat.*}
      * @param environment           用于读取 {@code spring.application.name}
      */
     public InsightBeanConfiguration(InsightProperties properties,
                                     InsightJvmMetricsProperties jvmMetricsProperties,
+                                    InsightHeartbeatProperties heartbeatProperties,
                                     Environment environment) {
         this.properties = properties;
         this.jvmMetricsProperties = jvmMetricsProperties;
+        this.heartbeatProperties = heartbeatProperties;
         // service-name 空时回退到 spring.application.name；仍空则只警告、不中断启动
         properties.resolveServiceNameFromEnvironment(environment);
         if (!properties.validate()) {
@@ -208,12 +221,44 @@ public class InsightBeanConfiguration {
     }
 
     /**
-     * 仅在开启 JVM 指标时启用调度，驱动 {@link JvmMetricsReporter} 定时采集。
+     * 存活心跳报告器：需开启心跳且已配置 server-url。
+     *
+     * @param batchSinkProvider HTTP Sink（无 server-url 时本 Bean 不装配）
+     * @return 心跳报告器
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "spring.insight.heartbeat", name = "enabled", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(prefix = "spring.insight", name = "server-url")
+    public AgentHeartbeatReporter agentHeartbeatReporter(ObjectProvider<InsightBatchSink> batchSinkProvider) {
+        return new AgentHeartbeatReporter(properties, batchSinkProvider, heartbeatProperties.getIntervalMs());
+    }
+
+    /**
+     * 开启 JVM 指标或心跳时启用调度，驱动定时上报。
      */
     @Configuration
     @EnableScheduling
-    @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true")
-    static class JvmMetricsSchedulingConfiguration {
+    @Conditional(SchedulingNeededCondition.class)
+    static class InsightSchedulingConfiguration {
+    }
+
+    /**
+     * JVM 指标开启，或心跳开启（默认 true）时需要 {@code @EnableScheduling}。
+     */
+    static class SchedulingNeededCondition extends AnyNestedCondition {
+
+        SchedulingNeededCondition() {
+            super(ConfigurationPhase.REGISTER_BEAN);
+        }
+
+        @ConditionalOnProperty(prefix = "spring.insight.jvm-metrics", name = "enabled", havingValue = "true")
+        static class JvmMetricsOn {
+        }
+
+        @ConditionalOnProperty(prefix = "spring.insight.heartbeat", name = "enabled", havingValue = "true", matchIfMissing = true)
+        static class HeartbeatOn {
+        }
     }
 
     /**
