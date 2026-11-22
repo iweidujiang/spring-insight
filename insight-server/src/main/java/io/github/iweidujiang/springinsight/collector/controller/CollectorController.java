@@ -8,6 +8,7 @@ import io.github.iweidujiang.springinsight.collector.service.TraceSpanCollectorS
 import io.github.iweidujiang.springinsight.server.CompanionAgentVersion;
 import io.github.iweidujiang.springinsight.server.ServerVersion;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
+import io.github.iweidujiang.springinsight.server.presence.AgentCompatHint;
 import io.github.iweidujiang.springinsight.server.presence.AgentHeartbeatStore;
 import io.github.iweidujiang.springinsight.server.presence.ReportedAgentMetaStore;
 import io.github.iweidujiang.springinsight.server.presence.ReportedAgentMetaSupport;
@@ -92,7 +93,10 @@ public class CollectorController {
         body.put("serverVersion", serverVersion);
         body.put("agentVersion", agentVersion);
         body.put("recommendedAgentVersion", agentVersion);
-        body.put("reportedAgents", reportedAgentMetaStore.listRows());
+        Map<String, Object> compatibility = AgentCompatHint.build(
+                serverVersion, agentVersion, reportedAgentMetaStore.listRows());
+        body.put("compatibility", compatibility);
+        body.put("reportedAgents", compatibility.get("reportedAgents"));
         body.put("storageMode", persistenceService.getStorageMode());
         body.put("storedSpans", persistenceService.getStoredSpanCount());
         body.put("evictedSpans", persistenceService.getEvictedSpanCount());

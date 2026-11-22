@@ -5,8 +5,14 @@ import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetectionResult
 import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetector;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
+import io.github.iweidujiang.springinsight.server.CompanionAgentVersion;
+import io.github.iweidujiang.springinsight.server.ServerVersion;
+import io.github.iweidujiang.springinsight.server.presence.AgentCompatHint;
 import io.github.iweidujiang.springinsight.server.presence.ReportedAgentMetaStore;
 import io.github.iweidujiang.springinsight.server.presence.ServicePresenceService;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.info.BuildProperties;
+import org.springframework.core.env.Environment;
 import io.github.iweidujiang.springinsight.server.topology.TopologyDiffService;
 import io.github.iweidujiang.springinsight.storage.QueryWindow;
 import io.github.iweidujiang.springinsight.storage.SnapshotQueryTooLargeException;
@@ -54,6 +60,8 @@ public class CollectorApiController {
     private final JvmMetricQueryService jvmMetricQueryService;
     private final ServicePresenceService servicePresenceService;
     private final ReportedAgentMetaStore reportedAgentMetaStore;
+    private final String serverVersion;
+    private final String recommendedAgentVersion;
 
     public CollectorApiController(TraceSpanPersistenceService traceSpanPersistenceService,
                                   TraceSpanCollectorService traceSpanCollectorService,
@@ -65,7 +73,9 @@ public class CollectorApiController {
                                   TopologyDiffService topologyDiffService,
                                   JvmMetricQueryService jvmMetricQueryService,
                                   ServicePresenceService servicePresenceService,
-                                  ReportedAgentMetaStore reportedAgentMetaStore) {
+                                  ReportedAgentMetaStore reportedAgentMetaStore,
+                                  Environment environment,
+                                  ObjectProvider<BuildProperties> buildPropertiesProvider) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.storageProperties = storageProperties;
@@ -77,6 +87,8 @@ public class CollectorApiController {
         this.topologyDiffService = topologyDiffService;
         this.servicePresenceService = servicePresenceService;
         this.reportedAgentMetaStore = reportedAgentMetaStore;
+        this.serverVersion = ServerVersion.resolve(environment, buildPropertiesProvider.getIfAvailable());
+        this.recommendedAgentVersion = CompanionAgentVersion.resolve(environment);
     }
 
     /**
@@ -280,9 +292,25 @@ public class CollectorApiController {
     @GetMapping("/agents/reported")
     public ResponseEntity<?> getReportedAgents() {
         try {
-            return ResponseEntity.ok(reportedAgentMetaStore.listRows());
+            Map<String, Object> compatibility = AgentCompatHint.build(
+                    serverVersion, recommendedAgentVersion, reportedAgentMetaStore.listRows());
+            return ResponseEntity.ok(compatibility.get("reportedAgents"));
         } catch (Exception e) {
             log.error("获取已上报 Agent 版本失败", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Server ↔ Agent 版本配套说明（供关于页）。
+     */
+    @GetMapping("/agents/compatibility")
+    public ResponseEntity<?> getAgentCompatibility() {
+        try {
+            return ResponseEntity.ok(AgentCompatHint.build(
+                    serverVersion, recommendedAgentVersion, reportedAgentMetaStore.listRows()));
+        } catch (Exception e) {
+            log.error("获取版本配套说明失败", e);
             return ResponseEntity.internalServerError().build();
         }
     }

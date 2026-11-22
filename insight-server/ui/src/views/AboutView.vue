@@ -20,7 +20,7 @@
             <dt>版本</dt>
             <dd class="si-about__versions">
               <span class="si-about__ver"><b>{{ serverVersion }}</b><em>Server</em></span>
-              <span class="si-about__ver"><b>{{ agentVersion }}</b><em>Agent</em></span>
+              <span class="si-about__ver"><b>{{ agentVersion }}</b><em>推荐 Agent</em></span>
             </dd>
           </div>
           <div>
@@ -79,6 +79,48 @@
       </el-card>
     </div>
 
+    <el-card class="si-about__compat" shadow="never" aria-label="版本配套">
+      <template #header>
+        <div class="si-about__demo-head">
+          <h5 class="si-about__demo-title"><el-icon class="si-about__icon--me-2"><Warning /></el-icon>版本配套</h5>
+          <span class="si-about__demo-sub">监测中心与业务侧 Agent</span>
+        </div>
+      </template>
+      <SiAlert
+        v-if="compatSummary"
+        :tone="compatAlertTone"
+        class="si-about__compat-alert"
+      >
+        {{ compatSummary }}
+      </SiAlert>
+      <p v-if="compatHint" class="si-about__compat-hint">{{ compatHint }}</p>
+      <div v-if="reportedAgents.length > 0" class="si-about__compat-table-wrap">
+        <table class="si-about__compat-table">
+          <thead>
+            <tr>
+              <th>服务</th>
+              <th>上报 Agent</th>
+              <th>协议</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in reportedAgents" :key="String(row.service_name)">
+              <td>{{ row.service_name }}</td>
+              <td class="si-about__num">{{ row.agent_version || '—' }}</td>
+              <td>{{ row.protocol || '—' }}</td>
+              <td>
+                <el-tag size="small" effect="plain" round :type="compatTagType(row.compat)">
+                  {{ compatLabel(row.compat) }}
+                </el-tag>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p v-else class="si-about__compat-empty">尚无业务服务上报版本。接入并启动后，心跳或链路上报会显示在此。</p>
+    </el-card>
+
     <el-card id="setup" class="si-about__setup" shadow="never" aria-label="业务服务接入">
       <template #header>
         <div class="si-about__demo-head">
@@ -134,9 +176,17 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { Clock, Box, Monitor, Link, VideoPlay, Connection } from '@element-plus/icons-vue'
+import { Clock, Box, Monitor, Link, VideoPlay, Connection, Warning } from '@element-plus/icons-vue'
 import axios from 'axios'
 import SiPageHeader from '../components/SiPageHeader.vue'
+import SiAlert from '../components/SiAlert.vue'
+
+type ReportedAgentRow = {
+  service_name?: string
+  agent_version?: string | null
+  protocol?: string | null
+  compat?: string | null
+}
 
 const route = useRoute()
 const currentTime = ref('')
@@ -145,13 +195,45 @@ const serverVersion = ref('…')
 const agentVersion = ref('…')
 const storageMode = ref('')
 const copyHint = ref('')
+const compatSummary = ref('')
+const compatHint = ref('')
+const mismatchCount = ref(0)
+const reportedAgents = ref<ReportedAgentRow[]>([])
 let timeInterval: number | null = null
 let hintTimer: number | null = null
 
 const agentVersionForSnippet = computed(() => {
   const v = agentVersion.value.trim()
-  return !v || v === '…' || v === 'unknown' ? '0.6.0' : v
+  return !v || v === '…' || v === 'unknown' ? '0.7.0-SNAPSHOT' : v
 })
+
+const compatAlertTone = computed<'info' | 'warning' | 'success'>(() => {
+  if (mismatchCount.value > 0) return 'warning'
+  if (reportedAgents.value.length > 0) return 'success'
+  return 'info'
+})
+
+function compatLabel(compat: string | null | undefined): string {
+  switch (String(compat || '').toLowerCase()) {
+    case 'ok':
+      return '一致'
+    case 'mismatch':
+      return '不一致'
+    default:
+      return '未知'
+  }
+}
+
+function compatTagType(compat: string | null | undefined): 'success' | 'warning' | 'info' {
+  switch (String(compat || '').toLowerCase()) {
+    case 'ok':
+      return 'success'
+    case 'mismatch':
+      return 'warning'
+    default:
+      return 'info'
+  }
+}
 
 const techTags = ['Spring Boot 3.5', 'Java 17+', 'Vue 3', 'TypeScript', 'ECharts']
 
@@ -169,17 +251,32 @@ const updateCurrentTime = () => {
 }
 
 /**
- * 从 health 读取 Server / 配套 Agent 版本（避免前端硬编码）。
+ * 从 health 读取 Server / 推荐 Agent 版本与配套说明。
  */
 async function loadServerMeta() {
   try {
     const { data } = await axios.get('/api/v1/health', { timeout: 8000 })
     serverVersion.value = data?.serverVersion || data?.version || 'unknown'
-    agentVersion.value = data?.agentVersion || 'unknown'
+    agentVersion.value =
+      data?.recommendedAgentVersion || data?.agentVersion || 'unknown'
     storageMode.value = data?.storageMode || ''
+    const compat = data?.compatibility
+    compatSummary.value = String(compat?.summary || '')
+    compatHint.value = String(compat?.hint || '')
+    mismatchCount.value = Number(compat?.mismatchCount || 0)
+    const rows = Array.isArray(compat?.reportedAgents)
+      ? compat.reportedAgents
+      : Array.isArray(data?.reportedAgents)
+        ? data.reportedAgents
+        : []
+    reportedAgents.value = rows as ReportedAgentRow[]
   } catch {
     serverVersion.value = 'unknown'
     agentVersion.value = 'unknown'
+    compatSummary.value = ''
+    compatHint.value = ''
+    mismatchCount.value = 0
+    reportedAgents.value = []
   }
 }
 
@@ -400,7 +497,8 @@ onUnmounted(() => {
 }
 
 .si-about__setup,
-.si-about__demo {
+.si-about__demo,
+.si-about__compat {
   margin-top: 0.75rem;
   border-radius: 14px;
   border: 1px solid var(--card-border);
@@ -412,14 +510,58 @@ onUnmounted(() => {
 }
 
 .si-about__setup :deep(.el-card__header),
-.si-about__demo :deep(.el-card__header) {
+.si-about__demo :deep(.el-card__header),
+.si-about__compat :deep(.el-card__header) {
   padding: 1rem 1.1rem 0;
   border-bottom: none;
 }
 
 .si-about__setup :deep(.el-card__body),
-.si-about__demo :deep(.el-card__body) {
+.si-about__demo :deep(.el-card__body),
+.si-about__compat :deep(.el-card__body) {
   padding: 0.75rem 1.1rem 1.15rem;
+}
+
+.si-about__compat-alert {
+  margin-bottom: 0.65rem;
+}
+
+.si-about__compat-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--si-muted);
+}
+
+.si-about__compat-empty {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--si-muted);
+}
+
+.si-about__compat-table-wrap {
+  overflow-x: auto;
+}
+
+.si-about__compat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  color: var(--si-ink);
+}
+
+.si-about__compat-table th,
+.si-about__compat-table td {
+  padding: 0.45rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.si-about__compat-table th {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--si-ink-soft);
 }
 
 .si-about__setup-list {
