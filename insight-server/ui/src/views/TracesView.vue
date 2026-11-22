@@ -118,7 +118,7 @@
         <div class="si-trace-list-bar">
           <div class="si-trace-list-bar__title">
             <h5 class="si-trace-list-bar__heading">最近请求</h5>
-            <el-tag type="primary" effect="dark" size="small" round>{{ traces.length }} 条</el-tag>
+            <SiStatusBadge tone="neutral" effect="plain">{{ traces.length }} 条</SiStatusBadge>
           </div>
           <div class="si-trace-list-bar__actions">
             <el-button
@@ -181,14 +181,9 @@
             </span>
           </template>
           <template #cell-status="{ row }">
-            <el-tag
-              :type="traceFailed(row) ? 'danger' : 'success'"
-              effect="dark"
-              size="small"
-              round
-            >
+            <SiStatusBadge :tone="traceFailed(row) ? 'danger' : 'success'">
               {{ traceFailed(row) ? '失败' : '成功' }}
-            </el-tag>
+            </SiStatusBadge>
           </template>
           <template #cell-act="{ row }">
             <el-button size="small" title="复制 Trace ID" aria-label="复制 Trace ID" @click="copyTraceId(row.traceId)">
@@ -217,6 +212,7 @@ import SiEmpty from '../components/SiEmpty.vue'
 import SiFilterBar from '../components/SiFilterBar.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
+import SiStatusBadge from '../components/SiStatusBadge.vue'
 import type { SiColumn } from '../components/siTable'
 import { formatDuration } from '../utils/traceTimeline'
 import {

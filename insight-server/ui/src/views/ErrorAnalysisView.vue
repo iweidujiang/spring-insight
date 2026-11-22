@@ -88,7 +88,7 @@
         <section class="si-err-stage" aria-label="错误服务">
           <div class="si-err-stage__head">
             <h3 class="si-err-stage__title"><el-icon class="me-2"><List /></el-icon>错误服务</h3>
-            <el-tag type="danger" effect="dark" size="small" round>{{ errorAnalysis.length }} 个</el-tag>
+            <SiStatusBadge tone="danger">{{ errorAnalysis.length }} 个</SiStatusBadge>
           </div>
           <SiDataTable
             :rows="errorAnalysis"
@@ -228,6 +228,7 @@ import SiDataTable from '../components/SiDataTable.vue'
 import SiFilterBar from '../components/SiFilterBar.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
+import SiStatusBadge from '../components/SiStatusBadge.vue'
 import type { SiColumn } from '../components/siTable'
 import { useChartTheme } from '../composables/useChartTheme'
 import { formatHoursLabel, loadFailedMessage } from '../utils/timeRange'

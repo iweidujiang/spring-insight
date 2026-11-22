@@ -16,7 +16,14 @@ defineProps<{
       <h3 class="si-section__title">
         <el-icon v-if="icon" class="me-2"><component :is="icon" /></el-icon>{{ title }}
       </h3>
-      <el-tag v-if="count != null" type="info" effect="plain" size="small" round>{{ count }}</el-tag>
+      <el-tag
+        v-if="count != null"
+        class="si-section__count"
+        type="info"
+        effect="plain"
+        size="small"
+        round
+      >{{ count }}</el-tag>
     </div>
     <slot />
   </section>
@@ -29,6 +36,15 @@ defineProps<{
   border-radius: 0.5rem;
   overflow: hidden;
   background: var(--card-bg);
+}
+
+.si-section__count.el-tag {
+  height: 22px;
+  min-height: 22px;
+  padding: 0 0.55rem;
+  line-height: 20px;
+  font-size: 0.75rem;
+  font-weight: 650;
 }
 
 .si-section__head {

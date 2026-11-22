@@ -285,14 +285,9 @@
             @row-click="onSpanRowClick"
           >
             <template #cell-status="{ row }">
-              <el-tag
-                :type="row.isError ? 'danger' : 'success'"
-                effect="dark"
-                size="small"
-                round
-              >
+              <SiStatusBadge :tone="row.isError ? 'danger' : 'success'">
                 {{ row.span.statusCode || (row.isError ? 'ERR' : 'OK') }}
-              </el-tag>
+              </SiStatusBadge>
             </template>
           </SiDataTable>
         </details>
@@ -314,6 +309,7 @@ import SiAlert from '../components/SiAlert.vue'
 import SiEmpty from '../components/SiEmpty.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiDataTable from '../components/SiDataTable.vue'
+import SiStatusBadge from '../components/SiStatusBadge.vue'
 import type { SiColumn } from '../components/siTable'
 import {
   buildTraceTimeline,

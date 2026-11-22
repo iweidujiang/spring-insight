@@ -86,14 +86,9 @@
             <span class="si-http-method" :data-method="traceMethod(tr)">{{ traceMethod(tr) || 'REQ' }}</span>
             <span class="si-topo-solo__path" :title="tracePath(tr)">{{ tracePath(tr) }}</span>
             <em class="si-dur__val">{{ formatMs(tr.durationMs || 0) }}</em>
-            <el-tag
-              :type="traceFailed(tr) ? 'danger' : 'success'"
-              effect="dark"
-              size="small"
-              round
-            >
+            <SiStatusBadge :tone="traceFailed(tr) ? 'danger' : 'success'">
               {{ traceFailed(tr) ? '失败' : '成功' }}
-            </el-tag>
+            </SiStatusBadge>
           </li>
         </ul>
       </section>
@@ -390,6 +385,7 @@ import SiFilterBar from '../components/SiFilterBar.vue'
 import SiLoading from '../components/SiLoading.vue'
 import SiPageHeader from '../components/SiPageHeader.vue'
 import SiDataTable from '../components/SiDataTable.vue'
+import SiStatusBadge from '../components/SiStatusBadge.vue'
 import type { SiColumn } from '../components/siTable'
 import { ApiService, isQueryTooLargeError, queryTooLargeDetail, type AiExplainResult } from '../services/ApiService'
 import { useTheme } from '../composables/useTheme'

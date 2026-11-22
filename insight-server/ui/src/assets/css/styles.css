@@ -1088,9 +1088,16 @@ samp {
   height: 36px;
 }
 
-.el-tag {
+/*
+ * 状态类 el-tag 保持 Element Plus 默认小尺寸（勿强制 36px，否则「成功/在线」像大按钮）。
+ * 需与 36px 工具栏按钮对齐时，单独加 .si-tag--control。
+ */
+.si-tag--control.el-tag {
   height: 36px;
   line-height: 36px;
+  padding: 0 0.85rem;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ── 移动端触摸目标 ≥ 44px ── */

@@ -7,10 +7,24 @@
         </h2>
       </div>
       <div class="si-dashboard__status" v-show="!loading">
-        <el-tag v-if="!errorAnalysis || errorAnalysis.length === 0" type="success" effect="plain" size="small" round>
+        <el-tag
+          v-if="!errorAnalysis || errorAnalysis.length === 0"
+          class="si-tag--control"
+          type="success"
+          effect="plain"
+          size="small"
+          round
+        >
           <el-icon class="me-1"><CircleCheck /></el-icon>无异常服务
         </el-tag>
-        <el-tag v-else type="warning" effect="plain" size="small" round>
+        <el-tag
+          v-else
+          class="si-tag--control"
+          type="warning"
+          effect="plain"
+          size="small"
+          round
+        >
           <el-icon class="me-1"><WarningFilled /></el-icon>{{ errorAnalysis.length }} 个服务需关注
         </el-tag>
       </div>
@@ -411,14 +425,9 @@
                   </span>
                   <em class="si-dur__val">{{ formatMs(tr.durationMs || 0) }}</em>
                 </span>
-                <el-tag
-                  :type="traceFailed(tr) ? 'danger' : 'success'"
-                  effect="dark"
-                  size="small"
-                  round
-                >
+                <SiStatusBadge :tone="traceFailed(tr) ? 'danger' : 'success'">
                   {{ traceFailed(tr) ? '失败' : '成功' }}
-                </el-tag>
+                </SiStatusBadge>
               </li>
             </ul>
           </div>
@@ -457,6 +466,7 @@ import PercentileHelp from '../components/PercentileHelp.vue'
 import AiExplainPanel from '../components/AiExplainPanel.vue'
 import SiAlert from '../components/SiAlert.vue'
 import SiLoading from '../components/SiLoading.vue'
+import SiStatusBadge from '../components/SiStatusBadge.vue'
 import SiOnboardingCard from '../components/SiOnboardingCard.vue'
 import SiTimeRange from '../components/SiTimeRange.vue'
 import SiDataTable from '../components/SiDataTable.vue'
@@ -1685,11 +1695,7 @@ onUnmounted(() => {
 .si-dashboard__status { justify-self: center; }
 
 .si-dashboard__status :deep(.el-tag) {
-  height: 36px;
-  padding: 0 0.85rem;
   font-size: 0.88rem;
-  display: inline-flex;
-  align-items: center;
 }
 
 .si-dashboard__actions {
