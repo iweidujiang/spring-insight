@@ -50,6 +50,14 @@
     <SiLoading v-if="loading" text="加载中…" />
     <SiAlert v-if="loadError" tone="danger" class="si-svc-detail__alert">{{ loadError }}</SiAlert>
     <SiAlert v-else-if="!loading && deeplinkHint" tone="warning" role="alert" class="si-svc-detail__alert">{{ deeplinkHint }}</SiAlert>
+    <SiAlert
+      v-else-if="!loading && dropPressureHint"
+      tone="warning"
+      role="status"
+      class="si-svc-detail__alert"
+    >
+      {{ dropPressureHint }}
+    </SiAlert>
 
     <template v-if="!loading && summary">
       <section class="si-svc-detail__kpis" :class="{ 'is-alert': leadKpi.alert }" aria-label="关键指标">
@@ -254,6 +262,17 @@ const loading = ref(true)
 const loadError = ref('')
 const deeplinkHint = ref('')
 const summary = ref<Awaited<ReturnType<typeof ApiService.getServiceSummary>> | null>(null)
+
+/** 有丢弃时才提示，避免无背压时打扰 */
+const dropPressureHint = computed(() => {
+  const stats = summary.value?.dropStats
+  if (!stats || stats.queueDropped <= 0) return ''
+  const depth =
+    stats.queueCapacity > 0
+      ? `，当前队列 ${stats.queueSize}/${stats.queueCapacity}`
+      : ''
+  return `该服务上报队列累计丢弃 ${stats.queueDropped} 次${depth}。流量过大或监测中心不可达时可能丢数；联调可临时调低业务侧队列容量再观察。`
+})
 
 type JvmPoint = Awaited<ReturnType<typeof ApiService.getServiceJvmMetrics>>['points'][number]
 const jvmLoading = ref(false)

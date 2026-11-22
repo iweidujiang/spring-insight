@@ -8,6 +8,7 @@ import io.github.iweidujiang.springinsight.server.config.InsightServerStoragePro
 import io.github.iweidujiang.springinsight.server.jvm.InMemoryJvmMetricStore;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricStore;
+import io.github.iweidujiang.springinsight.server.presence.AgentDropStatsStore;
 import io.github.iweidujiang.springinsight.server.presence.AgentHeartbeatStore;
 import io.github.iweidujiang.springinsight.server.presence.ReportedAgentMetaStore;
 import io.github.iweidujiang.springinsight.server.presence.ServicePresenceService;
@@ -163,6 +164,14 @@ public class CollectorTestConfiguration {
     @Bean
     public ReportedAgentMetaStore reportedAgentMetaStore() {
         return new ReportedAgentMetaStore();
+    }
+
+    /**
+     * @return 队列丢弃统计缓存（CollectorController / CollectorApiController 依赖）
+     */
+    @Bean
+    public AgentDropStatsStore agentDropStatsStore() {
+        return new AgentDropStatsStore();
     }
 
     /**

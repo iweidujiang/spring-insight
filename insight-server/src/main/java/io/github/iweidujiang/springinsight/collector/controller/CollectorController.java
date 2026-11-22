@@ -9,6 +9,7 @@ import io.github.iweidujiang.springinsight.server.CompanionAgentVersion;
 import io.github.iweidujiang.springinsight.server.ServerVersion;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
 import io.github.iweidujiang.springinsight.server.presence.AgentCompatHint;
+import io.github.iweidujiang.springinsight.server.presence.AgentDropStatsStore;
 import io.github.iweidujiang.springinsight.server.presence.AgentHeartbeatStore;
 import io.github.iweidujiang.springinsight.server.presence.ReportedAgentMetaStore;
 import io.github.iweidujiang.springinsight.server.presence.ReportedAgentMetaSupport;
@@ -49,6 +50,7 @@ public class CollectorController {
     private final JvmMetricQueryService jvmMetricQueryService;
     private final AgentHeartbeatStore agentHeartbeatStore;
     private final ReportedAgentMetaStore reportedAgentMetaStore;
+    private final AgentDropStatsStore agentDropStatsStore;
     private final String serverVersion;
     private final String agentVersion;
 
@@ -58,6 +60,7 @@ public class CollectorController {
      * @param jvmMetricQueryService     JVM 指标入库
      * @param agentHeartbeatStore       Agent 心跳缓存
      * @param reportedAgentMetaStore    最近上报 Agent 版本缓存
+     * @param agentDropStatsStore       队列丢弃统计缓存
      * @param environment               用于解析版本
      * @param buildPropertiesProvider   Maven build-info（可选）
      */
@@ -66,6 +69,7 @@ public class CollectorController {
                                JvmMetricQueryService jvmMetricQueryService,
                                AgentHeartbeatStore agentHeartbeatStore,
                                ReportedAgentMetaStore reportedAgentMetaStore,
+                               AgentDropStatsStore agentDropStatsStore,
                                Environment environment,
                                ObjectProvider<BuildProperties> buildPropertiesProvider) {
         this.traceSpanCollectorService = traceSpanCollectorService;
@@ -73,6 +77,7 @@ public class CollectorController {
         this.jvmMetricQueryService = jvmMetricQueryService;
         this.agentHeartbeatStore = agentHeartbeatStore;
         this.reportedAgentMetaStore = reportedAgentMetaStore;
+        this.agentDropStatsStore = agentDropStatsStore;
         this.serverVersion = ServerVersion.resolve(environment, buildPropertiesProvider.getIfAvailable());
         this.agentVersion = CompanionAgentVersion.resolve(environment);
     }
@@ -149,6 +154,11 @@ public class CollectorController {
             Instant at = request.getTimestamp() != null ? request.getTimestamp() : Instant.now();
             agentHeartbeatStore.record(request.getServiceName(), at.toEpochMilli());
             ReportedAgentMetaSupport.record(reportedAgentMetaStore, request);
+            agentDropStatsStore.record(
+                    request.getServiceName(),
+                    request.getQueueDropped(),
+                    request.getQueueSize(),
+                    request.getQueueCapacity());
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", true);
             body.put("serviceName", request.getServiceName());

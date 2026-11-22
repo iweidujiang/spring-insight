@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -44,7 +45,8 @@ class AgentHeartbeatReporterTest {
             }
         };
 
-        AgentHeartbeatReporter reporter = new AgentHeartbeatReporter(properties, providerOf(sink), 60_000);
+        AgentHeartbeatReporter reporter = new AgentHeartbeatReporter(
+                properties, providerOf(sink), providerOf((AsyncSpanReporter) null), true, 60_000);
         reporter.sendImmediately();
 
         AgentHeartbeatReport report = captured.get();
@@ -52,6 +54,7 @@ class AgentHeartbeatReporterTest {
         assertEquals("demo-svc", report.getServiceName());
         assertEquals("localhost:8081", report.getServiceInstance());
         assertNotNull(report.getTimestamp());
+        assertNull(report.getQueueDropped());
     }
 
     @Test
@@ -59,35 +62,57 @@ class AgentHeartbeatReporterTest {
         InsightProperties properties = new InsightProperties();
         properties.setServiceName("order");
         properties.setServiceInstance("i-1");
-        AgentHeartbeatReporter reporter = new AgentHeartbeatReporter(properties, providerOf(null), 30_000);
+        AgentHeartbeatReporter reporter = new AgentHeartbeatReporter(
+                properties, providerOf((InsightBatchSink) null), providerOf((AsyncSpanReporter) null), false, 30_000);
         AgentHeartbeatReport report = reporter.buildReport();
         assertEquals("order", report.getServiceName());
         assertEquals("i-1", report.getServiceInstance());
         assertEquals(AgentBuildInfo.agentVersion(), report.getAgentVersion());
         assertEquals(AgentBuildInfo.protocol(), report.getProtocol());
         assertTrue(report.getTimestamp().toEpochMilli() > 0L);
+        assertNull(report.getQueueDropped());
     }
 
-    private static ObjectProvider<InsightBatchSink> providerOf(InsightBatchSink sink) {
+    @Test
+    void buildReport_attachesDropStatsWhenEnabled() {
+        InsightProperties properties = new InsightProperties();
+        properties.setServiceName("pressured");
+        properties.setServiceInstance("i-2");
+        AsyncSpanReporter spanReporter = new AsyncSpanReporter(
+                "pressured", "i-2", providerOf((InsightBatchSink) null), 2);
+        spanReporter.start();
+        try {
+            AgentHeartbeatReporter reporter = new AgentHeartbeatReporter(
+                    properties, providerOf((InsightBatchSink) null), providerOf(spanReporter), true, 60_000);
+            AgentHeartbeatReport report = reporter.buildReport();
+            assertEquals(0L, report.getQueueDropped());
+            assertEquals(0, report.getQueueSize());
+            assertEquals(2, report.getQueueCapacity());
+        } finally {
+            spanReporter.stop();
+        }
+    }
+
+    private static <T> ObjectProvider<T> providerOf(T bean) {
         return new ObjectProvider<>() {
             @Override
-            public InsightBatchSink getObject() {
-                return sink;
+            public T getObject() {
+                return bean;
             }
 
             @Override
-            public InsightBatchSink getIfAvailable() {
-                return sink;
+            public T getIfAvailable() {
+                return bean;
             }
 
             @Override
-            public InsightBatchSink getIfUnique() {
-                return sink;
+            public T getIfUnique() {
+                return bean;
             }
 
             @Override
-            public Stream<InsightBatchSink> stream() {
-                return sink == null ? Stream.empty() : Stream.of(sink);
+            public Stream<T> stream() {
+                return bean == null ? Stream.empty() : Stream.of(bean);
             }
         };
     }

@@ -38,7 +38,9 @@ import org.springframework.util.StringUtils;
 @EnableConfigurationProperties({
         InsightProperties.class,
         InsightJvmMetricsProperties.class,
-        InsightHeartbeatProperties.class
+        InsightHeartbeatProperties.class,
+        InsightDropStatsProperties.class,
+        InsightReporterProperties.class
 })
 @ConditionalOnProperty(prefix = "spring.insight", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class InsightBeanConfiguration {
@@ -52,21 +54,33 @@ public class InsightBeanConfiguration {
     /** 心跳子配置 */
     private final InsightHeartbeatProperties heartbeatProperties;
 
+    /** 丢弃统计子配置 */
+    private final InsightDropStatsProperties dropStatsProperties;
+
+    /** 上报队列子配置 */
+    private final InsightReporterProperties reporterProperties;
+
     /**
      * 注入配置并解析服务名，再做校验。
      *
      * @param properties            {@code spring.insight.*}
      * @param jvmMetricsProperties  {@code spring.insight.jvm-metrics.*}
      * @param heartbeatProperties   {@code spring.insight.heartbeat.*}
+     * @param dropStatsProperties   {@code spring.insight.drop-stats.*}
+     * @param reporterProperties    {@code spring.insight.reporter.*}
      * @param environment           用于读取 {@code spring.application.name}
      */
     public InsightBeanConfiguration(InsightProperties properties,
                                     InsightJvmMetricsProperties jvmMetricsProperties,
                                     InsightHeartbeatProperties heartbeatProperties,
+                                    InsightDropStatsProperties dropStatsProperties,
+                                    InsightReporterProperties reporterProperties,
                                     Environment environment) {
         this.properties = properties;
         this.jvmMetricsProperties = jvmMetricsProperties;
         this.heartbeatProperties = heartbeatProperties;
+        this.dropStatsProperties = dropStatsProperties;
+        this.reporterProperties = reporterProperties;
         // service-name 空时回退到 spring.application.name；仍空则只警告、不中断启动
         properties.resolveServiceNameFromEnvironment(environment);
         if (!properties.validate()) {
@@ -118,13 +132,15 @@ public class InsightBeanConfiguration {
             serviceInstance = "localhost:" + getServerPort();
         }
 
+        int capacity = reporterProperties.normalizedQueueCapacity();
         AsyncSpanReporter reporter = new AsyncSpanReporter(
                 properties.getServiceName(),
                 serviceInstance,
-                batchSinkProvider
+                batchSinkProvider,
+                capacity
         );
         reporter.start();
-        log.info("[Bean配置] 异步上报器初始化完成");
+        log.info("[Bean配置] 异步上报器初始化完成，queueCapacity={}", capacity);
         return reporter;
     }
 
@@ -223,15 +239,22 @@ public class InsightBeanConfiguration {
     /**
      * 存活心跳报告器：需开启心跳且已配置 server-url。
      *
-     * @param batchSinkProvider HTTP Sink（无 server-url 时本 Bean 不装配）
+     * @param batchSinkProvider    HTTP Sink（无 server-url 时本 Bean 不装配）
+     * @param spanReporterProvider 异步上报器（取丢弃统计）
      * @return 心跳报告器
      */
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnProperty(prefix = "spring.insight.heartbeat", name = "enabled", havingValue = "true", matchIfMissing = true)
     @ConditionalOnProperty(prefix = "spring.insight", name = "server-url")
-    public AgentHeartbeatReporter agentHeartbeatReporter(ObjectProvider<InsightBatchSink> batchSinkProvider) {
-        return new AgentHeartbeatReporter(properties, batchSinkProvider, heartbeatProperties.getIntervalMs());
+    public AgentHeartbeatReporter agentHeartbeatReporter(ObjectProvider<InsightBatchSink> batchSinkProvider,
+                                                         ObjectProvider<AsyncSpanReporter> spanReporterProvider) {
+        return new AgentHeartbeatReporter(
+                properties,
+                batchSinkProvider,
+                spanReporterProvider,
+                dropStatsProperties.isEnabled(),
+                heartbeatProperties.getIntervalMs());
     }
 
     /**

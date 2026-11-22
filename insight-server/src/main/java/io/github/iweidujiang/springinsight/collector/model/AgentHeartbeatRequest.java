@@ -27,6 +27,15 @@ public class AgentHeartbeatRequest {
     /** 上报协议号（可空） */
     private String protocol;
 
+    /** 上报队列丢弃累计（可空） */
+    private Long queueDropped;
+
+    /** 当前队列深度（可空） */
+    private Integer queueSize;
+
+    /** 队列容量（可空） */
+    private Integer queueCapacity;
+
     /** 心跳时刻；缺省时服务端用接收时间 */
     private Instant timestamp;
 

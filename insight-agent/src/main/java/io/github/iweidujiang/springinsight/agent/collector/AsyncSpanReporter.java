@@ -36,6 +36,7 @@ public class AsyncSpanReporter {
 
     // 队列与状态控制
     private final BlockingQueue<Object> metricsQueue;
+    private final int queueCapacity;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private Thread flushThread;
 
@@ -52,17 +53,34 @@ public class AsyncSpanReporter {
     private final ReporterMetrics metrics = new ReporterMetrics();
 
     /**
-     * 构造函数
+     * 使用默认队列容量构造。
+     *
+     * @param serviceName       服务名
+     * @param serviceInstance   实例
+     * @param batchSinkProvider Sink
      */
     public AsyncSpanReporter(String serviceName, String serviceInstance,
                              ObjectProvider<InsightBatchSink> batchSinkProvider) {
+        this(serviceName, serviceInstance, batchSinkProvider, DEFAULT_QUEUE_CAPACITY);
+    }
+
+    /**
+     * @param serviceName       服务名
+     * @param serviceInstance   实例
+     * @param batchSinkProvider Sink
+     * @param queueCapacity    队列容量（至少 1）
+     */
+    public AsyncSpanReporter(String serviceName, String serviceInstance,
+                             ObjectProvider<InsightBatchSink> batchSinkProvider,
+                             int queueCapacity) {
         this.serviceName = serviceName;
         this.serviceInstance = serviceInstance;
         this.batchSinkProvider = batchSinkProvider;
-        this.metricsQueue = new LinkedBlockingQueue<>(DEFAULT_QUEUE_CAPACITY);
+        this.queueCapacity = queueCapacity < 1 ? DEFAULT_QUEUE_CAPACITY : queueCapacity;
+        this.metricsQueue = new LinkedBlockingQueue<>(this.queueCapacity);
 
-        log.info("[异步上报器] 初始化完成: serviceName={}, serviceInstance={}",
-                serviceName, serviceInstance);
+        log.info("[异步上报器] 初始化完成: serviceName={}, serviceInstance={}, queueCapacity={}",
+                serviceName, serviceInstance, this.queueCapacity);
     }
 
     /**
@@ -149,7 +167,7 @@ public class AsyncSpanReporter {
                 return true;
             } else {
                 log.warn("[异步上报器] 队列已满，丢弃指标: type={}, 队列容量={}",
-                        metric.getClass().getSimpleName(), DEFAULT_QUEUE_CAPACITY);
+                        metric.getClass().getSimpleName(), queueCapacity);
                 metrics.incrementDropped();
                 return false;
             }
@@ -304,6 +322,20 @@ public class AsyncSpanReporter {
      */
     public int getQueueSize() {
         return metricsQueue.size();
+    }
+
+    /**
+     * @return 队列容量
+     */
+    public int getQueueCapacity() {
+        return queueCapacity;
+    }
+
+    /**
+     * @return 因队列满 / 未运行而丢弃的累计次数
+     */
+    public long getDroppedTotal() {
+        return metrics.copy().getTotalDropped();
     }
 
     /**

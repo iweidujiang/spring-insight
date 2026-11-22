@@ -157,6 +157,28 @@ function normalizePresenceFields(raw: any) {
   }
 }
 
+function normalizeDropStats(raw: any): {
+  queueDropped: number
+  queueSize: number
+  queueCapacity: number
+  updatedEpochMs: number
+} | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const dropped = Number(raw.queue_dropped ?? raw.queueDropped ?? 0)
+  const size = Number(raw.queue_size ?? raw.queueSize ?? 0)
+  const capacity = Number(raw.queue_capacity ?? raw.queueCapacity ?? 0)
+  const updated = Number(raw.updated_epoch_ms ?? raw.updatedEpochMs ?? 0)
+  if (!Number.isFinite(dropped) && !Number.isFinite(size) && !Number.isFinite(capacity)) {
+    return null
+  }
+  return {
+    queueDropped: Number.isFinite(dropped) ? dropped : 0,
+    queueSize: Number.isFinite(size) ? size : 0,
+    queueCapacity: Number.isFinite(capacity) ? capacity : 0,
+    updatedEpochMs: Number.isFinite(updated) ? updated : 0
+  }
+}
+
 function normalizeLatencyRow(raw: any) {
   return {
     serviceName: raw.service_name ?? raw.serviceName ?? '',
@@ -411,6 +433,13 @@ export class ApiService {
     outbound: any[]
     inbound: any[]
     recentTraces: any[]
+    /** 最近心跳中的队列丢弃 / 深度；无上报则为 null */
+    dropStats: {
+      queueDropped: number
+      queueSize: number
+      queueCapacity: number
+      updatedEpochMs: number
+    } | null
   }> {
     const encoded = encodeURIComponent(serviceName)
     const qs = new URLSearchParams({
@@ -461,7 +490,8 @@ export class ApiService {
         ? raw.recentTraces
         : Array.isArray(raw.recent_traces)
           ? raw.recent_traces
-          : []
+          : [],
+      dropStats: normalizeDropStats(raw.drop_stats ?? raw.dropStats)
     }
   }
 

@@ -11,9 +11,35 @@
       "type": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightHeartbeatProperties",
       "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightHeartbeatProperties",
       "description": "Agent 存活心跳（低流量时仍向监测中心报活跃；默认开启）。"
+    },
+    {
+      "name": "spring.insight.drop-stats",
+      "type": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightDropStatsProperties",
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightDropStatsProperties",
+      "description": "丢弃 / 队列背压统计（随心跳上报；控制台有丢弃时才提示）。"
+    },
+    {
+      "name": "spring.insight.reporter",
+      "type": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightReporterProperties",
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightReporterProperties",
+      "description": "异步上报队列配置。"
     }
   ],
   "properties": [
+    {
+      "name": "spring.insight.drop-stats.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否在心跳中附带队列丢弃累计与深度。默认 true。",
+      "defaultValue": true,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightDropStatsProperties"
+    },
+    {
+      "name": "spring.insight.reporter.queue-capacity",
+      "type": "java.lang.Integer",
+      "description": "上报队列容量。默认 10000；联调背压可临时调低。",
+      "defaultValue": 10000,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightReporterProperties"
+    },
     {
       "name": "spring.insight.heartbeat.enabled",
       "type": "java.lang.Boolean",

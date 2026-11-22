@@ -8,6 +8,7 @@ import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
 import io.github.iweidujiang.springinsight.server.CompanionAgentVersion;
 import io.github.iweidujiang.springinsight.server.ServerVersion;
 import io.github.iweidujiang.springinsight.server.presence.AgentCompatHint;
+import io.github.iweidujiang.springinsight.server.presence.AgentDropStatsStore;
 import io.github.iweidujiang.springinsight.server.presence.ReportedAgentMetaStore;
 import io.github.iweidujiang.springinsight.server.presence.ServicePresenceService;
 import org.springframework.beans.factory.ObjectProvider;
@@ -60,6 +61,7 @@ public class CollectorApiController {
     private final JvmMetricQueryService jvmMetricQueryService;
     private final ServicePresenceService servicePresenceService;
     private final ReportedAgentMetaStore reportedAgentMetaStore;
+    private final AgentDropStatsStore agentDropStatsStore;
     private final String serverVersion;
     private final String recommendedAgentVersion;
 
@@ -74,6 +76,7 @@ public class CollectorApiController {
                                   JvmMetricQueryService jvmMetricQueryService,
                                   ServicePresenceService servicePresenceService,
                                   ReportedAgentMetaStore reportedAgentMetaStore,
+                                  AgentDropStatsStore agentDropStatsStore,
                                   Environment environment,
                                   ObjectProvider<BuildProperties> buildPropertiesProvider) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
@@ -87,6 +90,7 @@ public class CollectorApiController {
         this.topologyDiffService = topologyDiffService;
         this.servicePresenceService = servicePresenceService;
         this.reportedAgentMetaStore = reportedAgentMetaStore;
+        this.agentDropStatsStore = agentDropStatsStore;
         this.serverVersion = ServerVersion.resolve(environment, buildPropertiesProvider.getIfAvailable());
         this.recommendedAgentVersion = CompanionAgentVersion.resolve(environment);
     }
@@ -454,6 +458,10 @@ public class CollectorApiController {
                     traceSpanPersistenceService.getServiceDetailSummary(
                             serviceName, QueryWindow.resolve(hours, from, to), recentLimit, slowOpLimit));
             body.putAll(servicePresenceService.presenceFor(serviceName));
+            Map<String, Object> dropStats = agentDropStatsStore.toMap(serviceName);
+            if (!dropStats.isEmpty()) {
+                body.put("drop_stats", dropStats);
+            }
             return ResponseEntity.ok(body);
         } catch (Exception e) {
             rethrowIfSnapshotBudgetExceeded(e);
