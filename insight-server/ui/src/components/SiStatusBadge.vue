@@ -37,13 +37,16 @@ const tagType = computed<TagProps['type']>(() => {
 </template>
 
 <style scoped>
-/* 覆盖历史全局大高度，保持紧凑胶囊 */
+/*
+ * 中等胶囊：介于「偏高按钮感」(36px) 与「过小」(22px) 之间，
+ * 与表格行文字对齐，仍明显矮于工具栏按钮。
+ */
 .si-status-badge.el-tag {
-  height: 22px;
-  min-height: 22px;
-  padding: 0 0.55rem;
-  line-height: 20px;
-  font-size: 0.75rem;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 0.7rem;
+  line-height: 26px;
+  font-size: 0.8125rem;
   font-weight: 650;
   border-width: 0;
   vertical-align: middle;

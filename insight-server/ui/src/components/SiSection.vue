@@ -39,11 +39,11 @@ defineProps<{
 }
 
 .si-section__count.el-tag {
-  height: 22px;
-  min-height: 22px;
-  padding: 0 0.55rem;
-  line-height: 20px;
-  font-size: 0.75rem;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 0.7rem;
+  line-height: 26px;
+  font-size: 0.8125rem;
   font-weight: 650;
 }
 
