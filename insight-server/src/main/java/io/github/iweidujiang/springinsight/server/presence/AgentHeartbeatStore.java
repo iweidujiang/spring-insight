@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 进程内缓存各服务最近一次 Agent 心跳时间（毫秒 epoch）。
  * <p>
- * 本步只负责接收与查询；存活判定是否合并心跳留给后续完善。
+ * 由 {@link ServicePresenceService} 与最近 Span 合并后判定在线 / 沉默。
  * </p>
  *
  * @author 苏渡苇

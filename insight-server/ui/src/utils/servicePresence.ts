@@ -43,14 +43,14 @@ export function presenceTitle(
   const p = String(presence || '').toLowerCase()
   const threshold = Number(staleThresholdMinutes) > 0 ? Number(staleThresholdMinutes) : 5
   if (p === 'online') {
-    return `近 ${threshold} 分钟内有 Span 上报`
+    return `近 ${threshold} 分钟内有上报（链路或心跳）`
   }
   if (p === 'stale') {
     const quiet = quietMinutes == null ? null : Number(quietMinutes)
     if (quiet != null && Number.isFinite(quiet) && quiet >= 0) {
       return `已 ${Math.floor(quiet)} 分钟无数据（阈值 ${threshold} 分钟）`
     }
-    return `超过 ${threshold} 分钟无 Span 上报`
+    return `超过 ${threshold} 分钟无上报（链路或心跳）`
   }
-  return '尚无 Span 记录'
+  return '尚无链路或心跳记录'
 }

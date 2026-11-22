@@ -15,7 +15,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * 服务存活判定边界测试。
+ * 服务存活判定边界测试（含心跳合并）。
  *
  * @author 苏渡苇
  * @since 2026-11-10
@@ -23,15 +23,17 @@ import static org.mockito.Mockito.when;
 class ServicePresenceServiceTest {
 
     private TraceSpanPersistenceService persistence;
+    private AgentHeartbeatStore heartbeatStore;
     private InsightServerPresenceProperties properties;
     private ServicePresenceService service;
 
     @BeforeEach
     void setUp() {
         persistence = mock(TraceSpanPersistenceService.class);
+        heartbeatStore = new AgentHeartbeatStore();
         properties = new InsightServerPresenceProperties();
         properties.setStaleThresholdMinutes(5);
-        service = new ServicePresenceService(persistence, properties);
+        service = new ServicePresenceService(persistence, heartbeatStore, properties);
     }
 
     /**
@@ -49,7 +51,37 @@ class ServicePresenceServiceTest {
     }
 
     /**
-     * listPresence 带上 quiet_minutes 与阈值。
+     * 仅有过期 Span、但近期有心跳时仍为 online。
+     */
+    @Test
+    void heartbeatKeepsOnlineWhenSpanStale() {
+        long now = System.currentTimeMillis();
+        when(persistence.getLastActivityEpochMsByService()).thenReturn(Map.of(
+                "quiet-svc", now - 20L * 60_000L));
+        heartbeatStore.record("quiet-svc", now - 30_000L);
+
+        Map<String, Object> row = service.presenceFor("quiet-svc");
+        assertEquals(ServicePresenceService.ONLINE, row.get("presence"));
+        assertEquals(0L, ((Number) row.get("quiet_minutes")).longValue());
+    }
+
+    /**
+     * 无 Span、仅有心跳的服务会出现在存活列表且为 online。
+     */
+    @Test
+    void listPresenceIncludesHeartbeatOnlyService() {
+        long now = System.currentTimeMillis();
+        when(persistence.getLastActivityEpochMsByService()).thenReturn(Map.of());
+        heartbeatStore.record("hb-only", now - 10_000L);
+
+        List<Map<String, Object>> rows = service.listPresence();
+        assertEquals(1, rows.size());
+        assertEquals("hb-only", rows.get(0).get("service_name"));
+        assertEquals(ServicePresenceService.ONLINE, rows.get(0).get("presence"));
+    }
+
+    /**
+     * 无心跳时行为与仅按 Span 一致。
      */
     @Test
     void listPresenceIncludesQuietMinutes() {
@@ -98,5 +130,16 @@ class ServicePresenceServiceTest {
         assertEquals(ServicePresenceService.UNKNOWN, ghost.get("presence"));
         assertNull(ghost.get("last_activity_epoch_ms"));
         assertEquals(12L, row.get("p95_ms"));
+    }
+
+    /**
+     * mergeActivity 取较新者。
+     */
+    @Test
+    void mergeActivityTakesMax() {
+        assertNull(ServicePresenceService.mergeActivity(null, null));
+        assertEquals(100L, ServicePresenceService.mergeActivity(100L, null));
+        assertEquals(200L, ServicePresenceService.mergeActivity(null, 200L));
+        assertEquals(300L, ServicePresenceService.mergeActivity(100L, 300L));
     }
 }

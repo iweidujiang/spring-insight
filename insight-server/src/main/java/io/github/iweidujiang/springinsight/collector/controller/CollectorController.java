@@ -123,7 +123,7 @@ public class CollectorController {
     /**
      * Agent 存活心跳上报。
      * <p>
-     * 仅记录最近活跃时间；控制台在线/沉默是否合并心跳由后续版本完善。
+     * 写入心跳缓存后，控制台在线/沉默会与最近 Span 取较新者合并判定。
      * </p>
      *
      * @param request 心跳请求

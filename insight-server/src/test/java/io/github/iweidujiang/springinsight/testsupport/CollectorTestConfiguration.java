@@ -149,21 +149,23 @@ public class CollectorTestConfiguration {
     }
 
     /**
-     * @param persistence 持久化
-     * @param properties  存活阈值
-     * @return 服务存活判定（CollectorApiController 依赖）
-     */
-    @Bean
-    public ServicePresenceService servicePresenceService(TraceSpanPersistenceService persistence,
-                                                         InsightServerPresenceProperties properties) {
-        return new ServicePresenceService(persistence, properties);
-    }
-
-    /**
-     * @return Agent 心跳缓存（CollectorController 依赖）
+     * @return Agent 心跳缓存（CollectorController / ServicePresenceService 依赖）
      */
     @Bean
     public AgentHeartbeatStore agentHeartbeatStore() {
         return new AgentHeartbeatStore();
+    }
+
+    /**
+     * @param persistence    持久化
+     * @param heartbeatStore 心跳缓存
+     * @param properties     存活阈值
+     * @return 服务存活判定（CollectorApiController 依赖）
+     */
+    @Bean
+    public ServicePresenceService servicePresenceService(TraceSpanPersistenceService persistence,
+                                                         AgentHeartbeatStore heartbeatStore,
+                                                         InsightServerPresenceProperties properties) {
+        return new ServicePresenceService(persistence, heartbeatStore, properties);
     }
 }
