@@ -122,6 +122,20 @@
       "description": "JVM 指标上报间隔（毫秒）。",
       "defaultValue": 30000,
       "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightJvmMetricsProperties"
+    },
+    {
+      "name": "spring.insight.heartbeat.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否定期上报存活心跳。默认 true；需已配置 spring.insight.server-url。",
+      "defaultValue": true,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightHeartbeatProperties"
+    },
+    {
+      "name": "spring.insight.heartbeat.interval-ms",
+      "type": "java.lang.Integer",
+      "description": "心跳间隔（毫秒）。默认 60000。",
+      "defaultValue": 60000,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightHeartbeatProperties"
     }
   ],
   "hints": []

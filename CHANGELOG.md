@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### 新增
+- **存活心跳**：配置了监测中心地址后，默认约每分钟上报一次「还活着」信号（与主线 Boot3 对齐）；可用 `spring.insight.heartbeat.enabled` / `interval-ms` 关闭或调间隔
+
+### 说明
+- 需配套能接收心跳的 Server（主线 SNAPSHOT / 后续发版）；旧 Server 会忽略该请求，Agent 仅限频告警
+
 ## [0.6.0] — 2026-11-11
 
 ### 新增
