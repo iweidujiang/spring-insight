@@ -28,6 +28,16 @@ public class TraceBatchReport {
     /** 上报的服务实例 */
     private String serviceInstance;
 
+    /**
+     * Agent / Starter 版本（如 {@code 0.7.0-SNAPSHOT}）。
+     */
+    private String agentVersion;
+
+    /**
+     * 上报协议号（如 {@code 1}）。
+     */
+    private String protocol;
+
     /** 上报时间 */
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private Instant reportTime = Instant.now();
@@ -78,11 +88,18 @@ public class TraceBatchReport {
      */
     @Data
     public static class Metadata {
-        /** SDK版本 */
-        private String sdkVersion = "spring-insight/0.1.1-SNAPSHOT";
+        /**
+         * SDK / Agent 版本（与顶层 {@code agentVersion} 对齐，兼容旧字段名）。
+         */
+        private String sdkVersion;
 
-        /** 上报协议版本 */
-        private String protocolVersion = "1.0";
+        /**
+         * Agent 版本（与顶层一致；旧 Server 可读 metadata）。
+         */
+        private String agentVersion;
+
+        /** 上报协议版本（与顶层 {@code protocol} 对齐） */
+        private String protocolVersion;
 
         /** 上报客户端类型 */
         private String clientType = "java-agent";

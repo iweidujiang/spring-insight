@@ -20,6 +20,12 @@ public class AgentHeartbeatReport {
     /** 服务实例 */
     private String serviceInstance;
 
+    /** Agent / Starter 版本 */
+    private String agentVersion;
+
+    /** 上报协议号 */
+    private String protocol;
+
     /** 心跳时刻（UTC） */
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private Instant timestamp = Instant.now();

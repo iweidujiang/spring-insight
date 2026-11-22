@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.agent.collector;
 
+import io.github.iweidujiang.springinsight.agent.AgentBuildInfo;
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.model.AgentHeartbeatReport;
 import io.github.iweidujiang.springinsight.agent.sink.InsightBatchSink;
@@ -72,6 +73,8 @@ public class AgentHeartbeatReporter {
         AgentHeartbeatReport report = new AgentHeartbeatReport();
         report.setServiceName(properties.getServiceName());
         report.setServiceInstance(resolveServiceInstance());
+        report.setAgentVersion(AgentBuildInfo.agentVersion());
+        report.setProtocol(AgentBuildInfo.protocol());
         report.setTimestamp(Instant.now());
         return report;
     }

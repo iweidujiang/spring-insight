@@ -9,6 +9,7 @@ import io.github.iweidujiang.springinsight.server.jvm.InMemoryJvmMetricStore;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricStore;
 import io.github.iweidujiang.springinsight.server.presence.AgentHeartbeatStore;
+import io.github.iweidujiang.springinsight.server.presence.ReportedAgentMetaStore;
 import io.github.iweidujiang.springinsight.server.presence.ServicePresenceService;
 import io.github.iweidujiang.springinsight.server.topology.TopologyDiffService;
 import io.github.iweidujiang.springinsight.storage.impl.InMemorySpanStore;
@@ -154,6 +155,14 @@ public class CollectorTestConfiguration {
     @Bean
     public AgentHeartbeatStore agentHeartbeatStore() {
         return new AgentHeartbeatStore();
+    }
+
+    /**
+     * @return 最近上报 Agent 版本缓存（CollectorController / CollectorApiController 依赖）
+     */
+    @Bean
+    public ReportedAgentMetaStore reportedAgentMetaStore() {
+        return new ReportedAgentMetaStore();
     }
 
     /**

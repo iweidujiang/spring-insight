@@ -25,6 +25,12 @@ public class JvmMetricBatchRequest {
     @NotBlank(message = "服务实例标识不能为空")
     private String serviceInstance;
 
+    /** Agent / Starter 版本（可空） */
+    private String agentVersion;
+
+    /** 上报协议号（可空） */
+    private String protocol;
+
     /** 批次 ID */
     private String batchId;
 

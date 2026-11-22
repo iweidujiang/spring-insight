@@ -5,6 +5,7 @@ import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetectionResult
 import io.github.iweidujiang.springinsight.server.anomaly.AnomalyDetector;
 import io.github.iweidujiang.springinsight.server.config.InsightServerStorageProperties;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
+import io.github.iweidujiang.springinsight.server.presence.ReportedAgentMetaStore;
 import io.github.iweidujiang.springinsight.server.presence.ServicePresenceService;
 import io.github.iweidujiang.springinsight.server.topology.TopologyDiffService;
 import io.github.iweidujiang.springinsight.storage.QueryWindow;
@@ -52,6 +53,7 @@ public class CollectorApiController {
     private final TopologyDiffService topologyDiffService;
     private final JvmMetricQueryService jvmMetricQueryService;
     private final ServicePresenceService servicePresenceService;
+    private final ReportedAgentMetaStore reportedAgentMetaStore;
 
     public CollectorApiController(TraceSpanPersistenceService traceSpanPersistenceService,
                                   TraceSpanCollectorService traceSpanCollectorService,
@@ -62,7 +64,8 @@ public class CollectorApiController {
                                   AnomalyDetector anomalyDetector,
                                   TopologyDiffService topologyDiffService,
                                   JvmMetricQueryService jvmMetricQueryService,
-                                  ServicePresenceService servicePresenceService) {
+                                  ServicePresenceService servicePresenceService,
+                                  ReportedAgentMetaStore reportedAgentMetaStore) {
         this.traceSpanPersistenceService = traceSpanPersistenceService;
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.storageProperties = storageProperties;
@@ -73,6 +76,7 @@ public class CollectorApiController {
         this.anomalyDetector = anomalyDetector;
         this.topologyDiffService = topologyDiffService;
         this.servicePresenceService = servicePresenceService;
+        this.reportedAgentMetaStore = reportedAgentMetaStore;
     }
 
     /**
@@ -257,7 +261,7 @@ public class CollectorApiController {
     }
 
     /**
-     * 服务存活列表：按全库最近 Span 时间判定 online / stale。
+     * 服务存活列表：按最近 Span / 心跳判定 online / stale。
      */
     @GetMapping("/services/presence")
     public ResponseEntity<?> getServicePresence() {
@@ -266,6 +270,19 @@ public class CollectorApiController {
         } catch (Exception e) {
             rethrowIfSnapshotBudgetExceeded(e);
             log.error("获取服务存活状态失败", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 各服务最近上报的 Agent 版本与协议号（进程内缓存，重启清空）。
+     */
+    @GetMapping("/agents/reported")
+    public ResponseEntity<?> getReportedAgents() {
+        try {
+            return ResponseEntity.ok(reportedAgentMetaStore.listRows());
+        } catch (Exception e) {
+            log.error("获取已上报 Agent 版本失败", e);
             return ResponseEntity.internalServerError().build();
         }
     }

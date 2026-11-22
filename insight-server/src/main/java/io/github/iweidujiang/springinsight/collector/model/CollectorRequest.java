@@ -33,6 +33,12 @@ public class CollectorRequest {
     @NotBlank(message = "服务实例标识不能为空")
     private String serviceInstance;
 
+    /** Agent / Starter 版本（新 Agent 会带；可空兼容旧客户端） */
+    private String agentVersion;
+
+    /** 上报协议号（可空） */
+    private String protocol;
+
     /** 批次ID（用于去重和追踪） */
     private String batchId;
 
@@ -85,8 +91,11 @@ public class CollectorRequest {
      */
     @Data
     public static class Metadata {
-        /** SDK版本 */
+        /** SDK / Agent 版本（兼容旧字段） */
         private String sdkVersion;
+
+        /** Agent 版本 */
+        private String agentVersion;
 
         /** 协议版本 */
         private String protocolVersion;

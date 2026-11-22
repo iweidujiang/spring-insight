@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.agent.collector;
 
+import io.github.iweidujiang.springinsight.agent.AgentBuildInfo;
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.model.AgentHeartbeatReport;
 import io.github.iweidujiang.springinsight.agent.sink.InsightBatchSink;
@@ -62,6 +63,8 @@ class AgentHeartbeatReporterTest {
         AgentHeartbeatReport report = reporter.buildReport();
         assertEquals("order", report.getServiceName());
         assertEquals("i-1", report.getServiceInstance());
+        assertEquals(AgentBuildInfo.agentVersion(), report.getAgentVersion());
+        assertEquals(AgentBuildInfo.protocol(), report.getProtocol());
         assertTrue(report.getTimestamp().toEpochMilli() > 0L);
     }
 

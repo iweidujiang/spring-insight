@@ -21,6 +21,12 @@ public class AgentHeartbeatRequest {
     /** 服务实例标识 */
     private String serviceInstance;
 
+    /** Agent / Starter 版本（可空） */
+    private String agentVersion;
+
+    /** 上报协议号（可空） */
+    private String protocol;
+
     /** 心跳时刻；缺省时服务端用接收时间 */
     private Instant timestamp;
 

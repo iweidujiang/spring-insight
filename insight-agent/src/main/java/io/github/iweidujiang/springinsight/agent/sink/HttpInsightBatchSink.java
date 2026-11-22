@@ -3,6 +3,7 @@ package io.github.iweidujiang.springinsight.agent.sink;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.github.iweidujiang.springinsight.agent.AgentBuildInfo;
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.model.AgentHeartbeatReport;
 import io.github.iweidujiang.springinsight.agent.model.JvmMetric;
@@ -144,6 +145,7 @@ public class HttpInsightBatchSink implements InsightBatchSink {
         // 批次归属服务：优先用配置，与 Collector 校验字段一致
         report.setServiceName(properties.getServiceName());
         report.setServiceInstance(resolveServiceInstance());
+        fillAgentMeta(report);
         // 随机 batchId：便于服务端日志关联；当前服务端未做去重
         report.setBatchId(UUID.randomUUID().toString());
         report.addAllSpans(spans);
@@ -194,6 +196,8 @@ public class HttpInsightBatchSink implements InsightBatchSink {
         JvmMetricBatchReport report = new JvmMetricBatchReport();
         report.setServiceName(properties.getServiceName());
         report.setServiceInstance(resolveServiceInstance());
+        report.setAgentVersion(AgentBuildInfo.agentVersion());
+        report.setProtocol(AgentBuildInfo.protocol());
         report.setBatchId(UUID.randomUUID().toString());
         report.addAllMetrics(metrics);
 
@@ -280,6 +284,26 @@ public class HttpInsightBatchSink implements InsightBatchSink {
                 log.debug(msg);
             }
         }
+    }
+
+    /**
+     * 写入 Agent 版本与协议号（顶层 + metadata）。
+     *
+     * @param report Span 批次
+     */
+    private static void fillAgentMeta(TraceBatchReport report) {
+        String version = AgentBuildInfo.agentVersion();
+        String protocol = AgentBuildInfo.protocol();
+        report.setAgentVersion(version);
+        report.setProtocol(protocol);
+        TraceBatchReport.Metadata metadata = report.getMetadata();
+        if (metadata == null) {
+            metadata = new TraceBatchReport.Metadata();
+            report.setMetadata(metadata);
+        }
+        metadata.setAgentVersion(version);
+        metadata.setSdkVersion(version);
+        metadata.setProtocolVersion(protocol);
     }
 
     /**

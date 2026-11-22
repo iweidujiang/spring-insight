@@ -9,6 +9,8 @@ import io.github.iweidujiang.springinsight.server.CompanionAgentVersion;
 import io.github.iweidujiang.springinsight.server.ServerVersion;
 import io.github.iweidujiang.springinsight.server.jvm.JvmMetricQueryService;
 import io.github.iweidujiang.springinsight.server.presence.AgentHeartbeatStore;
+import io.github.iweidujiang.springinsight.server.presence.ReportedAgentMetaStore;
+import io.github.iweidujiang.springinsight.server.presence.ReportedAgentMetaSupport;
 import io.github.iweidujiang.springinsight.storage.service.TraceSpanPersistenceService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -45,6 +47,7 @@ public class CollectorController {
     private final TraceSpanPersistenceService persistenceService;
     private final JvmMetricQueryService jvmMetricQueryService;
     private final AgentHeartbeatStore agentHeartbeatStore;
+    private final ReportedAgentMetaStore reportedAgentMetaStore;
     private final String serverVersion;
     private final String agentVersion;
 
@@ -53,6 +56,7 @@ public class CollectorController {
      * @param persistenceService        持久化门面
      * @param jvmMetricQueryService     JVM 指标入库
      * @param agentHeartbeatStore       Agent 心跳缓存
+     * @param reportedAgentMetaStore    最近上报 Agent 版本缓存
      * @param environment               用于解析版本
      * @param buildPropertiesProvider   Maven build-info（可选）
      */
@@ -60,12 +64,14 @@ public class CollectorController {
                                TraceSpanPersistenceService persistenceService,
                                JvmMetricQueryService jvmMetricQueryService,
                                AgentHeartbeatStore agentHeartbeatStore,
+                               ReportedAgentMetaStore reportedAgentMetaStore,
                                Environment environment,
                                ObjectProvider<BuildProperties> buildPropertiesProvider) {
         this.traceSpanCollectorService = traceSpanCollectorService;
         this.persistenceService = persistenceService;
         this.jvmMetricQueryService = jvmMetricQueryService;
         this.agentHeartbeatStore = agentHeartbeatStore;
+        this.reportedAgentMetaStore = reportedAgentMetaStore;
         this.serverVersion = ServerVersion.resolve(environment, buildPropertiesProvider.getIfAvailable());
         this.agentVersion = CompanionAgentVersion.resolve(environment);
     }
@@ -85,6 +91,8 @@ public class CollectorController {
         body.put("version", serverVersion);
         body.put("serverVersion", serverVersion);
         body.put("agentVersion", agentVersion);
+        body.put("recommendedAgentVersion", agentVersion);
+        body.put("reportedAgents", reportedAgentMetaStore.listRows());
         body.put("storageMode", persistenceService.getStorageMode());
         body.put("storedSpans", persistenceService.getStoredSpanCount());
         body.put("evictedSpans", persistenceService.getEvictedSpanCount());
@@ -102,6 +110,7 @@ public class CollectorController {
             TraceSpanCollectorService.CollectorResponse response = traceSpanCollectorService.processBatchRequest(request);
 
             if (response.isSuccess()) {
+                ReportedAgentMetaSupport.record(reportedAgentMetaStore, request);
                 return ResponseEntity.accepted().body(response);
             } else {
                 log.warn("[Collector控制器] 批量上报处理失败: {}, 原因: {}",
@@ -135,6 +144,7 @@ public class CollectorController {
         try {
             Instant at = request.getTimestamp() != null ? request.getTimestamp() : Instant.now();
             agentHeartbeatStore.record(request.getServiceName(), at.toEpochMilli());
+            ReportedAgentMetaSupport.record(reportedAgentMetaStore, request);
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", true);
             body.put("serviceName", request.getServiceName());
@@ -171,6 +181,7 @@ public class CollectorController {
                     request.getServiceName(),
                     request.getServiceInstance(),
                     request.getMetrics());
+            ReportedAgentMetaSupport.record(reportedAgentMetaStore, request);
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("success", true);
             body.put("accepted", accepted);
