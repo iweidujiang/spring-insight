@@ -40,7 +40,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableConfigurationProperties({
         InsightBoot2Properties.class,
         InsightJvmMetricsProperties.class,
-        InsightHeartbeatProperties.class
+        InsightHeartbeatProperties.class,
+        InsightDropStatsProperties.class,
+        InsightReporterProperties.class
 })
 @ConditionalOnProperty(prefix = "spring.insight", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class InsightBoot2AutoConfiguration {
@@ -50,6 +52,8 @@ public class InsightBoot2AutoConfiguration {
     private final InsightBoot2Properties properties;
     private final InsightJvmMetricsProperties jvmMetricsProperties;
     private final InsightHeartbeatProperties heartbeatProperties;
+    private final InsightDropStatsProperties dropStatsProperties;
+    private final InsightReporterProperties reporterProperties;
     private final Environment environment;
 
     /**
@@ -58,15 +62,21 @@ public class InsightBoot2AutoConfiguration {
      * @param properties           Insight 配置
      * @param jvmMetricsProperties JVM 指标配置
      * @param heartbeatProperties  心跳配置
+     * @param dropStatsProperties  丢弃统计配置
+     * @param reporterProperties   上报队列配置
      * @param environment          Spring Environment
      */
     public InsightBoot2AutoConfiguration(InsightBoot2Properties properties,
                                          InsightJvmMetricsProperties jvmMetricsProperties,
                                          InsightHeartbeatProperties heartbeatProperties,
+                                         InsightDropStatsProperties dropStatsProperties,
+                                         InsightReporterProperties reporterProperties,
                                          Environment environment) {
         this.properties = properties;
         this.jvmMetricsProperties = jvmMetricsProperties;
         this.heartbeatProperties = heartbeatProperties;
+        this.dropStatsProperties = dropStatsProperties;
+        this.reporterProperties = reporterProperties;
         this.environment = environment;
         properties.resolveServiceNameFromEnvironment(environment);
         if (!properties.validate()) {
@@ -106,8 +116,11 @@ public class InsightBoot2AutoConfiguration {
     @Bean(destroyMethod = "stop")
     @ConditionalOnMissingBean
     public AsyncSpanReporter asyncSpanReporter(ObjectProvider<InsightBatchSink> batchSinkProvider) {
-        AsyncSpanReporter reporter = new AsyncSpanReporter(properties.getServiceName(), batchSinkProvider);
+        int capacity = reporterProperties.normalizedQueueCapacity();
+        AsyncSpanReporter reporter = new AsyncSpanReporter(
+                properties.getServiceName(), batchSinkProvider, capacity);
         reporter.start();
+        log.info("[Boot2配置] 异步上报器已启用，queueCapacity={}", Integer.valueOf(capacity));
         return reporter;
     }
 
@@ -174,14 +187,21 @@ public class InsightBoot2AutoConfiguration {
     /**
      * 存活心跳报告器：需开启心跳且已配置 server-url。
      *
-     * @param batchSinkProvider HTTP Sink
+     * @param batchSinkProvider    HTTP Sink
+     * @param spanReporterProvider 异步上报器（取丢弃统计）
      * @return 心跳报告器
      */
     @Bean
     @ConditionalOnMissingBean
     @Conditional(HeartbeatEnabledCondition.class)
-    public AgentHeartbeatReporter agentHeartbeatReporter(ObjectProvider<InsightBatchSink> batchSinkProvider) {
-        return new AgentHeartbeatReporter(properties, batchSinkProvider, heartbeatProperties.getIntervalMs());
+    public AgentHeartbeatReporter agentHeartbeatReporter(ObjectProvider<InsightBatchSink> batchSinkProvider,
+                                                         ObjectProvider<AsyncSpanReporter> spanReporterProvider) {
+        return new AgentHeartbeatReporter(
+                properties,
+                batchSinkProvider,
+                spanReporterProvider,
+                dropStatsProperties.isEnabled(),
+                heartbeatProperties.getIntervalMs());
     }
 
     /**

@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.agent.boot2.collector;
 
+import io.github.iweidujiang.springinsight.agent.boot2.AgentBuildInfo;
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
 import io.github.iweidujiang.springinsight.agent.boot2.model.AgentHeartbeatReport;
 import io.github.iweidujiang.springinsight.agent.boot2.sink.InsightBatchSink;
@@ -22,21 +23,31 @@ public class AgentHeartbeatReporter {
 
     private final InsightBoot2Properties properties;
     private final ObjectProvider<InsightBatchSink> batchSinkProvider;
+    private final ObjectProvider<AsyncSpanReporter> spanReporterProvider;
+    private final boolean dropStatsEnabled;
     private final int intervalMs;
 
     /**
-     * @param properties        Insight 主配置
-     * @param batchSinkProvider 批量/心跳出口（有 server-url 时为 HTTP Sink）
-     * @param intervalMs        配置的间隔，仅用于启动日志
+     * @param properties           Insight 主配置
+     * @param batchSinkProvider    批量/心跳出口（有 server-url 时为 HTTP Sink）
+     * @param spanReporterProvider 异步上报器（取队列丢弃统计）
+     * @param dropStatsEnabled     是否附带丢弃 / 队列深度
+     * @param intervalMs           配置的间隔，仅用于启动日志
      */
     public AgentHeartbeatReporter(InsightBoot2Properties properties,
                                   ObjectProvider<InsightBatchSink> batchSinkProvider,
+                                  ObjectProvider<AsyncSpanReporter> spanReporterProvider,
+                                  boolean dropStatsEnabled,
                                   int intervalMs) {
         this.properties = properties;
         this.batchSinkProvider = batchSinkProvider;
+        this.spanReporterProvider = spanReporterProvider;
+        this.dropStatsEnabled = dropStatsEnabled;
         this.intervalMs = intervalMs > 0 ? intervalMs : 60_000;
-        log.info("[心跳-Boot2] 已启用，间隔={}ms，service={}",
-                Integer.valueOf(this.intervalMs), properties.getServiceName());
+        log.info("[心跳-Boot2] 已启用，间隔={}ms，dropStats={}，service={}",
+                Integer.valueOf(this.intervalMs),
+                Boolean.valueOf(dropStatsEnabled),
+                properties.getServiceName());
     }
 
     /**
@@ -51,8 +62,13 @@ public class AgentHeartbeatReporter {
                 return;
             }
             AgentHeartbeatReport report = buildReport();
-            log.debug("[心跳-Boot2] 上报: service={}, instance={}, at={}",
-                    report.getServiceName(), report.getServiceInstance(), report.getTimestamp());
+            log.debug("[心跳-Boot2] 上报: service={}, instance={}, dropped={}, queue={}/{}, at={}",
+                    report.getServiceName(),
+                    report.getServiceInstance(),
+                    report.getQueueDropped(),
+                    report.getQueueSize(),
+                    report.getQueueCapacity(),
+                    report.getTimestamp());
             sink.acceptHeartbeat(report);
         } catch (Exception e) {
             log.warn("[心跳-Boot2] 上报异常: service={}, error={}",
@@ -76,7 +92,19 @@ public class AgentHeartbeatReporter {
         AgentHeartbeatReport report = new AgentHeartbeatReport();
         report.setServiceName(properties.getServiceName());
         report.setServiceInstance(resolveServiceInstance());
+        report.setAgentVersion(AgentBuildInfo.agentVersion());
+        report.setProtocol(AgentBuildInfo.protocol());
         report.setTimestamp(Instant.now());
+        if (dropStatsEnabled) {
+            AsyncSpanReporter reporter = spanReporterProvider != null
+                    ? spanReporterProvider.getIfAvailable()
+                    : null;
+            if (reporter != null) {
+                report.setQueueDropped(Long.valueOf(reporter.getDroppedTotal()));
+                report.setQueueSize(Integer.valueOf(reporter.getQueueSize()));
+                report.setQueueCapacity(Integer.valueOf(reporter.getQueueCapacity()));
+            }
+        }
         return report;
     }
 

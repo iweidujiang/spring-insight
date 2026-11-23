@@ -1,6 +1,7 @@
 package io.github.iweidujiang.springinsight.agent.boot2.sink;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.iweidujiang.springinsight.agent.boot2.AgentBuildInfo;
 import io.github.iweidujiang.springinsight.agent.boot2.autoconfigure.InsightBoot2Properties;
 import io.github.iweidujiang.springinsight.agent.boot2.model.AgentHeartbeatReport;
 import io.github.iweidujiang.springinsight.agent.boot2.model.JvmMetric;
@@ -82,6 +83,7 @@ public class HttpInsightBatchSink implements InsightBatchSink {
         report.setServiceInstance(resolveServiceInstance());
         report.setBatchId(UUID.randomUUID().toString());
         report.addAllSpans(spans);
+        fillAgentMeta(report);
 
         postJson(spansBatchUrl, report, spans.size(), "Span");
     }
@@ -99,6 +101,8 @@ public class HttpInsightBatchSink implements InsightBatchSink {
         JvmMetricBatchReport report = new JvmMetricBatchReport();
         report.setServiceName(properties.getServiceName());
         report.setServiceInstance(resolveServiceInstance());
+        report.setAgentVersion(AgentBuildInfo.agentVersion());
+        report.setProtocol(AgentBuildInfo.protocol());
         report.setBatchId(UUID.randomUUID().toString());
         report.addAllMetrics(metrics);
         postJson(jvmMetricsBatchUrl, report, metrics.size(), "JVM");
@@ -211,6 +215,26 @@ public class HttpInsightBatchSink implements InsightBatchSink {
                 conn.disconnect();
             }
         }
+    }
+
+    /**
+     * 写入顶层与 metadata 中的版本 / 协议号。
+     *
+     * @param report 批次包
+     */
+    private static void fillAgentMeta(TraceBatchReport report) {
+        String version = AgentBuildInfo.agentVersion();
+        String protocol = AgentBuildInfo.protocol();
+        report.setAgentVersion(version);
+        report.setProtocol(protocol);
+        TraceBatchReport.Metadata metadata = report.getMetadata();
+        if (metadata == null) {
+            metadata = new TraceBatchReport.Metadata();
+            report.setMetadata(metadata);
+        }
+        metadata.setAgentVersion(version);
+        metadata.setSdkVersion(version);
+        metadata.setProtocolVersion(protocol);
     }
 
     /**

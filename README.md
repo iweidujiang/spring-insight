@@ -3,8 +3,8 @@
 面向 **Spring Boot 2.7 / Java 8+** 的轻量监测 Agent：业务侧加一个 Starter，把 Span 上报到监测中心，即可查看服务拓扑与调用链路。
 
 - 仓库分支：`2.7.x`
-- 当前版本：**`0.6.0`**（与主线 Boot3 Agent 同号）
-- 监测中心（Docker / jar）请使用同仓库 **`main`** 发布的 `insight-server`（推荐 **`≥ 2.0.0`**；JVM 曲线需 Server 2.0.0+）
+- 当前版本：**`0.7.0`**（与主线 Boot3 Agent 同号）
+- 监测中心（Docker / jar）请使用同仓库 **`main`** 发布的 `insight-server`（推荐 **`≥ 2.1.0`**；心跳 / 版本配套需较新控制台；JVM 曲线需 Server 2.0.0+）
 
 ---
 
@@ -16,7 +16,7 @@
 <dependency>
   <groupId>io.github.iweidujiang</groupId>
   <artifactId>spring-insight-agent-starter-boot2</artifactId>
-  <version>0.6.0</version>
+  <version>0.7.0</version>
 </dependency>
 ```
 
@@ -52,6 +52,10 @@ spring:
 | `spring.insight.redis-slow-threshold-ms` | `500` | 慢命令阈值（毫秒）；`<=0` 表示成功也上报 |
 | `spring.insight.jvm-metrics.enabled` | `false` | JVM 指标采集上报（堆 / GC / 线程）；需 Server ≥ 2.0.0 |
 | `spring.insight.jvm-metrics.report-interval` | `30000` | JVM 上报间隔（毫秒） |
+| `spring.insight.heartbeat.enabled` | `true` | 存活心跳；需已配置 `server-url` |
+| `spring.insight.heartbeat.interval-ms` | `60000` | 心跳间隔（毫秒） |
+| `spring.insight.drop-stats.enabled` | `true` | 心跳是否附带队列丢弃 / 深度 |
+| `spring.insight.reporter.queue-capacity` | `10000` | 上报队列容量；联调背压可临时调低 |
 | `spring.insight.sample-rate` | `1` | 头部采样率（0～1）；未采样不上报、出站 flags=`00` |
 | `spring.insight.micrometer-enabled` | `true` | 桥接宿主 MeterRegistry |
 | `spring.insight.diagnostic-logs` | `false` | 请求级诊断日志 |
@@ -69,7 +73,7 @@ docker run --rm -p 9966:9966 \
 
 ## 能力
 
-Servlet MVC SERVER Span、OpenFeign CLIENT（`remoteService` 优先 `@FeignClient` name）、RestTemplate CLIENT（须 `RestTemplateBuilder`）、可选 JDBC / Redis CLIENT（默认关）、可选 JVM 指标上报（默认关）、HttpURLConnection 批量上报、可选 Micrometer（`spring.insight.*`）、WebFlux 入口、WebClient / Gateway 出站 CLIENT。
+Servlet MVC SERVER Span、OpenFeign CLIENT（`remoteService` 优先 `@FeignClient` name）、RestTemplate CLIENT（须 `RestTemplateBuilder`）、可选 JDBC / Redis CLIENT（默认关）、可选 JVM 指标上报（默认关）、存活心跳与版本/丢弃统计、HttpURLConnection 批量上报、可选 Micrometer（`spring.insight.*`）、WebFlux 入口、WebClient / Gateway 出站 CLIENT。
 
 ---
 

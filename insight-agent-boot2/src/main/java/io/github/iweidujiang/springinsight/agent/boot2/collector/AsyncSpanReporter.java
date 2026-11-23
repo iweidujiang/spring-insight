@@ -13,6 +13,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * AsyncSpanReporter：异步队列批量将 Span / JVM 指标写入 InsightBatchSink。
@@ -26,13 +27,15 @@ public class AsyncSpanReporter {
 
     private static final Logger log = LoggerFactory.getLogger(AsyncSpanReporter.class);
 
-    private static final int QUEUE_CAPACITY = 10000;
+    private static final int DEFAULT_QUEUE_CAPACITY = 10000;
     private static final int BATCH_SIZE = 200;
     private static final long FLUSH_INTERVAL_MS = 5000L;
     private static final long OFFER_TIMEOUT_MS = 100L;
 
-    private final BlockingQueue<TraceSpan> spanQueue = new LinkedBlockingQueue<TraceSpan>(QUEUE_CAPACITY);
-    private final BlockingQueue<JvmMetric> jvmQueue = new LinkedBlockingQueue<JvmMetric>(QUEUE_CAPACITY);
+    private final BlockingQueue<TraceSpan> spanQueue;
+    private final BlockingQueue<JvmMetric> jvmQueue;
+    private final int queueCapacity;
+    private final AtomicLong droppedTotal = new AtomicLong(0L);
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final ObjectProvider<InsightBatchSink> batchSinkProvider;
     private final String serviceName;
@@ -43,8 +46,24 @@ public class AsyncSpanReporter {
      * @param batchSinkProvider Sink Provider
      */
     public AsyncSpanReporter(String serviceName, ObjectProvider<InsightBatchSink> batchSinkProvider) {
+        this(serviceName, batchSinkProvider, DEFAULT_QUEUE_CAPACITY);
+    }
+
+    /**
+     * @param serviceName       当前服务名
+     * @param batchSinkProvider Sink Provider
+     * @param queueCapacity    队列容量（至少 1）
+     */
+    public AsyncSpanReporter(String serviceName,
+                             ObjectProvider<InsightBatchSink> batchSinkProvider,
+                             int queueCapacity) {
         this.serviceName = serviceName;
         this.batchSinkProvider = batchSinkProvider;
+        this.queueCapacity = queueCapacity < 1 ? DEFAULT_QUEUE_CAPACITY : queueCapacity;
+        this.spanQueue = new LinkedBlockingQueue<TraceSpan>(this.queueCapacity);
+        this.jvmQueue = new LinkedBlockingQueue<JvmMetric>(this.queueCapacity);
+        log.info("[Boot2上报] 初始化: serviceName={}, queueCapacity={}",
+                serviceName, Integer.valueOf(this.queueCapacity));
     }
 
     /**
@@ -80,11 +99,25 @@ public class AsyncSpanReporter {
             }
         }
         flushRemaining();
-        log.info("[Boot2上报] 已停止");
+        log.info("[Boot2上报] 已停止，丢弃累计={}", Long.valueOf(droppedTotal.get()));
     }
 
     public int getQueueSize() {
         return spanQueue.size() + jvmQueue.size();
+    }
+
+    /**
+     * @return 队列容量
+     */
+    public int getQueueCapacity() {
+        return queueCapacity;
+    }
+
+    /**
+     * @return 因队列满 / 未运行而丢弃的累计次数
+     */
+    public long getDroppedTotal() {
+        return droppedTotal.get();
     }
 
     /**
@@ -94,18 +127,24 @@ public class AsyncSpanReporter {
      * @return 是否入队成功
      */
     public boolean report(TraceSpan span) {
-        if (span == null || !running.get()) {
+        if (span == null) {
+            return false;
+        }
+        if (!running.get()) {
+            droppedTotal.incrementAndGet();
             return false;
         }
         try {
             TraceSpan copy = TraceSpan.snapshot(span);
             boolean ok = spanQueue.offer(copy, OFFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (!ok) {
+                droppedTotal.incrementAndGet();
                 log.warn("[Boot2上报] Span 队列已满，丢弃 spanId={}", span.getSpanId());
             }
             return ok;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            droppedTotal.incrementAndGet();
             return false;
         }
     }
@@ -117,17 +156,23 @@ public class AsyncSpanReporter {
      * @return 是否入队成功
      */
     public boolean report(JvmMetric metric) {
-        if (metric == null || !running.get()) {
+        if (metric == null) {
+            return false;
+        }
+        if (!running.get()) {
+            droppedTotal.incrementAndGet();
             return false;
         }
         try {
             boolean ok = jvmQueue.offer(metric, OFFER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (!ok) {
+                droppedTotal.incrementAndGet();
                 log.warn("[Boot2上报] JVM 队列已满，丢弃指标");
             }
             return ok;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            droppedTotal.incrementAndGet();
             return false;
         }
     }

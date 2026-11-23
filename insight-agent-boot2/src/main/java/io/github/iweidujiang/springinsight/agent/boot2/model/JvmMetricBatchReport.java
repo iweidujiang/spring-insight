@@ -17,6 +17,12 @@ public class JvmMetricBatchReport {
     private String serviceName;
     private String serviceInstance;
 
+    /** Agent / Starter 版本 */
+    private String agentVersion;
+
+    /** 上报协议号 */
+    private String protocol;
+
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private Instant reportTime = Instant.now();
 
@@ -45,6 +51,10 @@ public class JvmMetricBatchReport {
     public void setServiceName(String serviceName) { this.serviceName = serviceName; }
     public String getServiceInstance() { return serviceInstance; }
     public void setServiceInstance(String serviceInstance) { this.serviceInstance = serviceInstance; }
+    public String getAgentVersion() { return agentVersion; }
+    public void setAgentVersion(String agentVersion) { this.agentVersion = agentVersion; }
+    public String getProtocol() { return protocol; }
+    public void setProtocol(String protocol) { this.protocol = protocol; }
     public Instant getReportTime() { return reportTime; }
     public void setReportTime(Instant reportTime) { this.reportTime = reportTime; }
     public String getBatchId() { return batchId; }

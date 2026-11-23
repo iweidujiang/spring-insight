@@ -14,6 +14,12 @@ public class AgentHeartbeatReport {
 
     private String serviceName;
     private String serviceInstance;
+    private String agentVersion;
+    private String protocol;
+    /** 上报队列因满而丢弃的累计次数（可选；未开启 drop-stats 时为 null） */
+    private Long queueDropped;
+    private Integer queueSize;
+    private Integer queueCapacity;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private Instant timestamp = Instant.now();
@@ -32,6 +38,46 @@ public class AgentHeartbeatReport {
 
     public void setServiceInstance(String serviceInstance) {
         this.serviceInstance = serviceInstance;
+    }
+
+    public String getAgentVersion() {
+        return agentVersion;
+    }
+
+    public void setAgentVersion(String agentVersion) {
+        this.agentVersion = agentVersion;
+    }
+
+    public String getProtocol() {
+        return protocol;
+    }
+
+    public void setProtocol(String protocol) {
+        this.protocol = protocol;
+    }
+
+    public Long getQueueDropped() {
+        return queueDropped;
+    }
+
+    public void setQueueDropped(Long queueDropped) {
+        this.queueDropped = queueDropped;
+    }
+
+    public Integer getQueueSize() {
+        return queueSize;
+    }
+
+    public void setQueueSize(Integer queueSize) {
+        this.queueSize = queueSize;
+    }
+
+    public Integer getQueueCapacity() {
+        return queueCapacity;
+    }
+
+    public void setQueueCapacity(Integer queueCapacity) {
+        this.queueCapacity = queueCapacity;
     }
 
     public Instant getTimestamp() {

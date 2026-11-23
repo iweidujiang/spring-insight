@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.github.iweidujiang</groupId>
         <artifactId>spring-insight-boot2-parent</artifactId>
-        <version>0.7.0-SNAPSHOT</version>
+        <version>0.7.0</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -87,4 +87,23 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>META-INF/spring-insight-agent.properties</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>META-INF/spring-insight-agent.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
+    </build>
 </project>

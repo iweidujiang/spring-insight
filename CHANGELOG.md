@@ -1,12 +1,24 @@
 # Changelog
 
-## [Unreleased]
+## [0.7.0] — 2026-11-23
 
 ### 新增
 - **存活心跳**：配置了监测中心地址后，默认约每分钟上报一次「还活着」信号（与主线 Boot3 对齐）；可用 `spring.insight.heartbeat.enabled` / `interval-ms` 关闭或调间隔
+- **上报带版本与协议号**：链路批次、心跳、JVM 指标会携带 Agent 版本与协议号，便于监测中心识别配套关系
+- **队列丢弃随心跳上报**：默认在心跳中附带上报队列丢弃累计与深度；可用 `spring.insight.drop-stats.enabled` 关闭；联调可用 `spring.insight.reporter.queue-capacity` 临时调低容量
 
 ### 说明
-- 需配套能接收心跳的 Server（主线 SNAPSHOT / 后续发版）；旧 Server 会忽略该请求，Agent 仅限频告警
+- 需配套能接收心跳、版本与丢弃字段的 Server（主线 **`≥ 2.1.0` 的后续 SNAPSHOT / 下一正式版**；已发 **2.1.0** 可收心跳与版本，丢弃提示需带该能力的控制台）
+- 与主线 Boot3 Agent **`0.7.0`** 同号；本分支只发 Boot2 坐标
+- 旧 Server 会忽略未知字段，不影响业务上报
+
+### 坐标
+| 项 | 值 |
+|----|-----|
+| Starter | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.7.0` |
+| Agent | `io.github.iweidujiang:insight-agent-boot2:0.7.0` |
+
+---
 
 ## [0.6.0] — 2026-11-11
 

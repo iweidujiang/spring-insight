@@ -21,6 +21,12 @@ public class TraceBatchReport {
     private String serviceName;
     private String serviceInstance;
 
+    /** Agent / Starter 版本 */
+    private String agentVersion;
+
+    /** 上报协议号 */
+    private String protocol;
+
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private Instant reportTime = Instant.now();
 
@@ -43,6 +49,10 @@ public class TraceBatchReport {
     public void setServiceName(String serviceName) { this.serviceName = serviceName; }
     public String getServiceInstance() { return serviceInstance; }
     public void setServiceInstance(String serviceInstance) { this.serviceInstance = serviceInstance; }
+    public String getAgentVersion() { return agentVersion; }
+    public void setAgentVersion(String agentVersion) { this.agentVersion = agentVersion; }
+    public String getProtocol() { return protocol; }
+    public void setProtocol(String protocol) { this.protocol = protocol; }
     public Instant getReportTime() { return reportTime; }
     public void setReportTime(Instant reportTime) { this.reportTime = reportTime; }
     public String getBatchId() { return batchId; }
@@ -56,14 +66,20 @@ public class TraceBatchReport {
      * 上报元数据。
      */
     public static class Metadata {
-        private String sdkVersion = "spring-insight/0.1.1-boot2-SNAPSHOT";
-        private String protocolVersion = "1.0";
+        /** SDK / Agent 版本（与顶层 agentVersion 对齐） */
+        private String sdkVersion;
+        /** Agent 版本（与顶层一致；旧 Server 可读 metadata） */
+        private String agentVersion;
+        /** 上报协议版本（与顶层 protocol 对齐） */
+        private String protocolVersion;
         private String clientType = "java-agent-boot2";
         private String environment = "default";
         private Map<String, String> extensions = new HashMap<String, String>();
 
         public String getSdkVersion() { return sdkVersion; }
         public void setSdkVersion(String sdkVersion) { this.sdkVersion = sdkVersion; }
+        public String getAgentVersion() { return agentVersion; }
+        public void setAgentVersion(String agentVersion) { this.agentVersion = agentVersion; }
         public String getProtocolVersion() { return protocolVersion; }
         public void setProtocolVersion(String protocolVersion) { this.protocolVersion = protocolVersion; }
         public String getClientType() { return clientType; }
