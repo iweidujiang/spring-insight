@@ -462,7 +462,7 @@
 
 # Agent
 
-## [Unreleased]
+## [0.7.0] — 2026-11-23
 
 ### 新增
 - **存活心跳**：配置了监测中心地址后，默认约每分钟上报一次「还活着」信号，便于低流量服务不被误判沉默；可用 `spring.insight.heartbeat.enabled` / `interval-ms` 关闭或调间隔
@@ -470,7 +470,16 @@
 - **队列丢弃随心跳上报**：默认在心跳中附带上报队列丢弃累计与深度，便于监测中心发现背压丢数；可用 `spring.insight.drop-stats.enabled` 关闭；联调可用 `spring.insight.reporter.queue-capacity` 临时调低容量
 
 ### 说明
-- 需配套能接收心跳、版本与丢弃字段的 Server（本仓 SNAPSHOT / 后续发版）；旧 Server 会忽略未知字段，不影响业务
+- 心跳 / 版本配套 / 丢弃提示需能接收这些字段的监测中心（本仓 Server **`2.2.0-SNAPSHOT`** 或后续正式版）；仅升 Agent、仍用旧 Server 时，未知字段会被忽略，业务上报不受影响
+- Boot2 同号已在分支 `2.7.x` 对齐，可按配额一并发 Central
+
+### 坐标
+| 项 | 值 |
+|----|-----|
+| Starter（Boot3） | `io.github.iweidujiang:spring-insight-agent-starter:0.7.0` |
+| Agent（Boot3） | `io.github.iweidujiang:insight-agent:0.7.0` |
+| Starter（Boot2） | `io.github.iweidujiang:spring-insight-agent-starter-boot2:0.7.0` |
+| Agent（Boot2） | `io.github.iweidujiang:insight-agent-boot2:0.7.0` |
 
 ## [0.6.0] — 2026-11-11
 

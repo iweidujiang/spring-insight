@@ -8,7 +8,7 @@
   <a href="https://www.oracle.com/java/"><img src="https://img.shields.io/badge/Agent-JDK%2017%2B-orange" alt="Java" /></a>
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-3.x%20%2F%202.7-brightgreen" alt="Spring Boot" /></a>
   <a href="https://github.com/iweidujiang/spring-insight/releases/tag/v2.1.0"><img src="https://img.shields.io/badge/Server-2.1.0-green.svg" alt="Server" /></a>
-  <a href="https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.6.0"><img src="https://img.shields.io/badge/Agent-0.6.0-blue.svg" alt="Agent" /></a>
+  <a href="https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.7.0"><img src="https://img.shields.io/badge/Agent-0.7.0-blue.svg" alt="Agent" /></a>
 </p>
 
 <p align="center"><b>Lightweight APM / distributed tracing for Spring Boot.</b></p>
@@ -28,7 +28,7 @@ Spring Insight 更轻：
 - **排障闭环**：统一时间窗、错误分析、数据库 / 缓存页、告警可点回控制台
 - **个人 / 小团队友好**：不必上重型 APM 也能把请求看清楚
 
-当前发版：**Server `2.1.0`** + **Agent / Starter `0.6.0`**（可直接搭配使用）。变更详见 [CHANGELOG](CHANGELOG.md)。
+当前发版：**Server `2.1.0`** + **Agent / Starter `0.7.0`**。链路上报可继续搭配 Server 2.1.0；心跳 / 版本配套 / 丢弃提示请用本仓 Server **`2.2.0-SNAPSHOT`**（或后续正式版）。变更详见 [CHANGELOG](CHANGELOG.md)。
 
 ---
 
@@ -68,7 +68,7 @@ java -jar insight-server-2.1.0.jar
 <dependency>
   <groupId>io.github.iweidujiang</groupId>
   <artifactId>spring-insight-agent-starter</artifactId>
-  <version>0.6.0</version>
+  <version>0.7.0</version>
 </dependency>
 ```
 
@@ -96,7 +96,7 @@ spring:
 
 完整联调可参考示例仓 [spring-insight-sca-demo](https://github.com/iweidujiang/spring-insight-sca-demo)（网关造数如 `/order/create`、`/call-jdbc-slow`）。
 
-Spring Boot **2.7.x** 请使用 Boot2 坐标（`spring-insight-agent-starter-boot2` / `insight-agent-boot2`，版本同为 `0.6.0`），见 Central 与 [CHANGELOG](CHANGELOG.md) Agent 章节。
+Spring Boot **2.7.x** 请使用 Boot2 坐标（`spring-insight-agent-starter-boot2` / `insight-agent-boot2`，版本同为 `0.7.0`），见 Central 与 [CHANGELOG](CHANGELOG.md) Agent 章节。
 
 ---
 
@@ -166,7 +166,7 @@ KPI、时段摘要、健康 / 慢服务、库与缓存、最近请求。
 
 | 模块 | 角色 | 当前版本 |
 |------|------|----------|
-| `spring-insight-agent-starter` | 业务侧依赖（Boot3） | `0.6.0`（Maven Central） |
+| `spring-insight-agent-starter` | 业务侧依赖（Boot3） | `0.7.0`（Maven Central） |
 | `insight-server` | 监测中心（含控制台） | `2.1.0`（GHCR / Release jar） |
 
 Agent 与 Server **分线发版**：控制台与查询能力升 Server 即可；只有埋点 / 协议变更才需要升 Agent。升级说明见 [CHANGELOG](CHANGELOG.md)。
