@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "build:server": "node ./scripts/clean-server-static.mjs && vite build --outDir ../target/classes/static --emptyOutDir false",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:api-paths": "node ../../scripts/check-ui-api-paths.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",

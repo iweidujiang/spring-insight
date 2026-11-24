@@ -5,6 +5,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -26,15 +31,20 @@ class OpenApiDocsTest {
     private MockMvc mockMvc;
 
     /**
-     * {@code GET /v3/api-docs} 返回 OpenAPI 3 JSON，并包含上报健康路径。
+     * {@code GET /v3/api-docs} 返回 OpenAPI 3 JSON，并包含上报健康路径；
+     * 同时写入 {@code target/openapi.json} 供 {@code scripts/check-ui-api-paths.mjs --file} 抽检。
      */
     @Test
     void apiDocsExposesOpenApiJson() throws Exception {
-        mockMvc.perform(get("/v3/api-docs"))
+        MvcResult result = mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("application/json"))
                 .andExpect(jsonPath("$.openapi").value(containsString("3.")))
                 .andExpect(jsonPath("$.info.title").value("Spring Insight Server API"))
-                .andExpect(jsonPath("$.paths['/api/v1/health']").exists());
+                .andExpect(jsonPath("$.paths['/api/v1/health']").exists())
+                .andReturn();
+        Path out = Path.of("target", "openapi.json");
+        Files.createDirectories(out.getParent());
+        Files.writeString(out, result.getResponse().getContentAsString(), StandardCharsets.UTF_8);
     }
 }

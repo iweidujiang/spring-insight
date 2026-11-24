@@ -8,14 +8,12 @@
     <parent>
         <groupId>io.github.iweidujiang</groupId>
         <artifactId>spring-insight-parent</artifactId>
-        <!-- Central 已发最新父 POM；发 Agent 时勿指 SNAPSHOT，否则 Portal 解不出坐标 -->
-        <version>2.0.0</version>
-        <relativePath/>
+        <version>2.2.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>insight-agent</artifactId>
     <!-- 须与父 POM properties.agent.version 一致；无埋点变更不 bump -->
-    <version>0.7.0</version>
+    <version>0.7.1-SNAPSHOT</version>
     <name>Spring Insight Agent</name>
     <description>Spring Insight 数据采集代理</description>
 
