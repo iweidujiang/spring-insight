@@ -4,6 +4,15 @@
       <div class="si-page__toolbar">
         <el-button
           size="small"
+          :disabled="shareCopying"
+          title="复制含当前筛选与时间窗的链接，他人打开后条件一致"
+          @click="copyShareLink"
+        >
+          <el-icon class="me-1"><Link /></el-icon>
+          复制分享链接
+        </el-button>
+        <el-button
+          size="small"
           :loading="exporting"
           :disabled="loading || exporting"
           title="按当前筛选下载 CSV"
@@ -204,7 +213,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Download, Clock, Search, Refresh, Grid, CopyDocument, InfoFilled } from '@element-plus/icons-vue'
+import { Download, Clock, Search, Refresh, Grid, CopyDocument, InfoFilled, Link } from '@element-plus/icons-vue'
 import { ApiService } from '../services/ApiService'
 import SiAlert from '../components/SiAlert.vue'
 import SiDataTable from '../components/SiDataTable.vue'
@@ -250,6 +259,7 @@ const copyHint = ref('')
 const loadError = ref('')
 const autoRefresh = ref(false)
 const exporting = ref(false)
+const shareCopying = ref(false)
 /** 最多选 2 条 Trace 用于对比 */
 const selectedIds = ref<string[]>([])
 
@@ -348,21 +358,62 @@ const updateCurrentTime = () => {
   currentTime.value = new Date().toTimeString().split(' ')[0]
 }
 
+/** 当前筛选 + 时间窗写入 query（不含对比等无关键） */
+const buildShareQuery = () =>
+  mergeQuery({}, {
+    ...windowQueryPatch(observationWindow.value),
+    service: selectedService.value || null,
+    status: statusFilter.value !== 'all' ? statusFilter.value : null,
+    minDurationMs: minDurationMs.value > 0 ? String(minDurationMs.value) : null,
+    pathPrefix: pathPrefix.value.trim() || null,
+    limit: limit.value !== 50 ? String(limit.value) : null,
+    q: query.value.trim() || null
+  })
+
+/**
+ * 可分享的绝对链接（筛选与时间窗与当前页一致）。
+ */
+const buildShareUrl = () => {
+  const q = buildShareQuery()
+  const url = new URL(window.location.href)
+  url.pathname = '/traces'
+  url.hash = ''
+  const qs = new URLSearchParams(q).toString()
+  url.search = qs ? `?${qs}` : ''
+  return url.toString()
+}
+
 const syncQueryToRoute = () => {
   persistWindow(observationWindow.value)
   persistService(selectedService.value)
   router.replace({
     path: '/traces',
-    query: mergeQuery(route.query, {
-      ...windowQueryPatch(observationWindow.value),
-      service: selectedService.value || null,
-      status: statusFilter.value !== 'all' ? statusFilter.value : null,
-      minDurationMs: minDurationMs.value > 0 ? String(minDurationMs.value) : null,
-      pathPrefix: pathPrefix.value.trim() || null,
-      limit: limit.value !== 50 ? String(limit.value) : null,
-      q: query.value.trim() || null
-    })
+    query: buildShareQuery()
   })
+}
+
+/**
+ * 复制分享链接：先同步地址栏，再写入剪贴板。
+ */
+const copyShareLink = async () => {
+  if (shareCopying.value) return
+  shareCopying.value = true
+  copyHint.value = ''
+  try {
+    syncQueryToRoute()
+    const shareUrl = buildShareUrl()
+    await navigator.clipboard.writeText(shareUrl)
+    copyHint.value = '已复制分享链接（含当前筛选与时间窗）'
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = window.setTimeout(() => {
+      copyHint.value = ''
+    }, 2800)
+  } catch (err) {
+    console.error('复制分享链接失败:', err)
+    copyHint.value = '复制失败，请手动从地址栏复制'
+  } finally {
+    shareCopying.value = false
+  }
 }
 
 const applyRouteQuery = () => {
