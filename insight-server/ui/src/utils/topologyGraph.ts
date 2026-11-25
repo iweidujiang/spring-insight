@@ -18,8 +18,91 @@ export interface ServiceDependency {
 export interface TopologyHighlight {
   /** 高亮节点名 */
   node?: string | null
-  /** 高亮边 */
+  /** 高亮边（主选中，样式最强） */
   edge?: { source: string; target: string } | null
+  /** 选中边时的上游路径节点（含选中边两端） */
+  pathNodes?: string[] | null
+  /** 选中边时的上游路径边（含选中边） */
+  pathEdges?: Array<{ source: string; target: string }> | null
+}
+
+/** 上游路径节点与边集合 */
+export interface UpstreamPathHighlight {
+  nodes: string[]
+  edges: Array<{ source: string; target: string }>
+}
+
+/**
+ * 从选中边的调用方沿反向调用走到入口，收集相关上游路径上的节点与边。
+ * 薄实现：整棵可达祖先锥（遇环跳过已访问节点）。
+ *
+ * @param dependencies 当前图上的依赖边
+ * @param edge 选中边（source=调用方，target=被调方）
+ */
+export function collectUpstreamPath(
+  dependencies: ServiceDependency[],
+  edge: { source: string; target: string }
+): UpstreamPathHighlight {
+  const source = String(edge?.source || '').trim()
+  const target = String(edge?.target || '').trim()
+  if (!source || !target) {
+    return { nodes: [], edges: [] }
+  }
+
+  const parents = new Map<string, string[]>()
+  for (const dep of dependencies) {
+    const s = String(dep.sourceService || '').trim()
+    const t = String(dep.targetService || '').trim()
+    if (!s || !t || s === t) continue
+    const list = parents.get(t)
+    if (list) list.push(s)
+    else parents.set(t, [s])
+  }
+
+  const nodeSet = new Set<string>([source, target])
+  const edges: Array<{ source: string; target: string }> = []
+  const edgeKeys = new Set<string>()
+
+  const addEdge = (s: string, t: string) => {
+    const key = `${s}\0${t}`
+    if (edgeKeys.has(key)) return
+    edgeKeys.add(key)
+    edges.push({ source: s, target: t })
+  }
+
+  addEdge(source, target)
+
+  const queue = [source]
+  const visited = new Set<string>([source])
+  while (queue.length) {
+    const cur = queue.shift()!
+    for (const caller of parents.get(cur) || []) {
+      addEdge(caller, cur)
+      nodeSet.add(caller)
+      if (!visited.has(caller)) {
+        visited.add(caller)
+        queue.push(caller)
+      }
+    }
+  }
+
+  return { nodes: [...nodeSet], edges }
+}
+
+function edgeKey(source: string, target: string): string {
+  return `${source}\0${target}`
+}
+
+function pathEdgeSet(highlight: TopologyHighlight): Set<string> {
+  const set = new Set<string>()
+  for (const e of highlight.pathEdges || []) {
+    if (e?.source && e?.target) set.add(edgeKey(e.source, e.target))
+  }
+  return set
+}
+
+function pathNodeSet(highlight: TopologyHighlight): Set<string> {
+  return new Set((highlight.pathNodes || []).filter(Boolean))
 }
 
 /** 服务健康分（与 /services/health 对齐） */
@@ -132,6 +215,11 @@ export function buildTopologyOption(
   const callCounts = new Map<string, number>()
   const links: Array<Record<string, unknown>> = []
 
+  const pathEdges = pathEdgeSet(highlight)
+  const pathNodes = pathNodeSet(highlight)
+  const hasPathHighlight = pathEdges.size > 0 || pathNodes.size > 0
+  const hasSelectionHighlight = !!(highlight.edge || highlight.node || hasPathHighlight)
+
   dependencies.forEach((dep) => {
     callCounts.set(dep.sourceService, (callCounts.get(dep.sourceService) || 0) + dep.callCount)
     callCounts.set(dep.targetService, (callCounts.get(dep.targetService) || 0) + dep.callCount)
@@ -139,39 +227,48 @@ export function buildTopologyOption(
       !!highlight.edge &&
       highlight.edge.source === dep.sourceService &&
       highlight.edge.target === dep.targetService
-    
+    const onUpstreamPath =
+      !edgeHit && pathEdges.has(edgeKey(dep.sourceService, dep.targetService))
+
     // 连线颜色：按状态区分
     let edgeColor: any = darkTech ? 'rgba(56, 189, 248, 0.6)' : theme.muted
     let isEdgeError = false
     if (edgeHit) {
       edgeColor = theme.brand
+    } else if (onUpstreamPath) {
+      edgeColor = darkTech ? 'rgba(45, 212, 191, 0.85)' : theme.brand
     } else if (dep.avgDuration && dep.avgDuration > 1000) {
       edgeColor = darkTech ? 'rgba(239, 68, 68, 0.9)' : theme.danger // 慢调用 - 红色
       isEdgeError = true
     } else if (dep.avgDuration && dep.avgDuration > 500) {
       edgeColor = darkTech ? 'rgba(245, 158, 11, 0.7)' : theme.warning // 较慢 - 橙色
     }
-    
-    // 渐变色连线（暗色科技风）
+
+    const baseWidth = Math.max(
+      compact ? 1.5 : 2,
+      Math.min(compact ? 4 : 5, 1 + Math.log2(dep.callCount + 1))
+    )
     const edgeLineStyle: any = {
-      width: Math.max(
-        compact ? 1.5 : 2,
-        Math.min(compact ? 4 : 5, 1 + Math.log2(dep.callCount + 1))
-      ) + (edgeHit ? 1.5 : 0) + (isEdgeError ? 1 : 0), // 错误连线更粗
+      width: baseWidth + (edgeHit ? 1.5 : onUpstreamPath ? 0.8 : 0) + (isEdgeError ? 1 : 0),
       curveness: 0.16,
       color: edgeColor,
-      opacity: edgeHit ? 1 : highlight.edge || highlight.node ? 0.35 : (isEdgeError ? 1 : 0.9), // 错误连线更醒目
+      opacity: edgeHit
+        ? 1
+        : onUpstreamPath
+          ? 0.88
+          : hasSelectionHighlight
+            ? 0.22
+            : (isEdgeError ? 1 : 0.9)
     }
-    
-    if (darkTech && !edgeHit) {
+
+    if (darkTech && !edgeHit && !onUpstreamPath) {
       edgeLineStyle.type = 'dashed' as const
       edgeLineStyle.dashOffset = 0
-      // 错误连线使用更密集的虚线
       if (isEdgeError) {
         edgeLineStyle.dashArray = [4, 4]
       }
     }
-    
+
     links.push({
       source: dep.sourceService,
       target: dep.targetService,
@@ -181,8 +278,10 @@ export function buildTopologyOption(
         show: !compact || dependencies.length <= 12,
         formatter: `${dep.callCount}`,
         fontSize: compact ? 10 : 11,
-        color: edgeHit ? theme.brand : (darkTech ? 'rgba(255,255,255,0.7)' : theme.inkSoft),
-        fontWeight: edgeHit ? 700 : 500,
+        color: edgeHit || onUpstreamPath
+          ? theme.brand
+          : (darkTech ? 'rgba(255,255,255,0.7)' : theme.inkSoft),
+        fontWeight: edgeHit ? 700 : onUpstreamPath ? 600 : 500,
         backgroundColor: darkTech ? 'rgba(15, 23, 42, 0.8)' : theme.surface,
         padding: [2, 6],
         borderRadius: 4,
@@ -205,7 +304,8 @@ export function buildTopologyOption(
     const onSelectedEdge =
       !!highlight.edge &&
       (highlight.edge.source === name || highlight.edge.target === name)
-    const dimmed = !!(highlight.node || highlight.edge) && !nodeHit && !onSelectedEdge
+    const onUpstreamNode = pathNodes.has(name)
+    const dimmed = hasSelectionHighlight && !nodeHit && !onSelectedEdge && !onUpstreamNode
     const health = healthBy?.[name]
     const errorCount = Number(errorBy[name]) || 0
     const color = resolveNodeColor(
@@ -216,13 +316,13 @@ export function buildTopologyOption(
       healthEnabled
     )
     const icon = inferServiceIcon(name)
-    
-    // 3D 立体节点效果
+    const pathAccent = onSelectedEdge || onUpstreamNode
+
     const baseSize = Math.max(
       compact ? 34 : 42,
       Math.min(compact ? 54 : 68, 16 + Math.sqrt(value) * (compact ? 4.5 : 6.5))
-    ) + (nodeHit ? 6 : 0)
-    
+    ) + (nodeHit || onSelectedEdge ? 6 : onUpstreamNode ? 3 : 0)
+
     return {
       name,
       value,
@@ -233,7 +333,7 @@ export function buildTopologyOption(
       healthHasData: health?.hasData,
       errorCount,
       symbolSize: baseSize,
-      symbol: 'roundRect', // 使用圆角矩形模拟 3D 方块
+      symbol: 'roundRect',
       itemStyle: {
         color: {
           type: 'linear' as const,
@@ -243,15 +343,15 @@ export function buildTopologyOption(
             { offset: 1, color: darkTech ? darkenColor(color, 20) : color }
           ]
         },
-        borderColor: nodeHit || onSelectedEdge ? theme.brand : (darkTech ? 'rgba(255,255,255,0.2)' : theme.surface),
-        borderWidth: nodeHit ? 3 : 2,
-        // 发光效果
-        shadowBlur: nodeHit ? 20 : (darkTech ? 15 : 8),
-        shadowColor: nodeHit 
-          ? 'rgba(45, 212, 191, 0.6)' 
+        borderColor: nodeHit || pathAccent
+          ? theme.brand
+          : (darkTech ? 'rgba(255,255,255,0.2)' : theme.surface),
+        borderWidth: nodeHit || onSelectedEdge ? 3 : onUpstreamNode ? 2.5 : 2,
+        shadowBlur: nodeHit || onSelectedEdge ? 20 : onUpstreamNode ? 14 : (darkTech ? 15 : 8),
+        shadowColor: nodeHit || pathAccent
+          ? 'rgba(45, 212, 191, 0.55)'
           : (darkTech ? color + '80' : 'rgba(21, 36, 31, 0.18)'),
-        opacity: dimmed ? 0.35 : 1,
-        // 3D 效果：顶部高光
+        opacity: dimmed ? 0.28 : 1,
         ...(darkTech ? {
           shadowOffsetX: 0,
           shadowOffsetY: 4
@@ -262,16 +362,14 @@ export function buildTopologyOption(
         position: 'bottom' as const,
         distance: 8,
         formatter: '{b}',
-        fontSize: compact ? 10 : nodeHit ? 13 : 12,
-        fontWeight: nodeHit ? 700 : 600,
+        fontSize: compact ? 10 : nodeHit || onSelectedEdge ? 13 : 12,
+        fontWeight: nodeHit || onSelectedEdge ? 700 : 600,
         color: dimmed ? theme.muted : (darkTech ? 'rgba(255,255,255,0.9)' : theme.ink),
-        // 文字阴影增强可读性
         ...(darkTech ? {
           textShadowColor: 'rgba(0,0,0,0.8)',
           textShadowBlur: 4
         } : {})
       },
-      // 节点上方显示图标
       ...(darkTech ? {
         labelLine: { show: false },
         emphasis: {

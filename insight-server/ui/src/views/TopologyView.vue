@@ -295,6 +295,7 @@
                 <el-icon class="si-topo-rail__arrow"><ArrowRight /></el-icon>
                 <span>{{ selection.peer }}</span>
               </p>
+              <p class="si-topo-rail__path-hint">{{ upstreamPathHint }}</p>
               <dl class="si-topo-rail__stats">
                 <div><dt>调用次数</dt><dd>{{ edgeCallCount(selection.service, selection.peer) }}</dd></div>
                 <div><dt>平均耗时</dt><dd>{{ formatMs(edgeAvgMs(selection.service, selection.peer)) }}</dd></div>
@@ -331,7 +332,7 @@
             </template>
 
             <p v-else class="si-topo-rail__empty">
-              点击图上的节点或调用链路，在此查看摘要并下钻。
+              点击图上的节点或调用边，在此查看摘要并下钻；选中调用边会高亮相关上游路径。
             </p>
           </div>
         </aside>
@@ -391,6 +392,7 @@ import { ApiService, isQueryTooLargeError, queryTooLargeDetail, type AiExplainRe
 import { useTheme } from '../composables/useTheme'
 import {
   buildTopologyOption,
+  collectUpstreamPath,
   resolveTopologyClick,
   type ServiceHealthInfo
 } from '../utils/topologyGraph'
@@ -572,6 +574,30 @@ const depColumns: SiColumn<DepRow>[] = [
 
 const depRowKey = (row: DepRow) => `${row.sourceService}-${row.targetService}`
 
+/** 选中边时计算的上游路径（用于图高亮与表格弱标） */
+const upstreamPathForSelection = computed(() => {
+  if (selection.value.kind !== 'edge' || !selection.value.service || !selection.value.peer) {
+    return null
+  }
+  return collectUpstreamPath(graphDependencies.value, {
+    source: selection.value.service,
+    target: selection.value.peer
+  })
+})
+
+const upstreamPathHint = computed(() => {
+  const path = upstreamPathForSelection.value
+  if (!path) return ''
+  const upstreamServices = path.nodes.filter(
+    (n) => n !== selection.value.service && n !== selection.value.peer
+  ).length
+  if (upstreamServices <= 0) {
+    return '图上已标出本边；当前无更上游调用方。'
+  }
+  const pathEdgeExtra = Math.max(0, path.edges.length - 1)
+  return `图上已高亮相关上游路径：${upstreamServices} 个上游服务、${pathEdgeExtra} 条上游边。`
+})
+
 const depRowClass = (row: DepRow) => {
   const current = selection.value
   if (
@@ -580,6 +606,15 @@ const depRowClass = (row: DepRow) => {
     current.peer === row.targetService
   ) {
     return 'si-topo-row--active'
+  }
+  const path = upstreamPathForSelection.value
+  if (
+    path &&
+    path.edges.some(
+      (e) => e.source === row.sourceService && e.target === row.targetService
+    )
+  ) {
+    return 'si-topo-row--path'
   }
   return ''
 }
@@ -603,9 +638,15 @@ const highlightOpts = () => {
     return { highlight: { node: selection.value.service } }
   }
   if (selection.value.kind === 'edge' && selection.value.service && selection.value.peer) {
+    const path = collectUpstreamPath(graphDependencies.value, {
+      source: selection.value.service,
+      target: selection.value.peer
+    })
     return {
       highlight: {
-        edge: { source: selection.value.service, target: selection.value.peer }
+        edge: { source: selection.value.service, target: selection.value.peer },
+        pathNodes: path.nodes,
+        pathEdges: path.edges
       }
     }
   }
@@ -1558,6 +1599,17 @@ onUnmounted(() => {
 
 :deep(.si-topo-row--active) {
   background: rgba(0, 184, 212, 0.08) !important;
+}
+
+:deep(.si-topo-row--path) {
+  background: rgba(0, 184, 212, 0.04) !important;
+}
+
+.si-topo-rail__path-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--si-muted, #94a3b8);
 }
 
 .si-svc {
