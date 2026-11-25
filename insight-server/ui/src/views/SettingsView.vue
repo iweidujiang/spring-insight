@@ -2,7 +2,7 @@
   <div class="si-page fade-in si-settings">
     <SiPageHeader class="si-settings__header" title="设置" icon="Setting">
       <el-button
-        v-if="section !== 'data' && section !== 'slo'"
+        v-if="section !== 'data' && section !== 'slo' && section !== 'security'"
         type="primary"
         :loading="saving"
         :disabled="loading || saving"
@@ -35,7 +35,8 @@
             'is-active': section === item.id,
             'is-danger': item.id === 'data'
           }"
-          @click="section = item.id"
+          :aria-current="section === item.id ? 'page' : undefined"
+          @click="goToSection(item.id)"
         >
           <span class="si-settings__tab-icon" aria-hidden="true">
             <el-icon><component :is="item.icon" /></el-icon>
@@ -49,10 +50,15 @@
 
       <div class="si-settings__panel">
         <!-- 告警 -->
-        <section v-show="section === 'alert'" class="si-settings__card">
+        <section
+          v-show="section === 'alert'"
+          id="settings-alert"
+          class="si-settings__card"
+          aria-labelledby="settings-alert-title"
+        >
           <header class="si-settings__card-head">
             <div>
-              <h3 class="si-settings__card-title"><el-icon class="si-icon--me-2"><Bell /></el-icon>告警推送</h3>
+              <h3 id="settings-alert-title" class="si-settings__card-title"><el-icon class="si-icon--me-2"><Bell /></el-icon>告警推送</h3>
               <p class="si-settings__card-desc">
                 按下面条件扫描，全部满足时按启用的渠道发送；可同时配置多个渠道。
               </p>
@@ -293,10 +299,15 @@
         </section>
 
         <!-- AI -->
-        <section v-show="section === 'ai'" class="si-settings__card">
+        <section
+          v-show="section === 'ai'"
+          id="settings-ai"
+          class="si-settings__card"
+          aria-labelledby="settings-ai-title"
+        >
           <header class="si-settings__card-head">
             <div>
-              <h3 class="si-settings__card-title"><el-icon class="si-icon--me-2"><MagicStick /></el-icon>AI 解读</h3>
+              <h3 id="settings-ai-title" class="si-settings__card-title"><el-icon class="si-icon--me-2"><MagicStick /></el-icon>AI 解读</h3>
               <p class="si-settings__card-desc">
                 对接 OpenAI 兼容接口。解读含摘要、可点证据与建议；可选在告警推送时附带短解读。
               </p>
@@ -387,10 +398,15 @@
         </section>
 
         <!-- SLO -->
-        <section v-show="section === 'slo'" class="si-settings__card">
+        <section
+          v-show="section === 'slo'"
+          id="settings-slo"
+          class="si-settings__card"
+          aria-labelledby="settings-slo-title"
+        >
           <header class="si-settings__card-head">
             <div>
-              <h3 class="si-settings__card-title"><el-icon class="si-icon--me-2"><Aim /></el-icon>服务 SLO</h3>
+              <h3 id="settings-slo-title" class="si-settings__card-title"><el-icon class="si-icon--me-2"><Aim /></el-icon>服务 SLO</h3>
               <p class="si-settings__card-desc">
                 按服务设定可用性目标与观察窗口，控制台据此计算错误预算；配置写入本机 runtime-settings.json。
               </p>
@@ -470,10 +486,15 @@
         </section>
 
         <!-- 容量与保留 -->
-        <section v-show="section === 'data'" class="si-settings__card si-settings__card--danger">
+        <section
+          v-show="section === 'data'"
+          id="settings-data"
+          class="si-settings__card si-settings__card--danger"
+          aria-labelledby="settings-data-title"
+        >
           <header class="si-settings__card-head">
             <div>
-              <h3 class="si-settings__card-title"><el-icon class="si-icon--me-2"><Coin /></el-icon>容量与保留</h3>
+              <h3 id="settings-data-title" class="si-settings__card-title"><el-icon class="si-icon--me-2"><Coin /></el-icon>存储与容量</h3>
               <p class="si-settings__card-desc">
                 查看占用与自动保留策略，并按范围删除 Span。清除不可恢复；按服务精确匹配时，相关 Trace 可能不完整。
               </p>
@@ -599,6 +620,57 @@
             </article>
           </div>
         </section>
+
+        <!-- 安全（只读状态 + 配置指引；开关在 application.yml / 环境变量） -->
+        <section
+          v-show="section === 'security'"
+          id="settings-security"
+          class="si-settings__card"
+          aria-labelledby="settings-security-title"
+        >
+          <header class="si-settings__card-head">
+            <div>
+              <h3 id="settings-security-title" class="si-settings__card-title">
+                <el-icon class="si-icon--me-2"><Lock /></el-icon>安全
+              </h3>
+              <p class="si-settings__card-desc">
+                控制台上报 Token 与控制台登录的开关状态（只读）。改配置请编辑
+                <code>application.yml</code> / 环境变量后重启 insight-server。
+              </p>
+            </div>
+          </header>
+
+          <div class="si-settings__security-grid">
+            <article class="si-settings__security-card" :class="security.ingestAuthEnabled ? 'is-on' : 'is-off'">
+              <div class="si-settings__security-head">
+                <strong>上报 Token</strong>
+                <span class="si-settings__security-badge">{{ security.ingestAuthEnabled ? '已开启' : '未开启' }}</span>
+              </div>
+              <p class="si-settings__hint">
+                开启后 Agent 须配置同名 Token，否则上报会被拒绝。对应
+                <code>spring.insight.server.security.ingest-token-required</code>
+                与 <code>ingest-token</code>。
+              </p>
+            </article>
+            <article class="si-settings__security-card" :class="security.uiAuthEnabled ? 'is-on' : 'is-off'">
+              <div class="si-settings__security-head">
+                <strong>控制台登录</strong>
+                <span class="si-settings__security-badge">{{ security.uiAuthEnabled ? '已开启' : '未开启' }}</span>
+              </div>
+              <p class="si-settings__hint">
+                开启后访问控制台 API 需登录。对应
+                <code>spring.insight.server.security.ui-auth-enabled</code>
+                与 <code>ui-password</code>（可选 <code>ui-username</code>）。
+              </p>
+              <p v-if="security.uiAuthEnabled" class="si-settings__hint">
+                当前会话：{{ security.authenticated ? '已登录' : '未登录或已过期' }}
+              </p>
+            </article>
+          </div>
+          <p class="si-settings__footnote">
+            密钥不会在此页展示。改完配置请重启监测中心后再刷新本页。
+          </p>
+        </section>
       </div>
     </template>
 
@@ -624,12 +696,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
   Check, Bell, Filter, Delete, Plus, TopRight, Share, ArrowDown, ArrowRight,
-  View, Promotion, MagicStick, Aim, Coin, DocumentChecked,
+  View, Promotion, MagicStick, Aim, Coin, DocumentChecked, Lock,
   Message, ChatDotRound, ChatDotSquare, Link
 } from '@element-plus/icons-vue'
 import SiAlert from '../components/SiAlert.vue'
@@ -645,20 +717,74 @@ import {
   type RuntimeSettingsSaveBody,
   type ServiceSlo
 } from '../services/ApiService'
+import { fetchAuthStatus } from '../services/AuthService'
 import { capacityWarnMessage } from '../utils/timeRange'
 
-type SettingsSection = 'alert' | 'ai' | 'slo' | 'data'
+type SettingsSection = 'alert' | 'ai' | 'slo' | 'data' | 'security'
 type ClearScope = 'all' | 'older_than' | 'service'
+
+const SECTION_IDS: SettingsSection[] = ['alert', 'ai', 'slo', 'data', 'security']
 
 const sections: { id: SettingsSection; label: string; icon: any; desc: string }[] = [
   { id: 'alert', label: '告警推送', icon: Bell, desc: '扫描规则与通知渠道' },
   { id: 'ai', label: 'AI 解读', icon: MagicStick, desc: '配置模型，解读链路与错误' },
   { id: 'slo', label: '服务 SLO', icon: Aim, desc: '可用性目标与错误预算' },
-  { id: 'data', label: '容量与保留', icon: Coin, desc: '占用、保留策略与清理' }
+  { id: 'data', label: '存储', icon: Coin, desc: '占用、保留策略与清理' },
+  { id: 'security', label: '安全', icon: Lock, desc: '上报 Token 与控制台登录' }
 ]
 
 const route = useRoute()
+const router = useRouter()
 const section = ref<SettingsSection>('alert')
+
+const security = reactive({
+  ingestAuthEnabled: false,
+  uiAuthEnabled: false,
+  authenticated: true
+})
+
+/**
+ * 把 URL / 别名解析为设置分区 id。
+ */
+function resolveSection(raw: string): SettingsSection | null {
+  const key = (raw || '').trim().toLowerCase().replace(/^#/, '')
+  if (!key) return null
+  if (key === 'storage' || key === 'capacity') return 'data'
+  if (key === 'auth') return 'security'
+  if ((SECTION_IDS as string[]).includes(key)) return key as SettingsSection
+  return null
+}
+
+/**
+ * 切换分区并同步到地址栏 ?section=，便于分享与深链。
+ */
+function goToSection(id: SettingsSection) {
+  if (section.value !== id) {
+    section.value = id
+  }
+  const current = String(route.query.section || '')
+  if (current === id) return
+  void router.replace({
+    path: '/settings',
+    query: { ...route.query, section: id }
+  })
+}
+
+/**
+ * 从路由 query / hash 应用分区（进入页或浏览器前进后退）。
+ */
+function applySectionFromRoute() {
+  const fromQuery = resolveSection(String(route.query.section || ''))
+  if (fromQuery) {
+    section.value = fromQuery
+    return
+  }
+  const hash = typeof window !== 'undefined' ? window.location.hash : ''
+  const fromHash = resolveSection(hash.replace(/^#settings-?/, '#').replace(/^#/, ''))
+  if (fromHash) {
+    section.value = fromHash
+  }
+}
 
 const loading = ref(true)
 const saving = ref(false)
@@ -1044,7 +1170,23 @@ function editSlo(row: ServiceSlo) {
   sloDraft.serviceName = row.serviceName
   sloDraft.targetAvailability = row.targetAvailability
   sloDraft.windowHours = row.windowHours
-  section.value = 'slo'
+  goToSection('slo')
+}
+
+/**
+ * 拉取上报 Token / 控制台登录开关状态（只读）。
+ */
+async function loadSecurityStatus() {
+  try {
+    const status = await fetchAuthStatus()
+    security.ingestAuthEnabled = status.ingestAuthEnabled
+    security.uiAuthEnabled = status.uiAuthEnabled
+    security.authenticated = status.authenticated
+  } catch {
+    security.ingestAuthEnabled = false
+    security.uiAuthEnabled = false
+    security.authenticated = true
+  }
 }
 
 async function loadSlos() {
@@ -1359,12 +1501,24 @@ function onClearDialogKey(e: KeyboardEvent) {
   }
 }
 
+watch(
+  () => [route.query.section, route.hash] as const,
+  () => {
+    applySectionFromRoute()
+  }
+)
+
 onMounted(() => {
-  const q = String(route.query.section || '')
-  if (q === 'alert' || q === 'ai' || q === 'slo' || q === 'data') {
-    section.value = q
+  applySectionFromRoute()
+  // 无 query 时写入默认分区，保证可复制当前页地址
+  if (!resolveSection(String(route.query.section || ''))) {
+    void router.replace({
+      path: '/settings',
+      query: { ...route.query, section: section.value }
+    })
   }
   load()
+  void loadSecurityStatus()
   window.addEventListener('keydown', onClearDialogKey)
 })
 onUnmounted(() => {
@@ -1424,15 +1578,30 @@ onUnmounted(() => {
 }
 
 .si-settings__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.65rem;
-  margin-bottom: 1rem;
+  margin: 0 0 1rem;
+  padding: 0.35rem 0 0.65rem;
+  background: linear-gradient(
+    to bottom,
+    var(--si-paper, #f5f7fa) 70%,
+    color-mix(in srgb, var(--si-paper, #f5f7fa) 40%, transparent)
+  );
 }
 
-@media (min-width: 900px) {
+@media (min-width: 1100px) {
   .si-settings__tabs {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1099px) {
+  .si-settings__tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -1440,6 +1609,68 @@ onUnmounted(() => {
   .si-settings__tabs {
     grid-template-columns: 1fr;
   }
+}
+
+.si-settings__security-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+@media (max-width: 799px) {
+  .si-settings__security-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.si-settings__security-card {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--si-border, #dee2e6);
+  border-radius: 0.6rem;
+  background: var(--si-surface, #fff);
+}
+
+.si-settings__security-card.is-on {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.si-settings__security-card.is-off {
+  border-color: var(--si-border, #dee2e6);
+}
+
+.si-settings__security-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.si-settings__security-head strong {
+  font-size: 0.95rem;
+}
+
+.si-settings__security-badge {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-style: normal;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--si-border, #dee2e6);
+  color: var(--si-muted);
+}
+
+.si-settings__security-card.is-on .si-settings__security-badge {
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #047857;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.si-settings__footnote {
+  margin: 0.85rem 0 0;
+  font-size: 0.8rem;
+  color: var(--si-muted);
 }
 
 .si-settings__slo-list {
