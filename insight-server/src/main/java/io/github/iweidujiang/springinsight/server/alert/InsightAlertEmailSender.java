@@ -32,9 +32,7 @@ public class InsightAlertEmailSender implements InsightAlertChannelSender {
      */
     @Override
     public void send(AlertPayload payload, ChannelConfig config) throws Exception {
-        if (!send(config.alertProperties(), payload.fields())) {
-            throw new IllegalStateException("email send failed");
-        }
+        sendOrThrow(config.alertProperties(), payload.fields());
     }
 
     /**
@@ -42,11 +40,27 @@ public class InsightAlertEmailSender implements InsightAlertChannelSender {
      *
      * @param properties 生效中的告警配置
      * @param payload    与 Webhook 相同的字段 Map
-     * @return 发送成功为 true
+     * @return 发送成功为 true；未就绪或失败为 false（调度侧吞掉细节）
      */
     public boolean send(InsightServerAlertProperties properties, Map<String, Object> payload) {
-        if (properties == null || !properties.isEmailSendReady()) {
+        try {
+            sendOrThrow(properties, payload);
+            return true;
+        } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * 发送邮件；配置不全或 SMTP 失败时抛出带可读信息的异常（供试发接口展示）。
+     *
+     * @param properties 生效配置
+     * @param payload    告警字段
+     * @throws Exception 未就绪或发送失败
+     */
+    void sendOrThrow(InsightServerAlertProperties properties, Map<String, Object> payload) throws Exception {
+        if (properties == null || !properties.isEmailSendReady()) {
+            throw new IllegalStateException("邮件未配置完整：请填写 SMTP Host、发件人 From 与收件人 To");
         }
         InsightServerAlertProperties.Email email = properties.getEmail();
         try {
@@ -58,10 +72,12 @@ public class InsightAlertEmailSender implements InsightAlertChannelSender {
             message.setSubject("[Spring Insight] alert: " + service);
             message.setText(formatBody(payload));
             sender.send(message);
-            return true;
+        } catch (IllegalStateException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("[告警] 邮件发送失败: to={}, error={}", email.getTo(), e.getMessage());
-            return false;
+            String detail = e.getMessage() == null || e.getMessage().isBlank() ? e.getClass().getSimpleName() : e.getMessage().trim();
+            throw new IllegalStateException("邮件发送失败：" + detail, e);
         }
     }
 

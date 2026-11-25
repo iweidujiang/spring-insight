@@ -46,9 +46,17 @@ public class InsightAlertWebhookSender implements InsightAlertChannelSender {
      */
     @Override
     public void send(AlertPayload payload, ChannelConfig config) throws Exception {
-        PostResult result = postDetailed(config.webhookUrl(), payload.fields(), config.token());
+        String url = config.webhookUrl() == null ? "" : config.webhookUrl().trim();
+        if (url.isEmpty()) {
+            throw new IllegalStateException("Webhook 未配置完整：请填写目标 URL");
+        }
+        PostResult result = postDetailed(url, payload.fields(), config.token());
         if (!result.ok()) {
-            throw new IllegalStateException(result.error().isBlank() ? "webhook send failed" : result.error());
+            String err = result.error().isBlank() ? "Webhook 发送失败" : result.error();
+            if (err.startsWith("HTTP ")) {
+                err = "Webhook " + err + "，请检查目标地址与鉴权";
+            }
+            throw new IllegalStateException(err);
         }
     }
 
@@ -97,9 +105,12 @@ public class InsightAlertWebhookSender implements InsightAlertChannelSender {
             }
             log.warn("[告警] webhook 非 2xx: status={}, url={}", status, url);
             return PostResult.fail(status, "HTTP " + status, truncate(response.body()));
+        } catch (IllegalArgumentException e) {
+            log.warn("[告警] webhook 地址无效: url={}, error={}", url, e.getMessage());
+            return PostResult.fail(0, "Webhook URL 无效", "");
         } catch (Exception e) {
             log.warn("[告警] webhook 发送失败: url={}, error={}", url, e.getMessage());
-            return PostResult.fail(0, e.getMessage() == null ? "send failed" : e.getMessage(), "");
+            return PostResult.fail(0, e.getMessage() == null ? "Webhook 发送失败" : e.getMessage(), "");
         }
     }
 

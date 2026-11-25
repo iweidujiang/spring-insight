@@ -1199,10 +1199,57 @@ async function onSave() {
   }
 }
 
+/** 渠道类型中文名（试发文案统一） */
+function channelTypeLabel(type: string): string {
+  switch (type) {
+    case 'dingtalk':
+      return '钉钉'
+    case 'feishu':
+      return '飞书'
+    case 'wecom':
+      return '企业微信'
+    case 'email':
+      return '邮件'
+    case 'webhook':
+      return 'Webhook'
+    default:
+      return type || '渠道'
+  }
+}
+
+/**
+ * 试发前本地校验；返回空串表示可继续。
+ */
+function validateChannelForTest(channel: ChannelDraft, send: boolean): string {
+  if (!send) return ''
+  const label = channelTypeLabel(channel.type)
+  if (channel.type === 'email') {
+    if (!channel.smtpHost?.trim()) return `${label}未配置完整：请填写 SMTP Host`
+    if (!channel.smtpFrom?.trim()) return `${label}未配置完整：请填写发件人 From`
+    if (!channel.smtpTo?.trim()) return `${label}未配置完整：请填写收件人 To`
+    if (!channel.passwordConfigured && !channel.smtpPassword?.trim() && channel.smtpUsername?.trim()) {
+      return `${label}：已填用户名但未填密码（若已保存过可留空后先保存再试）`
+    }
+    return ''
+  }
+  if (!channel.webhookUrl?.trim()) return `${label}未配置完整：请填写 Webhook URL`
+  if (channel.type === 'dingtalk' && !channel.secretConfigured && !channel.secret?.trim()) {
+    return `${label}未配置完整：请填写加签密钥（若已保存可留空）`
+  }
+  return ''
+}
+
 async function testChannel(channel: ChannelDraft, send: boolean) {
   testingId.value = channel.id
   channelResults[channel.id] = ''
   clearChannelFeedback(channel.id)
+  const localErr = validateChannelForTest(channel, send)
+  if (localErr) {
+    showChannelFeedback(channel.id, localErr, false)
+    testingId.value = ''
+    return
+  }
+  const displayName = channel.name?.trim() || channelTypeLabel(channel.type)
   try {
     const res = await ApiService.testAlertChannel({
       send,
@@ -1226,16 +1273,21 @@ async function testChannel(channel: ChannelDraft, send: boolean) {
       showChannelFeedback(
         channel.id,
         res.ok
-          ? `${channel.name} 测试发送成功`
-          : `${channel.name} 测试发送失败：${res.error || '未成功'}`,
+          ? `${displayName} 测试发送成功，请到对应客户端查看是否收到样本`
+          : `${displayName} 测试发送失败：${res.error || '未成功'}`,
         !!res.ok
       )
     } else {
-      showChannelFeedback(channel.id, `已生成${channel.name}预览（未发送）`, true)
+      showChannelFeedback(channel.id, `已生成 ${displayName} 预览（未实际发送）`, true)
     }
   } catch (e: any) {
-    const msg = e?.response?.data?.message || e?.message || '测试失败'
-    showChannelFeedback(channel.id, msg, false)
+    const data = e?.response?.data
+    const msg =
+      (typeof data?.error === 'string' && data.error) ||
+      (typeof data?.message === 'string' && data.message) ||
+      e?.message ||
+      '测试失败'
+    showChannelFeedback(channel.id, `${displayName}：${msg}`, false)
   } finally {
     testingId.value = ''
   }

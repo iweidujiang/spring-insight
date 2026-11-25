@@ -50,7 +50,7 @@ public class DingtalkAlertChannelSender implements InsightAlertChannelSender {
         String webhook = config.webhookUrl() == null ? "" : config.webhookUrl().trim();
         String secret = config.secret() == null ? "" : config.secret().trim();
         if (webhook.isEmpty() || secret.isEmpty()) {
-            throw new IllegalStateException("dingtalk webhook or secret is empty");
+            throw new IllegalStateException("钉钉未配置完整：请填写 Webhook URL 与加签密钥");
         }
         long timestamp = System.currentTimeMillis();
         String url = signedUrl(webhook, timestamp, secret);
@@ -65,11 +65,12 @@ public class DingtalkAlertChannelSender implements InsightAlertChannelSender {
         int status = response.statusCode();
         if (status < 200 || status >= 300) {
             log.warn("[告警] 钉钉非 2xx: status={}", status);
-            throw new IllegalStateException("HTTP " + status);
+            throw new IllegalStateException("钉钉 HTTP 状态 " + status + "，请检查 Webhook 是否有效");
         }
         if (dingtalkRejected(response.body())) {
             log.warn("[告警] 钉钉返回错误: {}", truncate(response.body()));
-            throw new IllegalStateException("dingtalk errcode");
+            throw new IllegalStateException("钉钉返回业务错误（errcode 非 0），请核对加签密钥与机器人权限。"
+                    + " 详情: " + truncate(response.body()));
         }
     }
 

@@ -58,7 +58,7 @@ public class WecomAlertChannelSender implements InsightAlertChannelSender {
     public void send(AlertPayload payload, ChannelConfig config) throws Exception {
         String webhook = config.webhookUrl() == null ? "" : config.webhookUrl().trim();
         if (webhook.isEmpty()) {
-            throw new IllegalStateException("wecom webhook is empty");
+            throw new IllegalStateException("企业微信未配置完整：请填写 Webhook URL");
         }
         String json = objectMapper.writeValueAsString(
                 markdown(payload.fields(), serverUrl(config.alertProperties())));
@@ -71,11 +71,12 @@ public class WecomAlertChannelSender implements InsightAlertChannelSender {
         int status = response.statusCode();
         if (status < 200 || status >= 300) {
             log.warn("[告警] 企业微信非 2xx: status={}", status);
-            throw new IllegalStateException("HTTP " + status);
+            throw new IllegalStateException("企业微信 HTTP 状态 " + status + "，请检查 Webhook 是否有效");
         }
         if (wecomRejected(response.body())) {
             log.warn("[告警] 企业微信返回错误: {}", truncate(response.body()));
-            throw new IllegalStateException("wecom errcode");
+            throw new IllegalStateException("企业微信返回业务错误（errcode 非 0），请核对 Webhook。"
+                    + " 详情: " + truncate(response.body()));
         }
     }
 

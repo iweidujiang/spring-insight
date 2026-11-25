@@ -171,7 +171,7 @@ public class InsightSettingsController {
     }
 
     /**
-     * 把试发异常转成可读说明（出网失败时提示检查 insight-server 所在机器）。
+     * 把试发异常转成可读说明（出网 / TLS / 配置不全统一话术）。
      *
      * @param type 渠道类型
      * @param e    异常
@@ -181,31 +181,71 @@ public class InsightSettingsController {
         String raw = e == null || e.getMessage() == null || e.getMessage().isBlank()
                 ? "发送失败"
                 : e.getMessage().trim();
+        String kind = type == null ? "" : type.trim().toLowerCase();
+        String channelLabel = switch (kind) {
+            case "dingtalk" -> "钉钉 oapi.dingtalk.com";
+            case "feishu" -> "飞书开放接口";
+            case "wecom" -> "企业微信接口";
+            case "email" -> "SMTP 服务器";
+            case "webhook" -> "Webhook 目标";
+            default -> "通知服务";
+        };
+
+        // 已是中文配置/业务提示则直接返回（发送器侧已写清）
+        if (raw.startsWith("钉钉")
+                || raw.startsWith("飞书")
+                || raw.startsWith("企业微信")
+                || raw.startsWith("邮件")
+                || raw.startsWith("Webhook")) {
+            return raw;
+        }
+
         Throwable cur = e;
         while (cur != null) {
             String name = cur.getClass().getSimpleName();
             String msg = cur.getMessage() == null ? "" : cur.getMessage();
+            String lower = msg.toLowerCase();
+            if (name.contains("SSLHandshake")
+                    || name.contains("Certificate")
+                    || lower.contains("pkix")
+                    || lower.contains("sslhandshake")) {
+                return "与 " + channelLabel + " 建立 TLS 失败（" + raw + "）。"
+                        + "请检查证书、是否需跳过校验，或企业代理是否拦截 HTTPS。";
+            }
             if (msg.contains("Network unreachable")
                     || msg.contains("Connection refused")
                     || msg.contains("Connection timed out")
                     || msg.contains("connect timed out")
                     || msg.contains("Unknown host")
+                    || lower.contains("timed out")
                     || name.contains("UnknownHost")
                     || name.contains("ConnectException")
                     || name.contains("NoRouteToHost")
-                    || name.contains("HttpTimeout")) {
-                String channel = switch (type == null ? "" : type) {
-                    case "dingtalk" -> "钉钉 oapi.dingtalk.com";
-                    case "feishu" -> "飞书开放接口";
-                    case "wecom" -> "企业微信接口";
-                    case "email" -> "SMTP 服务器";
-                    case "webhook" -> "Webhook 目标";
-                    default -> "通知服务";
-                };
-                return "无法连接到 " + channel + "（" + raw + "）。"
+                    || name.contains("HttpTimeout")
+                    || name.contains("SocketTimeout")) {
+                return "无法连接到 " + channelLabel + "（" + raw + "）。"
                         + "请确认运行 insight-server 的机器能出网访问该地址（代理、防火墙、Docker 网络）。";
             }
             cur = cur.getCause();
+        }
+
+        // 兼容旧英文异常文案
+        String legacy = switch (raw) {
+            case "dingtalk webhook or secret is empty" -> "钉钉未配置完整：请填写 Webhook URL 与加签密钥";
+            case "feishu webhook is empty" -> "飞书未配置完整：请填写 Webhook URL";
+            case "wecom webhook is empty" -> "企业微信未配置完整：请填写 Webhook URL";
+            case "dingtalk errcode" -> "钉钉返回业务错误（errcode 非 0），请核对加签密钥与机器人权限";
+            case "feishu code" -> "飞书返回业务错误（code 非 0），请核对 Webhook 与加签密钥";
+            case "wecom errcode" -> "企业微信返回业务错误（errcode 非 0），请核对 Webhook";
+            case "email send failed" -> "邮件发送失败，请检查 SMTP 主机、端口、账号与收件人";
+            case "webhook send failed", "send failed" -> "Webhook 发送失败，请检查目标地址";
+            default -> null;
+        };
+        if (legacy != null) {
+            return legacy;
+        }
+        if (raw.startsWith("HTTP ")) {
+            return channelLabel + " 返回 " + raw + "，请检查地址与鉴权是否有效";
         }
         return raw;
     }
