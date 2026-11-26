@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -664,7 +665,7 @@ public class TraceSpanPersistenceService {
      * @param lastHours   时间窗小时；{@code <=0} 不限
      * @param serviceName 可选业务服务名（执行 Redis 命令的服务）
      * @param recentLimit 最近 REDIS Span 条数
-     * @return hours / kpis / byRemote / recent
+     * @return hours / kpis / byRemote / byCommand / recent
      */
     public Map<String, Object> getRedisSummary(int lastHours, String serviceName, int recentLimit) {
         return getRedisSummary(QueryWindow.ofHours(lastHours), serviceName, recentLimit);
@@ -676,7 +677,7 @@ public class TraceSpanPersistenceService {
      * @param window      观测窗
      * @param serviceName 可选服务
      * @param recentLimit 最近条数
-     * @return 汇总
+     * @return hours / kpis / byRemote / byCommand / recent
      */
     public Map<String, Object> getRedisSummary(QueryWindow window, String serviceName, int recentLimit) {
         QueryWindow w = window != null ? window : QueryWindow.ofHours(24);
@@ -688,6 +689,9 @@ public class TraceSpanPersistenceService {
         long slowCount = 0L;
         Map<String, long[]> byRemoteAgg = new HashMap<>();
         Map<String, Long> byRemoteMax = new HashMap<>();
+        Map<String, List<Long>> cmdDurations = new HashMap<>();
+        Map<String, long[]> cmdErrSlow = new HashMap<>();
+        Map<String, TraceSpan> cmdSample = new HashMap<>();
         List<TraceSpan> redisSpans = new ArrayList<>();
 
         for (TraceSpan s : heavySnapshot()) {
@@ -728,6 +732,18 @@ public class TraceSpanPersistenceService {
             }
             a[3] += dur;
             byRemoteMax.merge(remote, dur, Math::max);
+
+            String command = resolveRedisCommand(s);
+            cmdDurations.computeIfAbsent(command, x -> new ArrayList<>()).add(dur);
+            long[] ces = cmdErrSlow.computeIfAbsent(command, x -> new long[]{0L, 0L});
+            if (err) {
+                ces[0]++;
+            }
+            if (slow) {
+                ces[1]++;
+            }
+            cmdSample.putIfAbsent(command, s);
+
             redisSpans.add(s);
         }
 
@@ -770,6 +786,45 @@ public class TraceSpanPersistenceService {
                 ((Number) b.get("callCount")).longValue(),
                 ((Number) a.get("callCount")).longValue()));
 
+        List<Map<String, Object>> byCommand = new ArrayList<>();
+        for (Map.Entry<String, List<Long>> e : cmdDurations.entrySet()) {
+            String command = e.getKey();
+            List<Long> durs = e.getValue();
+            if (durs == null || durs.isEmpty()) {
+                continue;
+            }
+            List<Long> sorted = new ArrayList<>(durs);
+            sorted.sort(Long::compareTo);
+            long sum = 0L;
+            for (Long d : sorted) {
+                sum += d;
+            }
+            long[] ces = cmdErrSlow.getOrDefault(command, new long[]{0L, 0L});
+            TraceSpan sample = cmdSample.get(command);
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("command", command);
+            row.put("callCount", (long) sorted.size());
+            row.put("errorCount", ces[0]);
+            row.put("slowCount", ces[1]);
+            row.put("avgMs", Math.round((sum / (double) sorted.size()) * 100.0) / 100.0);
+            row.put("p95Ms", percentile(sorted, 0.95));
+            row.put("maxMs", sorted.get(sorted.size() - 1));
+            if (sample != null) {
+                row.put("sampleKey", tagValue(sample, "redis.key"));
+                row.put("sampleTraceId", sample.getTraceId());
+                row.put("sampleSpanId", sample.getSpanId());
+                row.put("sampleServiceName", sample.getServiceName());
+                row.put("sampleRemoteService", sample.getRemoteService());
+            }
+            byCommand.add(row);
+        }
+        byCommand.sort((a, b) -> Long.compare(
+                ((Number) b.get("callCount")).longValue(),
+                ((Number) a.get("callCount")).longValue()));
+        if (byCommand.size() > 50) {
+            byCommand = new ArrayList<>(byCommand.subList(0, 50));
+        }
+
         redisSpans.sort((a, b) -> Long.compare(n(b.getStartTime()), n(a.getStartTime())));
         List<Map<String, Object>> recent = new ArrayList<>();
         int n = Math.min(recentMax, redisSpans.size());
@@ -791,7 +846,7 @@ public class TraceSpanPersistenceService {
             row.put("errorCode", s.getErrorCode());
             row.put("success", s.getSuccess());
             row.put("slow", isRedisSlow(s));
-            row.put("command", tagValue(s, "redis.command"));
+            row.put("command", resolveRedisCommand(s));
             row.put("key", tagValue(s, "redis.key"));
             recent.add(row);
         }
@@ -801,6 +856,7 @@ public class TraceSpanPersistenceService {
         body.put("serviceName", svc);
         body.put("kpis", kpis);
         body.put("byRemote", byRemote);
+        body.put("byCommand", byCommand);
         body.put("recent", recent);
         return body;
     }
@@ -1882,6 +1938,34 @@ public class TraceSpanPersistenceService {
 
     private static boolean isRedisSlow(TraceSpan s) {
         return "true".equalsIgnoreCase(tagValue(s, "redis.slow"));
+    }
+
+    /**
+     * 解析 Redis 命令名：优先 {@code redis.command} 标签，其次从 {@code operationName} 去掉 {@code REDIS } 前缀。
+     *
+     * @param s Span
+     * @return 大写命令；无法识别时为 {@code (unknown)}
+     */
+    static String resolveRedisCommand(TraceSpan s) {
+        String tagged = tagValue(s, "redis.command");
+        if (tagged != null && !tagged.isBlank()) {
+            return tagged.trim().toUpperCase(Locale.ROOT);
+        }
+        String op = s != null ? s.getOperationName() : null;
+        if (op != null && !op.isBlank()) {
+            String trimmed = op.trim();
+            if (trimmed.length() > 6 && trimmed.regionMatches(true, 0, "REDIS ", 0, 6)) {
+                String cmd = trimmed.substring(6).trim();
+                if (!cmd.isEmpty()) {
+                    int sp = cmd.indexOf(' ');
+                    if (sp > 0) {
+                        cmd = cmd.substring(0, sp);
+                    }
+                    return cmd.toUpperCase(Locale.ROOT);
+                }
+            }
+        }
+        return "(unknown)";
     }
 
     private static String tagValue(TraceSpan s, String key) {

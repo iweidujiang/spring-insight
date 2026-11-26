@@ -82,6 +82,47 @@
           />
         </SiSection>
 
+        <SiSection
+          title="按命令"
+          icon="Collection"
+          :count="summary.byCommand.length"
+          label="按 Redis 命令聚合"
+        >
+          <p class="si-redis-cmd-hint">按 GET / SET / HGET 等命令汇总次数与耗时；点击行或「样例链路」打开 Trace。</p>
+          <ul v-if="commandBars.length" class="si-redis-cmd-bars" aria-label="命令次数分布">
+            <li v-for="bar in commandBars" :key="bar.command" class="si-redis-cmd-bar">
+              <span class="si-redis-cmd-type">{{ bar.command }}</span>
+              <div class="si-redis-cmd-bar__track" :title="`${bar.callCount} 次`">
+                <div class="si-redis-cmd-bar__fill" :style="{ width: bar.pct + '%' }" />
+              </div>
+              <span class="si-redis-cmd-bar__count">{{ bar.callCount }}</span>
+            </li>
+          </ul>
+          <SiDataTable
+            :rows="summary.byCommand"
+            :columns="commandColumns"
+            :row-key="commandKey"
+            clickable
+            @row-click="onCommandClick"
+          >
+            <template #cell-command="{ row }">
+              <span class="si-redis-cmd-type">{{ row.command || '—' }}</span>
+              <span v-if="row.sampleKey" class="si-redis-cmd-sample-key">{{ row.sampleKey }}</span>
+            </template>
+            <template #cell-action="{ row }">
+              <el-button
+                type="primary"
+                plain
+                size="small"
+                :disabled="!row.sampleTraceId"
+                @click.stop="goTrace(row.sampleTraceId, row.sampleSpanId)"
+              >
+                样例链路
+              </el-button>
+            </template>
+          </SiDataTable>
+        </SiSection>
+
         <SiSection title="最近 Redis Span" icon="List" :count="summary.recent.length" label="最近 Redis">
           <SiDataTable
             :rows="summary.recent"
@@ -153,9 +194,22 @@ const loading = ref(true)
 const loadError = ref('')
 type RedisSummary = Awaited<ReturnType<typeof ApiService.getRedisSummary>>
 type RemoteRow = RedisSummary['byRemote'][number]
+type CommandRow = RedisSummary['byCommand'][number]
 type RecentRow = RedisSummary['recent'][number]
 
 const summary = ref<RedisSummary | null>(null)
+
+const commandBars = computed(() => {
+  const rows = summary.value?.byCommand || []
+  if (!rows.length) return []
+  const top = rows.slice(0, 8)
+  const max = Math.max(...top.map((r) => r.callCount), 1)
+  return top.map((r) => ({
+    command: r.command || '(unknown)',
+    callCount: r.callCount,
+    pct: Math.max(4, Math.round((r.callCount / max) * 100))
+  }))
+})
 
 const remoteColumns: SiColumn<RemoteRow>[] = [
   {
@@ -179,6 +233,31 @@ const remoteColumns: SiColumn<RemoteRow>[] = [
   },
   { key: 'avgMs', label: '平均', numeric: true, value: (row) => formatDuration(row.avgMs) },
   { key: 'maxMs', label: '最大', numeric: true, value: (row) => formatDuration(row.maxMs) }
+]
+
+const commandColumns: SiColumn<CommandRow>[] = [
+  {
+    key: 'command',
+    label: '命令',
+    truncate: true,
+    title: (row) => [row.command, row.sampleKey].filter(Boolean).join(' ') || undefined
+  },
+  { key: 'callCount', label: '次数', numeric: true },
+  {
+    key: 'errorCount',
+    label: '错误',
+    numeric: true,
+    cellClass: (row) => (row.errorCount > 0 ? 'si-redis-cell--danger' : undefined)
+  },
+  {
+    key: 'slowCount',
+    label: '慢',
+    numeric: true,
+    cellClass: (row) => (row.slowCount > 0 ? 'si-redis-cell--warning' : undefined)
+  },
+  { key: 'p95Ms', label: 'p95', numeric: true, value: (row) => formatDuration(row.p95Ms) },
+  { key: 'maxMs', label: '最大', numeric: true, value: (row) => formatDuration(row.maxMs) },
+  { key: 'action', label: '', stopRowClick: true }
 ]
 
 const recentColumns: SiColumn<RecentRow>[] = [
@@ -235,7 +314,15 @@ const clearServiceFilter = () => {
 
 const redisFailed = (row: RecentRow) => row.success === false || row.statusCode === 'ERROR'
 
+const commandKey = (row: CommandRow) => row.command || '(unknown)'
+
 const recentKey = (row: RecentRow, index: number) => `${row.spanId || row.traceId}-${index}`
+
+const onCommandClick = (row: CommandRow) => {
+  if (row.sampleTraceId) {
+    goTrace(row.sampleTraceId, row.sampleSpanId)
+  }
+}
 
 const onRecentClick = (row: RecentRow) => {
   goTrace(row.traceId, row.spanId)
@@ -393,6 +480,55 @@ onMounted(async () => {
   background: var(--si-brand-soft);
   font-size: 0.7rem;
   font-weight: 600;
+}
+
+.si-redis-cmd-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  color: var(--si-muted);
+}
+
+.si-redis-cmd-bars {
+  list-style: none;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.si-redis-cmd-bar {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.si-redis-cmd-bar__track {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--si-surface-3, #f1f5f9);
+  overflow: hidden;
+}
+
+.si-redis-cmd-bar__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--si-brand);
+  opacity: 0.85;
+}
+
+.si-redis-cmd-bar__count {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--si-muted);
+  text-align: right;
+}
+
+.si-redis-cmd-sample-key {
+  font-size: 0.82rem;
+  color: var(--si-muted);
 }
 
 </style>

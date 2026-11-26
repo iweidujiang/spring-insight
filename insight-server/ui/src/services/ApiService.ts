@@ -685,7 +685,7 @@ export class ApiService {
     }
   }
 
-  /** Redis 追踪汇总（缓存页）：KPI / 按实例 / 最近 Span */
+  /** Redis 追踪汇总（缓存页）：KPI / 按实例 / 按命令 / 最近 Span */
   static async getRedisSummary(
     hours: HoursOrWindow = 24,
     service?: string,
@@ -708,6 +708,20 @@ export class ApiService {
       slowCount: number
       avgMs: number
       maxMs: number
+    }>
+    byCommand: Array<{
+      command: string
+      callCount: number
+      errorCount: number
+      slowCount: number
+      avgMs: number
+      p95Ms: number
+      maxMs: number
+      sampleKey: string | null
+      sampleTraceId: string
+      sampleSpanId: string
+      sampleServiceName: string
+      sampleRemoteService: string
     }>
     recent: Array<{
       traceId: string
@@ -740,6 +754,20 @@ export class ApiService {
       avgMs: Number(row.avgMs ?? row.avg_ms ?? 0),
       maxMs: Number(row.maxMs ?? row.max_ms ?? 0)
     })
+    const mapCommand = (row: any) => ({
+      command: String(row.command ?? ''),
+      callCount: Number(row.callCount ?? row.call_count ?? 0),
+      errorCount: Number(row.errorCount ?? row.error_count ?? 0),
+      slowCount: Number(row.slowCount ?? row.slow_count ?? 0),
+      avgMs: Number(row.avgMs ?? row.avg_ms ?? 0),
+      p95Ms: Number(row.p95Ms ?? row.p95_ms ?? 0),
+      maxMs: Number(row.maxMs ?? row.max_ms ?? 0),
+      sampleKey: row.sampleKey ?? row.sample_key ?? null,
+      sampleTraceId: String(row.sampleTraceId ?? row.sample_trace_id ?? ''),
+      sampleSpanId: String(row.sampleSpanId ?? row.sample_span_id ?? ''),
+      sampleServiceName: String(row.sampleServiceName ?? row.sample_service_name ?? ''),
+      sampleRemoteService: String(row.sampleRemoteService ?? row.sample_remote_service ?? '')
+    })
     const mapRecent = (row: any) => ({
       traceId: String(row.traceId ?? row.trace_id ?? ''),
       spanId: String(row.spanId ?? row.span_id ?? ''),
@@ -770,6 +798,11 @@ export class ApiService {
         ? raw.byRemote.map(mapRemote)
         : Array.isArray(raw.by_remote)
           ? raw.by_remote.map(mapRemote)
+          : [],
+      byCommand: Array.isArray(raw.byCommand)
+        ? raw.byCommand.map(mapCommand)
+        : Array.isArray(raw.by_command)
+          ? raw.by_command.map(mapCommand)
           : [],
       recent: Array.isArray(raw.recent) ? raw.recent.map(mapRecent) : []
     }

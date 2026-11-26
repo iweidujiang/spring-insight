@@ -228,6 +228,18 @@ class TraceListFilterTest {
         assertEquals(2, ((Number) byRemote.get(0).get("callCount")).intValue());
 
         @SuppressWarnings("unchecked")
+        List<Map<String, Object>> byCommand = (List<Map<String, Object>>) all.get("byCommand");
+        assertTrue(byCommand.size() >= 2);
+        assertTrue(byCommand.stream().anyMatch(r -> "GET".equals(r.get("command"))));
+        assertTrue(byCommand.stream().anyMatch(r -> "SET".equals(r.get("command"))));
+        Map<String, Object> getRow = byCommand.stream()
+                .filter(r -> "GET".equals(r.get("command")))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(2, ((Number) getRow.get("callCount")).intValue());
+        assertEquals(1, ((Number) getRow.get("slowCount")).intValue());
+
+        @SuppressWarnings("unchecked")
         List<Map<String, Object>> recent = (List<Map<String, Object>>) all.get("recent");
         assertEquals(3, recent.size());
         assertTrue(recent.stream().noneMatch(r -> "GET /order/1".equals(r.get("operationName"))));
@@ -241,6 +253,9 @@ class TraceListFilterTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> fk = (Map<String, Object>) filtered.get("kpis");
         assertEquals(2, ((Number) fk.get("spanCount")).intValue());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> filteredCmds = (List<Map<String, Object>>) filtered.get("byCommand");
+        assertEquals(2, filteredCmds.size());
     }
 
     @Test
