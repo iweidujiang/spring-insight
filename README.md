@@ -7,7 +7,7 @@
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License" /></a>
   <a href="https://www.oracle.com/java/"><img src="https://img.shields.io/badge/Agent-JDK%2017%2B-orange" alt="Java" /></a>
   <a href="https://spring.io/projects/spring-boot"><img src="https://img.shields.io/badge/Spring%20Boot-3.x%20%2F%202.7-brightgreen" alt="Spring Boot" /></a>
-  <a href="https://github.com/iweidujiang/spring-insight/releases/tag/v2.1.0"><img src="https://img.shields.io/badge/Server-2.1.0-green.svg" alt="Server" /></a>
+  <a href="https://github.com/iweidujiang/spring-insight/releases/tag/v2.1.1"><img src="https://img.shields.io/badge/Server-2.1.1-green.svg" alt="Server" /></a>
   <a href="https://central.sonatype.com/artifact/io.github.iweidujiang/spring-insight-agent-starter/0.7.0"><img src="https://img.shields.io/badge/Agent-0.7.0-blue.svg" alt="Agent" /></a>
 </p>
 
@@ -28,7 +28,7 @@ Spring Insight 更轻：
 - **排障闭环**：统一时间窗、错误分析、数据库 / 缓存页、告警可点回控制台
 - **个人 / 小团队友好**：不必上重型 APM 也能把请求看清楚
 
-当前发版：**Server `2.1.0`** + **Agent / Starter `0.7.0`**。链路上报可继续搭配 Server 2.1.0；心跳 / 版本配套 / 丢弃提示请用本仓 Server **`2.2.0-SNAPSHOT`**（或后续正式版）。变更详见 [CHANGELOG](CHANGELOG.md)。
+当前发版：**Server `2.1.1`** + **Agent / Starter `0.7.0`**。升到此版监测中心后，可配合 Agent `0.7.0` 看到心跳存活、版本配套与丢弃提示；只升 Server、Agent 仍为 `0.6.x` 时，原有链路上报不受影响。变更详见 [CHANGELOG](CHANGELOG.md)。
 
 ---
 
@@ -43,17 +43,17 @@ docker run --rm -p 9966:9966 \
   -e SPRING_INSIGHT_SERVER_STORAGE_MODE=file \
   -e SPRING_INSIGHT_SERVER_STORAGE_FILE_PATH=/data/spans.json \
   -v spring-insight-data:/data \
-  ghcr.io/iweidujiang/spring-insight-server:2.1.0
+  ghcr.io/iweidujiang/spring-insight-server:2.1.1
 ```
 
 或在仓库根目录：`docker compose up -d`（默认镜像与上表版本一致）。
 
 **可执行 jar**
 
-从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-2.1.0.jar`（需 JDK 17+）：
+从 [Releases](https://github.com/iweidujiang/spring-insight/releases) 下载 `insight-server-2.1.1.jar`（需 JDK 17+）：
 
 ```bash
-java -jar insight-server-2.1.0.jar
+java -jar insight-server-2.1.1.jar
 ```
 
 浏览器打开 <http://localhost:9966/>。
@@ -109,10 +109,10 @@ Spring Boot **2.7.x** 请使用 Boot2 坐标（`spring-insight-agent-starter-boo
 | HTTP 采集 | Feign、WebClient、Gateway、RestTemplate、RestClient 等；跨服务透传 Trace |
 | 仪表盘 | KPI、时段摘要、健康 / 慢服务、库与缓存卡片、最近请求；无数据时有接入引导 |
 | 服务拓扑 | 依赖关系与健康分着色；可选环形 / 力导向 / 层次布局，可按调用量过滤弱边 |
-| 链路追踪 | 列表筛选、瀑布图（关键路径、SQL 预览、异常高亮）；可对比两条 Trace、下载脱敏排障包 |
-| 数据库 / 缓存 | JDBC / Redis 追踪（默认关）；SQL 指纹聚合，可与链路互相跳转 |
+| 链路追踪 | 列表筛选、瀑布图（关键路径、SQL 预览、异常高亮）；可复制含筛选的分享链接；可对比两条 Trace、下载脱敏排障包 |
+| 数据库 / 缓存 | JDBC / Redis 追踪（默认关）；SQL 指纹聚合；缓存可按命令汇总；可与链路互相跳转 |
 | 错误与告警 | 错误分析；告警历史；钉钉 / 飞书 / 企微 / 邮件 / Webhook，消息可带深链回控制台 |
-| 服务与 JVM | 服务列表 / 详情；在线 / 沉默；可选 JVM 运行时曲线 |
+| 服务与 JVM | 服务列表 / 详情；在线 / 沉默（可合并心跳）；关于页可见推荐 Agent 版本；可选 JVM 运行时曲线 |
 | 体验 | 统一时间窗（近 N 小时或自定义起止）；亮 / 暗 / 跟随系统主题 |
 
 ---
@@ -167,7 +167,7 @@ KPI、时段摘要、健康 / 慢服务、库与缓存、最近请求。
 | 模块 | 角色 | 当前版本 |
 |------|------|----------|
 | `spring-insight-agent-starter` | 业务侧依赖（Boot3） | `0.7.0`（Maven Central） |
-| `insight-server` | 监测中心（含控制台） | `2.1.0`（GHCR / Release jar） |
+| `insight-server` | 监测中心（含控制台） | `2.1.1`（GHCR / Release jar） |
 
 Agent 与 Server **分线发版**：控制台与查询能力升 Server 即可；只有埋点 / 协议变更才需要升 Agent。升级说明见 [CHANGELOG](CHANGELOG.md)。
 
