@@ -49,6 +49,11 @@ public @interface EnableSpringInsight {
     double sampleRate() default 1.0;
 
     /**
+     * 头部采样未命中时，错误 Span 是否仍上报。成功 Span 仍按 {@link #sampleRate()}。
+     */
+    boolean alwaysSampleErrors() default true;
+
+    /**
      * 是否启用 HTTP 请求追踪
      */
     boolean httpTracingEnabled() default true;

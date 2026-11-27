@@ -55,6 +55,8 @@ public class InsightAnnotationPropertySource implements EnvironmentPostProcessor
             properties.setProperty("spring.insight.service-instance", annotation.serviceInstance());
         }
         properties.setProperty("spring.insight.sample-rate", String.valueOf(annotation.sampleRate()));
+        properties.setProperty("spring.insight.always-sample-errors",
+                String.valueOf(annotation.alwaysSampleErrors()));
         properties.setProperty("spring.insight.http-tracing-enabled",
                 String.valueOf(annotation.httpTracingEnabled()));
         // JVM / DB 开关与 @ConditionalOnProperty 前缀对齐

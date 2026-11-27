@@ -52,9 +52,17 @@ public class InsightProperties {
 
     /**
      * 采样率（0.0 - 1.0）。头部采样：本地根 Trace 按此概率记录；入站 {@code traceparent} 跟随上游 flags；子 Span 继承父。
-     * <p>默认 1.0（全采）；0 表示不上报。未采样 Span 仍可能创建但不上报，出站 flags 写 {@code 00}。</p>
+     * <p>默认 1.0（全采）；0 表示成功调用不上报。未采样 Span 仍可能创建，出站 flags 写 {@code 00}。
+     * 错误 Span 是否仍上报见 {@link #alwaysSampleErrors}。</p>
      */
     private double sampleRate = 1.0;
+
+    /**
+     * 头部采样未命中时，错误 Span 是否仍上报。
+     * <p>默认 true。成功 Span 仍只按 {@link #sampleRate} 上报；采样率为 1 时本项没有额外流量。
+     * 设为 false 则未采样 Span（含错误）一律丢弃。</p>
+     */
+    private boolean alwaysSampleErrors = true;
 
     /**
      * 是否启用 HTTP 请求追踪

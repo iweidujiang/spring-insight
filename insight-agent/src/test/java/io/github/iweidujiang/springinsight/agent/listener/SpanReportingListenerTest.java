@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -68,6 +69,44 @@ class SpanReportingListenerTest {
         TraceSpan span = new TraceSpan();
         span.setSampled(false);
         span.finish();
+
+        listener.reportSpan(span);
+
+        verify(asyncSpanReporter, never()).report(any(TraceSpan.class));
+        assertEquals(0, listener.getStats().getTotalReportedSpans());
+        assertEquals(1, listener.getStats().getTotalDroppedUnsampled());
+    }
+
+    /**
+     * 采样率未命中时，错误 Span 默认仍上报，且不改写头部采样标志。
+     */
+    @Test
+    void reportSpan_exportsUnsampledErrorByDefault() {
+        when(asyncSpanReporter.report(any(TraceSpan.class))).thenReturn(true);
+        TraceSpan span = new TraceSpan();
+        span.setSampled(false);
+        span.finish("HTTP_500", "HTTP Status: 500");
+
+        listener.reportSpan(span);
+
+        verify(asyncSpanReporter).report(span);
+        assertFalse(span.isSampled());
+        assertEquals(1, listener.getStats().getTotalReportedSpans());
+        assertEquals(0, listener.getStats().getTotalDroppedUnsampled());
+    }
+
+    /**
+     * 关闭错误强制上报后，未采样的错误也丢弃。
+     */
+    @Test
+    void reportSpan_dropsUnsampledErrorWhenDisabled() {
+        InsightProperties properties = new InsightProperties();
+        properties.setAlwaysSampleErrors(false);
+        listener = new SpanReportingListener(asyncSpanReporter, micrometerBridge, properties);
+
+        TraceSpan span = new TraceSpan();
+        span.setSampled(false);
+        span.finish("HTTP_500", "HTTP Status: 500");
 
         listener.reportSpan(span);
 

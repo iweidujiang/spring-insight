@@ -108,6 +108,24 @@ class InsightJdbcSupportTest {
         assertEquals(1, TraceContext.getStackDepth());
     }
 
+    /**
+     * 父 Span 未采样时，SQL 错误仍交给上报监听器。
+     */
+    @Test
+    void unsampledParent_errorStillReachesListener() {
+        TraceSpan root = TraceContext.startSpan("HTTP GET /x");
+        root.setSampled(false);
+        assertThrows(SQLException.class, () ->
+                InsightJdbcSupport.traceExecute(
+                        "UPDATE t SET a=1", "db", properties, listener, () -> {
+                            throw new SQLException("boom");
+                        }));
+        ArgumentCaptor<TraceSpan> captor = ArgumentCaptor.forClass(TraceSpan.class);
+        verify(listener).reportSpan(captor.capture());
+        assertFalse(captor.getValue().isSampled());
+        assertEquals("SQL_ERROR", captor.getValue().getErrorCode());
+    }
+
     @Test
     void thresholdZero_reportsSuccess() throws Exception {
         properties.setJdbcSlowThresholdMs(0L);

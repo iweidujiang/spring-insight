@@ -1,5 +1,6 @@
 package io.github.iweidujiang.springinsight.agent.context;
 
+import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,5 +35,30 @@ class TraceSamplerTest {
         assertEquals(0.0, TraceSampler.clamp(-0.5));
         assertEquals(1.0, TraceSampler.clamp(1.5));
         assertEquals(0.3, TraceSampler.clamp(0.3));
+    }
+
+    /**
+     * 已采样一律上报；未采样时只有错误且开关打开才上报。
+     */
+    @Test
+    void shouldExport_keepsSuccessSampledAndForcesErrors() {
+        TraceSpan success = new TraceSpan();
+        success.setSampled(true);
+        success.finish();
+        assertTrue(TraceSampler.shouldExport(success, true));
+
+        TraceSpan unsampledOk = new TraceSpan();
+        unsampledOk.setSampled(false);
+        unsampledOk.finish();
+        assertFalse(TraceSampler.shouldExport(unsampledOk, true));
+        assertFalse(TraceSampler.isError(unsampledOk));
+
+        TraceSpan unsampledError = new TraceSpan();
+        unsampledError.setSampled(false);
+        unsampledError.finish("HTTP_500", "HTTP Status: 500");
+        assertTrue(TraceSampler.isError(unsampledError));
+        assertTrue(TraceSampler.shouldExport(unsampledError, true));
+        assertFalse(TraceSampler.shouldExport(unsampledError, false));
+        assertFalse(unsampledError.isSampled());
     }
 }

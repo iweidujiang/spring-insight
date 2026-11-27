@@ -259,7 +259,8 @@ public final class InsightJdbcSupport {
     }
 
     private static void report(SpanReportingListener listener, TraceSpan span) {
-        if (listener != null && span.isSampled()) {
+        if (listener != null && span != null) {
+            // 未采样的成功 Span 由监听器丢弃；错误是否仍上报也在监听器按配置决定。
             listener.reportSpan(TraceSpan.snapshot(span));
         }
     }

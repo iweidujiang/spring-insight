@@ -204,7 +204,7 @@ let hintTimer: number | null = null
 
 const agentVersionForSnippet = computed(() => {
   const v = agentVersion.value.trim()
-  return !v || v === '…' || v === 'unknown' ? '0.7.1-SNAPSHOT' : v
+  return !v || v === '…' || v === 'unknown' ? '0.8.0-SNAPSHOT' : v
 })
 
 const compatAlertTone = computed<'info' | 'warning' | 'success'>(() => {

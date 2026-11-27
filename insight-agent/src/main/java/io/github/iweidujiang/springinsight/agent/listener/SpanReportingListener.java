@@ -2,6 +2,7 @@ package io.github.iweidujiang.springinsight.agent.listener;
 
 import io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties;
 import io.github.iweidujiang.springinsight.agent.collector.AsyncSpanReporter;
+import io.github.iweidujiang.springinsight.agent.context.TraceSampler;
 import io.github.iweidujiang.springinsight.agent.micrometer.InsightMicrometerBridge;
 import io.github.iweidujiang.springinsight.agent.model.TraceSpan;
 import jakarta.annotation.PostConstruct;
@@ -48,8 +49,9 @@ public class SpanReportingListener {
      */
     @PostConstruct
     public void init() {
-        log.info("[Span监听器] 初始化完成，已连接上报器，sample-rate={}",
-                insightProperties != null ? insightProperties.getSampleRate() : 1.0);
+        log.info("[Span监听器] 初始化完成，已连接上报器，sample-rate={}，always-sample-errors={}",
+                insightProperties != null ? insightProperties.getSampleRate() : 1.0,
+                alwaysSampleErrors());
     }
 
     /**
@@ -61,14 +63,6 @@ public class SpanReportingListener {
             log.warn("[Span监听器] 尝试上报空的Span，已忽略");
             return;
         }
-        if (!span.isSampled()) {
-            totalDroppedUnsampled.incrementAndGet();
-            log.debug("[Span监听器] 未采样 Span 已丢弃: spanId={}, operation={}",
-                    span.getSpanId(), span.getOperationName());
-            return;
-        }
-        log.debug("[Span监听器] Span准备上报: spanId={}, operation={}", span.getSpanId(), span.getOperationName());
-
         if (!span.isFinished()) {
             log.warn("[Span监听器] 尝试上报未完成的Span: spanId={}，将强制结束", span.getSpanId());
             if ("ERROR".equalsIgnoreCase(span.getStatusCode()) || Boolean.FALSE.equals(span.getSuccess())) {
@@ -79,6 +73,17 @@ public class SpanReportingListener {
                 span.finish();
             }
         }
+        if (!TraceSampler.shouldExport(span, alwaysSampleErrors())) {
+            totalDroppedUnsampled.incrementAndGet();
+            log.debug("[Span监听器] 未采样 Span 已丢弃: spanId={}, operation={}",
+                    span.getSpanId(), span.getOperationName());
+            return;
+        }
+        if (!span.isSampled()) {
+            log.debug("[Span监听器] 未采样错误 Span 仍上报: spanId={}, operation={}",
+                    span.getSpanId(), span.getOperationName());
+        }
+        log.debug("[Span监听器] Span准备上报: spanId={}, operation={}", span.getSpanId(), span.getOperationName());
 
         // 异步上报Span
         boolean success = asyncSpanReporter.report(span);
@@ -104,6 +109,15 @@ public class SpanReportingListener {
             log.warn("[Span监听器] Span上报失败（可能队列已满）: spanId={}, operation={}",
                     span.getSpanId(), span.getOperationName());
         }
+    }
+
+    /**
+     * 未采样的错误是否仍上报。未注入配置时与属性默认值一致（开启）。
+     *
+     * @return 是否强制上报错误
+     */
+    private boolean alwaysSampleErrors() {
+        return insightProperties == null || insightProperties.isAlwaysSampleErrors();
     }
 
     /**

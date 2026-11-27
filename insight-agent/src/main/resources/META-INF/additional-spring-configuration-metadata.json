@@ -109,8 +109,15 @@
     {
       "name": "spring.insight.sample-rate",
       "type": "java.lang.Double",
-      "description": "头部采样率 0.0～1.0。本地根 Trace 按此概率上报；入站 traceparent 跟随上游 flags；子 Span 继承父。默认 1.0。",
+      "description": "头部采样率 0.0～1.0。本地根 Trace 按此概率上报成功调用；入站 traceparent 跟随上游 flags；子 Span 继承父。默认 1.0。错误 Span 是否仍上报见 always-sample-errors。",
       "defaultValue": 1.0,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
+    },
+    {
+      "name": "spring.insight.always-sample-errors",
+      "type": "java.lang.Boolean",
+      "description": "头部采样未命中时，错误 Span 是否仍上报。默认 true。成功 Span 仍按 sample-rate；设为 false 则未采样 Span（含错误）一律丢弃。不改变出站 traceparent 的采样标志。",
+      "defaultValue": true,
       "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
     },
     {
