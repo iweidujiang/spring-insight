@@ -166,7 +166,7 @@ public class InsightRuntimeSettingsService {
         if (saved == null || saved.getPanels() == null || saved.getPanels().isEmpty()) {
             return DashboardLayouts.defaultOverview();
         }
-        return DashboardLayouts.copy(saved);
+        return DashboardLayouts.ensureCatalogPanels(DashboardLayouts.copy(saved));
     }
 
     /**

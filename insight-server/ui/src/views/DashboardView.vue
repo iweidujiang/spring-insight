@@ -65,6 +65,27 @@
               </button>
             </li>
             <li v-if="templates.length" class="si-layout-menu__divider" role="separator"></li>
+            <li class="si-layout-menu__section" role="presentation">模块显隐</li>
+            <li
+              v-for="mod in PANEL_CATALOG"
+              :key="'mod-' + mod.id"
+              role="none"
+            >
+              <button
+                type="button"
+                class="si-layout-menu__item si-layout-menu__item--toggle"
+                role="menuitemcheckbox"
+                :aria-checked="panelVisible(mod.id)"
+                :disabled="layoutSaving"
+                @click="togglePanelVisible(mod.id)"
+              >
+                <span class="si-layout-menu__check" :class="{ 'is-on': panelVisible(mod.id) }" aria-hidden="true">
+                  {{ panelVisible(mod.id) ? '✓' : '' }}
+                </span>
+                <span class="si-layout-menu__name">{{ mod.label }}</span>
+              </button>
+            </li>
+            <li class="si-layout-menu__divider" role="separator"></li>
             <li role="none">
               <button type="button" class="si-layout-menu__item" role="menuitem" @click="resetLayout">
                 恢复默认
@@ -101,6 +122,7 @@
 
     <SiLoading v-if="loading" text="正在加载仪表盘…" />
 
+    <SiAlert v-if="layoutError" tone="warning" class="si-dashboard__alert">{{ layoutError }}</SiAlert>
     <SiAlert v-if="loadError" tone="danger" class="si-dashboard__alert">{{ loadError }}</SiAlert>
     <SiAlert v-else-if="queryBudgetHint" tone="warning" class="si-dashboard__alert">{{ queryBudgetHint }}</SiAlert>
 
@@ -477,6 +499,7 @@ import {
   queryTooLargeDetail,
   type AiExplainResult,
   type DashboardLayout,
+  type DashboardPanel,
   type DashboardTemplate,
   type PeriodInsight,
   type PeriodInsightLink,
@@ -506,8 +529,30 @@ import {
 const router = useRouter()
 const route = useRoute()
 
+const LAYOUT_CACHE_KEY = 'si.ui.dashboard.layout'
+
+/** 与页面区块对齐的模块目录（缺省补齐 / 显隐开关） */
+const PANEL_CATALOG: ReadonlyArray<{ id: string; type: string; label: string }> = [
+  { id: 'kpi', type: 'kpi', label: 'KPI' },
+  { id: 'summary', type: 'period-summary', label: '时段摘要' },
+  { id: 'collector', type: 'collector', label: '采集器' },
+  { id: 'jdbc', type: 'jdbc', label: '数据库' },
+  { id: 'redis', type: 'redis', label: '缓存' },
+  { id: 'service-health', type: 'service-health', label: '服务健康' },
+  { id: 'slow-services', type: 'slow-services', label: '慢服务' },
+  { id: 'error-services', type: 'error-services', label: '异常服务' },
+  { id: 'hot-dependencies', type: 'hot-dependencies', label: '热点依赖' },
+  { id: 'slo-budget', type: 'slo-budget', label: '错误预算' },
+  { id: 'health-donut', type: 'health-donut', label: '健康分布' },
+  { id: 'sankey', type: 'sankey', label: '调用流向' },
+  { id: 'error-funnel', type: 'error-funnel', label: '错误漏斗' },
+  { id: 'recent-traces', type: 'recent-traces', label: '最近请求' },
+  { id: 'service-rank', type: 'service-rank', label: '服务排名' }
+]
+
 const loading = ref(true)
 const loadError = ref('')
+const layoutError = ref('')
 const queryBudgetHint = ref('')
 const exporting = ref(false)
 const layoutSaving = ref(false)
@@ -579,14 +624,61 @@ const hasDependencies = computed(() => dependencies.value.length > 0)
 /** 只有一个应用且尚无调用边：首页用单应用请求列表 */
 const isSolo = computed(() => !hasDependencies.value && services.value.length === 1)
 
-/** 按布局 visible 控制面板；无布局数据时全部显示 */
+/**
+ * 将已存布局与模块目录合并：目录中缺失的面板默认可见。
+ */
+function mergeLayoutWithCatalog(raw: DashboardLayout | null | undefined): DashboardLayout {
+  const panels: DashboardPanel[] = Array.isArray(raw?.panels)
+    ? raw!.panels.map((p) => ({ ...p }))
+    : []
+  const byId = new Map(panels.map((p) => [p.id, p]))
+  for (const mod of PANEL_CATALOG) {
+    if (!byId.has(mod.id)) {
+      panels.push({
+        id: mod.id,
+        type: mod.type,
+        x: 0,
+        y: 0,
+        w: 1,
+        h: 1,
+        visible: true
+      })
+    }
+  }
+  return {
+    templateId: raw?.templateId,
+    panels
+  }
+}
+
+function cacheLayoutLocally(next: DashboardLayout) {
+  try {
+    localStorage.setItem(LAYOUT_CACHE_KEY, JSON.stringify(next))
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function readCachedLayout(): DashboardLayout | null {
+  try {
+    const raw = localStorage.getItem(LAYOUT_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as DashboardLayout
+    if (!parsed || !Array.isArray(parsed.panels) || !parsed.panels.length) return null
+    return mergeLayoutWithCatalog(parsed)
+  } catch {
+    return null
+  }
+}
+
+/** 按布局 visible 控制面板；无布局数据时全部显示；目录外缺失视为可见 */
 const panelVisible = (id: string): boolean => {
   if (!layoutControlsEnabled.value || !layout.value?.panels?.length) {
     return true
   }
   const panel = layout.value.panels.find((p) => p.id === id || p.type === id)
   if (!panel) {
-    return false
+    return true
   }
   return panel.visible !== false
 }
@@ -1522,26 +1614,53 @@ const onDocumentClick = (ev: MouseEvent) => {
 }
 
 const persistLayout = async (next: DashboardLayout) => {
+  const merged = mergeLayoutWithCatalog(next)
   layoutSaving.value = true
+  layoutError.value = ''
+  // 先本地生效并缓存，避免 API 暂不可用时丢显隐
+  layout.value = merged
+  layoutControlsEnabled.value = true
+  cacheLayoutLocally(merged)
   try {
-    await ApiService.saveDashboardLayout(next)
-    layout.value = next
-    layoutControlsEnabled.value = true
+    await ApiService.saveDashboardLayout(merged)
   } catch (error) {
     console.error('保存仪表盘布局失败:', error)
-    loadError.value = '保存布局失败'
+    layoutError.value = '布局已在本机记住，但同步到监测中心失败；恢复后可再点「布局」保存'
   } finally {
     layoutSaving.value = false
   }
 }
 
+/**
+ * 切换单个模块显隐并持久化。
+ */
+const togglePanelVisible = async (id: string) => {
+  const base = layout.value
+    ? mergeLayoutWithCatalog(layout.value)
+    : mergeLayoutWithCatalog(DEFAULT_OVERVIEW_LAYOUT)
+  const panels = base.panels.map((p) =>
+    p.id === id || p.type === id ? { ...p, visible: p.visible === false } : { ...p }
+  )
+  // 至少保留一个可见模块，避免整页空白
+  if (!panels.some((p) => p.visible !== false)) {
+    layoutError.value = '请至少保留一个可见模块'
+    return
+  }
+  await persistLayout({
+    templateId: base.templateId || 'custom',
+    panels
+  })
+  await nextTick()
+  syncCharts()
+}
+
 const applyTemplate = async (tpl: DashboardTemplate) => {
   closeLayoutMenu()
   if (!tpl?.layout?.panels?.length) return
-  const next: DashboardLayout = {
+  const next: DashboardLayout = mergeLayoutWithCatalog({
     templateId: tpl.id,
     panels: tpl.layout.panels.map((p) => ({ ...p }))
-  }
+  })
   await persistLayout(next)
   await nextTick()
   syncCharts()
@@ -1549,19 +1668,15 @@ const applyTemplate = async (tpl: DashboardTemplate) => {
 
 const DEFAULT_OVERVIEW_LAYOUT: DashboardLayout = {
   templateId: 'overview',
-  panels: [
-    { id: 'kpi', type: 'kpi', x: 0, y: 0, w: 4, h: 1, visible: true },
-    { id: 'summary', type: 'period-summary', x: 0, y: 1, w: 4, h: 1, visible: true },
-    { id: 'collector', type: 'collector', x: 0, y: 2, w: 4, h: 1, visible: true },
-    { id: 'jdbc', type: 'jdbc', x: 0, y: 3, w: 2, h: 1, visible: true },
-    { id: 'redis', type: 'redis', x: 2, y: 3, w: 2, h: 1, visible: true },
-    { id: 'service-health', type: 'service-health', x: 0, y: 4, w: 2, h: 2, visible: true },
-    { id: 'slow-services', type: 'slow-services', x: 2, y: 4, w: 1, h: 1, visible: true },
-    { id: 'hot-dependencies', type: 'hot-dependencies', x: 3, y: 4, w: 1, h: 1, visible: true },
-    { id: 'slo-budget', type: 'slo-budget', x: 0, y: 6, w: 4, h: 1, visible: true },
-    { id: 'recent-traces', type: 'recent-traces', x: 0, y: 7, w: 2, h: 2, visible: true },
-    { id: 'service-rank', type: 'service-rank', x: 2, y: 7, w: 2, h: 2, visible: true }
-  ]
+  panels: PANEL_CATALOG.map((mod, index) => ({
+    id: mod.id,
+    type: mod.type,
+    x: 0,
+    y: index,
+    w: mod.id === 'kpi' || mod.id === 'summary' || mod.id === 'collector' || mod.id === 'slo-budget' ? 4 : 2,
+    h: 1,
+    visible: true
+  }))
 }
 
 const resetLayout = async () => {
@@ -1588,13 +1703,23 @@ const resetLayout = async () => {
 }
 
 const loadLayoutConfig = async () => {
+  layoutError.value = ''
   try {
-    layout.value = await ApiService.getDashboardLayout()
+    const remote = await ApiService.getDashboardLayout()
+    layout.value = mergeLayoutWithCatalog(remote)
     layoutControlsEnabled.value = true
+    cacheLayoutLocally(layout.value)
   } catch (error) {
-    console.warn('仪表盘布局 API 不可用，使用全部面板:', error)
-    layout.value = null
-    layoutControlsEnabled.value = false
+    console.warn('仪表盘布局 API 不可用，尝试本机缓存:', error)
+    const cached = readCachedLayout()
+    if (cached) {
+      layout.value = cached
+      layoutControlsEnabled.value = true
+      layoutError.value = '布局接口暂不可用，已使用本机上次保存的显隐'
+    } else {
+      layout.value = null
+      layoutControlsEnabled.value = false
+    }
   }
   try {
     templates.value = await ApiService.getDashboardTemplates()
@@ -1717,6 +1842,8 @@ onUnmounted(() => {
   z-index: 30;
   min-width: 14rem;
   max-width: min(20rem, 80vw);
+  max-height: min(70vh, 32rem);
+  overflow: auto;
   margin: 0;
   padding: 0.35rem 0;
   list-style: none;
@@ -1724,6 +1851,41 @@ onUnmounted(() => {
   border: 1px solid var(--card-border);
   background: var(--si-dropdown-bg, var(--card-bg));
   box-shadow: 0 10px 28px rgba(21, 36, 31, 0.14);
+}
+
+.si-layout-menu__section {
+  padding: 0.35rem 0.85rem 0.15rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--si-muted);
+}
+
+.si-layout-menu__item--toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.si-layout-menu__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--card-border);
+  font-size: 0.75rem;
+  line-height: 1;
+  color: transparent;
+  flex-shrink: 0;
+}
+
+.si-layout-menu__check.is-on {
+  border-color: rgba(0, 184, 212, 0.45);
+  background: rgba(0, 184, 212, 0.12);
+  color: var(--si-brand);
 }
 
 .si-layout-menu__item {

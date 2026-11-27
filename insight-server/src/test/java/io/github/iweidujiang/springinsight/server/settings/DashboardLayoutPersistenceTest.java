@@ -45,6 +45,8 @@ class DashboardLayoutPersistenceTest {
         assertFalse(layout.getPanels().isEmpty());
         assertTrue(layout.getPanels().stream().anyMatch(p -> "kpi".equals(p.getId())));
         assertTrue(layout.getPanels().stream().anyMatch(p -> "period-summary".equals(p.getType())));
+        assertTrue(layout.getPanels().stream().anyMatch(p -> "health-donut".equals(p.getId())));
+        assertTrue(layout.getPanels().stream().anyMatch(p -> "error-services".equals(p.getId())));
     }
 
     @Test
@@ -69,8 +71,16 @@ class DashboardLayoutPersistenceTest {
 
         DashboardLayout loaded = settingsService.getDashboardLayout();
         assertEquals("custom", loaded.getTemplateId());
-        assertEquals("kpi", loaded.getPanels().get(0).getId());
-        assertEquals(2, loaded.getPanels().get(0).getY());
+        // 读取时补齐目录面板；kpi 显隐与坐标保持已存值
+        assertTrue(loaded.getPanels().size() > 1);
+        DashboardPanel kpi = loaded.getPanels().stream()
+                .filter(p -> "kpi".equals(p.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals(1, kpi.getX());
+        assertEquals(2, kpi.getY());
+        assertFalse(kpi.isVisible());
+        assertTrue(loaded.getPanels().stream().anyMatch(p -> "health-donut".equals(p.getId())));
     }
 
     @Test
@@ -91,8 +101,8 @@ class DashboardLayoutPersistenceTest {
         InsightRuntimeSettingsService restarted = newService();
         DashboardLayout loaded = restarted.getDashboardLayout();
         assertEquals(DashboardLayouts.TEMPLATE_MINIMAL, loaded.getTemplateId());
-        assertEquals(1, loaded.getPanels().size());
-        assertEquals("summary", loaded.getPanels().get(0).getId());
+        assertTrue(loaded.getPanels().size() > 1);
+        assertTrue(loaded.getPanels().stream().anyMatch(p -> "summary".equals(p.getId()) && p.isVisible()));
     }
 
     @Test

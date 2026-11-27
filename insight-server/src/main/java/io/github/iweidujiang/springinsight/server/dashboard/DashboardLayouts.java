@@ -84,10 +84,14 @@ public final class DashboardLayouts {
                 panel("redis", "redis", 2, 3, 2, 1, true),
                 panel("service-health", "service-health", 0, 4, 1, 1, true),
                 panel("slow-services", "slow-services", 1, 4, 1, 1, true),
-                panel("hot-dependencies", "hot-dependencies", 2, 4, 1, 1, true),
-                panel("slo-budget", "slo-budget", 3, 4, 1, 1, true),
-                panel("recent-traces", "recent-traces", 0, 5, 2, 2, true),
-                panel("service-rank", "service-rank", 2, 5, 2, 2, true)
+                panel("error-services", "error-services", 2, 4, 1, 1, true),
+                panel("hot-dependencies", "hot-dependencies", 3, 4, 1, 1, true),
+                panel("slo-budget", "slo-budget", 0, 5, 4, 1, true),
+                panel("health-donut", "health-donut", 0, 6, 1, 2, true),
+                panel("sankey", "sankey", 1, 6, 2, 2, true),
+                panel("error-funnel", "error-funnel", 3, 6, 1, 2, true),
+                panel("recent-traces", "recent-traces", 0, 8, 2, 2, true),
+                panel("service-rank", "service-rank", 2, 8, 2, 2, true)
         ));
         return layout;
     }
@@ -100,13 +104,17 @@ public final class DashboardLayouts {
                 panel("summary", "period-summary", 0, 1, 4, 1, true),
                 panel("error-services", "error-services", 0, 2, 2, 2, true),
                 panel("slow-services", "slow-services", 2, 2, 2, 2, true),
-                panel("recent-traces", "recent-traces", 0, 4, 4, 2, true),
+                panel("error-funnel", "error-funnel", 0, 4, 2, 2, true),
+                panel("recent-traces", "recent-traces", 2, 4, 2, 2, true),
                 panel("collector", "collector", 0, 6, 4, 1, true),
                 panel("jdbc", "jdbc", 0, 7, 2, 1, false),
                 panel("redis", "redis", 2, 7, 2, 1, false),
                 panel("service-health", "service-health", 0, 8, 2, 1, false),
                 panel("hot-dependencies", "hot-dependencies", 2, 8, 2, 1, false),
-                panel("service-rank", "service-rank", 0, 9, 4, 1, false)
+                panel("slo-budget", "slo-budget", 0, 9, 4, 1, false),
+                panel("health-donut", "health-donut", 0, 10, 2, 1, false),
+                panel("sankey", "sankey", 2, 10, 2, 1, false),
+                panel("service-rank", "service-rank", 0, 11, 4, 1, false)
         ));
         return layout;
     }
@@ -125,7 +133,11 @@ public final class DashboardLayouts {
                 panel("service-health", "service-health", 2, 7, 2, 1, false),
                 panel("hot-dependencies", "hot-dependencies", 0, 8, 2, 1, false),
                 panel("service-rank", "service-rank", 2, 8, 2, 1, false),
-                panel("error-services", "error-services", 0, 9, 4, 1, false)
+                panel("error-services", "error-services", 0, 9, 4, 1, false),
+                panel("slo-budget", "slo-budget", 0, 10, 4, 1, false),
+                panel("health-donut", "health-donut", 0, 11, 1, 1, false),
+                panel("sankey", "sankey", 1, 11, 2, 1, false),
+                panel("error-funnel", "error-funnel", 3, 11, 1, 1, false)
         ));
         return layout;
     }
@@ -144,7 +156,11 @@ public final class DashboardLayouts {
                 panel("service-health", "service-health", 2, 7, 2, 1, false),
                 panel("hot-dependencies", "hot-dependencies", 0, 8, 2, 1, false),
                 panel("service-rank", "service-rank", 2, 8, 2, 1, false),
-                panel("error-services", "error-services", 0, 9, 4, 1, false)
+                panel("error-services", "error-services", 0, 9, 4, 1, false),
+                panel("slo-budget", "slo-budget", 0, 10, 4, 1, false),
+                panel("health-donut", "health-donut", 0, 11, 1, 1, false),
+                panel("sankey", "sankey", 1, 11, 2, 1, false),
+                panel("error-funnel", "error-funnel", 3, 11, 1, 1, false)
         ));
         return layout;
     }
@@ -160,11 +176,47 @@ public final class DashboardLayouts {
                 panel("redis", "redis", 2, 3, 2, 1, false),
                 panel("service-health", "service-health", 0, 4, 2, 1, false),
                 panel("slow-services", "slow-services", 2, 4, 1, 1, false),
-                panel("hot-dependencies", "hot-dependencies", 3, 4, 1, 1, false),
-                panel("recent-traces", "recent-traces", 0, 5, 2, 1, false),
-                panel("service-rank", "service-rank", 2, 5, 2, 1, false)
+                panel("error-services", "error-services", 3, 4, 1, 1, false),
+                panel("hot-dependencies", "hot-dependencies", 0, 5, 2, 1, false),
+                panel("slo-budget", "slo-budget", 2, 5, 2, 1, false),
+                panel("health-donut", "health-donut", 0, 6, 1, 1, false),
+                panel("sankey", "sankey", 1, 6, 2, 1, false),
+                panel("error-funnel", "error-funnel", 3, 6, 1, 1, false),
+                panel("recent-traces", "recent-traces", 0, 7, 2, 1, false),
+                panel("service-rank", "service-rank", 2, 7, 2, 1, false)
         ));
         return layout;
+    }
+
+    /**
+     * 将概览目录中缺失的面板以 {@code visible=true} 补齐，兼容旧版已存布局。
+     *
+     * @param layout 已存布局（会被复制）
+     * @return 补齐后的布局
+     */
+    public static DashboardLayout ensureCatalogPanels(DashboardLayout layout) {
+        DashboardLayout out = copy(layout);
+        if (out.getPanels() == null) {
+            out.setPanels(new ArrayList<>());
+        }
+        Map<String, DashboardPanel> byId = new LinkedHashMap<>();
+        for (DashboardPanel p : out.getPanels()) {
+            if (p != null && p.getId() != null && !p.getId().isBlank()) {
+                byId.put(p.getId(), p);
+            }
+        }
+        for (DashboardPanel cat : overview().getPanels()) {
+            if (cat == null || cat.getId() == null || cat.getId().isBlank()) {
+                continue;
+            }
+            if (!byId.containsKey(cat.getId())) {
+                DashboardPanel added = copyPanel(cat);
+                added.setVisible(true);
+                out.getPanels().add(added);
+                byId.put(added.getId(), added);
+            }
+        }
+        return out;
     }
 
     /**
