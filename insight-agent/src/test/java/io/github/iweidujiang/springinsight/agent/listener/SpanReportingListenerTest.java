@@ -114,4 +114,46 @@ class SpanReportingListenerTest {
         assertEquals(0, listener.getStats().getTotalReportedSpans());
         assertEquals(1, listener.getStats().getTotalDroppedUnsampled());
     }
+
+    /**
+     * 丢弃名单命中后，已采样的成功调用也不上报。
+     */
+    @Test
+    void reportSpan_dropsWhenDropPatternMatches() {
+        InsightProperties properties = new InsightProperties();
+        properties.setSampleDropPatterns(new String[]{"/internal/**"});
+        listener = new SpanReportingListener(asyncSpanReporter, micrometerBridge, properties);
+
+        TraceSpan span = new TraceSpan();
+        span.setSampled(true);
+        span.setOperationName("GET /internal/ping");
+        span.addTag("http.path", "/internal/ping");
+        span.finish();
+
+        listener.reportSpan(span);
+
+        verify(asyncSpanReporter, never()).report(any(TraceSpan.class));
+        assertEquals(1, listener.getStats().getTotalDroppedUnsampled());
+    }
+
+    /**
+     * 强制名单命中后，未采样的成功调用仍上报。
+     */
+    @Test
+    void reportSpan_exportsUnsampledSuccessWhenForcePatternMatches() {
+        when(asyncSpanReporter.report(any(TraceSpan.class))).thenReturn(true);
+        InsightProperties properties = new InsightProperties();
+        properties.setSampleForcePatterns(new String[]{"GET /billing/**"});
+        listener = new SpanReportingListener(asyncSpanReporter, micrometerBridge, properties);
+
+        TraceSpan span = new TraceSpan();
+        span.setSampled(false);
+        span.setOperationName("GET /billing/charge");
+        span.finish();
+
+        listener.reportSpan(span);
+
+        verify(asyncSpanReporter).report(span);
+        assertEquals(1, listener.getStats().getTotalReportedSpans());
+    }
 }

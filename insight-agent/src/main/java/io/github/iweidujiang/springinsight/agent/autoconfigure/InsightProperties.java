@@ -65,6 +65,20 @@ public class InsightProperties {
     private boolean alwaysSampleErrors = true;
 
     /**
+     * 匹配则不上报的 Ant 模式（操作名、{@code http.path} 或操作名中的路径）。
+     * <p>默认空，不改变采样。命中后连错误一并丢弃，并优先于 {@link #sampleForcePatterns}。
+     * 例：{@code /internal/**}、{@code GET /health}、{@code DB *}。</p>
+     */
+    private String[] sampleDropPatterns = {};
+
+    /**
+     * 匹配则强制上报的 Ant 模式（操作名、{@code http.path} 或操作名中的路径）。
+     * <p>默认空，不改变采样。命中后即使头部采样未抽中也会上报成功调用。
+     * 与 {@link #sampleDropPatterns} 同时命中时以丢弃为准。</p>
+     */
+    private String[] sampleForcePatterns = {};
+
+    /**
      * 是否启用 HTTP 请求追踪
      */
     private boolean httpTracingEnabled = true;

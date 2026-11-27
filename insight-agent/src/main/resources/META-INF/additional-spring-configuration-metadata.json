@@ -121,6 +121,20 @@
       "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
     },
     {
+      "name": "spring.insight.sample-drop-patterns",
+      "type": "java.lang.String[]",
+      "description": "匹配则不上报的 Ant 模式，对照操作名、http.path 或操作名中的路径。默认空，不改变采样。命中后连错误一并丢弃，并优先于 sample-force-patterns。例：/internal/**、GET /health、DB *。",
+      "defaultValue": [],
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
+    },
+    {
+      "name": "spring.insight.sample-force-patterns",
+      "type": "java.lang.String[]",
+      "description": "匹配则强制上报的 Ant 模式，对照操作名、http.path 或操作名中的路径。默认空，不改变采样。命中后即使未被采样率抽中也会上报。与 sample-drop-patterns 同时命中时以丢弃为准。",
+      "defaultValue": [],
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
+    },
+    {
       "name": "spring.insight.http-trace-propagation-enabled",
       "type": "java.lang.Boolean",
       "description": "是否在 HTTP 出入站透传 W3C traceparent（跨服务共享 TraceId）。与 context-propagation-enabled（线程池）独立。默认 true。已覆盖 Servlet/WebFlux 入站、RestTemplate/RestClient/OpenFeign/WebClient/Gateway 出站。",

@@ -61,4 +61,37 @@ class TraceSamplerTest {
         assertFalse(TraceSampler.shouldExport(unsampledError, false));
         assertFalse(unsampledError.isSampled());
     }
+
+    /**
+     * 名单为空时不改变采样；丢弃优先于强制上报与错误强制上报。
+     */
+    @Test
+    void pathRules_dropBeatsForceAndErrors() {
+        TraceSpan ok = named("GET /api/orders/1", "/api/orders/1");
+        ok.setSampled(true);
+        ok.finish();
+        assertTrue(TraceSampler.shouldExport(ok, true, new String[0], new String[0]));
+
+        assertFalse(TraceSampler.shouldExport(ok, true, new String[]{"/api/orders/**"}, null));
+
+        TraceSpan missed = named("GET /billing/charge", "/billing/charge");
+        missed.setSampled(false);
+        missed.finish();
+        assertTrue(TraceSampler.shouldExport(missed, true, null, new String[]{"/billing/**"}));
+
+        TraceSpan both = named("DB SELECT", null);
+        both.setSampled(false);
+        both.finish("SQL_ERROR", "boom");
+        assertFalse(TraceSampler.shouldExport(both, true,
+                new String[]{"DB *"}, new String[]{"DB *"}));
+    }
+
+    private static TraceSpan named(String operation, String httpPath) {
+        TraceSpan span = new TraceSpan();
+        span.setOperationName(operation);
+        if (httpPath != null) {
+            span.addTag("http.path", httpPath);
+        }
+        return span;
+    }
 }

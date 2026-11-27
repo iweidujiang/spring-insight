@@ -49,9 +49,11 @@ public class SpanReportingListener {
      */
     @PostConstruct
     public void init() {
-        log.info("[Span监听器] 初始化完成，已连接上报器，sample-rate={}，always-sample-errors={}",
+        log.info("[Span监听器] 初始化完成，已连接上报器，sample-rate={}，always-sample-errors={}，drop={}，force={}",
                 insightProperties != null ? insightProperties.getSampleRate() : 1.0,
-                alwaysSampleErrors());
+                alwaysSampleErrors(),
+                patternCount(dropPatterns()),
+                patternCount(forcePatterns()));
     }
 
     /**
@@ -73,7 +75,7 @@ public class SpanReportingListener {
                 span.finish();
             }
         }
-        if (!TraceSampler.shouldExport(span, alwaysSampleErrors())) {
+        if (!TraceSampler.shouldExport(span, alwaysSampleErrors(), dropPatterns(), forcePatterns())) {
             totalDroppedUnsampled.incrementAndGet();
             log.debug("[Span监听器] 未采样 Span 已丢弃: spanId={}, operation={}",
                     span.getSpanId(), span.getOperationName());
@@ -118,6 +120,24 @@ public class SpanReportingListener {
      */
     private boolean alwaysSampleErrors() {
         return insightProperties == null || insightProperties.isAlwaysSampleErrors();
+    }
+
+    private String[] dropPatterns() {
+        if (insightProperties == null || insightProperties.getSampleDropPatterns() == null) {
+            return new String[0];
+        }
+        return insightProperties.getSampleDropPatterns();
+    }
+
+    private String[] forcePatterns() {
+        if (insightProperties == null || insightProperties.getSampleForcePatterns() == null) {
+            return new String[0];
+        }
+        return insightProperties.getSampleForcePatterns();
+    }
+
+    private static int patternCount(String[] patterns) {
+        return patterns == null ? 0 : patterns.length;
     }
 
     /**
