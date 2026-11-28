@@ -487,6 +487,7 @@
 ### 新增
 - **低采样率仍上报错误**：把 `spring.insight.sample-rate` 调低后，成功调用仍按比例上报，出错的调用默认仍会进入监测中心；可用 `spring.insight.always-sample-errors=false` 恢复「未抽中则连错误一起丢弃」。出站是否继续采样仍按原来的采样决定，不会因为本地出错就把下游整条链路改成全量采集
 - **可按路径或操作名决定是否上报**：`spring.insight.sample-drop-patterns` 与 `spring.insight.sample-force-patterns` 默认都为空，不改变现有采样。丢弃名单命中的调用（含错误）不再上报；强制名单命中的调用即使没被抽中也会上报。同一条两边都命中时以丢弃为准
+- **消息生产追踪**（默认关）：业务侧引入 Spring AMQP 后，可开启 Rabbit 生产端采集；出错总会上报，成功可按慢阈值过滤。开启且仍启用 HTTP 透传时，会向消息头写入 `traceparent`，便于后续消费端串同一条链路
 
 ## [0.7.0] — 2026-11-23
 

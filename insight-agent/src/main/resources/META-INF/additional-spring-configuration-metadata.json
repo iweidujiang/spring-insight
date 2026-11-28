@@ -96,6 +96,20 @@
       "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
     },
     {
+      "name": "spring.insight.rabbit-tracing-enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用 RabbitMQ 生产端 CLIENT Span（包装 RabbitTemplate）。默认 false。错误始终上报；成功仅当耗时 ≥ rabbit-slow-threshold-ms。开启且 http-trace-propagation-enabled 时写入消息头 traceparent。",
+      "defaultValue": false,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
+    },
+    {
+      "name": "spring.insight.rabbit-slow-threshold-ms",
+      "type": "java.lang.Long",
+      "description": "Rabbit 生产端慢发布阈值（毫秒）。成功且低于阈值不上报；≤0 表示成功也全报。默认 0。",
+      "defaultValue": 0,
+      "sourceType": "io.github.iweidujiang.springinsight.agent.autoconfigure.InsightProperties"
+    },
+    {
       "name": "spring.insight.db-metrics.enabled",
       "type": "java.lang.Boolean",
       "description": "已弃用：请改用 spring.insight.jdbc-tracing-enabled。true 时仍开启 JDBC 包装。",

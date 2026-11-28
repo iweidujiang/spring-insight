@@ -129,6 +129,21 @@ public class InsightProperties {
     private long redisSlowThresholdMs = 500L;
 
     /**
+     * 是否启用 RabbitMQ 生产端 CLIENT Span（包装 {@code RabbitTemplate}；默认关）。
+     * <p>
+     * 错误始终上报；成功仅当耗时 ≥ {@link #rabbitSlowThresholdMs}（阈值为 0 时成功也全报）。
+     * 开启且 {@link #httpTracePropagationEnabled} 为 true 时，向消息头写入 {@code traceparent}。
+     * </p>
+     */
+    private boolean rabbitTracingEnabled = false;
+
+    /**
+     * Rabbit 生产端慢发布阈值（毫秒）。成功且耗时低于阈值时不上报；{@code <=0} 表示成功也上报。
+     * <p>默认 0（开启追踪时成功发布也上报）；错误不受此限制。</p>
+     */
+    private long rabbitSlowThresholdMs = 0L;
+
+    /**
      * 是否将 Span / 上报队列指标桥接到宿主 {@code MeterRegistry}（Actuator / Prometheus）。
      * <p>仅当 classpath 存在 Micrometer 且容器中有 MeterRegistry 时生效；默认 true。</p>
      */

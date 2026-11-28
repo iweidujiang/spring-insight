@@ -88,6 +88,9 @@ public class InsightAgentAutoConfigurationImportSelector
         if (ClassUtils.isPresent("org.springframework.data.redis.connection.RedisConnectionFactory", cl)) {
             imports.add(InsightRedisAutoConfiguration.class.getName());
         }
+        if (ClassUtils.isPresent("org.springframework.amqp.rabbit.core.RabbitTemplate", cl)) {
+            imports.add(InsightRabbitAutoConfiguration.class.getName());
+        }
         return imports.toArray(String[]::new);
     }
 
